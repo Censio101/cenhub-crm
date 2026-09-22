@@ -1,0 +1,321 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-outfit);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-outfit);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #f7f7f5;
+  --foreground: #141414;
+  --card: #ffffff;
+  --card-foreground: #141414;
+  --popover: #ffffff;
+  --popover-foreground: #141414;
+  --primary: #e4660c;
+  --primary-foreground: #ffffff;
+  --secondary: #f3eee8;
+  --secondary-foreground: #141414;
+  --muted: #f1efec;
+  --muted-foreground: #6b6b6b;
+  --accent: #fff1e6;
+  --accent-foreground: #833b08;
+  --destructive: #c2410c;
+  --border: #e7e4df;
+  --input: #e7e4df;
+  --ring: #e4660c;
+  --chart-1: #e4660c;
+  --chart-2: #833b08;
+  --chart-3: #6b6b6b;
+  --chart-4: #2f7d4a;
+  --chart-5: #c2410c;
+  --success: #2f7d4a;
+  --success-foreground: #24633b;
+  --danger: #c2410c;
+  --danger-foreground: #9a3412;
+  --radius: 0.75rem;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f5f5f5;
+  --sidebar-primary: #e4660c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #222222;
+  --sidebar-ring: #e4660c;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --card: #141414;
+  --card-foreground: #f5f5f5;
+  --popover: #141414;
+  --popover-foreground: #f5f5f5;
+  --primary: #e4660c;
+  --primary-foreground: #ffffff;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1f1f1f;
+  --muted-foreground: #a3a3a3;
+  --accent: #2a1a10;
+  --accent-foreground: #ffd7b8;
+  --destructive: #e4660c;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 12%);
+  --ring: #e4660c;
+  --chart-1: #e4660c;
+  --chart-2: #f5f5f5;
+  --chart-3: #a3a3a3;
+  --chart-4: #4ade80;
+  --chart-5: #fb7185;
+  --success: #4ade80;
+  --success-foreground: #86efac;
+  --danger: #fb7185;
+  --danger-foreground: #fda4af;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f5f5f5;
+  --sidebar-primary: #e4660c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #222222;
+  --sidebar-ring: #e4660c;
+}
+
+@utility dashboard-card {
+  @apply border border-border bg-card shadow-none ring-0;
+  border-radius: 15px;
+}
+
+@utility dashboard-chip {
+  @apply h-9 rounded-lg border border-border bg-white text-foreground shadow-none;
+}
+
+@utility dashboard-page {
+  background-color: var(--app-bg);
+  background-image: none;
+  color: var(--text-primary);
+
+  --app-bg: color-mix(in srgb, #e4660c 8%, #f7f7f5);
+  --surface: #fff8f1;
+  --surface-hover: #fff1e6;
+  --border-subtle: rgba(131, 59, 8, 0.1);
+  --accent: #ff8a24;
+  --accent-strong: #ff6b00;
+  --accent-soft: #ffb15c;
+  --text-primary: #141414;
+  --text-secondary: #6b6b6b;
+  --text-muted: #6b6b6b;
+  --positive: #46c7a0;
+  --negative: #f06d5d;
+  --card-glass: color-mix(in srgb, #ffffff 88%, #fff7f0 12%);
+  --card-solid: #ffffff;
+  --card-glass-border: rgba(131, 59, 8, 0.1);
+  --chart-card: color-mix(in srgb, #ffffff 96%, #fff7f0 4%);
+
+  --background: var(--app-bg);
+  --foreground: var(--text-primary);
+  --card: var(--card-solid);
+  --card-foreground: #141414;
+  --popover: #ffffff;
+  --popover-foreground: var(--text-primary);
+  --muted: #f3ebe3;
+  --muted-foreground: var(--text-muted);
+  --border: var(--border-subtle);
+  --input: var(--border-subtle);
+  --secondary: var(--surface-hover);
+  --secondary-foreground: var(--text-primary);
+  --accent-foreground: #833b08;
+  --success: var(--positive);
+  --success-foreground: var(--positive);
+  --danger: var(--negative);
+  --danger-foreground: var(--negative);
+}
+
+.dashboard-page .dashboard-card,
+.dashboard-page [data-slot="card"] {
+  --text-primary: #141414;
+  --text-secondary: #5c534c;
+  --text-muted: #8a7a6e;
+  --surface: var(--card-solid);
+  --surface-hover: #ffffff;
+  --border-subtle: rgba(131, 59, 8, 0.1);
+  --muted: #f3ebe3;
+  --muted-foreground: #8a7a6e;
+  --foreground: #141414;
+  --border: var(--border-subtle);
+
+  background: var(--card-glass);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  border-color: var(--card-glass-border);
+  box-shadow: 0 10px 28px rgba(20, 20, 20, 0.07);
+  color: #141414;
+  transition: background-color 150ms ease;
+}
+
+.dashboard-page .dashboard-card:hover,
+.dashboard-page [data-slot="card"]:hover {
+  background: #ffffff;
+}
+
+.dashboard-page .dashboard-chart-card {
+  background: var(--chart-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 32px rgba(20, 20, 20, 0.08);
+}
+
+.dashboard-page .dashboard-monthly-card {
+  --table-header-bg: #3f3a36;
+  --table-header-fg: #ffffff;
+  --table-grid: rgba(90, 64, 48, 0.22);
+  --border: rgba(90, 64, 48, 0.16);
+  --border-subtle: rgba(90, 64, 48, 0.16);
+  --card-glass-border: rgba(90, 64, 48, 0.16);
+
+  background: #ffffff;
+  border-color: rgba(90, 64, 48, 0.16);
+  box-shadow: 0 12px 36px rgba(20, 20, 20, 0.1);
+}
+
+.dashboard-page .dashboard-monthly-card:hover {
+  background: #ffffff;
+}
+
+.dashboard-page .dashboard-monthly-card [data-slot="table-head"] {
+  background-color: var(--table-header-bg);
+  color: var(--table-header-fg);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dashboard-page .dashboard-monthly-card .metric-breakdown-table [data-slot="table-cell"].metric-breakdown-total {
+  background-color: color-mix(in srgb, var(--positive) 12%, #ffffff);
+}
+
+.dashboard-page .dashboard-monthly-card [data-slot="table-cell"] {
+  border-color: var(--table-grid);
+}
+
+.dashboard-page .kpi-card {
+  transition: background-color 150ms ease;
+}
+
+.dashboard-page .kpi-card:hover {
+  background: #ffffff;
+}
+
+.dashboard-page .dashboard-chip {
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border-radius: 5px;
+  background: var(--card-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: var(--card-glass-border);
+  color: #141414;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+/* Portaled filter menus sit outside .dashboard-page */
+.dashboard-filter-menu {
+  border-radius: 5px;
+  padding: 0.375rem;
+}
+
+.dashboard-filter-menu [data-slot="select-item"],
+.dashboard-filter-menu [data-slot="dropdown-menu-item"] {
+  border-radius: 5px;
+  padding-block: 0.5rem;
+  padding-left: 0.75rem;
+}
+
+.lead-status-filter-menu [data-slot="select-item"] {
+  margin-block: 0.125rem;
+  font-weight: 500;
+}
+
+.lead-status-filter-menu [data-slot="select-item"][data-highlighted] {
+  outline: none;
+}
+
+.dashboard-page .kpi-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: #5c534c;
+}
+
+.dashboard-page .kpi-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.dashboard-page [data-slot="table-row"]:hover {
+  background-color: transparent;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: light;
+  }
+}
