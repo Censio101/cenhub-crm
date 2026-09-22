@@ -8,8 +8,10 @@ import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import {
   DashboardEmptyState,
   DashboardErrorState,
+  DashboardSkeleton,
   PartialDataNotice,
 } from "@/components/performance/DashboardStates"
+import { useDashboardData } from "@/hooks/useDashboardData"
 import { EconomyInsights } from "@/components/overview/EconomyInsights"
 import { LeadFlowCard } from "@/components/overview/LeadFlowCard"
 import { MarketingCompare } from "@/components/overview/MarketingCompare"
@@ -35,24 +37,29 @@ export function OverviewBoard() {
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
   const { settings } = useAccountSettings()
+  const { leads, adSpendByMonth, loading } = useDashboardData()
 
   useEffect(() => {
     setView(parseDashboardParams(new URLSearchParams(queryKey)))
   }, [queryKey])
 
   const data = useMemo(() => {
+    if (loading) return null
     try {
-      return getPerformanceDashboard({
-        range: view.range,
-        comparison: view.comparisonEnabled ? view.comparisonRange : null,
-        service: view.service,
-        funnel: view.funnel,
-        segment: view.segment,
-      })
+      return getPerformanceDashboard(
+        {
+          range: view.range,
+          comparison: view.comparisonEnabled ? view.comparisonRange : null,
+          service: view.service,
+          funnel: view.funnel,
+          segment: view.segment,
+        },
+        { leads, adSpendByMonth }
+      )
     } catch {
       return null
     }
-  }, [view])
+  }, [view, leads, adSpendByMonth, loading])
 
   function replaceState(next: typeof view) {
     setView(next)
@@ -60,6 +67,10 @@ export function OverviewBoard() {
     startTransition(() => {
       router.replace(`/overblik?${query}`, { scroll: false })
     })
+  }
+
+  if (loading) {
+    return <DashboardSkeleton />
   }
 
   if (data == null) {
@@ -157,6 +168,8 @@ export function OverviewBoard() {
         <>
           <ValueStory
             data={data}
+            leads={leads}
+            adSpendByMonth={adSpendByMonth}
             range={view.range}
             service={view.service}
             funnel={view.funnel}
@@ -164,6 +177,7 @@ export function OverviewBoard() {
           />
           <div className="grid gap-4 xl:grid-cols-2">
             <LeadFlowCard
+              leads={leads}
               range={view.range}
               service={view.service}
               funnel={view.funnel}
@@ -171,6 +185,7 @@ export function OverviewBoard() {
             />
             <EconomyInsights
               data={data}
+              leads={leads}
               range={view.range}
               service={view.service}
               funnel={view.funnel}
@@ -178,6 +193,8 @@ export function OverviewBoard() {
             />
           </div>
           <MarketingCompare
+            leads={leads}
+            adSpendByMonth={adSpendByMonth}
             range={view.range}
             service={view.service}
             funnel={view.funnel}

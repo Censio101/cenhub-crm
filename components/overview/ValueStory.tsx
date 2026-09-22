@@ -9,15 +9,20 @@ import type {
   DateRange,
   PerformanceDashboardData,
 } from "@/lib/performance/types"
+import type { Lead } from "@/lib/leads"
 
 export function ValueStory({
   data,
+  leads,
+  adSpendByMonth,
   range,
   service,
   funnel,
   segment,
 }: {
   data: PerformanceDashboardData
+  leads: readonly Lead[]
+  adSpendByMonth: Record<string, number>
   range: DateRange
   service: ServiceId | null
   funnel: FunnelId | null
@@ -25,14 +30,18 @@ export function ValueStory({
 }) {
   if (data.status === "empty") return null
 
+  const performanceInput = { leads, adSpendByMonth }
   const fallbackComparison =
     data.comparison ??
-    getPerformanceDashboard({
-      range: previousPeriod(range),
-      service,
-      funnel,
-      segment,
-    }).current
+    getPerformanceDashboard(
+      {
+        range: previousPeriod(range),
+        service,
+        funnel,
+        segment,
+      },
+      performanceInput
+    ).current
 
   const story = buildValueStory(data.current.totals, fallbackComparison.totals)
 

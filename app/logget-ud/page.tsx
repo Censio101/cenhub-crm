@@ -1,8 +1,8 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 
-import { signIn } from "@/lib/session"
+import { isBrowserSupabaseConfigured } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card"
 
 export default function LoggetUdPage() {
-  const router = useRouter()
+  const usesSupabase = isBrowserSupabaseConfigured()
 
   return (
     <div className="mx-auto flex max-w-lg justify-center py-10">
@@ -24,19 +24,13 @@ export default function LoggetUdPage() {
           </p>
           <CardTitle className="mt-1 text-lg">Du er logget ud</CardTitle>
           <CardDescription>
-            Din session er ryddet i denne browser. Der er ingen rigtig
-            login-integration endnu — det her er en mock, så I kan forlade
-            CRM’et og komme tilbage.
+            {usesSupabase
+              ? "Du er logget ud. Log ind igen for at se jeres dashboard."
+              : "Din session er ryddet i denne browser. Log ind igen for at fortsætte."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            className="h-10"
-            onClick={() => {
-              signIn()
-              router.push("/")
-            }}
-          >
+          <Button render={<Link href={usesSupabase ? "/login" : "/"} />} className="h-10">
             Log ind igen
           </Button>
         </CardContent>

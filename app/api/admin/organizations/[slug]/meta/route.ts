@@ -1,0 +1,72 @@
+import { NextResponse } from "next/server"
+
+import {
+  adminErrorResponse,
+  requireCensioAdmin,
+} from "@/lib/auth/require-censio-admin"
+import {
+  getMetaConfig,
+  upsertMetaConfig,
+} from "@/lib/db/meta-config-repository"
+import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
+import { createAdminClient } from "@/lib/supabase/admin"
+
+type RouteContext = { params: Promise<{ slug: string }> }
+
+export async function GET(_request: Request, context: RouteContext) {
+  try {
+    await requireCensioAdmin()
+    const { slug } = await context.params
+    const admin = createAdminClient()
+    const organization = await getOrganizationBySlug(admin, slug)
+
+    if (!organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 })
+    }
+
+    const config =
+      (await getMetaConfig(admin, organization.id)) ?? {
+        organizationId: organization.id,
+        metaAdAccountId: "",
+        metaPageId: "",
+        metaPixelId: "",
+        enabled: false,
+        metaSyncStatus: "disabled",
+      }
+
+    return NextResponse.json({ config })
+  } catch (error) {
+    return adminErrorResponse(error)
+  }
+}
+
+export async function PUT(request: Request, context: RouteContext) {
+  try {
+    await requireCensioAdmin()
+    const { slug } = await context.params
+    const body = (await request.json()) as {
+      metaAdAccountId?: string
+      metaPageId?: string
+      metaPixelId?: string
+      enabled?: boolean
+    }
+
+    const admin = createAdminClient()
+    const organization = await getOrganizationBySlug(admin, slug)
+
+    if (!organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 })
+    }
+
+    const config = await upsertMetaConfig(admin, organization.id, {
+      metaAdAccountId: body.metaAdAccountId?.trim(),
+      metaPageId: body.metaPageId?.trim(),
+      metaPixelId: body.metaPixelId?.trim(),
+      enabled: body.enabled,
+    })
+
+    return NextResponse.json({ config })
+  } catch (error) {
+    return adminErrorResponse(error)
+  }
+}

@@ -7,17 +7,15 @@ import { DashboardHeader } from "@/components/performance/DashboardHeader"
 import {
   DashboardEmptyState,
   DashboardErrorState,
+  DashboardSkeleton,
   PartialDataNotice,
 } from "@/components/performance/DashboardStates"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { DevelopmentChart } from "@/components/performance/DevelopmentChart"
 import { KpiGrid } from "@/components/performance/KpiGrid"
 import { MonthlyTable } from "@/components/performance/MonthlyTable"
-import {
-  MOCK_LEADS,
-  computeLeadPipelineStats,
-  filterDashboardLeads,
-} from "@/lib/leads"
+import { useDashboardData } from "@/hooks/useDashboardData"
+import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
 import { currentSeriesLabel, comparisonSeriesLabel } from "@/lib/performance/compare"
 import { previousPeriod, previousYear, resolvePreset } from "@/lib/performance/date-ranges"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
@@ -38,36 +36,41 @@ export function PerformanceDashboard() {
   const [pending, startTransition] = useTransition()
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
+  const { leads, adSpendByMonth, loading, error } = useDashboardData()
 
   useEffect(() => {
     setView(parseDashboardParams(new URLSearchParams(queryKey)))
   }, [queryKey])
 
   const data = useMemo(() => {
+    if (loading) return null
     try {
-      return getPerformanceDashboard({
-        range: view.range,
-        comparison: view.comparisonEnabled ? view.comparisonRange : null,
-        service: view.service,
-        funnel: view.funnel,
-        segment: view.segment,
-      })
+      return getPerformanceDashboard(
+        {
+          range: view.range,
+          comparison: view.comparisonEnabled ? view.comparisonRange : null,
+          service: view.service,
+          funnel: view.funnel,
+          segment: view.segment,
+        },
+        { leads, adSpendByMonth }
+      )
     } catch {
       return null
     }
-  }, [view])
+  }, [view, leads, adSpendByMonth, loading])
 
   const pipelineStats = useMemo(
     () =>
       computeLeadPipelineStats(
-        filterDashboardLeads(MOCK_LEADS, {
+        filterDashboardLeads(leads, {
           range: view.range,
           service: view.service,
           funnel: view.funnel,
           segment: view.segment,
         })
       ),
-    [view]
+    [view, leads]
   )
 
   function replaceState(next: typeof view) {
@@ -85,6 +88,10 @@ export function PerformanceDashboard() {
         ? "Før"
         : comparisonSeriesLabel(view.comparisonRange)
       : null
+
+  if (loading) {
+    return <DashboardSkeleton />
+  }
 
   if (data == null) {
     return (

@@ -38,6 +38,8 @@ export const LEAD_STATUSES = [
 
 export type LeadStatusId = (typeof LEAD_STATUSES)[number]["id"]
 
+export type LeadSource = "demo" | "meta" | "website" | "landing" | "manual"
+
 export type Lead = {
   id: string
   date: string
@@ -58,6 +60,8 @@ export type Lead = {
   status: LeadStatusId
   salesPrice: number | null
   profit: number | null
+  source?: LeadSource
+  lockedFields?: string[]
 }
 
 export function getLeadServiceIds(lead: {

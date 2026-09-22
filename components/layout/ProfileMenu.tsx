@@ -10,11 +10,15 @@ import {
   LogOutIcon,
   MessageCircleIcon,
   SettingsIcon,
+  ShieldIcon,
 } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { useUserProfile } from "@/lib/auth/use-user-profile"
+import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { CURRENT_COMPANY } from "@/lib/company"
-import { isSignedIn, signIn, signOut } from "@/lib/session"
+import { createClient } from "@/lib/supabase/client"
+import { isSignedIn, signOut as mockSignOut } from "@/lib/session"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -30,27 +34,26 @@ export function ProfileMenu() {
   const pathname = usePathname()
   const router = useRouter()
   const { settings } = useAccountSettings()
-  const [signedIn, setSignedIn] = useState(true)
+  const { configured, isAuthenticated, loading } = useSupabaseSession()
+  const { role } = useUserProfile()
+  const [mockSignedIn, setMockSignedIn] = useState(true)
 
   useEffect(() => {
-    setSignedIn(isSignedIn())
-  }, [pathname])
+    if (!configured) {
+      setMockSignedIn(isSignedIn())
+    }
+  }, [configured, pathname])
 
-  if (!signedIn) {
+  const signedIn = configured ? isAuthenticated : mockSignedIn
+
+  if (!loading && !signedIn) {
     return (
-      <button
-        type="button"
-        onClick={() => {
-          signIn()
-          setSignedIn(true)
-          if (pathname === "/logget-ud") {
-            router.push("/")
-          }
-        }}
+      <Link
+        href="/login"
         className="rounded-lg px-3 py-2 text-base font-medium text-white transition-colors hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none"
       >
         Log ind
-      </button>
+      </Link>
     )
   }
 
@@ -95,6 +98,12 @@ export function ProfileMenu() {
           <DropdownMenuLabel className="text-foreground">
             {CURRENT_COMPANY.name}
           </DropdownMenuLabel>
+          {role === "censio_admin" ? (
+            <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
+              <ShieldIcon />
+              Admin
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             nativeButton={false}
             render={<Link href="/indstillinger" />}
@@ -121,9 +130,16 @@ export function ProfileMenu() {
         <DropdownMenuItem
           variant="destructive"
           onClick={() => {
-            signOut()
-            setSignedIn(false)
-            router.push("/logget-ud")
+            void (async () => {
+              if (configured) {
+                const supabase = createClient()
+                await supabase.auth.signOut()
+              } else {
+                mockSignOut()
+                setMockSignedIn(false)
+              }
+              router.push("/logget-ud")
+            })()
           }}
         >
           <LogOutIcon />

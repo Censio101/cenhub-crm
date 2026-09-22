@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card"
 import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import type { Lead } from "@/lib/leads"
 import {
   getChannelInsights,
   getServiceInsights,
@@ -10,22 +11,30 @@ import { isServiceId, type ServiceId } from "@/lib/performance/services"
 import type { DateRange } from "@/lib/performance/types"
 
 export function MarketingCompare({
+  leads,
+  adSpendByMonth,
   range,
   service,
   funnel,
   segment,
 }: {
+  leads: readonly Lead[]
+  adSpendByMonth: Record<string, number>
   range: DateRange
   service: ServiceId | null
   funnel: FunnelId | null
   segment: CustomerSegmentId | null
 }) {
   const { enabledServices } = useCompanyServices()
-  const channels = getChannelInsights({
-    range,
-    service,
-    segment,
-  })
+  const performanceInput = { leads, adSpendByMonth }
+  const channels = getChannelInsights(
+    {
+      range,
+      service,
+      segment,
+    },
+    performanceInput
+  )
   const services = getServiceInsights(
     {
       range,
@@ -34,7 +43,8 @@ export function MarketingCompare({
     },
     enabledServices.filter((service): service is { id: ServiceId; label: string } =>
       isServiceId(service.id)
-    )
+    ),
+    performanceInput
   )
 
   return (

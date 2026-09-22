@@ -13,7 +13,9 @@ import {
 } from "lucide-react"
 
 import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import { useLeads } from "@/hooks/useLeads"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
+import { LeadsBoardSkeleton } from "@/components/leads/LeadsBoardSkeleton"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -38,12 +40,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { isLeadFieldLocked } from "@/lib/db/lead-mapper"
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import { SERVICES, isServiceId } from "@/lib/performance/services"
 import {
   LEAD_SEGMENTS,
   LEAD_STATUSES,
-  MOCK_LEADS,
   computeLeadPipelineStats,
   emptyLead,
   formatLeadMonth,
@@ -80,11 +82,13 @@ function CurrencyInput({
   value,
   label,
   emphasizePositive,
+  disabled,
   onChange,
 }: {
   value: number | null
   label: string
   emphasizePositive?: boolean
+  disabled?: boolean
   onChange: (value: number | null) => void
 }) {
   const [focused, setFocused] = useState(false)
@@ -98,9 +102,11 @@ function CurrencyInput({
       }
       placeholder="–"
       aria-label={label}
+      disabled={disabled}
       className={cn(
         cellInputClass,
         "text-right tabular-nums",
+        disabled && "cursor-not-allowed opacity-60",
         emphasizePositive && value != null && value > 0
           ? "text-success-foreground"
           : ""
@@ -184,10 +190,12 @@ function ServiceMultiSelect({
   value,
   onChange,
   label,
+  disabled,
 }: {
   value: string[]
   onChange: (value: string[]) => void
   label: string
+  disabled?: boolean
 }) {
   const { enabledServices } = useCompanyServices()
   const options = useMemo(() => {
@@ -210,7 +218,11 @@ function ServiceMultiSelect({
     <Popover>
       <PopoverTrigger
         aria-label={label}
-        className="flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border-0 bg-transparent px-1.5 text-left text-sm outline-none hover:bg-white focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-ring"
+        disabled={disabled}
+        className={cn(
+          "flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border-0 bg-transparent px-1.5 text-left text-sm outline-none hover:bg-white focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-ring",
+          disabled && "cursor-not-allowed opacity-60"
+        )}
       >
         <span className={cn("truncate", !summary && "text-muted-foreground")}>
           {summary || "Service"}
@@ -472,7 +484,14 @@ function LeadsTable({
             </TableCell>
           </TableRow>
         ) : (
-          leads.map((lead) => (
+          leads.map((lead) => {
+            const lockedInputClass = (field: Parameters<typeof isLeadFieldLocked>[1]) =>
+              cn(
+                cellInputClass,
+                isLeadFieldLocked(lead, field) && "cursor-not-allowed opacity-60"
+              )
+
+            return (
             <TableRow key={lead.id} className={getWonLeadRowClass(lead.status)}>
               <TableCell
                 className={cn(
@@ -484,8 +503,9 @@ function LeadsTable({
                   type="date"
                   value={lead.date}
                   aria-label="Dato"
+                  disabled={isLeadFieldLocked(lead, "date")}
                   className={cn(
-                    cellInputClass,
+                    lockedInputClass("date"),
                     "[&::-webkit-calendar-picker-indicator]:opacity-40"
                   )}
                   onChange={(event) =>
@@ -499,15 +519,23 @@ function LeadsTable({
                   getWonLeadCellClass(lead.status) || "bg-card"
                 )}
               >
-                <input
-                  value={lead.fullName}
-                  placeholder="Navn"
-                  aria-label="Fulde navn"
-                  className={cellInputClass}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { fullName: event.target.value })
-                  }
-                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    value={lead.fullName}
+                    placeholder="Navn"
+                    aria-label="Fulde navn"
+                    disabled={isLeadFieldLocked(lead, "fullName")}
+                    className={lockedInputClass("fullName")}
+                    onChange={(event) =>
+                      onUpdate(lead.id, { fullName: event.target.value })
+                    }
+                  />
+                  {lead.source === "meta" ? (
+                    <span className="shrink-0 rounded-full bg-[#1877F2]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1877F2]">
+                      Meta
+                    </span>
+                  ) : null}
+                </div>
               </TableCell>
               <TableCell className="min-w-52 px-2">
                 <input
@@ -515,7 +543,8 @@ function LeadsTable({
                   value={lead.email}
                   placeholder="mail@…"
                   aria-label="E-mail"
-                  className={cellInputClass}
+                  disabled={isLeadFieldLocked(lead, "email")}
+                  className={lockedInputClass("email")}
                   onChange={(event) =>
                     onUpdate(lead.id, { email: event.target.value })
                   }
@@ -526,7 +555,8 @@ function LeadsTable({
                   value={lead.phone}
                   placeholder="00 00 00 00"
                   aria-label="Telefon"
-                  className={cellInputClass}
+                  disabled={isLeadFieldLocked(lead, "phone")}
+                  className={lockedInputClass("phone")}
                   onChange={(event) =>
                     onUpdate(lead.id, { phone: event.target.value })
                   }
@@ -538,6 +568,7 @@ function LeadsTable({
                   label="Privat/Erhverv"
                   placeholder="Vælg"
                   className="min-w-24"
+                  disabled={isLeadFieldLocked(lead, "segment")}
                   options={LEAD_SEGMENTS}
                   onChange={(segment) =>
                     onUpdate(lead.id, {
@@ -552,9 +583,11 @@ function LeadsTable({
                   value={lead.companyName}
                   placeholder={lead.segment === "b2b" ? "Virksomhed" : "–"}
                   aria-label="Virksomhed"
-                  disabled={lead.segment !== "b2b"}
+                  disabled={
+                    lead.segment !== "b2b" || isLeadFieldLocked(lead, "companyName")
+                  }
                   className={cn(
-                    cellInputClass,
+                    lockedInputClass("companyName"),
                     lead.segment !== "b2b" && "text-muted-foreground"
                   )}
                   onChange={(event) =>
@@ -567,7 +600,8 @@ function LeadsTable({
                   value={lead.address}
                   placeholder="Adresse"
                   aria-label="Adresse"
-                  className={cellInputClass}
+                  disabled={isLeadFieldLocked(lead, "address")}
+                  className={lockedInputClass("address")}
                   onChange={(event) =>
                     onUpdate(lead.id, { address: event.target.value })
                   }
@@ -578,7 +612,8 @@ function LeadsTable({
                   value={lead.zipCode}
                   placeholder="0000"
                   aria-label="Postnummer"
-                  className={cellInputClass}
+                  disabled={isLeadFieldLocked(lead, "zipCode")}
+                  className={lockedInputClass("zipCode")}
                   onChange={(event) =>
                     onUpdate(lead.id, { zipCode: event.target.value })
                   }
@@ -589,7 +624,8 @@ function LeadsTable({
                   value={lead.city}
                   placeholder="By"
                   aria-label="By"
-                  className={cellInputClass}
+                  disabled={isLeadFieldLocked(lead, "city")}
+                  className={lockedInputClass("city")}
                   onChange={(event) =>
                     onUpdate(lead.id, { city: event.target.value })
                   }
@@ -599,6 +635,7 @@ function LeadsTable({
                 <ServiceMultiSelect
                   value={getLeadServiceIds(lead)}
                   label="Service"
+                  disabled={false}
                   onChange={(serviceIds) => {
                     const first = serviceIds[0] ?? ""
                     onUpdate(lead.id, {
@@ -615,7 +652,11 @@ function LeadsTable({
                   aria-label="Meta kunde annonce ID"
                   inputMode="numeric"
                   spellCheck={false}
-                  className={cn(cellInputClass, "font-mono text-[0.8125rem]")}
+                  disabled={isLeadFieldLocked(lead, "metaAdId")}
+                  className={cn(
+                    lockedInputClass("metaAdId"),
+                    "font-mono text-[0.8125rem]"
+                  )}
                   onChange={(event) =>
                     onUpdate(lead.id, { metaAdId: event.target.value.trim() })
                   }
@@ -671,7 +712,8 @@ function LeadsTable({
                 />
               </TableCell>
             </TableRow>
-          ))
+            )
+          })
         )}
       </TableBody>
     </Table>
@@ -680,7 +722,15 @@ function LeadsTable({
 
 export function LeadsBoard() {
   const { enabledServices } = useCompanyServices()
-  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS)
+  const {
+    leads,
+    loading,
+    error,
+    dataSource,
+    updateLead,
+    createLead,
+    deleteLead,
+  } = useLeads()
   const [statusFilter, setStatusFilter] = useState<LeadStatusId | "all">("all")
   const [serviceFilter, setServiceFilter] = useState<string | "all">("all")
   const [monthFilter, setMonthFilter] = useState<string>("all")
@@ -716,14 +766,8 @@ export function LeadsBoard() {
     [filtered]
   )
 
-  function updateLead(id: string, patch: Partial<Lead>) {
-    setLeads((current) =>
-      current.map((lead) => (lead.id === id ? { ...lead, ...patch } : lead))
-    )
-  }
-
-  function deleteLead(id: string) {
-    setLeads((current) => current.filter((lead) => lead.id !== id))
+  if (loading) {
+    return <LeadsBoardSkeleton />
   }
 
   return (
@@ -739,6 +783,14 @@ export function LeadsBoard() {
           <p className="mt-1 text-sm text-muted-foreground">
             Følg nye henvendelser fra første kontakt til vundet kunde
           </p>
+          {error ? (
+            <p className="mt-2 text-sm text-amber-700">{error}</p>
+          ) : null}
+          {dataSource === "supabase" ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Gemmes i database
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <Select
@@ -852,17 +904,16 @@ export function LeadsBoard() {
             </SelectContent>
           </Select>
           <Button
-            onClick={() =>
-              setLeads((current) => [
+            onClick={() => {
+              void createLead(
                 emptyLead(
                   `lead-${Date.now()}`,
                   monthFilter === "all"
                     ? new Date()
                     : new Date(`${monthFilter}-01T00:00:00`)
-                ),
-                ...current,
-              ])
-            }
+                )
+              )
+            }}
           >
             <PlusIcon />
             Tilføj lead
@@ -886,7 +937,9 @@ export function LeadsBoard() {
                 : "Ingen leads i den valgte måned."
             }
             onUpdate={updateLead}
-            onDelete={deleteLead}
+            onDelete={(id) => {
+              void deleteLead(id)
+            }}
           />
         </div>
         <LeadPipelineFooter stats={pipelineStats} />

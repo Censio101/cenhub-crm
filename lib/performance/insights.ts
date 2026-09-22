@@ -8,7 +8,7 @@ import {
   formatPercentage,
   formatRoasMultiplier,
 } from "./format"
-import { getPerformanceDashboard } from "./get-performance"
+import { getPerformanceDashboard, type PerformanceInput } from "./get-performance"
 import { computeDelta, computeProfit, getMetric, safeDivide } from "./metrics"
 import type { ServiceId } from "./services"
 import type {
@@ -91,13 +91,14 @@ export type ChannelInsight = {
 }
 
 export function getChannelInsights(
-  query: Omit<DashboardQuery, "funnel">
+  query: Omit<DashboardQuery, "funnel">,
+  input?: PerformanceInput
 ): ChannelInsight[] {
   const cpl = getMetric("cpl")
   const closeRate = getMetric("closeRate")
 
   return FUNNELS.map((funnel) => {
-    const data = getPerformanceDashboard({ ...query, funnel: funnel.id })
+    const data = getPerformanceDashboard({ ...query, funnel: funnel.id }, input)
     const totals = data.current.totals
     const cplValue = cpl.compute(totals)
     const closeRateValue = closeRate.compute(totals)
@@ -127,10 +128,11 @@ export type ServiceInsight = {
 
 export function getServiceInsights(
   query: Omit<DashboardQuery, "service">,
-  services: ReadonlyArray<{ id: ServiceId; label: string }>
+  services: ReadonlyArray<{ id: ServiceId; label: string }>,
+  input?: PerformanceInput
 ): ServiceInsight[] {
   return services.map((service) => {
-    const data = getPerformanceDashboard({ ...query, service: service.id })
+    const data = getPerformanceDashboard({ ...query, service: service.id }, input)
     const totals = data.current.totals
     const profit = computeProfit(totals)
     return {

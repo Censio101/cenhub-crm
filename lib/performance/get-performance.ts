@@ -1,7 +1,14 @@
 import { endOfWeek, endOfYear, startOfWeek, startOfYear } from "date-fns"
 
+import type { Lead } from "@/lib/leads"
+
 import { buildChartPoints } from "./compare"
+import { demoAdSpendByMonth } from "./demo-ad-spend"
 import { inferGranularity, periodLabel, toIsoDate } from "./date-ranges"
+import {
+  buildDailyBucketsFromLeads,
+  getLeadDataDateRange,
+} from "./from-leads"
 import { accumulateMonthly, emptyTotals, sumTotals } from "./metrics"
 import { getDailyMockData, MONTHLY_MOCK_DATA } from "./mock-data"
 import { b2bShare } from "./customer-segments"
@@ -109,13 +116,27 @@ function applyCustomerSegment(
   }
 }
 
+export type PerformanceInput = {
+  leads?: readonly Lead[]
+  adSpendByMonth?: Record<string, number>
+}
+
+function resolveDailyBuckets(input?: PerformanceInput): PerformanceBucket[] {
+  if (input?.leads) {
+    const adSpendByMonth = input.adSpendByMonth ?? demoAdSpendByMonth()
+    return buildDailyBucketsFromLeads(input.leads, adSpendByMonth)
+  }
+  return getDailyMockData()
+}
+
 function collectDays(
   range: DateRange,
   service?: ServiceId | null,
   funnel?: FunnelId | null,
-  segment?: CustomerSegmentId | null
+  segment?: CustomerSegmentId | null,
+  input?: PerformanceInput
 ): PerformanceBucket[] {
-  return getDailyMockData()
+  return resolveDailyBuckets(input)
     .filter(
       (bucket) =>
         bucketOverlaps(bucket, range) &&
@@ -130,9 +151,10 @@ function buildPeriod(
   granularity: Granularity,
   service?: ServiceId | null,
   funnel?: FunnelId | null,
-  segment?: CustomerSegmentId | null
+  segment?: CustomerSegmentId | null,
+  input?: PerformanceInput
 ): PeriodResult {
-  const days = collectDays(range, service, funnel, segment)
+  const days = collectDays(range, service, funnel, segment, input)
   const buckets = aggregateDays(days, granularity)
   const monthlyBuckets = aggregateDays(days, "month")
   const totals = buckets.length > 0 ? sumTotals(buckets) : emptyTotals()
@@ -154,7 +176,15 @@ function hasActivity(period: PeriodResult): boolean {
   )
 }
 
-function isPartial(range: DateRange): boolean {
+function isPartial(range: DateRange, input?: PerformanceInput): boolean {
+  if (input?.leads) {
+    const leadRange = getLeadDataDateRange(input.leads)
+    if (!leadRange) return false
+    const firstData = parseBucketDate(leadRange.start)
+    const lastData = parseBucketDate(leadRange.end)
+    return range.start < firstData || range.end > lastData
+  }
+
   const firstData = parseBucketDate(MONTHLY_MOCK_DATA[0].start)
   const lastData = parseBucketDate(
     MONTHLY_MOCK_DATA[MONTHLY_MOCK_DATA.length - 1].end
@@ -163,7 +193,8 @@ function isPartial(range: DateRange): boolean {
 }
 
 export function getPerformanceDashboard(
-  query: DashboardQuery
+  query: DashboardQuery,
+  input?: PerformanceInput
 ): PerformanceDashboardData {
   const granularity = inferGranularity(query.range)
   const current = buildPeriod(
@@ -171,7 +202,8 @@ export function getPerformanceDashboard(
     granularity,
     query.service,
     query.funnel,
-    query.segment
+    query.segment,
+    input
   )
   const comparisonPeriod = query.comparison
     ? buildPeriod(
@@ -179,7 +211,8 @@ export function getPerformanceDashboard(
         granularity,
         query.service,
         query.funnel,
-        query.segment
+        query.segment,
+        input
       )
     : null
   const comparison =
@@ -191,13 +224,14 @@ export function getPerformanceDashboard(
     "month",
     query.service,
     query.funnel,
-    query.segment
+    query.segment,
+    input
   )
 
   let status: PerformanceDashboardData["status"] = "ok"
   if (!hasActivity(current)) {
     status = "empty"
-  } else if (isPartial(query.range)) {
+  } else if (isPartial(query.range, input)) {
     status = "partial"
   }
 

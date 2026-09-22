@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card"
 import {
   computeLeadPipelineStats,
   filterDashboardLeads,
-  MOCK_LEADS,
+  type Lead,
 } from "@/lib/leads"
 import { formatCurrencyDKK, formatInteger } from "@/lib/performance/format"
 import { getSegmentShares } from "@/lib/performance/insights"
@@ -16,18 +16,20 @@ import type {
 
 export function EconomyInsights({
   data,
+  leads: allLeads,
   range,
   service,
   funnel,
   segment,
 }: {
   data: PerformanceDashboardData
+  leads: readonly Lead[]
   range: DateRange
   service: ServiceId | null
   funnel: FunnelId | null
   segment: CustomerSegmentId | null
 }) {
-  const leads = filterDashboardLeads(MOCK_LEADS, {
+  const leads = filterDashboardLeads(allLeads, {
     range,
     service,
     funnel,

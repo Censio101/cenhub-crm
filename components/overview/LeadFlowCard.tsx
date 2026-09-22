@@ -6,7 +6,7 @@ import {
   filterDashboardLeads,
   getActionLeads,
   getLeadStatusLabel,
-  MOCK_LEADS,
+  type Lead,
 } from "@/lib/leads"
 import { formatPercentage } from "@/lib/performance/format"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
@@ -15,24 +15,26 @@ import type { ServiceId } from "@/lib/performance/services"
 import type { DateRange } from "@/lib/performance/types"
 
 export function LeadFlowCard({
+  leads: allLeads,
   range,
   service,
   funnel,
   segment,
 }: {
+  leads: readonly Lead[]
   range: DateRange
   service: ServiceId | null
   funnel: FunnelId | null
   segment: CustomerSegmentId | null
 }) {
-  const periodLeads = filterDashboardLeads(MOCK_LEADS, {
+  const periodLeads = filterDashboardLeads(allLeads, {
     range,
     service,
     funnel,
     segment,
   })
   const actionLeads = getActionLeads(
-    filterDashboardLeads(MOCK_LEADS, {
+    filterDashboardLeads(allLeads, {
       service,
       funnel,
       segment,
