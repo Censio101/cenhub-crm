@@ -80,15 +80,7 @@ export function AdminClientDetail({ slug }: { slug: string }) {
     }
   }
 
-  if (loading) {
-    return (
-      <p className="text-sm text-muted-foreground" aria-busy="true">
-        Henter klient…
-      </p>
-    )
-  }
-
-  if (!organization) {
+  if (!loading && !organization) {
     return (
       <div className="mx-auto max-w-3xl">
         <p className="text-sm text-destructive">{error ?? "Klient ikke fundet"}</p>
@@ -107,15 +99,19 @@ export function AdminClientDetail({ slug }: { slug: string }) {
             ← Alle klienter
           </Link>
           <h1 className="mt-2 text-2xl font-medium tracking-tight sm:text-3xl">
-            {organization.name}
+            {organization?.name ?? slug}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{organization.slug}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {organization?.slug ?? slug}
+          </p>
         </div>
-        <dl className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-          <div>{organization.leadCount} leads</div>
-          <div>{organization.userCount} brugere</div>
-          <div>{organization.metaEnabled ? "Meta aktiveret" : "Meta af"}</div>
-        </dl>
+        {organization ? (
+          <dl className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+            <div>{organization.leadCount} leads</div>
+            <div>{organization.userCount} brugere</div>
+            <div>{organization.metaEnabled ? "Meta aktiveret" : "Meta af"}</div>
+          </dl>
+        ) : null}
       </header>
 
       {error ? (
@@ -124,6 +120,8 @@ export function AdminClientDetail({ slug }: { slug: string }) {
         </p>
       ) : null}
 
+      {organization ? (
+        <>
       <Card>
         <CardHeader>
           <CardTitle>Overblik</CardTitle>
@@ -196,6 +194,8 @@ export function AdminClientDetail({ slug }: { slug: string }) {
           <AdminInviteUserForm onInvited={() => undefined} />
         </CardContent>
       </Card>
+        </>
+      ) : null}
     </div>
   )
 }

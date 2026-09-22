@@ -144,12 +144,7 @@ export function AdminClientList() {
         </p>
       ) : null}
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground" aria-busy="true">
-          Henter klienter…
-        </p>
-      ) : (
-        <div className="grid gap-3">
+      <div className="grid gap-3">
           {organizations.map((organization) => (
             <Link
               key={organization.id}
@@ -183,7 +178,6 @@ export function AdminClientList() {
             </Link>
           ))}
         </div>
-      )}
     </div>
   )
 }

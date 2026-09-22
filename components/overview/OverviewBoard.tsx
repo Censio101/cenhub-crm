@@ -8,7 +8,6 @@ import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import {
   DashboardEmptyState,
   DashboardErrorState,
-  DashboardSkeleton,
   PartialDataNotice,
 } from "@/components/performance/DashboardStates"
 import { useDashboardData } from "@/hooks/useDashboardData"
@@ -37,14 +36,13 @@ export function OverviewBoard() {
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
   const { settings } = useAccountSettings()
-  const { leads, adSpendByMonth, loading } = useDashboardData()
+  const { leads, adSpendByMonth } = useDashboardData()
 
   useEffect(() => {
     setView(parseDashboardParams(new URLSearchParams(queryKey)))
   }, [queryKey])
 
   const data = useMemo(() => {
-    if (loading) return null
     try {
       return getPerformanceDashboard(
         {
@@ -59,7 +57,7 @@ export function OverviewBoard() {
     } catch {
       return null
     }
-  }, [view, leads, adSpendByMonth, loading])
+  }, [view, leads, adSpendByMonth])
 
   function replaceState(next: typeof view) {
     setView(next)
@@ -67,10 +65,6 @@ export function OverviewBoard() {
     startTransition(() => {
       router.replace(`/overblik?${query}`, { scroll: false })
     })
-  }
-
-  if (loading) {
-    return <DashboardSkeleton />
   }
 
   if (data == null) {

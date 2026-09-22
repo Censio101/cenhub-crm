@@ -69,14 +69,6 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
     }
   }
 
-  if (loading) {
-    return (
-      <p className="text-sm text-muted-foreground" aria-busy="true">
-        Henter Meta opsætning…
-      </p>
-    )
-  }
-
   return (
     <Card>
       <CardHeader>

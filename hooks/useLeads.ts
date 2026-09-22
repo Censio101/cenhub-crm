@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import {
+  getLeadsCache,
+  hasLeadsCache,
+  setLeadsCache,
+} from "@/lib/data/client-cache"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
 import { MOCK_LEADS, type Lead } from "@/lib/leads"
 
@@ -17,16 +22,20 @@ type LeadsResponse = {
 }
 
 export function useLeads() {
-  const [leads, setLeads] = useState<Lead[]>([])
-  const [loading, setLoading] = useState(true)
+  const cached = getLeadsCache()
+  const [leads, setLeads] = useState<Lead[]>(() => cached?.leads ?? [])
+  const [loading, setLoading] = useState(() => !hasLeadsCache())
   const [error, setError] = useState<string | null>(null)
-  const [dataSource, setDataSource] = useState<"mock" | "supabase">("mock")
+  const [dataSource, setDataSource] = useState<"mock" | "supabase">(
+    () => cached?.source ?? "mock"
+  )
   const pendingPatches = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map()
   )
 
   const loadLeads = useCallback(async () => {
-    setLoading(true)
+    const showLoading = !hasLeadsCache()
+    if (showLoading) setLoading(true)
     setError(null)
 
     try {
@@ -38,13 +47,15 @@ export function useLeads() {
       const data = (await response.json()) as LeadsResponse
       setLeads(data.leads)
       setDataSource(data.source)
+      setLeadsCache({ leads: data.leads, source: data.source })
     } catch (loadError) {
       console.error(loadError)
       setLeads(MOCK_LEADS)
       setDataSource("mock")
+      setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
       setError("Viser demo-data — database ikke tilgængelig")
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }, [])
 
@@ -68,9 +79,11 @@ export function useLeads() {
         }
 
         const data = (await response.json()) as { lead: Lead }
-        setLeads((current) =>
-          current.map((lead) => (lead.id === id ? data.lead : lead))
-        )
+        setLeads((current) => {
+          const next = current.map((lead) => (lead.id === id ? data.lead : lead))
+          setLeadsCache({ leads: next, source: dataSource })
+          return next
+        })
       } catch (patchError) {
         console.error(patchError)
         setError("Ændring kunne ikke gemmes")
@@ -81,9 +94,13 @@ export function useLeads() {
 
   const updateLead = useCallback(
     (id: string, patch: LeadPatch) => {
-      setLeads((current) =>
-        current.map((lead) => (lead.id === id ? { ...lead, ...patch } : lead))
-      )
+      setLeads((current) => {
+        const next = current.map((lead) =>
+          lead.id === id ? { ...lead, ...patch } : lead
+        )
+        setLeadsCache({ leads: next, source: dataSource })
+        return next
+      })
 
       if (dataSource === "mock") return
 
@@ -103,7 +120,11 @@ export function useLeads() {
 
   const createLead = useCallback(
     async (lead: Lead) => {
-      setLeads((current) => [lead, ...current])
+      setLeads((current) => {
+        const next = [lead, ...current]
+        setLeadsCache({ leads: next, source: dataSource })
+        return next
+      })
 
       if (dataSource === "mock") return lead
 
@@ -119,9 +140,11 @@ export function useLeads() {
         }
 
         const data = (await response.json()) as { lead: Lead }
-        setLeads((current) =>
-          current.map((item) => (item.id === lead.id ? data.lead : item))
-        )
+        setLeads((current) => {
+          const next = current.map((item) => (item.id === lead.id ? data.lead : item))
+          setLeadsCache({ leads: next, source: dataSource })
+          return next
+        })
         return data.lead
       } catch (createError) {
         console.error(createError)
@@ -135,7 +158,11 @@ export function useLeads() {
 
   const deleteLead = useCallback(
     async (id: string) => {
-      setLeads((current) => current.filter((lead) => lead.id !== id))
+      setLeads((current) => {
+        const next = current.filter((lead) => lead.id !== id)
+        setLeadsCache({ leads: next, source: dataSource })
+        return next
+      })
 
       if (dataSource === "mock") return
 

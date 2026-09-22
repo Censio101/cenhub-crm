@@ -7,7 +7,6 @@ import { DashboardHeader } from "@/components/performance/DashboardHeader"
 import {
   DashboardEmptyState,
   DashboardErrorState,
-  DashboardSkeleton,
   PartialDataNotice,
 } from "@/components/performance/DashboardStates"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
@@ -36,14 +35,13 @@ export function PerformanceDashboard() {
   const [pending, startTransition] = useTransition()
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
-  const { leads, adSpendByMonth, loading, error } = useDashboardData()
+  const { leads, adSpendByMonth, error } = useDashboardData()
 
   useEffect(() => {
     setView(parseDashboardParams(new URLSearchParams(queryKey)))
   }, [queryKey])
 
   const data = useMemo(() => {
-    if (loading) return null
     try {
       return getPerformanceDashboard(
         {
@@ -58,7 +56,7 @@ export function PerformanceDashboard() {
     } catch {
       return null
     }
-  }, [view, leads, adSpendByMonth, loading])
+  }, [view, leads, adSpendByMonth])
 
   const pipelineStats = useMemo(
     () =>
@@ -88,10 +86,6 @@ export function PerformanceDashboard() {
         ? "Før"
         : comparisonSeriesLabel(view.comparisonRange)
       : null
-
-  if (loading) {
-    return <DashboardSkeleton />
-  }
 
   if (data == null) {
     return (
