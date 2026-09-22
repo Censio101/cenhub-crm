@@ -5,7 +5,7 @@ import { demoAdSpendByMonth } from "@/lib/performance/demo-ad-spend"
 export async function listAdSpendByMonth(
   supabase: SupabaseClient,
   organizationId: string
-): Promise<Record<string, number>> {
+): Promise<{ adSpendByMonth: Record<string, number>; source: "synced" | "demo" | "pending" }> {
   const { data, error } = await supabase
     .from("client_ad_metrics")
     .select("month_key, spend")
@@ -14,13 +14,37 @@ export async function listAdSpendByMonth(
 
   if (error) throw error
 
-  if (!data?.length) {
-    return demoAdSpendByMonth()
+  if (data?.length) {
+    return {
+      adSpendByMonth: Object.fromEntries(
+        data.map((row) => [row.month_key, Number(row.spend)])
+      ),
+      source: "synced",
+    }
   }
 
-  return Object.fromEntries(
-    data.map((row) => [row.month_key, Number(row.spend)])
-  )
+  const [{ data: metaConfig }, { data: organization }] = await Promise.all([
+    supabase
+      .from("client_meta_config")
+      .select("enabled")
+      .eq("organization_id", organizationId)
+      .maybeSingle(),
+    supabase
+      .from("organizations")
+      .select("demo_mode")
+      .eq("id", organizationId)
+      .maybeSingle(),
+  ])
+
+  if (metaConfig?.enabled) {
+    return { adSpendByMonth: {}, source: "pending" }
+  }
+
+  if (organization?.demo_mode) {
+    return { adSpendByMonth: demoAdSpendByMonth(), source: "demo" }
+  }
+
+  return { adSpendByMonth: {}, source: "pending" }
 }
 
 export function listDemoAdSpendByMonth(): Record<string, number> {

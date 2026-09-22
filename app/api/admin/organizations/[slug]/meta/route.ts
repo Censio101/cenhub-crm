@@ -10,6 +10,7 @@ import {
   upsertMetaConfig,
 } from "@/lib/db/meta-config-repository"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
+import { onboardMetaClient } from "@/lib/meta/onboard-meta-client"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type RouteContext = { params: Promise<{ slug: string }> }
@@ -61,7 +62,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const config = await patchMetaEnabled(admin, organization.id, body.enabled)
-    return NextResponse.json({ config })
+    const onboard = body.enabled
+      ? await onboardMetaClient(admin, organization.id, {
+          source: "admin-toggle",
+        })
+      : null
+
+    return NextResponse.json({ config, onboard })
   } catch (error) {
     return adminErrorResponse(error)
   }

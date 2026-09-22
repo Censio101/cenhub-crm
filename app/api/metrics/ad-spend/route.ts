@@ -28,11 +28,14 @@ export async function GET() {
         ? createAdminClient()
         : await createClient()
 
-    const adSpendByMonth = await listAdSpendByMonth(supabase, ctx.organization.id)
+    const { adSpendByMonth, source } = await listAdSpendByMonth(
+      supabase,
+      ctx.organization.id
+    )
 
     return NextResponse.json({
       adSpendByMonth,
-      source: "supabase",
+      source,
     })
   } catch (error) {
     console.error("GET /api/metrics/ad-spend failed:", error)

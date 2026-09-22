@@ -5,6 +5,7 @@ import {
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
 import { enablePartnerMetaAccount } from "@/lib/db/meta-clients-repository"
+import { onboardMetaClient } from "@/lib/meta/onboard-meta-client"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function POST(request: Request) {
@@ -37,7 +38,17 @@ export async function POST(request: Request) {
       slug: body.slug,
     })
 
-    return NextResponse.json(result)
+    const onboard =
+      body.enabled
+        ? await onboardMetaClient(admin, result.organization.id, {
+            source: "admin-enable-partner",
+          })
+        : null
+
+    return NextResponse.json({
+      ...result,
+      onboard,
+    })
   } catch (error) {
     if (error instanceof Error && error.message.includes("slug")) {
       return NextResponse.json({ error: error.message }, { status: 400 })
