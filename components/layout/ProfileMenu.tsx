@@ -110,7 +110,7 @@ export function ProfileMenu() {
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/settings" />}>
                 <SettingsIcon />
-                Admin settings
+                Admin indstillinger
               </DropdownMenuItem>
             </>
           ) : null}

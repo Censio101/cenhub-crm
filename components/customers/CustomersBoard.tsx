@@ -24,9 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useCustomers } from "@/hooks/useCustomers"
 import {
   CUSTOMER_SOURCES,
-  MOCK_CUSTOMERS,
   customerMonthKey,
   formatCustomerServices,
   getCustomerSegmentLabel,
@@ -53,6 +53,7 @@ function formatClosedDate(value: string): string {
 
 export function CustomersBoard() {
   const { enabledServices } = useCompanyServices()
+  const { customers, organizationName, error } = useCustomers()
   const [segmentFilter, setSegmentFilter] = useState<LeadSegmentId | "all">(
     "all"
   )
@@ -65,10 +66,10 @@ export function CustomersBoard() {
 
   const months = useMemo(() => {
     const keys = new Set(
-      MOCK_CUSTOMERS.map((customer) => customerMonthKey(customer.closedDate))
+      customers.map((customer) => customerMonthKey(customer.closedDate))
     )
     return [...keys].sort((left, right) => right.localeCompare(left))
-  }, [])
+  }, [customers])
 
   const activeServiceFilter =
     serviceFilter !== "all" &&
@@ -77,7 +78,7 @@ export function CustomersBoard() {
       : "all"
 
   const filtered = useMemo(() => {
-    const next = MOCK_CUSTOMERS.filter((customer) => {
+    const next = customers.filter((customer) => {
       const matchesSegment =
         segmentFilter === "all" || customer.segment === segmentFilter
       const matchesService =
@@ -91,7 +92,7 @@ export function CustomersBoard() {
       return matchesSegment && matchesService && matchesSource && matchesMonth
     })
     return sortCustomersByDate(next, dateSort)
-  }, [activeServiceFilter, dateSort, monthFilter, segmentFilter, sourceFilter])
+  }, [activeServiceFilter, customers, dateSort, monthFilter, segmentFilter, sourceFilter])
 
   const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
 
@@ -106,8 +107,15 @@ export function CustomersBoard() {
             Kundeliste
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Vundne sager hos Nordkystens Tømrer — Helsingør og Nordsjælland
+            {organizationName
+              ? `Vundne sager hos ${organizationName}`
+              : "Vundne sager fra leads med status Vundet"}
           </p>
+          {error ? (
+            <p className="mt-1 text-xs text-muted-foreground" role="status">
+              {error}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <Select
