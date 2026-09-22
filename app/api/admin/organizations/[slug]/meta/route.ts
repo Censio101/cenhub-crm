@@ -32,6 +32,8 @@ export async function GET(_request: Request, context: RouteContext) {
         metaPixelId: "",
         enabled: false,
         metaSyncStatus: "disabled",
+        metaSyncError: null,
+        metaLastSyncedAt: null,
       }
 
     return NextResponse.json({ config })

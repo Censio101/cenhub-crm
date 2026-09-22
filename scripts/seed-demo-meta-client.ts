@@ -59,6 +59,19 @@ async function main() {
   const { error: insertError } = await admin.from("leads").insert(rows)
   if (insertError) throw insertError
 
+  const { error: metaConfigError } = await admin.from("client_meta_config").upsert(
+    {
+      organization_id: organization.id,
+      meta_ad_account_id: "act_demo_meta_client",
+      meta_page_id: "demo_page_meta_client",
+      meta_pixel_id: "",
+      enabled: false,
+      meta_sync_status: "disabled",
+    },
+    { onConflict: "organization_id" }
+  )
+  if (metaConfigError) throw metaConfigError
+
   console.log(
     `Seeded ${rows.length} locked Meta leads for ${organization.name} (${slug})`
   )

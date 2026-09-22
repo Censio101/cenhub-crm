@@ -26,3 +26,31 @@ export async function listAdSpendByMonth(
 export function listDemoAdSpendByMonth(): Record<string, number> {
   return demoAdSpendByMonth()
 }
+
+export async function upsertMonthlyAdMetrics(
+  supabase: SupabaseClient,
+  organizationId: string,
+  rows: Array<{
+    month: string
+    spend: number
+    impressions: number
+    clicks: number
+  }>
+) {
+  if (!rows.length) return
+
+  const payload = rows.map((row) => ({
+    organization_id: organizationId,
+    month_key: row.month,
+    spend: row.spend,
+    impressions: row.impressions,
+    clicks: row.clicks,
+    synced_at: new Date().toISOString(),
+  }))
+
+  const { error } = await supabase
+    .from("client_ad_metrics")
+    .upsert(payload, { onConflict: "organization_id,month_key" })
+
+  if (error) throw error
+}
