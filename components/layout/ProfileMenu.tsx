@@ -13,7 +13,6 @@ import {
   ShieldIcon,
 } from "lucide-react"
 
-import { ClientSwitcher } from "@/components/admin/ClientSwitcher"
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useUserProfile } from "@/lib/auth/use-user-profile"
@@ -107,14 +106,6 @@ export function ProfileMenu() {
           </DropdownMenuLabel>
           {isAdmin ? (
             <>
-              <div className="px-2 py-2">
-                <ClientSwitcher variant="compact" />
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
-                <ShieldIcon />
-                Admin
-              </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/meta" />}>
                 <ShieldIcon />
                 Meta klienter

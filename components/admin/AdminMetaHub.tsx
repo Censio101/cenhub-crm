@@ -562,7 +562,7 @@ export function AdminMetaHub() {
               key={value}
               type="button"
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
                 filter === value
                   ? "bg-primary text-white"
                   : "bg-muted text-muted-foreground hover:text-foreground"

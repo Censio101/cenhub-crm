@@ -144,7 +144,14 @@ export const en: Messages = {
   facebookDataSynced: "Facebook data synced for {count} clients.",
   leadsPart: ", {count} leads",
 
-  openDashboard: "Open dashboard",
+  openDashboard: "Dashboard",
   openingDashboard: "Opening…",
   selectClient: "Select client",
+  searchClients: "Search clients…",
+  setting: "Setting",
+  sync: "Sync",
+  noMatchingClients: "No clients match your search.",
+  noClientsYet: "No clients yet. Create the first one below.",
+  clientsCount: "{count} clients",
+  loadingClients: "Loading clients…",
 }

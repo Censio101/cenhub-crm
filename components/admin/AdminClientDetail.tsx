@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 
-import { openClientDashboard } from "@/components/admin/ClientSwitcher"
+import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { AdminMetaConfigForm } from "@/components/admin/AdminMetaConfigForm"
 import { useLanguage } from "@/components/i18n/LanguageProvider"

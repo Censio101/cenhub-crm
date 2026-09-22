@@ -143,9 +143,16 @@ const daMessages = {
   facebookDataSynced: "Facebook-data synkroniseret for {count} klienter.",
   leadsPart: ", {count} leads",
 
-  openDashboard: "Åbn dashboard",
+  openDashboard: "Dashboard",
   openingDashboard: "Åbner…",
   selectClient: "Vælg klient",
+  searchClients: "Søg klienter…",
+  setting: "Indstillinger",
+  sync: "Sync",
+  noMatchingClients: "Ingen klienter matcher søgningen.",
+  noClientsYet: "Ingen klienter endnu. Opret den første nedenfor.",
+  clientsCount: "{count} klienter",
+  loadingClients: "Henter klienter…",
 } as const
 
 export type Messages = { [K in keyof typeof daMessages]: string }
