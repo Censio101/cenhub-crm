@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation"
 
+import { AdminNoOrgBanner } from "@/components/admin/AdminNoOrgBanner"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { cn } from "cn"
 
@@ -20,6 +21,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     >
       <AppTopbar />
       <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+        {!isLoggedOut ? <AdminNoOrgBanner /> : null}
         {children}
       </main>
     </div>

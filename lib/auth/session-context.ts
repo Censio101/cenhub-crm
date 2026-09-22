@@ -1,3 +1,6 @@
+import { cookies } from "next/headers"
+
+import { ACTIVE_ORG_COOKIE } from "@/lib/auth/active-organization"
 import {
   allowUnauthenticatedDemoAccess,
   getDemoOrgSlug,
@@ -5,6 +8,7 @@ import {
 } from "@/lib/supabase/config"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import type { OrganizationRow, ProfileRow, UserRole } from "@/lib/db/types"
 
 export type SessionContext = {
@@ -13,6 +17,17 @@ export type SessionContext = {
   organization: OrganizationRow | null
   profile: ProfileRow | null
   isDemoFallback: boolean
+  isAdminViewingClient: boolean
+}
+
+async function readActiveOrgSlug(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const value = cookieStore.get(ACTIVE_ORG_COOKIE)?.value?.trim()
+    return value || null
+  } catch {
+    return null
+  }
 }
 
 export async function getSessionContext(): Promise<SessionContext> {
@@ -23,6 +38,7 @@ export async function getSessionContext(): Promise<SessionContext> {
       organization: null,
       profile: null,
       isDemoFallback: true,
+      isAdminViewingClient: false,
     }
   }
 
@@ -51,16 +67,34 @@ export async function getSessionContext(): Promise<SessionContext> {
         organization: organization ?? null,
         profile,
         isDemoFallback: false,
+        isAdminViewingClient: false,
       }
     }
 
     if (profile?.role === "censio_admin") {
+      const activeSlug = await readActiveOrgSlug()
+      if (activeSlug) {
+        const admin = createAdminClient()
+        const organization = await getOrganizationBySlug(admin, activeSlug)
+        if (organization) {
+          return {
+            userId: user.id,
+            role: profile.role,
+            organization,
+            profile,
+            isDemoFallback: false,
+            isAdminViewingClient: true,
+          }
+        }
+      }
+
       return {
         userId: user.id,
         role: profile.role,
         organization: null,
         profile,
         isDemoFallback: false,
+        isAdminViewingClient: false,
       }
     }
   }
@@ -79,6 +113,7 @@ export async function getSessionContext(): Promise<SessionContext> {
       organization: organization ?? null,
       profile: null,
       isDemoFallback: true,
+      isAdminViewingClient: false,
     }
   }
 
@@ -88,6 +123,7 @@ export async function getSessionContext(): Promise<SessionContext> {
     organization: null,
     profile: null,
     isDemoFallback: false,
+    isAdminViewingClient: false,
   }
 }
 

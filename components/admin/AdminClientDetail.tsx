@@ -1,11 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 
+import { openClientDashboard } from "@/components/admin/ClientSwitcher"
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { AdminMetaConfigForm } from "@/components/admin/AdminMetaConfigForm"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -27,12 +30,15 @@ type OrganizationSummary = {
 }
 
 export function AdminClientDetail({ slug }: { slug: string }) {
+  const router = useRouter()
   const { t } = useLanguage()
+  const { setActiveOrganization } = useActiveOrganization()
   const [organization, setOrganization] = useState<OrganizationSummary | null>(null)
   const [users, setUsers] = useState<ProfileRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingDemo, setSavingDemo] = useState(false)
+  const [openingDashboard, setOpeningDashboard] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -108,17 +114,32 @@ export function AdminClientDetail({ slug }: { slug: string }) {
           </p>
         </div>
         {organization ? (
-          <dl className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-            <div>
-              {organization.leadCount} {t("leads")}
-            </div>
-            <div>
-              {organization.userCount} {t("users")}
-            </div>
-            <div>
-              {organization.metaEnabled ? t("metaEnabled") : t("metaDisabled")}
-            </div>
-          </dl>
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <Button
+              type="button"
+              className="h-10"
+              disabled={openingDashboard}
+              onClick={() => {
+                setOpeningDashboard(true)
+                void openClientDashboard(slug, setActiveOrganization, router).finally(
+                  () => setOpeningDashboard(false)
+                )
+              }}
+            >
+              {openingDashboard ? t("openingDashboard") : t("openDashboard")}
+            </Button>
+            <dl className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              <div>
+                {organization.leadCount} {t("leads")}
+              </div>
+              <div>
+                {organization.userCount} {t("users")}
+              </div>
+              <div>
+                {organization.metaEnabled ? t("metaEnabled") : t("metaDisabled")}
+              </div>
+            </dl>
+          </div>
         ) : null}
       </header>
 

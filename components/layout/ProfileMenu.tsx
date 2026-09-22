@@ -13,7 +13,9 @@ import {
   ShieldIcon,
 } from "lucide-react"
 
+import { ClientSwitcher } from "@/components/admin/ClientSwitcher"
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useUserProfile } from "@/lib/auth/use-user-profile"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { CURRENT_COMPANY } from "@/lib/company"
@@ -36,6 +38,8 @@ export function ProfileMenu() {
   const { settings } = useAccountSettings()
   const { configured, isAuthenticated, loading } = useSupabaseSession()
   const { role } = useUserProfile()
+  const { organization, role: activeRole, loading: orgLoading } =
+    useActiveOrganization()
   const [mockSignedIn, setMockSignedIn] = useState(true)
 
   useEffect(() => {
@@ -45,6 +49,9 @@ export function ProfileMenu() {
   }, [configured, pathname])
 
   const signedIn = configured ? isAuthenticated : mockSignedIn
+  const isAdmin = (activeRole ?? role) === "censio_admin"
+  const displayName =
+    organization?.name ?? (isAdmin ? "Censio Admin" : CURRENT_COMPANY.name)
 
   if (!loading && !signedIn) {
     return (
@@ -69,7 +76,7 @@ export function ProfileMenu() {
         }
       >
         <p className="hidden max-w-52 truncate text-right text-base font-medium text-inherit sm:block">
-          {CURRENT_COMPANY.name}
+          {orgLoading ? CURRENT_COMPANY.name : displayName}
         </p>
         {settings.profileImage.startsWith("data:") ||
         settings.profileImage.startsWith("blob:") ? (
@@ -96,10 +103,14 @@ export function ProfileMenu() {
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-foreground">
-            {CURRENT_COMPANY.name}
+            {displayName}
           </DropdownMenuLabel>
-          {role === "censio_admin" ? (
+          {isAdmin ? (
             <>
+              <div className="px-2 py-2">
+                <ClientSwitcher variant="compact" />
+              </div>
+              <DropdownMenuSeparator />
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
                 <ShieldIcon />
                 Admin

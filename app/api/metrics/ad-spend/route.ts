@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 
-import { getSessionContext } from "@/lib/auth/session-context"
+import {
+  organizationErrorResponse,
+  requireOrganizationContext,
+} from "@/lib/auth/require-organization-context"
 import {
   listAdSpendByMonth,
   listDemoAdSpendByMonth,
@@ -18,10 +21,7 @@ export async function GET() {
       })
     }
 
-    const ctx = await getSessionContext()
-    if (!ctx.organization?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const ctx = await requireOrganizationContext()
 
     const supabase =
       ctx.isDemoFallback && !ctx.userId
@@ -36,8 +36,11 @@ export async function GET() {
     return NextResponse.json({
       adSpendByMonth,
       source,
+      isAdminViewingClient: ctx.isAdminViewingClient,
     })
   } catch (error) {
+    const orgResponse = organizationErrorResponse(error)
+    if (orgResponse.status !== 500) return orgResponse
     console.error("GET /api/metrics/ad-spend failed:", error)
     return NextResponse.json({ error: "Failed to load ad spend" }, { status: 500 })
   }

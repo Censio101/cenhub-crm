@@ -4,8 +4,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useEffect, useState } from "react"
 
+import { openClientDashboard } from "@/components/admin/ClientSwitcher"
 import { AdminNav } from "@/components/admin/AdminNav"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -31,12 +33,14 @@ type OrganizationSummary = {
 export function AdminClientList() {
   const router = useRouter()
   const { t } = useLanguage()
+  const { setActiveOrganization } = useActiveOrganization()
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [creating, setCreating] = useState(false)
+  const [openingSlug, setOpeningSlug] = useState<string | null>(null)
 
   async function loadOrganizations() {
     setLoading(true)
@@ -150,42 +154,63 @@ export function AdminClientList() {
       <div className="grid gap-3">
         {!loading
           ? organizations.map((organization) => (
-              <Link
+              <div
                 key={organization.id}
-                href={`/admin/${organization.slug}`}
-                className="rounded-[15px] border border-border bg-card px-4 py-4 transition-colors hover:bg-accent sm:px-5"
+                className="rounded-[15px] border border-border bg-card px-4 py-4 sm:px-5"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
+                  <Link
+                    href={`/admin/${organization.slug}`}
+                    className="min-w-0 transition-colors hover:text-primary"
+                  >
                     <p className="text-base font-medium">{organization.name}</p>
                     <p className="text-sm text-muted-foreground">{organization.slug}</p>
+                  </Link>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <div>
+                        <dt className="sr-only">{t("leads")}</dt>
+                        <dd>
+                          {organization.leadCount} {t("leads")}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="sr-only">{t("users")}</dt>
+                        <dd>
+                          {organization.userCount} {t("users")}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="sr-only">{t("demo")}</dt>
+                        <dd>{organization.demo_mode ? t("demo") : t("live")}</dd>
+                      </div>
+                      <div>
+                        <dt className="sr-only">Meta</dt>
+                        <dd>
+                          {organization.metaEnabled ? t("metaEnabled") : t("metaDisabled")}
+                        </dd>
+                      </div>
+                    </dl>
+                    <Button
+                      type="button"
+                      className="h-9 shrink-0"
+                      disabled={openingSlug === organization.slug}
+                      onClick={() => {
+                        setOpeningSlug(organization.slug)
+                        void openClientDashboard(
+                          organization.slug,
+                          setActiveOrganization,
+                          router
+                        ).finally(() => setOpeningSlug(null))
+                      }}
+                    >
+                      {openingSlug === organization.slug
+                        ? t("openingDashboard")
+                        : t("openDashboard")}
+                    </Button>
                   </div>
-                  <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <div>
-                      <dt className="sr-only">{t("leads")}</dt>
-                      <dd>
-                        {organization.leadCount} {t("leads")}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="sr-only">{t("users")}</dt>
-                      <dd>
-                        {organization.userCount} {t("users")}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="sr-only">{t("demo")}</dt>
-                      <dd>{organization.demo_mode ? t("demo") : t("live")}</dd>
-                    </div>
-                    <div>
-                      <dt className="sr-only">Meta</dt>
-                      <dd>
-                        {organization.metaEnabled ? t("metaEnabled") : t("metaDisabled")}
-                      </dd>
-                    </div>
-                  </dl>
                 </div>
-              </Link>
+              </div>
             ))
           : null}
       </div>

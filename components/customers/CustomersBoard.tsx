@@ -53,7 +53,8 @@ function formatClosedDate(value: string): string {
 
 export function CustomersBoard() {
   const { enabledServices } = useCompanyServices()
-  const { customers, organizationName, error } = useCustomers()
+  const { customers, organizationName, error, needsClientSelection } =
+    useCustomers()
   const [segmentFilter, setSegmentFilter] = useState<LeadSegmentId | "all">(
     "all"
   )
@@ -95,6 +96,10 @@ export function CustomersBoard() {
   }, [activeServiceFilter, customers, dateSort, monthFilter, segmentFilter, sourceFilter])
 
   const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
+
+  if (needsClientSelection) {
+    return null
+  }
 
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-6">

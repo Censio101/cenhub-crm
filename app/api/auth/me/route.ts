@@ -17,5 +17,6 @@ export async function GET() {
         }
       : null,
     isDemoFallback: ctx.isDemoFallback,
+    isAdminViewingClient: ctx.isAdminViewingClient,
   })
 }

@@ -724,6 +724,7 @@ export function LeadsBoard() {
   const {
     leads,
     error,
+    needsClientSelection,
     dataSource,
     updateLead,
     createLead,
@@ -763,6 +764,10 @@ export function LeadsBoard() {
     () => computeLeadPipelineStats(filtered),
     [filtered]
   )
+
+  if (needsClientSelection) {
+    return null
+  }
 
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-6">

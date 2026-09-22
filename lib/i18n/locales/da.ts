@@ -142,6 +142,10 @@ const daMessages = {
     "Facebook-data hentet ({months} måneder{leadsPart}).",
   facebookDataSynced: "Facebook-data synkroniseret for {count} klienter.",
   leadsPart: ", {count} leads",
+
+  openDashboard: "Åbn dashboard",
+  openingDashboard: "Åbner…",
+  selectClient: "Vælg klient",
 } as const
 
 export type Messages = { [K in keyof typeof daMessages]: string }

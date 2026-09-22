@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 
-import { getSessionContext } from "@/lib/auth/session-context"
+import {
+  organizationErrorResponse,
+  requireOrganizationContext,
+} from "@/lib/auth/require-organization-context"
 import {
   createLead,
   listLeadsForOrganization,
@@ -17,14 +20,7 @@ export async function GET() {
       return NextResponse.json({ leads: listMockLeads(), source: "mock" })
     }
 
-    const ctx = await getSessionContext()
-
-    if (!ctx.organization?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized — no organization context" },
-        { status: 401 }
-      )
-    }
+    const ctx = await requireOrganizationContext()
 
     const supabase =
       ctx.isDemoFallback && !ctx.userId
@@ -42,13 +38,13 @@ export async function GET() {
         name: ctx.organization.name,
         demoMode: ctx.organization.demo_mode,
       },
+      isAdminViewingClient: ctx.isAdminViewingClient,
     })
   } catch (error) {
+    const orgResponse = organizationErrorResponse(error)
+    if (orgResponse.status !== 500) return orgResponse
     console.error("GET /api/leads failed:", error)
-    return NextResponse.json(
-      { error: "Failed to load leads" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to load leads" }, { status: 500 })
   }
 }
 
@@ -63,10 +59,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const ctx = await getSessionContext()
-    if (!ctx.organization?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const ctx = await requireOrganizationContext()
 
     const supabase =
       ctx.isDemoFallback && !ctx.userId
@@ -76,6 +69,8 @@ export async function POST(request: Request) {
     const lead = await createLead(supabase, ctx.organization.id, body.lead)
     return NextResponse.json({ lead, source: "supabase" })
   } catch (error) {
+    const orgResponse = organizationErrorResponse(error)
+    if (orgResponse.status !== 500) return orgResponse
     console.error("POST /api/leads failed:", error)
     return NextResponse.json({ error: "Failed to create lead" }, { status: 500 })
   }

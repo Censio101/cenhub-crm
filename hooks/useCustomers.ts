@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react"
 
+import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import {
+  CLIENT_ORG_CHANGED_EVENT,
   getCustomersCache,
   hasCustomersCache,
   setCustomersCache,
@@ -18,6 +20,22 @@ type CustomersResponse = {
     name: string
     demoMode: boolean
   }
+  error?: string
+  message?: string
+}
+
+async function shouldUseMockFallback(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/auth/me", { cache: "no-store" })
+    if (!response.ok) return false
+    const data = (await response.json()) as {
+      isDemoFallback?: boolean
+      userId?: string | null
+    }
+    return Boolean(data.isDemoFallback && !data.userId)
+  } catch {
+    return false
+  }
 }
 
 export function useCustomers() {
@@ -28,6 +46,7 @@ export function useCustomers() {
   )
   const [loading, setLoading] = useState(() => !hasCustomersCache())
   const [error, setError] = useState<string | null>(null)
+  const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [dataSource, setDataSource] = useState<"mock" | "supabase">(
     () => cached?.source ?? "mock"
   )
@@ -36,14 +55,43 @@ export function useCustomers() {
     const showLoading = !hasCustomersCache()
     if (showLoading) setLoading(true)
     setError(null)
+    setNeedsClientSelection(false)
 
     try {
       const response = await fetch("/api/customers", { cache: "no-store" })
+      const data = (await response.json()) as CustomersResponse
+
       if (!response.ok) {
-        throw new Error("Kunne ikke hente kunder")
+        if (data.error === NO_ACTIVE_ORGANIZATION_ERROR) {
+          setCustomers([])
+          setOrganizationName(null)
+          setDataSource("supabase")
+          setNeedsClientSelection(true)
+          setError(data.message ?? "Vælg en klient for at se deres dashboard.")
+          setCustomersCache({
+            customers: [],
+            source: "supabase",
+            organizationName: null,
+          })
+          return
+        }
+
+        if (await shouldUseMockFallback()) {
+          setCustomers(MOCK_CUSTOMERS)
+          setDataSource("mock")
+          setOrganizationName(null)
+          setCustomersCache({
+            customers: MOCK_CUSTOMERS,
+            source: "mock",
+            organizationName: null,
+          })
+          setError("Viser demo-data — database ikke tilgængelig")
+          return
+        }
+
+        throw new Error(data.message ?? "Kunne ikke hente kunder")
       }
 
-      const data = (await response.json()) as CustomersResponse
       setCustomers(data.customers)
       setDataSource(data.source)
       setOrganizationName(data.organization?.name ?? null)
@@ -51,18 +99,27 @@ export function useCustomers() {
         customers: data.customers,
         source: data.source,
         organizationName: data.organization?.name ?? null,
+        organizationSlug: data.organization?.slug ?? null,
       })
     } catch (loadError) {
       console.error(loadError)
-      setCustomers(MOCK_CUSTOMERS)
-      setDataSource("mock")
-      setOrganizationName(null)
-      setCustomersCache({
-        customers: MOCK_CUSTOMERS,
-        source: "mock",
-        organizationName: null,
-      })
-      setError("Viser demo-data — database ikke tilgængelig")
+      if (await shouldUseMockFallback()) {
+        setCustomers(MOCK_CUSTOMERS)
+        setDataSource("mock")
+        setOrganizationName(null)
+        setCustomersCache({
+          customers: MOCK_CUSTOMERS,
+          source: "mock",
+          organizationName: null,
+        })
+        setError("Viser demo-data — database ikke tilgængelig")
+      } else {
+        setCustomers([])
+        setDataSource("supabase")
+        setError(
+          loadError instanceof Error ? loadError.message : "Kunne ikke hente kunder"
+        )
+      }
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -72,11 +129,20 @@ export function useCustomers() {
     void loadCustomers()
   }, [loadCustomers])
 
+  useEffect(() => {
+    const onOrgChanged = () => {
+      void loadCustomers()
+    }
+    window.addEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
+    return () => window.removeEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
+  }, [loadCustomers])
+
   return {
     customers,
     organizationName,
     loading,
     error,
+    needsClientSelection,
     dataSource,
     reload: loadCustomers,
   }

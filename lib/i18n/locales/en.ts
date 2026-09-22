@@ -143,4 +143,8 @@ export const en: Messages = {
   facebookDataFetched: "Facebook data fetched ({months} months{leadsPart}).",
   facebookDataSynced: "Facebook data synced for {count} clients.",
   leadsPart: ", {count} leads",
+
+  openDashboard: "Open dashboard",
+  openingDashboard: "Opening…",
+  selectClient: "Select client",
 }

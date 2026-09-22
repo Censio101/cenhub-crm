@@ -10,8 +10,10 @@ import {
   UsersIcon,
 } from "lucide-react"
 
+import { ClientSwitcher } from "@/components/admin/ClientSwitcher"
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { ProfileMenu } from "@/components/layout/ProfileMenu"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { CURRENT_COMPANY } from "@/lib/company"
 import { cn } from "cn"
 
@@ -25,6 +27,12 @@ const TOP_NAV = [
 export function AppTopbar() {
   const pathname = usePathname()
   const { settings } = useAccountSettings()
+  const { organization, role, loading: orgLoading } = useActiveOrganization()
+
+  const isAdmin = role === "censio_admin"
+  const clientName =
+    organization?.name ?? (isAdmin ? null : CURRENT_COMPANY.name)
+  const showClientBranding = clientName !== null
 
   return (
     <header className="relative sticky top-0 z-40 grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 overflow-hidden bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-5 py-2 sm:gap-x-3 sm:px-7 xl:h-20 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:py-0">
@@ -32,7 +40,9 @@ export function AppTopbar() {
         <Link
           href="/"
           className="flex min-w-0 items-center gap-3.5 sm:gap-4"
-          aria-label={`Censio × ${CURRENT_COMPANY.name}`}
+          aria-label={
+            showClientBranding ? `Censio × ${clientName}` : "Censio"
+          }
         >
           <Image
             src="/censio-logo-white.png"
@@ -42,30 +52,35 @@ export function AppTopbar() {
             className="h-9 w-auto sm:h-10"
             priority
           />
-          <span
-            className="select-none text-sm font-light leading-none text-white/45 sm:text-base"
-            aria-hidden="true"
-          >
-            ×
-          </span>
-          {settings.logo.startsWith("data:") || settings.logo.startsWith("blob:") ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={settings.logo}
-              alt={CURRENT_COMPANY.name}
-              className="h-9 w-auto sm:h-10"
-            />
-          ) : (
-            <Image
-              src={settings.logo}
-              alt={CURRENT_COMPANY.name}
-              width={176}
-              height={40}
-              className="h-9 w-auto sm:h-10"
-              priority
-              unoptimized
-            />
-          )}
+          {showClientBranding ? (
+            <>
+              <span
+                className="select-none text-sm font-light leading-none text-white/45 sm:text-base"
+                aria-hidden="true"
+              >
+                ×
+              </span>
+              {settings.logo.startsWith("data:") ||
+              settings.logo.startsWith("blob:") ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={settings.logo}
+                  alt={clientName ?? ""}
+                  className="h-9 w-auto sm:h-10"
+                />
+              ) : (
+                <Image
+                  src={settings.logo}
+                  alt={clientName ?? ""}
+                  width={176}
+                  height={40}
+                  className="h-9 w-auto sm:h-10"
+                  priority
+                  unoptimized
+                />
+              )}
+            </>
+          ) : null}
         </Link>
       </div>
 
@@ -100,7 +115,10 @@ export function AppTopbar() {
         })}
       </nav>
 
-      <div className="z-10 col-start-2 row-start-1 flex min-w-0 items-center justify-self-end xl:col-start-3">
+      <div className="z-10 col-start-2 row-start-1 flex min-w-0 items-center gap-2 justify-self-end xl:col-start-3">
+        {!orgLoading && isAdmin ? (
+          <ClientSwitcher variant="topbar" className="hidden sm:block" />
+        ) : null}
         <ProfileMenu />
       </div>
     </header>

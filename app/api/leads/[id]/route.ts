@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 
-import { getSessionContext } from "@/lib/auth/session-context"
+import {
+  organizationErrorResponse,
+  requireOrganizationContext,
+} from "@/lib/auth/require-organization-context"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
 import {
   deleteLeadById,
@@ -27,10 +30,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       })
     }
 
-    const session = await getSessionContext()
-    if (!session.organization?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const session = await requireOrganizationContext()
 
     const supabase =
       session.isDemoFallback && !session.userId
@@ -46,6 +46,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return NextResponse.json({ lead, source: "supabase" })
   } catch (error) {
+    const orgResponse = organizationErrorResponse(error)
+    if (orgResponse.status !== 500) return orgResponse
     console.error("PATCH /api/leads/[id] failed:", error)
     return NextResponse.json({ error: "Failed to update lead" }, { status: 500 })
   }
@@ -59,10 +61,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       return NextResponse.json({ ok: true, source: "mock" })
     }
 
-    const session = await getSessionContext()
-    if (!session.organization?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const session = await requireOrganizationContext()
 
     const supabase =
       session.isDemoFallback && !session.userId
@@ -72,6 +71,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
     await deleteLeadById(supabase, session.organization.id, id)
     return NextResponse.json({ ok: true, source: "supabase" })
   } catch (error) {
+    const orgResponse = organizationErrorResponse(error)
+    if (orgResponse.status !== 500) return orgResponse
     console.error("DELETE /api/leads/[id] failed:", error)
     return NextResponse.json({ error: "Failed to delete lead" }, { status: 500 })
   }

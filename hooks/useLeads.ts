@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import {
+  CLIENT_ORG_CHANGED_EVENT,
   getLeadsCache,
   hasLeadsCache,
   setLeadsCache,
@@ -19,6 +21,22 @@ type LeadsResponse = {
     name: string
     demoMode: boolean
   }
+  error?: string
+  message?: string
+}
+
+async function shouldUseMockFallback(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/auth/me", { cache: "no-store" })
+    if (!response.ok) return false
+    const data = (await response.json()) as {
+      isDemoFallback?: boolean
+      userId?: string | null
+    }
+    return Boolean(data.isDemoFallback && !data.userId)
+  } catch {
+    return false
+  }
 }
 
 export function useLeads() {
@@ -26,6 +44,7 @@ export function useLeads() {
   const [leads, setLeads] = useState<Lead[]>(() => cached?.leads ?? [])
   const [loading, setLoading] = useState(() => !hasLeadsCache())
   const [error, setError] = useState<string | null>(null)
+  const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [dataSource, setDataSource] = useState<"mock" | "supabase">(
     () => cached?.source ?? "mock"
   )
@@ -37,23 +56,54 @@ export function useLeads() {
     const showLoading = !hasLeadsCache()
     if (showLoading) setLoading(true)
     setError(null)
+    setNeedsClientSelection(false)
 
     try {
       const response = await fetch("/api/leads", { cache: "no-store" })
+      const data = (await response.json()) as LeadsResponse
+
       if (!response.ok) {
-        throw new Error("Kunne ikke hente leads")
+        if (data.error === NO_ACTIVE_ORGANIZATION_ERROR) {
+          setLeads([])
+          setDataSource("supabase")
+          setNeedsClientSelection(true)
+          setError(data.message ?? "Vælg en klient for at se deres dashboard.")
+          setLeadsCache({ leads: [], source: "supabase" })
+          return
+        }
+
+        if (await shouldUseMockFallback()) {
+          setLeads(MOCK_LEADS)
+          setDataSource("mock")
+          setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
+          setError("Viser demo-data — database ikke tilgængelig")
+          return
+        }
+
+        throw new Error(data.message ?? "Kunne ikke hente leads")
       }
 
-      const data = (await response.json()) as LeadsResponse
       setLeads(data.leads)
       setDataSource(data.source)
-      setLeadsCache({ leads: data.leads, source: data.source })
+      setLeadsCache({
+        leads: data.leads,
+        source: data.source,
+        organizationSlug: data.organization?.slug ?? null,
+      })
     } catch (loadError) {
       console.error(loadError)
-      setLeads(MOCK_LEADS)
-      setDataSource("mock")
-      setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
-      setError("Viser demo-data — database ikke tilgængelig")
+      if (await shouldUseMockFallback()) {
+        setLeads(MOCK_LEADS)
+        setDataSource("mock")
+        setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
+        setError("Viser demo-data — database ikke tilgængelig")
+      } else {
+        setLeads([])
+        setDataSource("supabase")
+        setError(
+          loadError instanceof Error ? loadError.message : "Kunne ikke hente leads"
+        )
+      }
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -61,6 +111,14 @@ export function useLeads() {
 
   useEffect(() => {
     void loadLeads()
+  }, [loadLeads])
+
+  useEffect(() => {
+    const onOrgChanged = () => {
+      void loadLeads()
+    }
+    window.addEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
+    return () => window.removeEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
   }, [loadLeads])
 
   const persistPatch = useCallback(
@@ -184,6 +242,7 @@ export function useLeads() {
     leads,
     loading,
     error,
+    needsClientSelection,
     dataSource,
     updateLead,
     createLead,

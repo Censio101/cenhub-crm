@@ -10,6 +10,7 @@ import {
   DashboardErrorState,
   PartialDataNotice,
 } from "@/components/performance/DashboardStates"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { EconomyInsights } from "@/components/overview/EconomyInsights"
 import { LeadFlowCard } from "@/components/overview/LeadFlowCard"
@@ -36,7 +37,11 @@ export function OverviewBoard() {
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
   const { settings } = useAccountSettings()
-  const { leads, adSpendByMonth } = useDashboardData()
+  const { organization, role } = useActiveOrganization()
+  const { leads, adSpendByMonth, needsClientSelection } = useDashboardData()
+  const clientName =
+    organization?.name ??
+    (role === "censio_admin" ? "klienten" : CURRENT_COMPANY.name)
 
   useEffect(() => {
     setView(parseDashboardParams(new URLSearchParams(queryKey)))
@@ -67,6 +72,10 @@ export function OverviewBoard() {
     })
   }
 
+  if (needsClientSelection) {
+    return null
+  }
+
   if (data == null) {
     return <DashboardErrorState onRetry={() => router.refresh()} />
   }
@@ -90,7 +99,7 @@ export function OverviewBoard() {
             </p>
           ) : null}
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Hvad Censio og annoncerne har givet {CURRENT_COMPANY.name} ·{" "}
+            Hvad Censio og annoncerne har givet {clientName} ·{" "}
             {formatDateRangeLabel(view.range.start, view.range.end)}
           </p>
         </div>

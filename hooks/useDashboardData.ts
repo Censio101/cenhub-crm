@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react"
 
+import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import {
+  CLIENT_ORG_CHANGED_EVENT,
   getAdSpendCache,
   getLeadsCache,
   hasLeadsCache,
@@ -17,7 +19,22 @@ type DashboardDataState = {
   adSpendByMonth: Record<string, number>
   loading: boolean
   error: string | null
+  needsClientSelection: boolean
   source: "mock" | "supabase"
+}
+
+async function shouldUseMockFallback(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/auth/me", { cache: "no-store" })
+    if (!response.ok) return false
+    const data = (await response.json()) as {
+      isDemoFallback?: boolean
+      userId?: string | null
+    }
+    return Boolean(data.isDemoFallback && !data.userId)
+  } catch {
+    return false
+  }
 }
 
 export function useDashboardData(): DashboardDataState {
@@ -29,6 +46,7 @@ export function useDashboardData(): DashboardDataState {
   )
   const [loading, setLoading] = useState(() => !hasLeadsCache())
   const [error, setError] = useState<string | null>(null)
+  const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [source, setSource] = useState<"mock" | "supabase">(
     () => cachedLeads?.source ?? "mock"
   )
@@ -37,6 +55,7 @@ export function useDashboardData(): DashboardDataState {
     const showLoading = !hasLeadsCache()
     if (showLoading) setLoading(true)
     setError(null)
+    setNeedsClientSelection(false)
 
     try {
       const [leadsResponse, adSpendResponse] = await Promise.all([
@@ -44,21 +63,47 @@ export function useDashboardData(): DashboardDataState {
         fetch("/api/metrics/ad-spend", { cache: "no-store" }),
       ])
 
-      if (!leadsResponse.ok) {
-        throw new Error("Kunne ikke hente leads")
-      }
-
       const leadsPayload = (await leadsResponse.json()) as {
         leads: Lead[]
         source?: "mock" | "supabase"
+        organization?: { slug?: string }
+        error?: string
+        message?: string
       }
 
-      let nextAdSpend = demoAdSpendByMonth()
+      if (!leadsResponse.ok) {
+        if (leadsPayload.error === NO_ACTIVE_ORGANIZATION_ERROR) {
+          setLeads([])
+          setAdSpendByMonth({})
+          setSource("supabase")
+          setNeedsClientSelection(true)
+          setError(
+            leadsPayload.message ?? "Vælg en klient for at se deres dashboard."
+          )
+          setLeadsCache({ leads: [], source: "supabase" })
+          setAdSpendCache({})
+          return
+        }
+
+        if (await shouldUseMockFallback()) {
+          setLeads(MOCK_LEADS)
+          setAdSpendByMonth(demoAdSpendByMonth())
+          setSource("mock")
+          setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
+          setAdSpendCache(demoAdSpendByMonth())
+          setError("Viser demo-data — database ikke tilgængelig")
+          return
+        }
+
+        throw new Error(leadsPayload.message ?? "Kunne ikke hente leads")
+      }
+
+      let nextAdSpend: Record<string, number> = {}
       if (adSpendResponse.ok) {
         const adSpendPayload = (await adSpendResponse.json()) as {
           adSpendByMonth: Record<string, number>
         }
-        nextAdSpend = adSpendPayload.adSpendByMonth ?? nextAdSpend
+        nextAdSpend = adSpendPayload.adSpendByMonth ?? {}
       }
 
       const nextSource =
@@ -67,16 +112,29 @@ export function useDashboardData(): DashboardDataState {
       setLeads(leadsPayload.leads)
       setAdSpendByMonth(nextAdSpend)
       setSource(nextSource)
-      setLeadsCache({ leads: leadsPayload.leads, source: nextSource })
-      setAdSpendCache(nextAdSpend)
+      setLeadsCache({
+        leads: leadsPayload.leads,
+        source: nextSource,
+        organizationSlug: leadsPayload.organization?.slug ?? null,
+      })
+      setAdSpendCache(nextAdSpend, leadsPayload.organization?.slug ?? null)
     } catch (loadError) {
       console.error(loadError)
-      setLeads(MOCK_LEADS)
-      setAdSpendByMonth(demoAdSpendByMonth())
-      setSource("mock")
-      setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
-      setAdSpendCache(demoAdSpendByMonth())
-      setError("Viser demo-data — database ikke tilgængelig")
+      if (await shouldUseMockFallback()) {
+        setLeads(MOCK_LEADS)
+        setAdSpendByMonth(demoAdSpendByMonth())
+        setSource("mock")
+        setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
+        setAdSpendCache(demoAdSpendByMonth())
+        setError("Viser demo-data — database ikke tilgængelig")
+      } else {
+        setLeads([])
+        setAdSpendByMonth({})
+        setSource("supabase")
+        setError(
+          loadError instanceof Error ? loadError.message : "Kunne ikke hente data"
+        )
+      }
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -86,5 +144,13 @@ export function useDashboardData(): DashboardDataState {
     void load()
   }, [load])
 
-  return { leads, adSpendByMonth, loading, error, source }
+  useEffect(() => {
+    const onOrgChanged = () => {
+      void load()
+    }
+    window.addEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
+    return () => window.removeEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
+  }, [load])
+
+  return { leads, adSpendByMonth, loading, error, needsClientSelection, source }
 }
