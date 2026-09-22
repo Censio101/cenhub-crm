@@ -108,6 +108,10 @@ export function ProfileMenu() {
                 <ShieldIcon />
                 Meta klienter
               </DropdownMenuItem>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/settings" />}>
+                <SettingsIcon />
+                Admin settings
+              </DropdownMenuItem>
             </>
           ) : null}
           <DropdownMenuItem

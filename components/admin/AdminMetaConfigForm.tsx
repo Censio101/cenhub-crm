@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react"
 
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -24,14 +25,8 @@ type MetaConfig = {
   metaLastSyncedAt: string | null
 }
 
-function formatTimestamp(value: string | null) {
-  if (!value) return "Aldrig"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString("da-DK")
-}
-
 export function AdminMetaConfigForm({ slug }: { slug: string }) {
+  const { t, locale } = useLanguage()
   const [config, setConfig] = useState<MetaConfig>({
     metaAdAccountId: "",
     metaPageId: "",
@@ -48,6 +43,13 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  function formatTimestamp(value: string | null) {
+    if (!value) return t("never")
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleString(locale === "da" ? "da-DK" : "en-GB")
+  }
+
   async function loadConfig() {
     const response = await fetch(`/api/admin/organizations/${slug}/meta`, {
       cache: "no-store",
@@ -59,6 +61,7 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
 
   useEffect(() => {
     void loadConfig().finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
   async function handleSubmit(event: FormEvent) {
@@ -74,13 +77,11 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
         body: JSON.stringify(config),
       })
       const data = (await response.json()) as { error?: string; config?: MetaConfig }
-      if (!response.ok) throw new Error(data.error ?? "Kunne ikke gemme Meta opsætning")
+      if (!response.ok) throw new Error(data.error ?? t("errorSaveMeta"))
       if (data.config) setConfig(data.config)
-      setMessage("Meta opsætning gemt")
+      setMessage(t("metaSetupSaved"))
     } catch (saveError) {
-      setError(
-        saveError instanceof Error ? saveError.message : "Kunne ikke gemme Meta opsætning"
-      )
+      setError(saveError instanceof Error ? saveError.message : t("errorSaveMeta"))
     } finally {
       setSaving(false)
     }
@@ -96,13 +97,11 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
       })
       const data = (await response.json()) as { ok?: boolean; message?: string }
       if (!response.ok || !data.ok) {
-        throw new Error(data.message ?? "Forbindelse fejlede")
+        throw new Error(data.message ?? t("connectionFailed"))
       }
-      setMessage(data.message ?? "Forbindelse OK")
+      setMessage(data.message ?? t("connectionOk"))
     } catch (testError) {
-      setError(
-        testError instanceof Error ? testError.message : "Forbindelse fejlede"
-      )
+      setError(testError instanceof Error ? testError.message : t("connectionFailed"))
     } finally {
       setTesting(false)
     }
@@ -123,26 +122,29 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
         metrics?: { success?: boolean; reason?: string; monthCount?: number }
         leads?: { imported?: number; scanned?: number; reason?: string }
       }
-      if (!response.ok) throw new Error(data.error ?? "Sync fejlede")
+      if (!response.ok) throw new Error(data.error ?? t("syncFailed"))
 
       const parts = []
       if (data.metrics?.success) {
-        parts.push(`Annonceforbrug: ${data.metrics.monthCount ?? 0} måneder`)
+        parts.push(t("adSpendSynced", { months: data.metrics.monthCount ?? 0 }))
       } else if (data.metrics?.reason) {
-        parts.push(`Annonceforbrug: ${data.metrics.reason}`)
+        parts.push(t("adSpendFailed", { reason: data.metrics.reason }))
       }
       if (typeof data.leads?.imported === "number") {
         parts.push(
-          `Leads: ${data.leads.imported} nye (${data.leads.scanned ?? 0} scannet)`
+          t("leadsSynced", {
+            imported: data.leads.imported,
+            scanned: data.leads.scanned ?? 0,
+          })
         )
       } else if (data.leads?.reason) {
-        parts.push(`Leads: ${data.leads.reason}`)
+        parts.push(t("leadsFailed", { reason: data.leads.reason }))
       }
 
-      setMessage(parts.join(" · ") || "Sync fuldført")
+      setMessage(parts.join(" · ") || t("syncComplete"))
       await loadConfig()
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : "Sync fejlede")
+      setError(syncError instanceof Error ? syncError.message : t("syncFailed"))
     } finally {
       setSyncing(false)
     }
@@ -151,16 +153,13 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Meta opsætning</CardTitle>
-        <CardDescription>
-          Forbind klientens Meta annoncekonto og side. Leads og annonceforbrug
-          synkroniseres automatisk, når Meta er aktiveret.
-        </CardDescription>
+        <CardTitle>{t("metaSetupTitle")}</CardTitle>
+        <CardDescription>{t("metaSetupDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Meta ad account ID</span>
+            <span className="font-medium">{t("metaAdAccountId")}</span>
             <input
               className={fieldClass}
               value={config.metaAdAccountId}
@@ -170,11 +169,11 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
                   metaAdAccountId: event.target.value,
                 }))
               }
-              placeholder="act_1234567890"
+              placeholder={t("metaAdAccountPlaceholder")}
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Meta page ID</span>
+            <span className="font-medium">{t("metaPageId")}</span>
             <input
               className={fieldClass}
               value={config.metaPageId}
@@ -184,7 +183,7 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Meta pixel ID (valgfri)</span>
+            <span className="font-medium">{t("metaPixelId")}</span>
             <input
               className={fieldClass}
               value={config.metaPixelId}
@@ -201,11 +200,15 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
                 setConfig((current) => ({ ...current, enabled: event.target.checked }))
               }
             />
-            Meta aktiveret for klienten
+            {t("metaEnabledForClient")}
           </label>
           <div className="rounded-[15px] bg-muted/70 px-3 py-2 text-sm text-muted-foreground">
-            <p>Sync status: {config.metaSyncStatus}</p>
-            <p>Sidst synkroniseret: {formatTimestamp(config.metaLastSyncedAt)}</p>
+            <p>
+              {t("syncStatus")} {config.metaSyncStatus}
+            </p>
+            <p>
+              {t("lastSynced")} {formatTimestamp(config.metaLastSyncedAt)}
+            </p>
             {config.metaSyncError ? (
               <p className="mt-1 text-destructive">{config.metaSyncError}</p>
             ) : null}
@@ -222,7 +225,7 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
           ) : null}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" className="h-10" disabled={saving || loading}>
-              {saving ? "Gemmer…" : "Gem Meta opsætning"}
+              {saving ? t("saving") : t("saveMetaSetup")}
             </Button>
             <Button
               type="button"
@@ -233,7 +236,7 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
                 void handleTestConnection()
               }}
             >
-              {testing ? "Tester…" : "Test forbindelse"}
+              {testing ? t("testing") : t("testConnection")}
             </Button>
             <Button
               type="button"
@@ -244,7 +247,7 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
                 void handleSyncNow()
               }}
             >
-              {syncing ? "Syncer…" : "Sync nu"}
+              {syncing ? t("syncing") : t("syncNow")}
             </Button>
           </div>
         </form>

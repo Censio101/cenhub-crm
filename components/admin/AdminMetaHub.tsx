@@ -5,8 +5,10 @@ import { RefreshCwIcon, Settings2Icon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { AdminNav } from "@/components/admin/AdminNav"
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { deriveMetaClientStatus } from "@/lib/db/meta-clients-repository"
+import type { MessageKey } from "@/lib/i18n"
 import { cn } from "cn"
 
 type MetaClient = {
@@ -43,50 +45,6 @@ type OnboardPayload = {
   leads?: {
     imported?: number
   } | null
-}
-
-function formatOnboardNotice(name: string, onboard: OnboardPayload | null | undefined) {
-  if (!onboard) return `${name} er aktiveret.`
-
-  if (onboard.metrics?.success) {
-    const months = onboard.metrics.monthCount ?? 0
-    const pageNote = onboard.pageIdDiscovered
-      ? " Page ID fundet automatisk."
-      : " Tilføj page ID under rediger for leads."
-    return `${name} er oprettet — Facebook annoncedata hentet (${months} måneder).${pageNote}`
-  }
-
-  if (onboard.metrics?.reason) {
-    return `${name} er oprettet, men sync fejlede: ${onboard.metrics.reason}`
-  }
-
-  return `${name} er aktiveret.`
-}
-
-function statusMeta(client: MetaClient) {
-  const { status, enabled, metaSyncStatus, metaAdAccountId, metaPageId } = client
-
-  if (status === "live") {
-    return { label: "Aktiv", dot: "bg-emerald-500", text: "text-emerald-700" }
-  }
-  if (status === "error") {
-    return { label: "Fejl", dot: "bg-red-500", text: "text-red-700" }
-  }
-  if (
-    enabled &&
-    metaAdAccountId.trim() &&
-    metaSyncStatus === "ok" &&
-    !metaPageId.trim()
-  ) {
-    return { label: "Annoncer", dot: "bg-emerald-500", text: "text-emerald-700" }
-  }
-  if (enabled && status === "needs-setup") {
-    return { label: "Setup", dot: "bg-amber-500", text: "text-amber-800" }
-  }
-  if (status === "needs-setup") {
-    return { label: "Setup", dot: "bg-amber-400", text: "text-amber-800" }
-  }
-  return { label: "Af", dot: "bg-muted-foreground/40", text: "text-muted-foreground" }
 }
 
 function MetaToggle({
@@ -136,10 +94,42 @@ function CompactMetaList({
   onToggle: (slug: string, enabled: boolean) => Promise<void>
   onSync: (slug: string) => Promise<void>
 }) {
+  const { t } = useLanguage()
+
+  function statusMeta(client: MetaClient) {
+    const { status, enabled, metaSyncStatus, metaAdAccountId, metaPageId } = client
+
+    if (status === "live") {
+      return { label: t("statusActive"), dot: "bg-emerald-500", text: "text-emerald-700" }
+    }
+    if (status === "error") {
+      return { label: t("statusError"), dot: "bg-red-500", text: "text-red-700" }
+    }
+    if (
+      enabled &&
+      metaAdAccountId.trim() &&
+      metaSyncStatus === "ok" &&
+      !metaPageId.trim()
+    ) {
+      return { label: t("statusAds"), dot: "bg-emerald-500", text: "text-emerald-700" }
+    }
+    if (enabled && status === "needs-setup") {
+      return { label: t("statusSetup"), dot: "bg-amber-500", text: "text-amber-800" }
+    }
+    if (status === "needs-setup") {
+      return { label: t("statusSetup"), dot: "bg-amber-400", text: "text-amber-800" }
+    }
+    return {
+      label: t("statusOff"),
+      dot: "bg-muted-foreground/40",
+      text: "text-muted-foreground",
+    }
+  }
+
   if (!clients.length) {
     return (
       <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-        Ingen klienter matcher filteret.
+        {t("noClientsMatch")}
       </p>
     )
   }
@@ -173,7 +163,7 @@ function CompactMetaList({
             <MetaToggle
               checked={client.enabled}
               disabled={togglingSlug === client.slug || syncingSlug === client.slug}
-              label={`Meta for ${client.name}`}
+              label={t("metaToggleFor", { name: client.name })}
               onChange={(next) => {
                 void onToggle(client.slug, next)
               }}
@@ -182,8 +172,8 @@ function CompactMetaList({
             <button
               type="button"
               disabled={!canSync || syncingSlug === client.slug || togglingSlug === client.slug}
-              aria-label={`Sync Facebook data for ${client.name}`}
-              title={canSync ? "Hent Facebook-data" : "Kræver ad account"}
+              aria-label={t("syncFacebookFor", { name: client.name })}
+              title={canSync ? t("fetchFacebookData") : t("requiresAdAccount")}
               className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => {
                 void onSync(client.slug)
@@ -197,7 +187,7 @@ function CompactMetaList({
             <Link
               href={`/admin/${client.slug}`}
               className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label={`Rediger ${client.name}`}
+              aria-label={t("editClient", { name: client.name })}
             >
               <Settings2Icon className="size-3.5" />
             </Link>
@@ -217,12 +207,14 @@ function PartnerList({
   togglingId: string | null
   onEnable: (client: PartnerClient) => Promise<void>
 }) {
+  const { t } = useLanguage()
+
   if (!clients.length) return null
 
   return (
     <div className="border-t border-border">
       <p className="bg-muted/30 px-4 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        BM — ikke tilknyttet
+        {t("bmUnlinked")}
       </p>
       <ul className="divide-y divide-border/70">
         {clients.map((client) => (
@@ -236,7 +228,7 @@ function PartnerList({
             <MetaToggle
               checked={false}
               disabled={togglingId === client.metaAdAccountId}
-              label={`Aktiver Meta for ${client.accountName}`}
+              label={t("enableMetaFor", { name: client.accountName })}
               onChange={(next) => {
                 if (next) void onEnable(client)
               }}
@@ -249,6 +241,7 @@ function PartnerList({
 }
 
 export function AdminMetaHub() {
+  const { t, locale } = useLanguage()
   const [clients, setClients] = useState<MetaClient[]>([])
   const [partnerClients, setPartnerClients] = useState<PartnerClient[]>([])
   const [partnerFetchError, setPartnerFetchError] = useState<string | null>(null)
@@ -262,6 +255,27 @@ export function AdminMetaHub() {
   const [syncingAll, setSyncingAll] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+
+  function formatOnboardNotice(name: string, onboard: OnboardPayload | null | undefined) {
+    if (!onboard) return t("onboardActivated", { name })
+
+    if (onboard.metrics?.success) {
+      const pageNote = onboard.pageIdDiscovered
+        ? t("onboardPageFound")
+        : t("onboardAddPageId")
+      return t("onboardCreatedWithData", {
+        name,
+        months: onboard.metrics.monthCount ?? 0,
+        pageNote,
+      })
+    }
+
+    if (onboard.metrics?.reason) {
+      return t("onboardSyncFailed", { name, reason: onboard.metrics.reason })
+    }
+
+    return t("onboardActivated", { name })
+  }
 
   const load = useCallback(async (silent = false) => {
     if (silent) setRefreshing(true)
@@ -279,26 +293,33 @@ export function AdminMetaHub() {
         unlinkedPartnerAccounts?: PartnerClient[]
         meta?: { partnerFetchError?: string | null }
       }
-      if (!response.ok) throw new Error(data.error ?? "Kunne ikke hente Meta klienter")
+      if (!response.ok) throw new Error(data.error ?? t("errorLoadMetaClients"))
       setClients(data.clients ?? [])
       setPartnerClients(data.unlinkedPartnerAccounts ?? [])
       setPartnerFetchError(data.meta?.partnerFetchError ?? null)
     } catch (loadError) {
       setError(
-        loadError instanceof Error ? loadError.message : "Kunne ikke hente Meta klienter"
+        loadError instanceof Error ? loadError.message : t("errorLoadMetaClients")
       )
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void load()
   }, [load])
 
+  const filterLabels: Record<Filter, MessageKey> = {
+    all: "filterAll",
+    enabled: "filterActive",
+    "needs-setup": "filterSetup",
+  }
+
   const filteredClients = useMemo(() => {
     const query = search.trim().toLowerCase()
+    const sortLocale = locale === "da" ? "da" : "en"
     return clients
       .filter((client) => {
         const matchesFilter =
@@ -318,9 +339,9 @@ export function AdminMetaHub() {
       })
       .sort((left, right) => {
         if (left.enabled !== right.enabled) return left.enabled ? -1 : 1
-        return left.name.localeCompare(right.name, "da")
+        return left.name.localeCompare(right.name, sortLocale)
       })
-  }, [clients, filter, search])
+  }, [clients, filter, search, locale])
 
   const filteredPartnerClients = useMemo(() => {
     if (filter === "enabled") return []
@@ -357,16 +378,15 @@ export function AdminMetaHub() {
       })
       const data = (await response.json()) as {
         error?: string
-        organization?: { slug?: string }
         onboard?: OnboardPayload
       }
-      if (!response.ok) throw new Error(data.error ?? "Kunne ikke aktivere Meta klient")
+      if (!response.ok) throw new Error(data.error ?? t("errorEnableMetaClient"))
 
       await load(true)
       setNotice(formatOnboardNotice(client.accountName, data.onboard))
     } catch (enableError) {
       setError(
-        enableError instanceof Error ? enableError.message : "Kunne ikke aktivere Meta klient"
+        enableError instanceof Error ? enableError.message : t("errorEnableMetaClient")
       )
     } finally {
       setTogglingPartnerId(null)
@@ -400,7 +420,7 @@ export function AdminMetaHub() {
           metaPageId?: string
         }
       }
-      if (!response.ok) throw new Error(data.error ?? "Kunne ikke opdatere Meta status")
+      if (!response.ok) throw new Error(data.error ?? t("errorUpdateMetaStatus"))
 
       const config = data.config
       const derived = deriveMetaClientStatus({
@@ -437,7 +457,7 @@ export function AdminMetaHub() {
         )
       )
       setError(
-        toggleError instanceof Error ? toggleError.message : "Kunne ikke opdatere Meta status"
+        toggleError instanceof Error ? toggleError.message : t("errorUpdateMetaStatus")
       )
     } finally {
       setTogglingSlug(null)
@@ -461,21 +481,26 @@ export function AdminMetaHub() {
         metrics?: { success?: boolean; reason?: string; monthCount?: number }
         leads?: { imported?: number }
       }
-      if (!response.ok) throw new Error(data.error ?? "Sync fejlede")
+      if (!response.ok) throw new Error(data.error ?? t("syncFailed"))
 
       await load(true)
 
       if (data.metrics?.success) {
+        const leadsPart =
+          data.leads?.imported != null
+            ? t("leadsPart", { count: data.leads.imported })
+            : ""
         setNotice(
-          `Facebook-data hentet (${data.metrics.monthCount ?? 0} måneder${
-            data.leads?.imported != null ? `, ${data.leads.imported} leads` : ""
-          }).`
+          t("facebookDataFetched", {
+            months: data.metrics.monthCount ?? 0,
+            leadsPart,
+          })
         )
       } else if (data.metrics?.reason) {
         setError(data.metrics.reason)
       }
     } catch (syncError) {
-      setError(syncError instanceof Error ? syncError.message : "Sync fejlede")
+      setError(syncError instanceof Error ? syncError.message : t("syncFailed"))
     } finally {
       setSyncingSlug(null)
     }
@@ -495,13 +520,13 @@ export function AdminMetaHub() {
         error?: string
         metricsResults?: Array<{ success?: boolean; organizationId?: string }>
       }
-      if (!response.ok) throw new Error(data.error ?? "Sync alle fejlede")
+      if (!response.ok) throw new Error(data.error ?? t("errorSyncAll"))
 
       await load(true)
       const okCount = (data.metricsResults ?? []).filter((row) => row.success).length
-      setNotice(`Facebook-data synkroniseret for ${okCount} klienter.`)
+      setNotice(t("facebookDataSynced", { count: okCount }))
     } catch (syncAllError) {
-      setError(syncAllError instanceof Error ? syncAllError.message : "Sync alle fejlede")
+      setError(syncAllError instanceof Error ? syncAllError.message : t("errorSyncAll"))
     } finally {
       setSyncingAll(false)
     }
@@ -512,13 +537,13 @@ export function AdminMetaHub() {
       <header className="flex flex-col gap-4">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            Censio Admin
+            {t("brand")}
           </p>
           <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
-            Meta klienter
+            {t("metaHubTitle")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {counts.enabled} aktive · {counts.total} klienter
+            {t("metaHubCount", { enabled: counts.enabled, total: counts.total })}
           </p>
         </div>
         <AdminNav />
@@ -527,18 +552,12 @@ export function AdminMetaHub() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
           className="h-9 w-full rounded-[12px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-xs"
-          placeholder="Søg klient…"
+          placeholder={t("searchClientPlaceholder")}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
         <div className="flex flex-wrap items-center gap-2">
-          {(
-            [
-              ["all", "Alle"],
-              ["enabled", "Aktive"],
-              ["needs-setup", "Setup"],
-            ] as const
-          ).map(([value, label]) => (
+          {(["all", "enabled", "needs-setup"] as const).map((value) => (
             <button
               key={value}
               type="button"
@@ -550,7 +569,7 @@ export function AdminMetaHub() {
               )}
               onClick={() => setFilter(value)}
             >
-              {label}
+              {t(filterLabels[value])}
             </button>
           ))}
           <Button
@@ -563,7 +582,7 @@ export function AdminMetaHub() {
               void handleSyncAll()
             }}
           >
-            {syncingAll ? "Syncer…" : "Sync alle"}
+            {syncingAll ? t("syncing") : t("syncAll")}
           </Button>
           <Button
             type="button"
@@ -575,14 +594,14 @@ export function AdminMetaHub() {
               void load(true)
             }}
           >
-            {refreshing ? "…" : "Opdater"}
+            {refreshing ? "…" : t("refresh")}
           </Button>
         </div>
       </div>
 
       {partnerFetchError ? (
         <p className="rounded-[12px] bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Business Manager: {partnerFetchError}
+          {t("businessManager")} {partnerFetchError}
         </p>
       ) : null}
 
@@ -599,7 +618,7 @@ export function AdminMetaHub() {
 
       <section className="dashboard-card overflow-hidden p-0">
         {loading ? (
-          <p className="px-4 py-6 text-sm text-muted-foreground">Henter…</p>
+          <p className="px-4 py-6 text-sm text-muted-foreground">{t("loading")}</p>
         ) : (
           <>
             <CompactMetaList

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react"
 
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -22,6 +23,7 @@ export function AdminInviteUserForm({
   organizationId?: string
   onInvited?: () => void
 }) {
+  const { t } = useLanguage()
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
   const [role, setRole] = useState<UserRole>("client_admin")
@@ -52,12 +54,12 @@ export function AdminInviteUserForm({
       })
 
       const data = (await response.json()) as { error?: string }
-      if (!response.ok) throw new Error(data.error ?? "Kunne ikke invitere bruger")
+      if (!response.ok) throw new Error(data.error ?? t("errorInviteUser"))
 
       setMessage(
         method === "email"
-          ? `Invitation sendt til ${email}`
-          : `Bruger oprettet med adgangskode for ${email}`
+          ? t("inviteSent", { email })
+          : t("userCreated", { email })
       )
       setEmail("")
       setFullName("")
@@ -65,7 +67,7 @@ export function AdminInviteUserForm({
       onInvited?.()
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : "Kunne ikke invitere bruger"
+        submitError instanceof Error ? submitError.message : t("errorInviteUser")
       )
     } finally {
       setSubmitting(false)
@@ -75,15 +77,13 @@ export function AdminInviteUserForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Inviter bruger</CardTitle>
-        <CardDescription>
-          Vælg e-mail invitation eller opret med midlertidig adgangskode.
-        </CardDescription>
+        <CardTitle>{t("inviteUserTitle")}</CardTitle>
+        <CardDescription>{t("inviteUserDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">E-mail</span>
+            <span className="font-medium">{t("email")}</span>
             <input
               type="email"
               className={fieldClass}
@@ -93,7 +93,7 @@ export function AdminInviteUserForm({
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Navn (valgfri)</span>
+            <span className="font-medium">{t("nameOptional")}</span>
             <input
               className={fieldClass}
               value={fullName}
@@ -101,21 +101,21 @@ export function AdminInviteUserForm({
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Rolle</span>
+            <span className="font-medium">{t("role")}</span>
             <select
               className={fieldClass}
               value={role}
               onChange={(event) => setRole(event.target.value as UserRole)}
             >
-              <option value="client_admin">Klient admin</option>
-              <option value="client_user">Klient bruger</option>
+              <option value="client_admin">{t("roleClientAdmin")}</option>
+              <option value="client_user">{t("roleClientUser")}</option>
               {!organizationId ? (
-                <option value="censio_admin">Censio admin</option>
+                <option value="censio_admin">{t("roleCensioAdmin")}</option>
               ) : null}
             </select>
           </label>
           <fieldset className="grid gap-2">
-            <legend className="text-sm font-medium">Metode</legend>
+            <legend className="text-sm font-medium">{t("method")}</legend>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
@@ -123,7 +123,7 @@ export function AdminInviteUserForm({
                 checked={method === "email"}
                 onChange={() => setMethod("email")}
               />
-              Send e-mail invitation
+              {t("methodEmailInvite")}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -132,12 +132,12 @@ export function AdminInviteUserForm({
                 checked={method === "password"}
                 onChange={() => setMethod("password")}
               />
-              Opret med adgangskode
+              {t("methodPassword")}
             </label>
           </fieldset>
           {method === "password" ? (
             <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">Adgangskode</span>
+              <span className="font-medium">{t("password")}</span>
               <input
                 type="password"
                 className={fieldClass}
@@ -159,7 +159,7 @@ export function AdminInviteUserForm({
             </p>
           ) : null}
           <Button type="submit" className="h-10 w-fit" disabled={submitting}>
-            {submitting ? "Sender…" : "Inviter bruger"}
+            {submitting ? t("sending") : t("inviteUser")}
           </Button>
         </form>
       </CardContent>

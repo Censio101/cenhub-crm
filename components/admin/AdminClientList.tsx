@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { FormEvent, useEffect, useState } from "react"
 
 import { AdminNav } from "@/components/admin/AdminNav"
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -29,6 +30,7 @@ type OrganizationSummary = {
 
 export function AdminClientList() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,12 +43,12 @@ export function AdminClientList() {
     setError(null)
     try {
       const response = await fetch("/api/admin/organizations", { cache: "no-store" })
-      if (!response.ok) throw new Error("Kunne ikke hente klienter")
+      if (!response.ok) throw new Error(t("errorFetchClients"))
       const data = (await response.json()) as { organizations: OrganizationSummary[] }
       setOrganizations(data.organizations)
     } catch (loadError) {
       console.error(loadError)
-      setError("Kunne ikke hente klientlisten")
+      setError(t("errorLoadClients"))
     } finally {
       setLoading(false)
     }
@@ -54,6 +56,7 @@ export function AdminClientList() {
 
   useEffect(() => {
     void loadOrganizations()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleCreate(event: FormEvent) {
@@ -74,7 +77,7 @@ export function AdminClientList() {
         organization?: { slug: string }
         error?: string
       }
-      if (!response.ok) throw new Error(data.error ?? "Kunne ikke oprette klient")
+      if (!response.ok) throw new Error(data.error ?? t("errorCreateClient"))
       setName("")
       setSlug("")
       await loadOrganizations()
@@ -82,7 +85,7 @@ export function AdminClientList() {
         router.push(`/admin/${data.organization.slug}`)
       }
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Fejl ved oprettelse")
+      setError(createError instanceof Error ? createError.message : t("errorCreate"))
     } finally {
       setCreating(false)
     }
@@ -93,49 +96,45 @@ export function AdminClientList() {
       <header className="flex flex-col gap-4">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            Censio Admin
+            {t("brand")}
           </p>
           <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
-            Klienter
+            {t("clientsTitle")}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Opret og administrer kundedashboards, brugere og Meta-opsætning.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("clientsDescription")}</p>
         </div>
         <AdminNav />
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>Opret klient</CardTitle>
-          <CardDescription>
-            Slug genereres automatisk fra navnet, hvis du lader feltet stå tomt.
-          </CardDescription>
+          <CardTitle>{t("createClientTitle")}</CardTitle>
+          <CardDescription>{t("createClientDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]" onSubmit={handleCreate}>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">Virksomhedsnavn</span>
+              <span className="font-medium">{t("companyName")}</span>
               <input
                 className={fieldClass}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Fx. Nordkystens Tømrer"
+                placeholder={t("companyNamePlaceholder")}
                 required
               />
             </label>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">Slug (valgfri)</span>
+              <span className="font-medium">{t("slugOptional")}</span>
               <input
                 className={fieldClass}
                 value={slug}
                 onChange={(event) => setSlug(event.target.value)}
-                placeholder="nordkystens-tomrer"
+                placeholder={t("slugPlaceholder")}
               />
             </label>
             <div className="flex items-end">
               <Button type="submit" className="h-10 w-full sm:w-auto" disabled={creating}>
-                {creating ? "Opretter…" : "Opret klient"}
+                {creating ? t("creating") : t("createClient")}
               </Button>
             </div>
           </form>
@@ -149,39 +148,47 @@ export function AdminClientList() {
       ) : null}
 
       <div className="grid gap-3">
-          {organizations.map((organization) => (
-            <Link
-              key={organization.id}
-              href={`/admin/${organization.slug}`}
-              className="rounded-[15px] border border-border bg-card px-4 py-4 transition-colors hover:bg-accent sm:px-5"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-base font-medium">{organization.name}</p>
-                  <p className="text-sm text-muted-foreground">{organization.slug}</p>
+        {!loading
+          ? organizations.map((organization) => (
+              <Link
+                key={organization.id}
+                href={`/admin/${organization.slug}`}
+                className="rounded-[15px] border border-border bg-card px-4 py-4 transition-colors hover:bg-accent sm:px-5"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-base font-medium">{organization.name}</p>
+                    <p className="text-sm text-muted-foreground">{organization.slug}</p>
+                  </div>
+                  <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    <div>
+                      <dt className="sr-only">{t("leads")}</dt>
+                      <dd>
+                        {organization.leadCount} {t("leads")}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="sr-only">{t("users")}</dt>
+                      <dd>
+                        {organization.userCount} {t("users")}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="sr-only">{t("demo")}</dt>
+                      <dd>{organization.demo_mode ? t("demo") : t("live")}</dd>
+                    </div>
+                    <div>
+                      <dt className="sr-only">Meta</dt>
+                      <dd>
+                        {organization.metaEnabled ? t("metaEnabled") : t("metaDisabled")}
+                      </dd>
+                    </div>
+                  </dl>
                 </div>
-                <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <div>
-                    <dt className="sr-only">Leads</dt>
-                    <dd>{organization.leadCount} leads</dd>
-                  </div>
-                  <div>
-                    <dt className="sr-only">Brugere</dt>
-                    <dd>{organization.userCount} brugere</dd>
-                  </div>
-                  <div>
-                    <dt className="sr-only">Demo</dt>
-                    <dd>{organization.demo_mode ? "Demo" : "Live"}</dd>
-                  </div>
-                  <div>
-                    <dt className="sr-only">Meta</dt>
-                    <dd>{organization.metaEnabled ? "Meta aktiveret" : "Meta af"}</dd>
-                  </div>
-                </dl>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))
+          : null}
+      </div>
     </div>
   )
 }

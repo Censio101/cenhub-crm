@@ -3,23 +3,25 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { cn } from "cn"
-
-const links = [
-  { href: "/admin", label: "Klienter" },
-  { href: "/admin/meta", label: "Meta klienter" },
-] as const
 
 export function AdminNav() {
   const pathname = usePathname()
+  const { t } = useLanguage()
+
+  const links = [
+    { href: "/admin", label: t("navClients"), exact: true },
+    { href: "/admin/meta", label: t("navMetaClients"), exact: false },
+    { href: "/admin/settings", label: t("navSettings"), exact: false },
+  ] as const
 
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Admin navigation">
+    <nav className="flex flex-wrap gap-2" aria-label={t("navAria")}>
       {links.map((link) => {
-        const active =
-          link.href === "/admin"
-            ? pathname === "/admin"
-            : pathname.startsWith(link.href)
+        const active = link.exact
+          ? pathname === link.href
+          : pathname.startsWith(link.href)
         return (
           <Link
             key={link.href}
