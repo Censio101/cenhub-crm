@@ -33,12 +33,6 @@ type PartnerClient = {
 
 type Filter = "all" | "enabled" | "needs-setup"
 
-function formatAdAccount(value: string) {
-  const id = String(value || "").trim().replace(/^act_/i, "")
-  if (!id) return "—"
-  return `act_${id}`
-}
-
 function statusMeta(status: MetaClient["status"], enabled: boolean) {
   if (status === "live") {
     return { label: "Aktiv", dot: "bg-emerald-500", text: "text-emerald-700" }
@@ -47,10 +41,10 @@ function statusMeta(status: MetaClient["status"], enabled: boolean) {
     return { label: "Fejl", dot: "bg-red-500", text: "text-red-700" }
   }
   if (enabled && status === "needs-setup") {
-    return { label: "Mangler page", dot: "bg-amber-500", text: "text-amber-800" }
+    return { label: "Setup", dot: "bg-amber-500", text: "text-amber-800" }
   }
   if (status === "needs-setup") {
-    return { label: "Mangler opsætning", dot: "bg-amber-400", text: "text-amber-800" }
+    return { label: "Setup", dot: "bg-amber-400", text: "text-amber-800" }
   }
   return { label: "Af", dot: "bg-muted-foreground/40", text: "text-muted-foreground" }
 }
@@ -75,21 +69,21 @@ function MetaToggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "bg-primary" : "bg-muted"
       )}
     >
       <span
         className={cn(
-          "pointer-events-none absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
-          checked ? "translate-x-5" : "translate-x-0.5"
+          "pointer-events-none absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-4" : "translate-x-0.5"
         )}
       />
     </button>
   )
 }
 
-function CompactMetaTable({
+function CompactMetaList({
   clients,
   togglingSlug,
   onToggle,
@@ -100,132 +94,89 @@ function CompactMetaTable({
 }) {
   if (!clients.length) {
     return (
-      <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+      <p className="px-4 py-6 text-center text-sm text-muted-foreground">
         Ingen klienter matcher filteret.
       </p>
     )
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/40 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            <th className="px-4 py-3">Klient</th>
-            <th className="hidden px-4 py-3 md:table-cell">Ad account</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3 text-right">Meta</th>
-            <th className="w-10 px-2 py-3" aria-hidden />
-          </tr>
-        </thead>
-        <tbody>
-          {clients.map((client) => {
-            const status = statusMeta(client.status, client.enabled)
-            const hint =
-              client.enabled && !client.metaPageId.trim()
-                ? "Tilføj page ID under rediger for at modtage leads"
-                : client.enabled && !client.metaAdAccountId.trim()
-                  ? "Tilføj ad account ID under rediger"
-                  : client.metaSyncError
+    <ul className="divide-y divide-border/70">
+      {clients.map((client) => {
+        const status = statusMeta(client.status, client.enabled)
 
-            return (
-              <tr
-                key={client.organizationId}
-                className="border-b border-border/70 last:border-0 hover:bg-muted/20"
-              >
-                <td className="px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-foreground">{client.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{client.slug}</p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
-                      {formatAdAccount(client.metaAdAccountId)}
-                    </p>
-                  </div>
-                </td>
-                <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                  {formatAdAccount(client.metaAdAccountId)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className={cn("size-2 shrink-0 rounded-full", status.dot)} />
-                    <span className={cn("truncate text-xs font-medium", status.text)}>
-                      {status.label}
-                    </span>
-                  </div>
-                  {hint ? (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{hint}</p>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-end">
-                    <MetaToggle
-                      checked={client.enabled}
-                      disabled={togglingSlug === client.slug}
-                      label={`Meta for ${client.name}`}
-                      onChange={(next) => {
-                        void onToggle(client.slug, next)
-                      }}
-                    />
-                  </div>
-                </td>
-                <td className="px-2 py-3">
-                  <Link
-                    href={`/admin/${client.slug}`}
-                    className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label={`Rediger ${client.name}`}
-                  >
-                    <Settings2Icon className="size-4" />
-                  </Link>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+        return (
+          <li
+            key={client.organizationId}
+            className="flex items-center gap-3 px-4 py-2 hover:bg-muted/20"
+          >
+            <p
+              className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+              title={client.name}
+            >
+              {client.name}
+            </p>
+
+            <div
+              className="flex shrink-0 items-center gap-1.5"
+              title={client.metaSyncError ?? undefined}
+            >
+              <span className={cn("size-1.5 rounded-full", status.dot)} />
+              <span className={cn("text-xs font-medium", status.text)}>{status.label}</span>
+            </div>
+
+            <MetaToggle
+              checked={client.enabled}
+              disabled={togglingSlug === client.slug}
+              label={`Meta for ${client.name}`}
+              onChange={(next) => {
+                void onToggle(client.slug, next)
+              }}
+            />
+
+            <Link
+              href={`/admin/${client.slug}`}
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label={`Rediger ${client.name}`}
+            >
+              <Settings2Icon className="size-3.5" />
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
-function PartnerTable({ clients }: { clients: PartnerClient[] }) {
+function PartnerList({ clients }: { clients: PartnerClient[] }) {
   if (!clients.length) return null
 
   return (
     <div className="border-t border-border">
-      <div className="bg-muted/30 px-4 py-2">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Business Manager — ikke tilknyttet CRM
-        </p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <tbody>
-            {clients.map((client) => (
-              <tr
-                key={client.metaAdAccountId}
-                className="border-b border-border/70 last:border-0 hover:bg-muted/20"
-              >
-                <td className="px-4 py-2.5">
-                  <p className="truncate font-medium">{client.accountName}</p>
-                </td>
-                <td className="hidden px-4 py-2.5 text-muted-foreground md:table-cell">
-                  {formatAdAccount(client.metaAdAccountId)}
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <Button
-                    render={<Link href="/admin" />}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 px-2.5 text-xs"
-                  >
-                    Tilknyt klient
-                    <ExternalLinkIcon className="size-3.5" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <p className="bg-muted/30 px-4 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+        BM — ikke tilknyttet
+      </p>
+      <ul className="divide-y divide-border/70">
+        {clients.map((client) => (
+          <li
+            key={client.metaAdAccountId}
+            className="flex items-center gap-3 px-4 py-2 hover:bg-muted/20"
+          >
+            <p className="min-w-0 flex-1 truncate text-sm font-medium" title={client.accountName}>
+              {client.accountName}
+            </p>
+            <Button
+              render={<Link href="/admin" />}
+              variant="outline"
+              size="xs"
+              className="shrink-0 gap-1"
+            >
+              Tilknyt
+              <ExternalLinkIcon className="size-3" />
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -371,7 +322,7 @@ export function AdminMetaHub() {
       )
 
       if (enabled && !(config?.metaPageId ?? previous?.metaPageId)?.trim()) {
-        setNotice("Meta er slået til. Tilføj page ID under rediger for at modtage leads.")
+        setNotice("Meta er slået til — tilføj page ID under rediger.")
       }
     } catch (toggleError) {
       setClients((current) =>
@@ -388,30 +339,28 @@ export function AdminMetaHub() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-      <header className="flex flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <header className="flex flex-col gap-3">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
             Censio Admin
           </p>
-          <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
-            Meta klienter
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {counts.enabled} aktive · {counts.total} CRM-klienter
+          <h1 className="mt-1 text-2xl font-medium tracking-tight">Meta klienter</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {counts.enabled} aktive · {counts.total} klienter
           </p>
         </div>
         <AdminNav />
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <input
-          className="h-9 w-full rounded-[12px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-xs"
-          placeholder="Søg klient eller ad account…"
+          className="h-8 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-xs"
+          placeholder="Søg klient…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {(
             [
               ["all", "Alle"],
@@ -423,7 +372,7 @@ export function AdminMetaHub() {
               key={value}
               type="button"
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
                 filter === value
                   ? "bg-primary text-white"
                   : "bg-muted text-muted-foreground hover:text-foreground"
@@ -436,8 +385,7 @@ export function AdminMetaHub() {
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="h-8"
+            size="xs"
             disabled={refreshing}
             onClick={() => {
               void load(true)
@@ -449,7 +397,7 @@ export function AdminMetaHub() {
       </div>
 
       {partnerFetchError ? (
-        <p className="rounded-[12px] bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <p className="rounded-[10px] bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
           Business Manager: {partnerFetchError}
         </p>
       ) : null}
@@ -467,15 +415,15 @@ export function AdminMetaHub() {
 
       <section className="dashboard-card overflow-hidden p-0">
         {loading ? (
-          <p className="px-4 py-8 text-sm text-muted-foreground">Henter Meta klienter…</p>
+          <p className="px-4 py-6 text-sm text-muted-foreground">Henter…</p>
         ) : (
           <>
-            <CompactMetaTable
+            <CompactMetaList
               clients={filteredClients}
               togglingSlug={togglingSlug}
               onToggle={handleToggle}
             />
-            <PartnerTable clients={filteredPartnerClients} />
+            <PartnerList clients={filteredPartnerClients} />
           </>
         )}
       </section>
