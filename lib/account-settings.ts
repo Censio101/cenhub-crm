@@ -92,9 +92,10 @@ export function addEnabledServiceId(
   if (!isServiceId(id) || current.includes(id)) {
     return [...current]
   }
-  return ALL_SERVICE_IDS.filter((item) => item === id || current.includes(item)).concat(
-    current.filter((item) => !isServiceId(item))
-  )
+  return [
+    ...ALL_SERVICE_IDS.filter((item) => item === id || current.includes(item)),
+    ...current.filter((item) => !isServiceId(item)),
+  ]
 }
 
 export function removeEnabledServiceId(

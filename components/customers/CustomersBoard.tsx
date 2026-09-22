@@ -267,6 +267,7 @@ export function CustomersBoard() {
           <CustomersTable
             customers={filtered}
             dateSort={dateSort}
+            enabledServices={enabledServices}
             onToggleDateSort={() =>
               setDateSort((current) => (current === "desc" ? "asc" : "desc"))
             }
@@ -304,10 +305,12 @@ function OverviewStat({
 function CustomersTable({
   customers,
   dateSort,
+  enabledServices,
   onToggleDateSort,
 }: {
   customers: Customer[]
   dateSort: "asc" | "desc"
+  enabledServices: ReturnType<typeof useCompanyServices>["enabledServices"]
   onToggleDateSort: () => void
 }) {
   return (

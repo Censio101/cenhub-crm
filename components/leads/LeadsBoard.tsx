@@ -599,14 +599,13 @@ function LeadsTable({
                 <ServiceMultiSelect
                   value={getLeadServiceIds(lead)}
                   label="Service"
-                  onChange={(serviceIds) =>
+                  onChange={(serviceIds) => {
+                    const first = serviceIds[0] ?? ""
                     onUpdate(lead.id, {
                       serviceIds,
-                      service: isServiceId(serviceIds[0] ?? "")
-                        ? serviceIds[0]
-                        : "",
+                      service: isServiceId(first) ? first : "",
                     })
-                  }
+                  }}
                 />
               </TableCell>
               <TableCell className="min-w-48 px-2">

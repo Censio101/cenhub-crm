@@ -849,4 +849,11 @@ const MOCK_LEAD_SEED = [
   },
 ]
 
-export const MOCK_LEADS: Lead[] = MOCK_LEAD_SEED.map(withMetaAdId)
+export const MOCK_LEADS: Lead[] = MOCK_LEAD_SEED.map((lead) =>
+  withMetaAdId({
+    ...lead,
+    segment: lead.segment as LeadSegmentId | "",
+    platform: lead.platform as LeadPlatformId | "",
+    status: lead.status as LeadStatusId,
+  })
+)

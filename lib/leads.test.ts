@@ -16,8 +16,8 @@ describe("lead date helpers", () => {
   it("sorts leads newest or oldest first", () => {
     const newest = sortLeadsByDate(MOCK_LEADS, "desc")
     const oldest = sortLeadsByDate(MOCK_LEADS, "asc")
-    expect(newest[0]?.date >= newest.at(-1)?.date).toBe(true)
-    expect(oldest[0]?.date <= oldest.at(-1)?.date).toBe(true)
+    expect((newest[0]?.date ?? "") >= (newest.at(-1)?.date ?? "")).toBe(true)
+    expect((oldest[0]?.date ?? "") <= (oldest.at(-1)?.date ?? "")).toBe(true)
     expect(newest[0]?.id).toBe(oldest.at(-1)?.id)
   })
 
