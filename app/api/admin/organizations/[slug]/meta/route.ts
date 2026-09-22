@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth/require-censio-admin"
 import {
   getMetaConfig,
+  patchMetaEnabled,
   upsertMetaConfig,
 } from "@/lib/db/meta-config-repository"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
@@ -36,6 +37,30 @@ export async function GET(_request: Request, context: RouteContext) {
         metaLastSyncedAt: null,
       }
 
+    return NextResponse.json({ config })
+  } catch (error) {
+    return adminErrorResponse(error)
+  }
+}
+
+export async function PATCH(request: Request, context: RouteContext) {
+  try {
+    await requireCensioAdmin()
+    const { slug } = await context.params
+    const body = (await request.json()) as { enabled?: boolean }
+
+    if (typeof body.enabled !== "boolean") {
+      return NextResponse.json({ error: "enabled must be a boolean" }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+    const organization = await getOrganizationBySlug(admin, slug)
+
+    if (!organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 })
+    }
+
+    const config = await patchMetaEnabled(admin, organization.id, body.enabled)
     return NextResponse.json({ config })
   } catch (error) {
     return adminErrorResponse(error)

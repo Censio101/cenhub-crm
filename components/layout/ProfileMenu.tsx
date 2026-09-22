@@ -99,10 +99,16 @@ export function ProfileMenu() {
             {CURRENT_COMPANY.name}
           </DropdownMenuLabel>
           {role === "censio_admin" ? (
-            <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
-              <ShieldIcon />
-              Admin
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
+                <ShieldIcon />
+                Admin
+              </DropdownMenuItem>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/meta" />}>
+                <ShieldIcon />
+                Meta klienter
+              </DropdownMenuItem>
+            </>
           ) : null}
           <DropdownMenuItem
             nativeButton={false}

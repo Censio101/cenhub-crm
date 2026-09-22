@@ -124,20 +124,27 @@ export async function upsertMetaConfig(
 ): Promise<ClientMetaConfig> {
   const existing = await getMetaConfigRow(supabase, organizationId)
   const enabled = input.enabled ?? existing?.enabled ?? false
-  const hasIds =
-    Boolean((input.metaAdAccountId ?? existing?.meta_ad_account_id)?.trim()) &&
-    Boolean((input.metaPageId ?? existing?.meta_page_id)?.trim())
+  const metaAdAccountId =
+    input.metaAdAccountId ?? existing?.meta_ad_account_id ?? ""
+  const metaPageId = input.metaPageId ?? existing?.meta_page_id ?? ""
+  const hasIds = Boolean(metaAdAccountId.trim() && metaPageId.trim())
 
-  const metaSyncStatus =
-    enabled && hasIds ? "pending" : enabled ? "pending" : "disabled"
+  let metaSyncStatus = existing?.meta_sync_status ?? "disabled"
+  if (!enabled) {
+    metaSyncStatus = "disabled"
+  } else if (hasIds && metaSyncStatus === "disabled") {
+    metaSyncStatus = "pending"
+  } else if (enabled && hasIds && !existing) {
+    metaSyncStatus = "pending"
+  }
 
   const { data, error } = await supabase
     .from("client_meta_config")
     .upsert(
       {
         organization_id: organizationId,
-        meta_ad_account_id: input.metaAdAccountId ?? existing?.meta_ad_account_id ?? "",
-        meta_page_id: input.metaPageId ?? existing?.meta_page_id ?? "",
+        meta_ad_account_id: metaAdAccountId,
+        meta_page_id: metaPageId,
         meta_pixel_id: input.metaPixelId ?? existing?.meta_pixel_id ?? "",
         enabled,
         meta_sync_status: metaSyncStatus,
@@ -150,4 +157,12 @@ export async function upsertMetaConfig(
 
   if (error) throw error
   return rowToConfig(data as MetaConfigRow)
+}
+
+export async function patchMetaEnabled(
+  supabase: SupabaseClient,
+  organizationId: string,
+  enabled: boolean
+): Promise<ClientMetaConfig> {
+  return upsertMetaConfig(supabase, organizationId, { enabled })
 }
