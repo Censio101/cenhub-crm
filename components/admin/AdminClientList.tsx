@@ -4,7 +4,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useEffect, useState } from "react"
 
-import { AdminClientListSkeleton } from "@/components/admin/AdminSkeletons"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -146,7 +145,9 @@ export function AdminClientList() {
       ) : null}
 
       {loading ? (
-        <AdminClientListSkeleton />
+        <p className="text-sm text-muted-foreground" aria-busy="true">
+          Henter klienter…
+        </p>
       ) : (
         <div className="grid gap-3">
           {organizations.map((organization) => (

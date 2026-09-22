@@ -14,8 +14,11 @@ import {
 
 import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
 import { useLeads } from "@/hooks/useLeads"
+import {
+  LeadPipelineSkeleton,
+  LeadsTableSkeletonRows,
+} from "@/components/leads/LeadLoadingStates"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
-import { LeadsBoardSkeleton } from "@/components/leads/LeadsBoardSkeleton"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -403,6 +406,7 @@ function LeadsTable({
   leads,
   emptyText,
   dateSort,
+  loading = false,
   onToggleDateSort,
   onUpdate,
   onDelete,
@@ -410,6 +414,7 @@ function LeadsTable({
   leads: Lead[]
   emptyText: string
   dateSort: "asc" | "desc"
+  loading?: boolean
   onToggleDateSort: () => void
   onUpdate: (id: string, patch: Partial<Lead>) => void
   onDelete: (id: string) => void
@@ -474,7 +479,9 @@ function LeadsTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {leads.length === 0 ? (
+        {loading ? (
+          <LeadsTableSkeletonRows />
+        ) : leads.length === 0 ? (
           <TableRow className="hover:bg-transparent">
             <TableCell
               colSpan={15}
@@ -766,10 +773,6 @@ export function LeadsBoard() {
     [filtered]
   )
 
-  if (loading) {
-    return <LeadsBoardSkeleton />
-  }
-
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-6">
       <header className="flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -839,8 +842,8 @@ export function LeadsBoard() {
               <SelectValue>
                 {activeServiceFilter === "all"
                   ? "Alle services"
-                  : enabledServices.find((item) => item.id === activeServiceFilter)
-                      ?.label}
+                  : (enabledServices.find((item) => item.id === activeServiceFilter)
+                      ?.label ?? "Alle services")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent
@@ -921,12 +924,17 @@ export function LeadsBoard() {
         </div>
       </header>
 
-      <LeadPipelineBar stats={pipelineStats} />
+      {loading ? (
+        <LeadPipelineSkeleton />
+      ) : (
+        <LeadPipelineBar stats={pipelineStats} />
+      )}
 
       <section className="dashboard-card flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto">
           <LeadsTable
             leads={filtered}
+            loading={loading}
             dateSort={dateSort}
             onToggleDateSort={() =>
               setDateSort((current) => (current === "desc" ? "asc" : "desc"))
@@ -942,7 +950,7 @@ export function LeadsBoard() {
             }}
           />
         </div>
-        <LeadPipelineFooter stats={pipelineStats} />
+        {!loading ? <LeadPipelineFooter stats={pipelineStats} /> : null}
       </section>
     </div>
   )

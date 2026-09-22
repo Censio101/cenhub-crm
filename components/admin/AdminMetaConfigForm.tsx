@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from "react"
 
-import { AdminCardSkeleton } from "@/components/admin/AdminSkeletons"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -71,7 +70,11 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
   }
 
   if (loading) {
-    return <AdminCardSkeleton label="Indlæser Meta opsætning" />
+    return (
+      <p className="text-sm text-muted-foreground" aria-busy="true">
+        Henter Meta opsætning…
+      </p>
+    )
   }
 
   return (

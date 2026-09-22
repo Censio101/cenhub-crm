@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
-import { AdminClientDetailSkeleton } from "@/components/admin/AdminSkeletons"
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { AdminMetaConfigForm } from "@/components/admin/AdminMetaConfigForm"
 import { Button } from "@/components/ui/button"
@@ -82,7 +81,11 @@ export function AdminClientDetail({ slug }: { slug: string }) {
   }
 
   if (loading) {
-    return <AdminClientDetailSkeleton />
+    return (
+      <p className="text-sm text-muted-foreground" aria-busy="true">
+        Henter klient…
+      </p>
+    )
   }
 
   if (!organization) {
