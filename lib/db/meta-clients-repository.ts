@@ -42,16 +42,24 @@ export function deriveMetaClientStatus(input: {
   metaPageId: string
   metaSyncStatus: string
 }): { needsSetup: boolean; status: MetaClientStatus } {
-  const hasIds = Boolean(input.metaAdAccountId.trim() && input.metaPageId.trim())
-  if (!hasIds) {
+  const hasAdAccount = Boolean(input.metaAdAccountId.trim())
+  const hasPageId = Boolean(input.metaPageId.trim())
+
+  if (!input.enabled) {
+    return {
+      needsSetup: !hasAdAccount || !hasPageId,
+      status: "off",
+    }
+  }
+
+  if (!hasAdAccount || !hasPageId) {
     return { needsSetup: true, status: "needs-setup" }
   }
-  if (!input.enabled) {
-    return { needsSetup: false, status: "off" }
-  }
+
   if (input.metaSyncStatus === "error") {
     return { needsSetup: false, status: "error" }
   }
+
   return { needsSetup: false, status: "live" }
 }
 

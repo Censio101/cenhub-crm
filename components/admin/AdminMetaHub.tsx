@@ -1,10 +1,12 @@
 "use client"
 
 import Link from "next/link"
+import { ExternalLinkIcon, Settings2Icon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { AdminNav } from "@/components/admin/AdminNav"
 import { Button } from "@/components/ui/button"
+import { deriveMetaClientStatus } from "@/lib/db/meta-clients-repository"
 import { cn } from "cn"
 
 type MetaClient = {
@@ -27,149 +29,204 @@ type PartnerClient = {
   metaAdAccountId: string
   accountName: string
   currency: string
-  needsSetup: true
-  inApp: false
-  status: "needs-setup"
 }
 
 type Filter = "all" | "enabled" | "needs-setup"
 
-function formatTimestamp(value: string | null) {
-  if (!value) return "Aldrig"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString("da-DK")
+function formatAdAccount(value: string) {
+  const id = String(value || "").trim().replace(/^act_/i, "")
+  if (!id) return "—"
+  return `act_${id}`
 }
 
-function statusBadge(status: MetaClient["status"] | PartnerClient["status"]) {
-  switch (status) {
-    case "live":
-      return { label: "Meta aktiv", className: "bg-emerald-100 text-emerald-800" }
-    case "off":
-      return { label: "Meta af", className: "bg-muted text-muted-foreground" }
-    case "error":
-      return { label: "Fejl", className: "bg-red-100 text-red-800" }
-    default:
-      return { label: "Mangler opsætning", className: "bg-amber-100 text-amber-900" }
+function statusMeta(status: MetaClient["status"], enabled: boolean) {
+  if (status === "live") {
+    return { label: "Aktiv", dot: "bg-emerald-500", text: "text-emerald-700" }
   }
+  if (status === "error") {
+    return { label: "Fejl", dot: "bg-red-500", text: "text-red-700" }
+  }
+  if (enabled && status === "needs-setup") {
+    return { label: "Mangler page", dot: "bg-amber-500", text: "text-amber-800" }
+  }
+  if (status === "needs-setup") {
+    return { label: "Mangler opsætning", dot: "bg-amber-400", text: "text-amber-800" }
+  }
+  return { label: "Af", dot: "bg-muted-foreground/40", text: "text-muted-foreground" }
 }
 
-function MetaClientCard({
-  client,
-  onToggle,
-  toggling,
+function MetaToggle({
+  checked,
+  disabled,
+  onChange,
+  label,
 }: {
-  client: MetaClient
-  onToggle: (slug: string, enabled: boolean) => Promise<void>
-  toggling: boolean
+  checked: boolean
+  disabled?: boolean
+  onChange: (next: boolean) => void
+  label: string
 }) {
-  const badge = statusBadge(client.status)
-  const canToggle = !client.needsSetup
-
   return (
-    <article className="rounded-[15px] border border-border bg-card p-4 sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/admin/${client.slug}`}
-              className="text-base font-medium hover:text-primary"
-            >
-              {client.name}
-            </Link>
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                badge.className
-              )}
-            >
-              {badge.label}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground">{client.slug}</p>
-          <dl className="grid gap-1 text-sm text-muted-foreground">
-            <div>
-              Ad account:{" "}
-              <span className="text-foreground">
-                {client.metaAdAccountId ? `act_${client.metaAdAccountId.replace(/^act_/i, "")}` : "—"}
-              </span>
-            </div>
-            <div>
-              Page ID:{" "}
-              <span className="text-foreground">{client.metaPageId || "—"}</span>
-            </div>
-            <div>
-              Sidst synkroniseret:{" "}
-              <span className="text-foreground">
-                {formatTimestamp(client.metaLastSyncedAt)}
-              </span>
-            </div>
-            {client.metaSyncError ? (
-              <div className="text-destructive">{client.metaSyncError}</div>
-            ) : null}
-          </dl>
-        </div>
-
-        <div className="flex shrink-0 flex-col items-start gap-3 sm:items-end">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={client.enabled}
-              disabled={!canToggle || toggling}
-              onChange={(event) => {
-                void onToggle(client.slug, event.target.checked)
-              }}
-            />
-            Meta aktiveret
-          </label>
-          {!canToggle ? (
-            <p className="max-w-xs text-xs text-muted-foreground">
-              Tilføj ad account og page ID under Rediger før aktivering.
-            </p>
-          ) : null}
-          <Button
-            render={<Link href={`/admin/${client.slug}`} />}
-            variant="outline"
-            className="h-9"
-          >
-            Rediger opsætning
-          </Button>
-        </div>
-      </div>
-    </article>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-primary" : "bg-muted"
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-5" : "translate-x-0.5"
+        )}
+      />
+    </button>
   )
 }
 
-function PartnerClientCard({ client }: { client: PartnerClient }) {
-  const badge = statusBadge(client.status)
+function CompactMetaTable({
+  clients,
+  togglingSlug,
+  onToggle,
+}: {
+  clients: MetaClient[]
+  togglingSlug: string | null
+  onToggle: (slug: string, enabled: boolean) => Promise<void>
+}) {
+  if (!clients.length) {
+    return (
+      <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+        Ingen klienter matcher filteret.
+      </p>
+    )
+  }
 
   return (
-    <article className="rounded-[15px] border border-dashed border-border bg-card/70 p-4 sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-medium">{client.accountName}</p>
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                badge.className
-              )}
-            >
-              {badge.label}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            act_{client.metaAdAccountId.replace(/^act_/i, "")} · {client.currency}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Fundet i Meta Business Manager, men ikke knyttet til en CRM-klient endnu.
-          </p>
-        </div>
-        <Button render={<Link href="/admin" />} variant="outline" className="h-9">
-          Opret / vælg klient
-        </Button>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] text-sm">
+        <thead>
+          <tr className="border-b border-border bg-muted/40 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <th className="px-4 py-3">Klient</th>
+            <th className="hidden px-4 py-3 md:table-cell">Ad account</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3 text-right">Meta</th>
+            <th className="w-10 px-2 py-3" aria-hidden />
+          </tr>
+        </thead>
+        <tbody>
+          {clients.map((client) => {
+            const status = statusMeta(client.status, client.enabled)
+            const hint =
+              client.enabled && !client.metaPageId.trim()
+                ? "Tilføj page ID under rediger for at modtage leads"
+                : client.enabled && !client.metaAdAccountId.trim()
+                  ? "Tilføj ad account ID under rediger"
+                  : client.metaSyncError
+
+            return (
+              <tr
+                key={client.organizationId}
+                className="border-b border-border/70 last:border-0 hover:bg-muted/20"
+              >
+                <td className="px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{client.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{client.slug}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
+                      {formatAdAccount(client.metaAdAccountId)}
+                    </p>
+                  </div>
+                </td>
+                <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                  {formatAdAccount(client.metaAdAccountId)}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={cn("size-2 shrink-0 rounded-full", status.dot)} />
+                    <span className={cn("truncate text-xs font-medium", status.text)}>
+                      {status.label}
+                    </span>
+                  </div>
+                  {hint ? (
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{hint}</p>
+                  ) : null}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end">
+                    <MetaToggle
+                      checked={client.enabled}
+                      disabled={togglingSlug === client.slug}
+                      label={`Meta for ${client.name}`}
+                      onChange={(next) => {
+                        void onToggle(client.slug, next)
+                      }}
+                    />
+                  </div>
+                </td>
+                <td className="px-2 py-3">
+                  <Link
+                    href={`/admin/${client.slug}`}
+                    className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={`Rediger ${client.name}`}
+                  >
+                    <Settings2Icon className="size-4" />
+                  </Link>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function PartnerTable({ clients }: { clients: PartnerClient[] }) {
+  if (!clients.length) return null
+
+  return (
+    <div className="border-t border-border">
+      <div className="bg-muted/30 px-4 py-2">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Business Manager — ikke tilknyttet CRM
+        </p>
       </div>
-    </article>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
+          <tbody>
+            {clients.map((client) => (
+              <tr
+                key={client.metaAdAccountId}
+                className="border-b border-border/70 last:border-0 hover:bg-muted/20"
+              >
+                <td className="px-4 py-2.5">
+                  <p className="truncate font-medium">{client.accountName}</p>
+                </td>
+                <td className="hidden px-4 py-2.5 text-muted-foreground md:table-cell">
+                  {formatAdAccount(client.metaAdAccountId)}
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <Button
+                    render={<Link href="/admin" />}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 px-2.5 text-xs"
+                  >
+                    Tilknyt klient
+                    <ExternalLinkIcon className="size-3.5" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 
@@ -183,6 +240,7 @@ export function AdminMetaHub() {
   const [refreshing, setRefreshing] = useState(false)
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(async (silent = false) => {
     if (silent) setRefreshing(true)
@@ -190,7 +248,10 @@ export function AdminMetaHub() {
     setError(null)
 
     try {
-      const response = await fetch("/api/admin/meta-clients", { cache: "no-store" })
+      const response = await fetch("/api/admin/meta-clients", {
+        cache: "no-store",
+        credentials: "include",
+      })
       const data = (await response.json()) as {
         error?: string
         clients?: MetaClient[]
@@ -217,63 +278,101 @@ export function AdminMetaHub() {
 
   const filteredClients = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return clients.filter((client) => {
-      const matchesFilter =
-        filter === "all"
-          ? true
-          : filter === "enabled"
-            ? client.enabled && !client.needsSetup
-            : client.needsSetup || client.status === "error"
+    return clients
+      .filter((client) => {
+        const matchesFilter =
+          filter === "all"
+            ? true
+            : filter === "enabled"
+              ? client.enabled
+              : client.needsSetup || client.status === "error"
 
-      if (!matchesFilter) return false
-      if (!query) return true
+        if (!matchesFilter) return false
+        if (!query) return true
 
-      return [client.name, client.slug, client.metaAdAccountId, client.metaPageId]
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
-    })
+        return [client.name, client.slug, client.metaAdAccountId, client.metaPageId]
+          .join(" ")
+          .toLowerCase()
+          .includes(query)
+      })
+      .sort((left, right) => {
+        if (left.enabled !== right.enabled) return left.enabled ? -1 : 1
+        return left.name.localeCompare(right.name, "da")
+      })
   }, [clients, filter, search])
 
   const filteredPartnerClients = useMemo(() => {
     if (filter === "enabled") return []
     const query = search.trim().toLowerCase()
     return partnerClients.filter((client) => {
-      if (filter === "needs-setup" && !client.needsSetup) return false
       if (!query) return true
       return [client.accountName, client.metaAdAccountId].join(" ").toLowerCase().includes(query)
     })
   }, [filter, partnerClients, search])
 
+  const counts = useMemo(
+    () => ({
+      enabled: clients.filter((client) => client.enabled).length,
+      total: clients.length,
+    }),
+    [clients]
+  )
+
   async function handleToggle(slug: string, enabled: boolean) {
     setTogglingSlug(slug)
+    setError(null)
+    setNotice(null)
+
+    const previous = clients.find((client) => client.slug === slug)
     setClients((current) =>
-      current.map((client) =>
-        client.slug === slug ? { ...client, enabled } : client
-      )
+      current.map((client) => (client.slug === slug ? { ...client, enabled } : client))
     )
 
     try {
       const response = await fetch(`/api/admin/organizations/${slug}/meta`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ enabled }),
       })
-      const data = (await response.json()) as { error?: string; config?: { enabled?: boolean; metaSyncStatus?: string } }
+      const data = (await response.json()) as {
+        error?: string
+        config?: {
+          enabled?: boolean
+          metaSyncStatus?: string
+          metaAdAccountId?: string
+          metaPageId?: string
+        }
+      }
       if (!response.ok) throw new Error(data.error ?? "Kunne ikke opdatere Meta status")
+
+      const config = data.config
+      const derived = deriveMetaClientStatus({
+        enabled: config?.enabled ?? enabled,
+        metaAdAccountId: config?.metaAdAccountId ?? previous?.metaAdAccountId ?? "",
+        metaPageId: config?.metaPageId ?? previous?.metaPageId ?? "",
+        metaSyncStatus: config?.metaSyncStatus ?? previous?.metaSyncStatus ?? "disabled",
+      })
 
       setClients((current) =>
         current.map((client) =>
           client.slug === slug
             ? {
                 ...client,
-                enabled: data.config?.enabled ?? enabled,
-                metaSyncStatus: data.config?.metaSyncStatus ?? client.metaSyncStatus,
-                status: enabled ? (client.needsSetup ? "needs-setup" : "live") : "off",
+                enabled: config?.enabled ?? enabled,
+                metaAdAccountId: config?.metaAdAccountId ?? client.metaAdAccountId,
+                metaPageId: config?.metaPageId ?? client.metaPageId,
+                metaSyncStatus: config?.metaSyncStatus ?? client.metaSyncStatus,
+                needsSetup: derived.needsSetup,
+                status: derived.status,
               }
             : client
         )
       )
+
+      if (enabled && !(config?.metaPageId ?? previous?.metaPageId)?.trim()) {
+        setNotice("Meta er slået til. Tilføj page ID under rediger for at modtage leads.")
+      }
     } catch (toggleError) {
       setClients((current) =>
         current.map((client) =>
@@ -289,7 +388,7 @@ export function AdminMetaHub() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
       <header className="flex flex-col gap-4">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
@@ -299,33 +398,32 @@ export function AdminMetaHub() {
             Meta klienter
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Se alle klienter med Meta-opsætning, slå sync til eller fra, og find
-            konti fra Business Manager der mangler opsætning.
+            {counts.enabled} aktive · {counts.total} CRM-klienter
           </p>
         </div>
         <AdminNav />
       </header>
 
-      <div className="flex flex-col gap-3 rounded-[15px] border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
-          className="h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-sm"
-          placeholder="Søg navn, slug eller ad account…"
+          className="h-9 w-full rounded-[12px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-xs"
+          placeholder="Søg klient eller ad account…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(
             [
               ["all", "Alle"],
               ["enabled", "Aktive"],
-              ["needs-setup", "Mangler opsætning"],
+              ["needs-setup", "Setup"],
             ] as const
           ).map(([value, label]) => (
             <button
               key={value}
               type="button"
               className={cn(
-                "rounded-full px-3 py-1.5 text-sm transition-colors",
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 filter === value
                   ? "bg-primary text-white"
                   : "bg-muted text-muted-foreground hover:text-foreground"
@@ -338,20 +436,21 @@ export function AdminMetaHub() {
           <Button
             type="button"
             variant="outline"
-            className="h-9"
+            size="sm"
+            className="h-8"
             disabled={refreshing}
             onClick={() => {
               void load(true)
             }}
           >
-            {refreshing ? "Opdaterer…" : "Opdater"}
+            {refreshing ? "…" : "Opdater"}
           </Button>
         </div>
       </div>
 
       {partnerFetchError ? (
-        <p className="rounded-[15px] bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Meta Business Manager: {partnerFetchError}
+        <p className="rounded-[12px] bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Business Manager: {partnerFetchError}
         </p>
       ) : null}
 
@@ -360,28 +459,26 @@ export function AdminMetaHub() {
           {error}
         </p>
       ) : null}
+      {notice ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          {notice}
+        </p>
+      ) : null}
 
-      <div className="grid gap-3">
+      <section className="dashboard-card overflow-hidden p-0">
         {loading ? (
-          <p className="text-sm text-muted-foreground">Henter Meta klienter…</p>
-        ) : filteredClients.length === 0 && filteredPartnerClients.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Ingen Meta klienter matcher filteret.</p>
+          <p className="px-4 py-8 text-sm text-muted-foreground">Henter Meta klienter…</p>
         ) : (
           <>
-            {filteredClients.map((client) => (
-              <MetaClientCard
-                key={client.organizationId}
-                client={client}
-                toggling={togglingSlug === client.slug}
-                onToggle={handleToggle}
-              />
-            ))}
-            {filteredPartnerClients.map((client) => (
-              <PartnerClientCard key={client.metaAdAccountId} client={client} />
-            ))}
+            <CompactMetaTable
+              clients={filteredClients}
+              togglingSlug={togglingSlug}
+              onToggle={handleToggle}
+            />
+            <PartnerTable clients={filteredPartnerClients} />
           </>
         )}
-      </div>
+      </section>
     </div>
   )
 }
