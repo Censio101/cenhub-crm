@@ -339,28 +339,30 @@ export function AdminMetaHub() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <header className="flex flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+      <header className="flex flex-col gap-4">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
             Censio Admin
           </p>
-          <h1 className="mt-1 text-2xl font-medium tracking-tight">Meta klienter</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
+            Meta klienter
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {counts.enabled} aktive · {counts.total} klienter
           </p>
         </div>
         <AdminNav />
       </header>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
-          className="h-8 w-full rounded-[10px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-xs"
+          className="h-9 w-full rounded-[12px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-xs"
           placeholder="Søg klient…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           {(
             [
               ["all", "Alle"],
@@ -372,7 +374,7 @@ export function AdminMetaHub() {
               key={value}
               type="button"
               className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 filter === value
                   ? "bg-primary text-white"
                   : "bg-muted text-muted-foreground hover:text-foreground"
@@ -385,7 +387,8 @@ export function AdminMetaHub() {
           <Button
             type="button"
             variant="outline"
-            size="xs"
+            size="sm"
+            className="h-8"
             disabled={refreshing}
             onClick={() => {
               void load(true)
@@ -397,7 +400,7 @@ export function AdminMetaHub() {
       </div>
 
       {partnerFetchError ? (
-        <p className="rounded-[10px] bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
+        <p className="rounded-[12px] bg-amber-50 px-3 py-2 text-xs text-amber-900">
           Business Manager: {partnerFetchError}
         </p>
       ) : null}
