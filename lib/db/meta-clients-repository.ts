@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-import type { MetaConfigRow } from "@/lib/db/meta-config-repository"
+import type { ClientMetaConfig, MetaConfigRow } from "@/lib/db/meta-config-repository"
+import { upsertMetaConfig } from "@/lib/db/meta-config-repository"
+import {
+  createOrganization,
+  getOrganizationBySlug,
+} from "@/lib/db/organizations-repository"
 import type { OrganizationRow } from "@/lib/db/types"
 
 export type MetaClientStatus = "live" | "off" | "needs-setup" | "error"
@@ -113,6 +118,63 @@ export async function listMetaClients(
       inApp: true as const,
     }
   })
+}
+
+export async function enablePartnerMetaAccount(
+  supabase: SupabaseClient,
+  input: {
+    metaAdAccountId: string
+    accountName: string
+    enabled: boolean
+    slug?: string
+  }
+): Promise<{ organization: OrganizationRow; config: ClientMetaConfig }> {
+  const adAccountId = normalizeAdAccountId(input.metaAdAccountId)
+  if (!adAccountId) {
+    throw new Error("Invalid Meta ad account id")
+  }
+
+  const { data: existingMeta, error: existingMetaError } = await supabase
+    .from("client_meta_config")
+    .select("organization_id")
+    .eq("meta_ad_account_id", adAccountId)
+    .maybeSingle()
+
+  if (existingMetaError) throw existingMetaError
+
+  let organization: OrganizationRow | null = null
+
+  if (existingMeta?.organization_id) {
+    const { data, error } = await supabase
+      .from("organizations")
+      .select("*")
+      .eq("id", existingMeta.organization_id)
+      .single()
+
+    if (error) throw error
+    organization = data as OrganizationRow
+  } else if (input.slug?.trim()) {
+    organization = await getOrganizationBySlug(supabase, input.slug.trim())
+  }
+
+  if (!organization) {
+    if (!input.enabled) {
+      throw new Error("Partner account is not linked to a CRM client")
+    }
+
+    organization = await createOrganization(supabase, {
+      name: input.accountName.trim(),
+      slug: input.slug,
+      demoMode: true,
+    })
+  }
+
+  const config = await upsertMetaConfig(supabase, organization.id, {
+    metaAdAccountId: adAccountId,
+    enabled: input.enabled,
+  })
+
+  return { organization, config }
 }
 
 export function mergePartnerAccounts(

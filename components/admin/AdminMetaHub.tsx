@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ExternalLinkIcon, Settings2Icon } from "lucide-react"
+import { Settings2Icon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { AdminNav } from "@/components/admin/AdminNav"
@@ -148,12 +148,20 @@ function CompactMetaList({
   )
 }
 
-function PartnerList({ clients }: { clients: PartnerClient[] }) {
+function PartnerList({
+  clients,
+  togglingId,
+  onEnable,
+}: {
+  clients: PartnerClient[]
+  togglingId: string | null
+  onEnable: (client: PartnerClient) => Promise<void>
+}) {
   if (!clients.length) return null
 
   return (
     <div className="border-t border-border">
-      <p className="bg-muted/30 px-4 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+      <p className="bg-muted/30 px-4 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
         BM — ikke tilknyttet
       </p>
       <ul className="divide-y divide-border/70">
@@ -165,15 +173,15 @@ function PartnerList({ clients }: { clients: PartnerClient[] }) {
             <p className="min-w-0 flex-1 truncate text-sm font-medium" title={client.accountName}>
               {client.accountName}
             </p>
-            <Button
-              render={<Link href="/admin" />}
-              variant="outline"
-              size="xs"
-              className="shrink-0 gap-1"
-            >
-              Tilknyt
-              <ExternalLinkIcon className="size-3" />
-            </Button>
+            <span className="shrink-0 text-xs text-muted-foreground">Ny</span>
+            <MetaToggle
+              checked={false}
+              disabled={togglingId === client.metaAdAccountId}
+              label={`Aktiver Meta for ${client.accountName}`}
+              onChange={(next) => {
+                if (next) void onEnable(client)
+              }}
+            />
           </li>
         ))}
       </ul>
@@ -190,6 +198,7 @@ export function AdminMetaHub() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null)
+  const [togglingPartnerId, setTogglingPartnerId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -268,6 +277,38 @@ export function AdminMetaHub() {
     }),
     [clients]
   )
+
+  async function handlePartnerEnable(client: PartnerClient) {
+    setTogglingPartnerId(client.metaAdAccountId)
+    setError(null)
+    setNotice(null)
+
+    try {
+      const response = await fetch("/api/admin/meta-clients/enable-partner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          metaAdAccountId: client.metaAdAccountId,
+          accountName: client.accountName,
+          enabled: true,
+        }),
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? "Kunne ikke aktivere Meta klient")
+
+      await load(true)
+      setNotice(
+        `${client.accountName} er aktiveret — tilføj page ID under rediger for at modtage leads.`
+      )
+    } catch (enableError) {
+      setError(
+        enableError instanceof Error ? enableError.message : "Kunne ikke aktivere Meta klient"
+      )
+    } finally {
+      setTogglingPartnerId(null)
+    }
+  }
 
   async function handleToggle(slug: string, enabled: boolean) {
     setTogglingSlug(slug)
@@ -426,7 +467,11 @@ export function AdminMetaHub() {
               togglingSlug={togglingSlug}
               onToggle={handleToggle}
             />
-            <PartnerList clients={filteredPartnerClients} />
+            <PartnerList
+              clients={filteredPartnerClients}
+              togglingId={togglingPartnerId}
+              onEnable={handlePartnerEnable}
+            />
           </>
         )}
       </section>

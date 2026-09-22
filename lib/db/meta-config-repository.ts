@@ -127,14 +127,13 @@ export async function upsertMetaConfig(
   const metaAdAccountId =
     input.metaAdAccountId ?? existing?.meta_ad_account_id ?? ""
   const metaPageId = input.metaPageId ?? existing?.meta_page_id ?? ""
-  const hasIds = Boolean(metaAdAccountId.trim() && metaPageId.trim())
+  const hasAdAccount = Boolean(metaAdAccountId.trim())
+  const hasPageId = Boolean(metaPageId.trim())
 
   let metaSyncStatus = existing?.meta_sync_status ?? "disabled"
   if (!enabled) {
     metaSyncStatus = "disabled"
-  } else if (hasIds && metaSyncStatus === "disabled") {
-    metaSyncStatus = "pending"
-  } else if (enabled && hasIds && !existing) {
+  } else if (hasAdAccount && metaSyncStatus === "disabled") {
     metaSyncStatus = "pending"
   }
 
