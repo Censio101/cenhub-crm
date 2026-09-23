@@ -5,8 +5,7 @@ import {
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
 import {
-  getOrganizationBySlug,
-  listOrganizationsWithStats,
+  getOrganizationWithStatsBySlug,
   updateOrganizationBySlug,
 } from "@/lib/db/organizations-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -19,22 +18,12 @@ export async function GET(_request: Request, context: RouteContext) {
     const { slug } = await context.params
     const admin = createAdminClient()
 
-    const organization = await getOrganizationBySlug(admin, slug)
+    const organization = await getOrganizationWithStatsBySlug(admin, slug)
     if (!organization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
-    const summaries = await listOrganizationsWithStats(admin)
-    const summary = summaries.find((item) => item.slug === slug)
-
-    return NextResponse.json({
-      organization: summary ?? {
-        ...organization,
-        leadCount: 0,
-        userCount: 0,
-        metaEnabled: false,
-      },
-    })
+    return NextResponse.json({ organization })
   } catch (error) {
     return adminErrorResponse(error)
   }

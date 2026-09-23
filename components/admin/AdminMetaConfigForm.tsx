@@ -15,7 +15,7 @@ import {
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
 
-type MetaConfig = {
+export type MetaConfig = {
   metaAdAccountId: string
   metaPageId: string
   metaPixelId: string
@@ -25,18 +25,43 @@ type MetaConfig = {
   metaLastSyncedAt: string | null
 }
 
-export function AdminMetaConfigForm({ slug }: { slug: string }) {
+const emptyMetaConfig: MetaConfig = {
+  metaAdAccountId: "",
+  metaPageId: "",
+  metaPixelId: "",
+  enabled: false,
+  metaSyncStatus: "disabled",
+  metaSyncError: null,
+  metaLastSyncedAt: null,
+}
+
+function toMetaConfig(
+  config: Partial<MetaConfig> & { organizationId?: string } | null | undefined
+): MetaConfig {
+  if (!config) return emptyMetaConfig
+  return {
+    metaAdAccountId: config.metaAdAccountId ?? "",
+    metaPageId: config.metaPageId ?? "",
+    metaPixelId: config.metaPixelId ?? "",
+    enabled: Boolean(config.enabled),
+    metaSyncStatus: config.metaSyncStatus ?? "disabled",
+    metaSyncError: config.metaSyncError ?? null,
+    metaLastSyncedAt: config.metaLastSyncedAt ?? null,
+  }
+}
+
+export function AdminMetaConfigForm({
+  slug,
+  initialConfig,
+  onSaved,
+}: {
+  slug: string
+  initialConfig?: MetaConfig | null
+  onSaved?: () => void
+}) {
   const { t, locale } = useLanguage()
-  const [config, setConfig] = useState<MetaConfig>({
-    metaAdAccountId: "",
-    metaPageId: "",
-    metaPixelId: "",
-    enabled: false,
-    metaSyncStatus: "disabled",
-    metaSyncError: null,
-    metaLastSyncedAt: null,
-  })
-  const [loading, setLoading] = useState(true)
+  const [config, setConfig] = useState<MetaConfig>(() => toMetaConfig(initialConfig))
+  const [loading, setLoading] = useState(initialConfig === undefined)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -54,15 +79,23 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
     const response = await fetch(`/api/admin/organizations/${slug}/meta`, {
       cache: "no-store",
     })
-    if (!response.ok) return
-    const data = (await response.json()) as { config?: MetaConfig }
-    if (data.config) setConfig(data.config)
+    if (!response.ok) return null
+    const data = (await response.json()) as { config?: MetaConfig & { organizationId?: string } }
+    const next = toMetaConfig(data.config)
+    setConfig(next)
+    return next
   }
 
   useEffect(() => {
+    if (initialConfig !== undefined) {
+      setConfig(toMetaConfig(initialConfig))
+      setLoading(false)
+      return
+    }
+
     void loadConfig().finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug])
+  }, [slug, initialConfig])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -78,8 +111,9 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
       })
       const data = (await response.json()) as { error?: string; config?: MetaConfig }
       if (!response.ok) throw new Error(data.error ?? t("errorSaveMeta"))
-      if (data.config) setConfig(data.config)
+      if (data.config) setConfig(toMetaConfig(data.config))
       setMessage(t("metaSetupSaved"))
+      onSaved?.()
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t("errorSaveMeta"))
     } finally {
@@ -157,6 +191,21 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
         <CardDescription>{t("metaSetupDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
+        {loading ? (
+          <div className="grid gap-4" aria-busy="true" aria-live="polite">
+            <p className="sr-only">{t("loading")}</p>
+            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
+            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
+            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
+            <div className="h-5 w-40 animate-pulse rounded-md bg-muted" />
+            <div className="h-16 animate-pulse rounded-[15px] bg-muted" />
+            <div className="flex flex-wrap gap-2">
+              <div className="h-10 w-28 animate-pulse rounded-[10px] bg-muted" />
+              <div className="h-10 w-32 animate-pulse rounded-[10px] bg-muted" />
+              <div className="h-10 w-24 animate-pulse rounded-[10px] bg-muted" />
+            </div>
+          </div>
+        ) : (
         <form className="grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">{t("metaAdAccountId")}</span>
@@ -251,6 +300,7 @@ export function AdminMetaConfigForm({ slug }: { slug: string }) {
             </Button>
           </div>
         </form>
+        )}
       </CardContent>
     </Card>
   )

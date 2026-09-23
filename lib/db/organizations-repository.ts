@@ -67,6 +67,38 @@ export async function listOrganizationsWithStats(
   return summaries
 }
 
+export async function getOrganizationWithStatsBySlug(
+  supabase: SupabaseClient,
+  slug: string
+): Promise<OrganizationSummary | null> {
+  const organization = await getOrganizationBySlug(supabase, slug)
+  if (!organization) return null
+
+  const [{ count: leadCount }, { count: userCount }, metaConfig] =
+    await Promise.all([
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organization.id),
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organization.id),
+      supabase
+        .from("client_meta_config")
+        .select("enabled")
+        .eq("organization_id", organization.id)
+        .maybeSingle(),
+    ])
+
+  return {
+    ...organization,
+    leadCount: leadCount ?? 0,
+    userCount: userCount ?? 0,
+    metaEnabled: Boolean(metaConfig.data?.enabled),
+  }
+}
+
 export async function getOrganizationBySlug(
   supabase: SupabaseClient,
   slug: string

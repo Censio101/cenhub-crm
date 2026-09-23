@@ -42,6 +42,8 @@ export const en: Messages = {
   backToClients: "Back to clients",
   allClients: "All clients",
   errorLoadClient: "Could not load client",
+  loadingClient: "Loading client…",
+  clientSettingsLabel: "Client settings",
   overviewTitle: "Overview",
   overviewDescription: "Demo mode controls whether the client runs on demo data.",
   statusLabel: "Status:",

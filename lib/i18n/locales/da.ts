@@ -40,6 +40,8 @@ const daMessages = {
   backToClients: "Tilbage til klienter",
   allClients: "Alle klienter",
   errorLoadClient: "Kunne ikke hente klient",
+  loadingClient: "Henter klient…",
+  clientSettingsLabel: "Klientindstillinger",
   overviewTitle: "Overblik",
   overviewDescription: "Demo mode styrer om klienten kører med demo-data.",
   statusLabel: "Status:",
