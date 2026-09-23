@@ -31,15 +31,24 @@ export type HubClient = {
   currency: string | null
 }
 
-export function isHubTestAccount(input: { name: string; demo_mode?: boolean }): boolean {
-  return Boolean(input.demo_mode) || /\btest\b/i.test(input.name)
+export function isHubTestAccount(name: string): boolean {
+  return /\btest\b/i.test(name)
 }
 
-export function hubClientInEnabledTab(client: HubClient): boolean {
-  return client.metaEnabled || client.isTestAccount
+type HubClientFilterInput = Pick<
+  HubClient,
+  "metaEnabled" | "inApp" | "demo_mode" | "partnerOnly"
+>
+
+/** Aktiveret: Meta is enabled, or an in-app demo client. */
+export function hubClientInEnabledTab(client: HubClientFilterInput): boolean {
+  if (client.metaEnabled) return true
+  if (client.inApp && !client.partnerOnly && client.demo_mode) return true
+  return false
 }
 
-export function hubClientInNeedsSetupTab(client: HubClient): boolean {
+/** Skal sættes op: unlinked BM accounts and in-app clients without Meta enabled. */
+export function hubClientInNeedsSetupTab(client: HubClientFilterInput): boolean {
   return !hubClientInEnabledTab(client)
 }
 
@@ -61,7 +70,7 @@ function toHubClient(
     slug: meta.slug,
     name: meta.name,
     demo_mode: meta.demoMode,
-    isTestAccount: isHubTestAccount({ name: meta.name, demo_mode: meta.demoMode }),
+    isTestAccount: isHubTestAccount(meta.name),
     leadCount: org.leadCount,
     userCount: org.userCount,
     metaLive: meta.status === "live",
@@ -111,8 +120,8 @@ export async function listHubClients(supabase: SupabaseClient): Promise<{
       organizationId: null,
       slug: null,
       name: account.accountName,
-      demo_mode: true,
-      isTestAccount: isHubTestAccount({ name: account.accountName, demo_mode: true }),
+      demo_mode: false,
+      isTestAccount: isHubTestAccount(account.accountName),
       leadCount: 0,
       userCount: 0,
       metaLive: false,

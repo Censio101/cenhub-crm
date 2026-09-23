@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { AdminHubToolbar } from "@/components/admin/AdminHubToolbar"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
-import { isHubTestAccount } from "@/lib/admin/hub-clients"
+import { hubClientInEnabledTab, hubClientInNeedsSetupTab } from "@/lib/admin/hub-clients"
 import { deriveMetaClientStatus } from "@/lib/db/meta-clients-repository"
 import type { MessageKey } from "@/lib/i18n"
 import { cn } from "cn"
@@ -323,14 +323,18 @@ export function AdminMetaHub() {
     const sortLocale = locale === "da" ? "da" : "en"
     return clients
       .filter((client) => {
-        const isEnabled =
-          client.enabled || isHubTestAccount({ name: client.name, demo_mode: client.demoMode })
+        const filterInput = {
+          metaEnabled: client.enabled,
+          inApp: true as const,
+          demo_mode: client.demoMode,
+          partnerOnly: false as const,
+        }
         const matchesFilter =
           filter === "all"
             ? true
             : filter === "enabled"
-              ? isEnabled
-              : !isEnabled
+              ? hubClientInEnabledTab(filterInput)
+              : hubClientInNeedsSetupTab(filterInput)
 
         if (!matchesFilter) return false
         if (!query) return true
@@ -347,11 +351,9 @@ export function AdminMetaHub() {
   }, [clients, filter, search, locale])
 
   const filteredPartnerClients = useMemo(() => {
+    if (filter === "enabled") return []
     const query = search.trim().toLowerCase()
     return partnerClients.filter((client) => {
-      const isTest = isHubTestAccount({ name: client.accountName })
-      if (filter === "enabled" && !isTest) return false
-      if (filter === "needs-setup" && isTest) return false
       if (!query) return true
       return [client.accountName, client.metaAdAccountId].join(" ").toLowerCase().includes(query)
     })
