@@ -246,18 +246,37 @@ export async function inviteOrCreateUser(
     })
   }
 
-  const { error: profileError } = await admin.from("profiles").upsert(
-    {
-      id: userId,
-      organization_id: input.role === "censio_admin" ? null : input.organizationId,
-      role: input.role,
-      email,
-      full_name: input.fullName?.trim() || null,
-    },
-    { onConflict: "id" }
-  )
+  const { data: existingProfile, error: existingProfileError } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle()
 
-  if (profileError) throw profileError
+  if (existingProfileError) throw existingProfileError
+
+  const profilePayload = {
+    organization_id: input.role === "censio_admin" ? null : input.organizationId,
+    role: input.role,
+    email,
+    full_name: input.fullName?.trim() || null,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (existingProfile) {
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update(profilePayload)
+      .eq("id", userId)
+
+    if (profileError) throw profileError
+  } else {
+    const { error: profileError } = await admin.from("profiles").insert({
+      id: userId,
+      ...profilePayload,
+    })
+
+    if (profileError) throw profileError
+  }
 
   return { userId, method: input.method }
 }

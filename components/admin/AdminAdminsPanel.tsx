@@ -13,7 +13,6 @@ import {
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { adminIconBoxClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import {
   adminInitials,
@@ -81,7 +80,6 @@ function AdminListSkeleton() {
 function AdminListRow({
   admin,
   isCurrentUser,
-  localProfileImage,
   onRemove,
   onResend,
   isRemoving,
@@ -90,7 +88,6 @@ function AdminListRow({
 }: {
   admin: CensioAdmin
   isCurrentUser: boolean
-  localProfileImage?: string
   onRemove: (admin: CensioAdmin) => void
   onResend: (admin: CensioAdmin) => void
   isRemoving?: boolean
@@ -100,8 +97,7 @@ function AdminListRow({
   const { t } = useLanguage()
   const displayName = formatAdminDisplayName(admin)
   const initials = adminInitials(admin)
-  const profileImage =
-    admin.avatarUrl || (isCurrentUser && localProfileImage ? localProfileImage : null)
+  const profileImage = admin.avatarUrl?.trim() || null
   const isPending = admin.accessStatus === "pending"
 
   const rowBusy = isRemoving || isResending
@@ -184,7 +180,6 @@ function AdminListRow({
 
 export function AdminAdminsPanel() {
   const { t } = useLanguage()
-  const { settings: adminAccountSettings } = useAdminAccountSettings()
   const [admins, setAdmins] = useState<CensioAdmin[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -344,9 +339,6 @@ export function AdminAdminsPanel() {
                   key={admin.id}
                   admin={admin}
                   isCurrentUser={admin.id === currentUserId}
-                  localProfileImage={
-                    admin.id === currentUserId ? adminAccountSettings.profileImage : undefined
-                  }
                   onRemove={handleRemoveAdmin}
                   onResend={handleResendInvite}
                   isRemoving={

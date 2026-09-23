@@ -62,7 +62,9 @@ export function ProfileMenu() {
     : isAdmin
       ? t("profileMenuAdminFallback")
       : (organization?.name ?? CURRENT_COMPANY.name)
-  const profileImage = isAdmin ? adminSettings.profileImage : settings.profileImage
+  const profileImage = isAdmin
+    ? adminSettings.profileImage.trim() || null
+    : settings.profileImage
 
   if (!loading && !signedIn) {
     return (

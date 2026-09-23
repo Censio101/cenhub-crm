@@ -12,6 +12,7 @@ import {
 
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import {
+  clearLegacyAdminAccountSettings,
   DEFAULT_ADMIN_ACCOUNT_SETTINGS,
   readAdminAccountSettings,
   writeAdminAccountSettings,
@@ -51,48 +52,53 @@ export function AdminAccountSettingsProvider({
 }: {
   children: React.ReactNode
 }) {
-  const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
+  const { configured, user, isAuthenticated, loading: authLoading } = useSupabaseSession()
+  const userId = user?.id ?? null
   const [settings, setSettings] = useState<AdminAccountSettings>(
     DEFAULT_ADMIN_ACCOUNT_SETTINGS
   )
   const [syncing, setSyncing] = useState(false)
-  const hasSyncedFromServer = useRef(false)
+  const syncedUserIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    setSettings(readAdminAccountSettings())
+    clearLegacyAdminAccountSettings()
   }, [])
 
   useEffect(() => {
-    if (!configured || authLoading || !isAuthenticated || hasSyncedFromServer.current) {
+    if (!userId) {
+      setSettings(DEFAULT_ADMIN_ACCOUNT_SETTINGS)
+      syncedUserIdRef.current = null
+      return
+    }
+
+    setSettings(readAdminAccountSettings(userId))
+  }, [userId])
+
+  useEffect(() => {
+    if (!configured || authLoading || !isAuthenticated || !userId) {
+      return
+    }
+
+    if (syncedUserIdRef.current === userId) {
       return
     }
 
     let active = true
-    hasSyncedFromServer.current = true
+    syncedUserIdRef.current = userId
     setSyncing(true)
 
     void fetchAdminProfileFromServer()
-      .then(async (profile) => {
+      .then((profile) => {
         if (!active || !profile || profile.role !== "censio_admin") return
 
-        const current = readAdminAccountSettings()
-        const localImage = current.profileImage.trim()
-        const serverImage = profile.avatarUrl?.trim() ?? ""
+        const cached = readAdminAccountSettings(userId)
         const next: AdminAccountSettings = {
-          displayName: current.displayName.trim() || profile.fullName?.trim() || "",
-          profileImage: serverImage || localImage,
+          displayName: profile.fullName?.trim() || cached.displayName.trim(),
+          profileImage: profile.avatarUrl?.trim() || "",
         }
 
-        writeAdminAccountSettings(next)
+        writeAdminAccountSettings(userId, next)
         setSettings(next)
-
-        if (localImage && !serverImage) {
-          await fetch("/api/admin/me/profile", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ avatarUrl: localImage }),
-          })
-        }
       })
       .finally(() => {
         if (active) setSyncing(false)
@@ -101,15 +107,20 @@ export function AdminAccountSettingsProvider({
     return () => {
       active = false
     }
-  }, [configured, authLoading, isAuthenticated])
+  }, [configured, authLoading, isAuthenticated, userId])
 
-  const updateSettings = useCallback((patch: Partial<AdminAccountSettings>) => {
-    setSettings((current) => {
-      const next = { ...current, ...patch }
-      writeAdminAccountSettings(next)
-      return next
-    })
-  }, [])
+  const updateSettings = useCallback(
+    (patch: Partial<AdminAccountSettings>) => {
+      if (!userId) return
+
+      setSettings((current) => {
+        const next = { ...current, ...patch }
+        writeAdminAccountSettings(userId, next)
+        return next
+      })
+    },
+    [userId]
+  )
 
   const value = useMemo(
     () => ({ settings, updateSettings, syncing }),

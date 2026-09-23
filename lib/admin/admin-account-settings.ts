@@ -1,4 +1,4 @@
-export const ADMIN_ACCOUNT_SETTINGS_KEY = "censio-admin-account-settings"
+export const LEGACY_ADMIN_ACCOUNT_SETTINGS_KEY = "censio-admin-account-settings"
 
 export type AdminAccountSettings = {
   displayName: string
@@ -10,10 +10,24 @@ export const DEFAULT_ADMIN_ACCOUNT_SETTINGS: AdminAccountSettings = {
   profileImage: "",
 }
 
-export function readAdminAccountSettings(): AdminAccountSettings {
-  if (typeof window === "undefined") return DEFAULT_ADMIN_ACCOUNT_SETTINGS
+export function getAdminAccountSettingsStorageKey(userId: string) {
+  return `censio-admin-account-settings:${userId}`
+}
+
+export function clearLegacyAdminAccountSettings() {
+  if (typeof window === "undefined") return
+  window.localStorage.removeItem(LEGACY_ADMIN_ACCOUNT_SETTINGS_KEY)
+}
+
+export function readAdminAccountSettings(
+  userId?: string | null
+): AdminAccountSettings {
+  if (typeof window === "undefined" || !userId) {
+    return DEFAULT_ADMIN_ACCOUNT_SETTINGS
+  }
+
   try {
-    const raw = window.localStorage.getItem(ADMIN_ACCOUNT_SETTINGS_KEY)
+    const raw = window.localStorage.getItem(getAdminAccountSettingsStorageKey(userId))
     if (!raw) return DEFAULT_ADMIN_ACCOUNT_SETTINGS
     const parsed = JSON.parse(raw) as Partial<AdminAccountSettings>
     return {
@@ -31,13 +45,18 @@ export function readAdminAccountSettings(): AdminAccountSettings {
   }
 }
 
-export function writeAdminAccountSettings(settings: AdminAccountSettings) {
+export function writeAdminAccountSettings(userId: string, settings: AdminAccountSettings) {
+  if (typeof window === "undefined") return
+
   try {
-    window.localStorage.setItem(ADMIN_ACCOUNT_SETTINGS_KEY, JSON.stringify(settings))
+    window.localStorage.setItem(
+      getAdminAccountSettingsStorageKey(userId),
+      JSON.stringify(settings)
+    )
   } catch {
     try {
       window.localStorage.setItem(
-        ADMIN_ACCOUNT_SETTINGS_KEY,
+        getAdminAccountSettingsStorageKey(userId),
         JSON.stringify({
           displayName: settings.displayName,
           profileImage: "",
