@@ -171,6 +171,8 @@ const daMessages = {
   openDashboard: "Dashboard",
   openingDashboard: "Åbner…",
   selectClient: "Vælg klient",
+  viewingClient: "Viser klient",
+  switchClient: "Skift klient",
   searchClients: "Søg klienter…",
   setting: "Indstillinger",
   sync: "Sync",

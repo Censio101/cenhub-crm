@@ -12,7 +12,6 @@ import {
 } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
-import { ClientHeaderSwitcher } from "@/components/admin/ClientHeaderSwitcher"
 import { ProfileMenu } from "@/components/layout/ProfileMenu"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { CURRENT_COMPANY } from "@/lib/company"
@@ -44,9 +43,8 @@ export function AppTopbar() {
 
   const isAdmin = role === "censio_admin"
   const adminHasClient = isAdmin && organization !== null
-  const clientName =
-    organization?.name ?? (isAdmin ? null : CURRENT_COMPANY.name)
-  const showClientBranding = clientName !== null
+  const showClientBranding = !isAdmin && organization !== null
+  const clientName = organization?.name ?? CURRENT_COMPANY.name
   const navItems = isAdmin
     ? adminHasClient
       ? [ALL_CLIENTS_NAV, ...CLIENT_NAV]
@@ -55,8 +53,8 @@ export function AppTopbar() {
   const homeHref = isAdmin && !organization ? "/admin" : "/"
 
   return (
-    <header className="relative sticky top-0 z-40 grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 overflow-hidden bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-5 py-2 sm:gap-x-3 sm:px-7 xl:h-20 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:py-0">
-      <div className="z-10 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start">
+    <header className="relative sticky top-0 z-40 grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-4 py-2 sm:gap-x-3 sm:px-6 lg:px-8 xl:min-h-20 xl:grid-cols-[minmax(0,280px)_minmax(0,1fr)_auto] xl:py-0">
+      <div className="z-10 col-start-1 row-start-1 flex min-w-0 max-w-full items-center justify-self-start xl:max-w-[min(280px,35%)]">
         <Link
           href={homeHref}
           className="flex min-w-0 items-center gap-3.5 sm:gap-4"
@@ -69,7 +67,7 @@ export function AppTopbar() {
             alt="Censio"
             width={1024}
             height={251}
-            className="h-9 w-auto sm:h-10"
+            className="h-9 w-auto shrink-0 sm:h-10"
             priority
           />
           {showClientBranding ? (
@@ -85,16 +83,16 @@ export function AppTopbar() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={settings.logo}
-                  alt={clientName ?? ""}
-                  className="h-9 w-auto sm:h-10"
+                  alt={clientName}
+                  className="h-9 max-w-[min(120px,30vw)] w-auto shrink object-contain sm:h-10 sm:max-w-[140px]"
                 />
               ) : (
                 <Image
                   src={settings.logo}
-                  alt={clientName ?? ""}
+                  alt={clientName}
                   width={176}
                   height={40}
-                  className="h-9 w-auto sm:h-10"
+                  className="h-9 max-w-[min(120px,30vw)] w-auto shrink object-contain sm:h-10 sm:max-w-[140px]"
                   priority
                   unoptimized
                 />
@@ -105,7 +103,7 @@ export function AppTopbar() {
       </div>
 
       <nav
-        className="z-10 col-span-2 row-start-2 flex max-w-full items-center justify-center justify-self-center gap-0.5 overflow-x-auto sm:gap-2 xl:col-span-1 xl:col-start-2 xl:row-start-1"
+        className="z-10 col-span-2 row-start-2 -mx-4 flex min-w-0 max-w-[calc(100%+2rem)] items-center justify-start gap-0.5 overflow-x-auto px-4 [scrollbar-width:none] sm:-mx-6 sm:max-w-[calc(100%+3rem)] sm:gap-2 sm:px-6 sm:justify-center lg:-mx-8 lg:max-w-[calc(100%+4rem)] lg:px-8 xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:mx-0 xl:max-w-none xl:justify-center xl:px-0 [&::-webkit-scrollbar]:hidden"
         aria-label="Hovedmenu"
       >
         {navItems.map((item) => {
@@ -121,8 +119,9 @@ export function AppTopbar() {
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.label}
               className={cn(
-                "inline-flex items-center gap-2 px-3 py-2 text-base font-medium whitespace-nowrap transition-colors",
+                "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
                 "border-b-2 focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none",
                 active
                   ? "border-primary text-white"
@@ -131,14 +130,13 @@ export function AppTopbar() {
               aria-current={active ? "page" : undefined}
             >
               <Icon className="size-4 shrink-0" aria-hidden="true" />
-              {item.label}
+              <span className="hidden md:inline">{item.label}</span>
             </Link>
           )
         })}
-        {adminHasClient ? <ClientHeaderSwitcher /> : null}
       </nav>
 
-      <div className="z-10 col-start-2 row-start-1 flex min-w-0 items-center justify-self-end xl:col-start-3">
+      <div className="z-10 col-start-2 row-start-1 flex shrink-0 items-center justify-self-end xl:col-start-3">
         <ProfileMenu />
       </div>
     </header>

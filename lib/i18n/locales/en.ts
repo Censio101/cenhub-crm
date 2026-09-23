@@ -172,6 +172,8 @@ export const en: Messages = {
   openDashboard: "Dashboard",
   openingDashboard: "Opening…",
   selectClient: "Select client",
+  viewingClient: "Viewing client",
+  switchClient: "Switch client",
   searchClients: "Search clients…",
   setting: "Setting",
   sync: "Sync",
