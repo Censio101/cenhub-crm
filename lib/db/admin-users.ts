@@ -1,17 +1,19 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { SupabaseClient, User } from "@supabase/supabase-js"
 
+import { sendUserInviteEmail } from "@/lib/email/send-user-invite"
 import type { ProfileRow, UserRole } from "@/lib/db/types"
+
+export type AdminAccessStatus = "active" | "pending"
 
 export type InviteUserInput = {
   email: string
   role: UserRole
   organizationId?: string | null
+  organizationName?: string | null
   method: "email" | "password"
   password?: string
   fullName?: string
 }
-
-const SITE_URL = process.env.CRM_SITE_URL ?? "https://cenhub-crm.vercel.app"
 
 export async function listProfilesForOrganization(
   supabase: SupabaseClient,
@@ -38,6 +40,91 @@ export async function listCensioAdmins(
 
   if (error) throw error
   return (data ?? []) as ProfileRow[]
+}
+
+export function getAdminAccessStatus(user: User | null | undefined): AdminAccessStatus {
+  if (!user) return "pending"
+  return user.email_confirmed_at || user.confirmed_at ? "active" : "pending"
+}
+
+export async function listAuthUsersById(
+  admin: SupabaseClient
+): Promise<Map<string, User>> {
+  const usersById = new Map<string, User>()
+  let page = 1
+
+  while (page <= 10) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 })
+    if (error) throw error
+
+    for (const user of data.users) {
+      usersById.set(user.id, user)
+    }
+
+    if (data.users.length < 200) break
+    page += 1
+  }
+
+  return usersById
+}
+
+export async function getCensioAdminProfile(
+  admin: SupabaseClient,
+  userId: string
+): Promise<ProfileRow | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .eq("role", "censio_admin")
+    .maybeSingle()
+
+  if (error) throw error
+  return (data as ProfileRow | null) ?? null
+}
+
+export async function removeCensioAdmin(
+  admin: SupabaseClient,
+  userId: string,
+  actingUserId: string
+): Promise<void> {
+  if (userId === actingUserId) {
+    throw new Error("You cannot remove yourself")
+  }
+
+  const admins = await listCensioAdmins(admin)
+  if (admins.length <= 1) {
+    throw new Error("At least one Censio admin must remain")
+  }
+
+  const target = admins.find((profile) => profile.id === userId)
+  if (!target) {
+    throw new Error("Admin not found")
+  }
+
+  const { error: authError } = await admin.auth.admin.deleteUser(userId)
+  if (authError && !/not found|invalid/i.test(authError.message)) {
+    throw authError
+  }
+
+  const { error: profileError } = await admin.from("profiles").delete().eq("id", userId)
+  if (profileError) throw profileError
+}
+
+export async function resendCensioAdminInvite(
+  admin: SupabaseClient,
+  userId: string
+): Promise<void> {
+  const profile = await getCensioAdminProfile(admin, userId)
+  if (!profile?.email) {
+    throw new Error("Admin not found")
+  }
+
+  await sendUserInviteEmail(admin, {
+    email: profile.email,
+    role: "censio_admin",
+    fullName: profile.full_name,
+  })
 }
 
 async function findUserIdByEmail(
@@ -73,11 +160,13 @@ export async function inviteOrCreateUser(
 
   if (!userId) {
     if (input.method === "email") {
-      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${SITE_URL}/auth/callback`,
+      const inviteResult = await sendUserInviteEmail(admin, {
+        email,
+        role: input.role,
+        fullName: input.fullName,
+        organizationName: input.organizationName,
       })
-      if (error) throw error
-      userId = data.user.id
+      userId = inviteResult.userId
     } else {
       if (!input.password || input.password.length < 8) {
         throw new Error("Password must be at least 8 characters")
@@ -90,6 +179,13 @@ export async function inviteOrCreateUser(
       if (error) throw error
       userId = data.user.id
     }
+  } else if (input.method === "email") {
+    await sendUserInviteEmail(admin, {
+      email,
+      role: input.role,
+      fullName: input.fullName,
+      organizationName: input.organizationName,
+    })
   }
 
   const { error: profileError } = await admin.from("profiles").upsert(

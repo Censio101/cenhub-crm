@@ -1,5 +1,5 @@
-import { AdminMetaHub } from "@/components/admin/AdminMetaHub"
+import { redirect } from "next/navigation"
 
 export default function AdminMetaPage() {
-  return <AdminMetaHub />
+  redirect("/admin")
 }

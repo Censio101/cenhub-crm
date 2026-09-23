@@ -39,10 +39,22 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient()
+
+    let organizationName: string | null = null
+    if (body.organizationId) {
+      const { data: organization } = await admin
+        .from("organizations")
+        .select("name")
+        .eq("id", body.organizationId)
+        .maybeSingle()
+      organizationName = organization?.name ?? null
+    }
+
     const result = await inviteOrCreateUser(admin, {
       email: body.email,
       role: body.role,
       organizationId: body.organizationId ?? null,
+      organizationName,
       method: body.method,
       password: body.password,
       fullName: body.fullName,

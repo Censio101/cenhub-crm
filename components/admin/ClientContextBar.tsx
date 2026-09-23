@@ -12,6 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { isVisibleInClientSwitcher } from "@/lib/admin/admin-routes"
+import {
+  clientInitialsFromName,
+  formatClientDisplayName,
+} from "@/lib/admin/format-client-display-name"
 import { outfit } from "@/lib/fonts/app-fonts"
 import { cn } from "cn"
 
@@ -21,19 +26,14 @@ type OrganizationOption = {
   name: string
 }
 
-function clientInitials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return "?"
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-  return (words[0][0] + words[1][0]).toUpperCase()
-}
-
 export function ClientContextBar() {
   const router = useRouter()
   const { t } = useLanguage()
   const { organization, role, setActiveOrganization } = useActiveOrganization()
   const [organizations, setOrganizations] = useState<OrganizationOption[]>([])
   const [switchingSlug, setSwitchingSlug] = useState<string | null>(null)
+
+  const displayName = organization ? formatClientDisplayName(organization.name) : ""
 
   useEffect(() => {
     let cancelled = false
@@ -43,7 +43,11 @@ export function ClientContextBar() {
         const response = await fetch("/api/admin/organizations", { cache: "no-store" })
         if (!response.ok || cancelled) return
         const data = (await response.json()) as { organizations: OrganizationOption[] }
-        if (!cancelled) setOrganizations(data.organizations)
+        if (!cancelled) {
+          setOrganizations(
+            data.organizations.filter((option) => isVisibleInClientSwitcher(option.slug))
+          )
+        }
       } catch {
         // Keep the current client visible if the list fails to load.
       }
@@ -77,7 +81,7 @@ export function ClientContextBar() {
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger
-            aria-label={`${t("switchClient")}: ${organization.name}`}
+            aria-label={`${t("switchClient")}: ${displayName}`}
             className={cn(
               "inline-flex min-w-0 max-w-full items-center gap-2.5 rounded-full border border-[#d3c3b2] bg-white px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition-colors",
               "hover:border-primary/40 hover:bg-white focus-visible:ring-3 focus-visible:ring-primary/30 focus-visible:outline-none",
@@ -88,9 +92,9 @@ export function ClientContextBar() {
               className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-xs font-semibold tracking-wide text-white"
               aria-hidden="true"
             >
-              {clientInitials(organization.name)}
+              {clientInitialsFromName(displayName)}
             </span>
-            <span className="truncate">{organization.name}</span>
+            <span className="truncate">{displayName}</span>
             <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -99,6 +103,7 @@ export function ClientContextBar() {
           >
             {organizations.map((option) => {
               const isActive = option.slug === organization.slug
+              const optionName = formatClientDisplayName(option.name)
               return (
                 <DropdownMenuItem
                   key={option.id}
@@ -116,7 +121,7 @@ export function ClientContextBar() {
                     aria-hidden="true"
                   />
                   <span className={cn("min-w-0 flex-1 truncate", isActive && "font-semibold")}>
-                    {option.name}
+                    {optionName}
                   </span>
                 </DropdownMenuItem>
               )

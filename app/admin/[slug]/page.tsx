@@ -1,10 +1,10 @@
-import { AdminClientDetail } from "@/components/admin/AdminClientDetail"
+import { redirect } from "next/navigation"
 
 type PageProps = {
   params: Promise<{ slug: string }>
 }
 
-export default async function AdminClientPage({ params }: PageProps) {
+export default async function AdminClientIndexPage({ params }: PageProps) {
   const { slug } = await params
-  return <AdminClientDetail slug={slug} />
+  redirect(`/admin/${slug}/meta`)
 }

@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 
-import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import {
   Card,
   CardContent,
@@ -84,16 +83,6 @@ export function AdminSettings() {
               {notice}
             </p>
           ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("censioAdminsTitle")}</CardTitle>
-          <CardDescription>{t("censioAdminsDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AdminInviteUserForm />
         </CardContent>
       </Card>
     </div>

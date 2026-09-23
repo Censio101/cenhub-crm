@@ -39,10 +39,23 @@ export async function reconcileOrganizationLeads(
     }
   }
 
-  const leads = await fetchMetaLeadsForOrganization(row, {
-    withFields: true,
-    daysBack: options.daysBack ?? 30,
-  })
+  let leads
+  try {
+    leads = await fetchMetaLeadsForOrganization(row, {
+      withFields: true,
+      daysBack: options.daysBack ?? 30,
+    })
+  } catch (error) {
+    const reason =
+      error instanceof Error ? error.message : "Meta lead sync failed."
+    return {
+      organizationId,
+      skipped: true,
+      reason,
+      imported: 0,
+      scanned: 0,
+    }
+  }
 
   let imported = 0
   for (const lead of leads) {

@@ -42,46 +42,47 @@ export function AdminHubToolbar<T extends string>({
 
   return (
     <div className="hub-toolbar-row">
-      <div className="hub-search">
-        <SearchIcon className="size-4" aria-hidden="true" />
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder={searchPlaceholder}
-          aria-label={searchAriaLabel ?? searchPlaceholder}
-          autoComplete="off"
-        />
+      <div
+        className="meta-hub-filters"
+        id="client-hub-filters"
+        role="tablist"
+        aria-label={filterAriaLabel ?? t("filterClients")}
+      >
+        {filters.map((value) => {
+          const isActive = filter === value
+          return (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={cn("meta-hub-filter", isActive && "is-active")}
+              onClick={() => onFilterChange(value)}
+            >
+              {t(filterLabels[value])}
+            </button>
+          )
+        })}
       </div>
 
       <span className="hub-count" id="hub-count">
         {loading ? (loadingLabel ?? t("loadingClients")) : countLabel}
       </span>
 
-      <div className="hub-toolbar-actions">
-        {actions}
-        <div
-          className="meta-hub-filters"
-          id="client-hub-filters"
-          role="tablist"
-          aria-label={filterAriaLabel ?? t("filterClients")}
-        >
-          {filters.map((value) => {
-            const isActive = filter === value
-            return (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={cn("meta-hub-filter", isActive && "is-active")}
-                onClick={() => onFilterChange(value)}
-              >
-                {t(filterLabels[value])}
-              </button>
-            )
-          })}
+      <div className="hub-toolbar-trailing">
+        <div className="hub-search">
+          <SearchIcon className="size-4" aria-hidden="true" />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchAriaLabel ?? searchPlaceholder}
+            autoComplete="off"
+          />
         </div>
+
+        {actions}
       </div>
     </div>
   )

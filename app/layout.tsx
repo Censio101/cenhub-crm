@@ -21,9 +21,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="da"
-      className={`${outfit.variable} ${outfit.className} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${outfit.variable} ${outfit.className} ${poppins.variable} ${geistMono.variable} min-h-dvh antialiased`}
     >
-      <body className="min-h-full bg-background font-sans text-foreground">
+      <body className="min-h-dvh bg-background font-sans text-foreground">
         <TooltipProvider>
           <AppShell>{children}</AppShell>
         </TooltipProvider>

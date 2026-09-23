@@ -19,6 +19,7 @@ export type EmployeeAccess = {
 }
 
 export type AccountSettings = {
+  displayName: string
   profileImage: string
   logo: string
   email: string
@@ -29,6 +30,7 @@ export type AccountSettings = {
 }
 
 export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = {
+  displayName: "",
   profileImage: CURRENT_COMPANY.image,
   logo: CURRENT_COMPANY.logo,
   email: "kontakt@nordkystens-tomrer.dk",
@@ -164,6 +166,10 @@ export function readAccountSettings(): AccountSettings {
     const customServices = parseCustomServices(parsed.customServices)
     return {
       profileImage: parsed.profileImage || DEFAULT_ACCOUNT_SETTINGS.profileImage,
+      displayName:
+        typeof parsed.displayName === "string"
+          ? parsed.displayName
+          : DEFAULT_ACCOUNT_SETTINGS.displayName,
       logo: parsed.logo || DEFAULT_ACCOUNT_SETTINGS.logo,
       email: parsed.email || DEFAULT_ACCOUNT_SETTINGS.email,
       employees:

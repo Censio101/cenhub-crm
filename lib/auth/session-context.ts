@@ -13,6 +13,8 @@ import type { OrganizationRow, ProfileRow, UserRole } from "@/lib/db/types"
 
 export type SessionContext = {
   userId: string | null
+  email: string | null
+  fullName: string | null
   role: UserRole | null
   organization: OrganizationRow | null
   profile: ProfileRow | null
@@ -65,6 +67,8 @@ export async function getSessionContext(): Promise<SessionContext> {
         userId: user.id,
         role: profile.role,
         organization: organization ?? null,
+        email: user.email ?? profile.email,
+        fullName: profile.full_name,
         profile,
         isDemoFallback: false,
         isAdminViewingClient: false,
@@ -81,6 +85,8 @@ export async function getSessionContext(): Promise<SessionContext> {
             userId: user.id,
             role: profile.role,
             organization,
+            email: user.email ?? profile.email,
+            fullName: profile.full_name,
             profile,
             isDemoFallback: false,
             isAdminViewingClient: true,
@@ -92,6 +98,8 @@ export async function getSessionContext(): Promise<SessionContext> {
         userId: user.id,
         role: profile.role,
         organization: null,
+        email: user.email ?? profile.email,
+        fullName: profile.full_name,
         profile,
         isDemoFallback: false,
         isAdminViewingClient: false,
@@ -111,6 +119,8 @@ export async function getSessionContext(): Promise<SessionContext> {
       userId: null,
       role: "client_admin",
       organization: organization ?? null,
+      email: null,
+      fullName: null,
       profile: null,
       isDemoFallback: true,
       isAdminViewingClient: false,
@@ -121,6 +131,8 @@ export async function getSessionContext(): Promise<SessionContext> {
     userId: null,
     role: null,
     organization: null,
+    email: null,
+    fullName: null,
     profile: null,
     isDemoFallback: false,
     isAdminViewingClient: false,

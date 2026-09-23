@@ -1,0 +1,17 @@
+import { cn } from "cn"
+
+export const adminSectionCardClass =
+  "rounded-2xl border border-[#d3c3b2] bg-card shadow-[0_1px_3px_rgba(26,18,8,0.06)]"
+
+export const adminFieldClass =
+  "h-11 w-full rounded-xl border border-[#d3c3b2] bg-white px-3 text-[15px] outline-none placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15"
+
+export function adminIconBoxClass(tone: "brand" | "blue" | "violet" | "neutral" = "neutral") {
+  return cn(
+    "flex size-9 shrink-0 items-center justify-center rounded-lg",
+    tone === "brand" && "bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-white",
+    tone === "blue" && "bg-blue-50 text-blue-700",
+    tone === "violet" && "bg-violet-50 text-violet-700",
+    tone === "neutral" && "bg-[#faf8f6] text-muted-foreground"
+  )
+}

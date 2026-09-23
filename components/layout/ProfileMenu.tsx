@@ -15,9 +15,11 @@ import {
 } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useUserProfile } from "@/lib/auth/use-user-profile"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { CURRENT_COMPANY } from "@/lib/company"
 import { createClient } from "@/lib/supabase/client"
 import { isSignedIn, signOut as mockSignOut } from "@/lib/session"
@@ -36,6 +38,7 @@ export function ProfileMenu() {
   const pathname = usePathname()
   const router = useRouter()
   const { settings } = useAccountSettings()
+  const { settings: adminSettings } = useAdminAccountSettings()
   const { configured, isAuthenticated, loading } = useSupabaseSession()
   const { role } = useUserProfile()
   const { organization, role: activeRole, loading: orgLoading } =
@@ -50,9 +53,14 @@ export function ProfileMenu() {
 
   const signedIn = configured ? isAuthenticated : mockSignedIn
   const isAdmin = (activeRole ?? role) === "censio_admin"
-  const displayName = isAdmin
-    ? "Censio Admin"
-    : (organization?.name ?? CURRENT_COMPANY.name)
+  const savedName = (isAdmin ? adminSettings.displayName : settings.displayName)
+    ?.trim() ?? ""
+  const displayName = savedName
+    ? savedName
+    : isAdmin
+      ? "Censio Admin"
+      : (organization?.name ?? CURRENT_COMPANY.name)
+  const profileImage = isAdmin ? adminSettings.profileImage : settings.profileImage
 
   if (!loading && !signedIn) {
     return (
@@ -79,14 +87,28 @@ export function ProfileMenu() {
         <p className="hidden max-w-52 truncate text-right text-base font-medium text-inherit sm:block">
           {orgLoading ? CURRENT_COMPANY.name : displayName}
         </p>
-        {settings.profileImage.startsWith("data:") ||
-        settings.profileImage.startsWith("blob:") ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={settings.profileImage}
-            alt=""
-            className="size-11 rounded-full object-cover ring-1 ring-white/20"
-          />
+        {profileImage ? (
+          profileImage.startsWith("data:") || profileImage.startsWith("blob:") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profileImage}
+              alt=""
+              className="size-11 rounded-full object-cover ring-1 ring-white/20"
+            />
+          ) : (
+            <Image
+              src={profileImage}
+              alt=""
+              width={64}
+              height={64}
+              className="size-11 rounded-full object-cover ring-1 ring-white/20"
+              unoptimized
+            />
+          )
+        ) : isAdmin ? (
+          <span className="flex size-11 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+            <UserRoundIcon className="size-6 text-white/80" aria-hidden="true" />
+          </span>
         ) : (
           <Image
             src={settings.profileImage}
@@ -108,20 +130,20 @@ export function ProfileMenu() {
           </DropdownMenuLabel>
           {isAdmin && organization ? (
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-              {organization.name}
+              {formatClientDisplayName(organization.name)}
             </DropdownMenuLabel>
           ) : null}
           {isAdmin ? (
             <>
-              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/meta" />}>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
                 <ShieldIcon />
-                Meta klienter
+                Alle klienter
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/settings" />}>
                 <SettingsIcon />
                 Admin indstillinger
               </DropdownMenuItem>
-              <DropdownMenuItem nativeButton={false} render={<Link href="/konto" />}>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/konto" />}>
                 <UserRoundIcon />
                 Min konto
               </DropdownMenuItem>

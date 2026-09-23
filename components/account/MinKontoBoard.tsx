@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { UserRoundIcon } from "lucide-react"
+import { useEffect, useState } from "react"
 
+import { ProfilePhotoField } from "@/components/account/ProfilePhotoField"
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
@@ -17,33 +17,11 @@ import {
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
 
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024
-
-function readImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) {
-      reject(new Error("Vælg en billedfil."))
-      return
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      reject(new Error("Billedet må højst være 2 MB."))
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === "string") resolve(reader.result)
-      else reject(new Error("Billedet kunne ikke læses."))
-    }
-    reader.onerror = () => reject(new Error("Billedet kunne ikke læses."))
-    reader.readAsDataURL(file)
-  })
-}
-
 export function MinKontoBoard() {
   const { t } = useLanguage()
   const { settings, updateSettings } = useAccountSettings()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [imageError, setImageError] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState(settings.displayName)
+  const [nameSaved, setNameSaved] = useState(false)
   const [email, setEmail] = useState(settings.email)
   const [emailSaved, setEmailSaved] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
@@ -51,6 +29,10 @@ export function MinKontoBoard() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDisplayName(settings.displayName)
+  }, [settings.displayName])
 
   useEffect(() => {
     setEmail(settings.email)
@@ -69,59 +51,56 @@ export function MinKontoBoard() {
       <div className="mt-8 grid gap-5">
         <Card className="dashboard-card">
           <CardHeader>
+            <CardTitle>{t("profileNameTitle")}</CardTitle>
+            <CardDescription>{t("profileNameDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const next = displayName.trim()
+                if (!next) return
+                updateSettings({ displayName: next })
+                setNameSaved(true)
+              }}
+            >
+              <label className="grid gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("profileNameLabel")}
+                </span>
+                <input
+                  type="text"
+                  required
+                  value={displayName}
+                  onChange={(event) => {
+                    setDisplayName(event.target.value)
+                    setNameSaved(false)
+                  }}
+                  placeholder={t("profileNamePlaceholder")}
+                  className={fieldClass}
+                />
+              </label>
+              <Button type="submit" className="h-11 rounded-[5px] px-4">
+                {t("saveName")}
+              </Button>
+            </form>
+            {nameSaved ? (
+              <p className="mt-3 text-sm text-success-foreground">{t("nameUpdated")}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card">
+          <CardHeader>
             <CardTitle>{t("profilePhotoTitle")}</CardTitle>
             <CardDescription>{t("profilePhotoDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border">
-                {settings.profileImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={settings.profileImage}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <UserRoundIcon className="size-8 text-muted-foreground" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="sr-only"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0]
-                    event.target.value = ""
-                    if (!file) return
-                    try {
-                      const next = await readImageFile(file)
-                      setImageError(null)
-                      updateSettings({ profileImage: next })
-                    } catch (caught) {
-                      setImageError(
-                        caught instanceof Error
-                          ? caught.message
-                          : "Kunne ikke skifte billede."
-                      )
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10"
-                  onClick={() => inputRef.current?.click()}
-                >
-                  {t("changePhoto")}
-                </Button>
-                {imageError ? (
-                  <p className="mt-2 text-sm text-danger-foreground">{imageError}</p>
-                ) : null}
-              </div>
-            </div>
+            <ProfilePhotoField
+              image={settings.profileImage}
+              onImageChange={(dataUrl) => updateSettings({ profileImage: dataUrl })}
+            />
           </CardContent>
         </Card>
 

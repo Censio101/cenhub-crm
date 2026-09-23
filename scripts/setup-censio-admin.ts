@@ -5,10 +5,10 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
+import { sendUserInviteEmail } from "../lib/email/send-user-invite"
 import { createAdminClient } from "../lib/supabase/admin"
 
 const ADMIN_EMAIL = "kontakt@censio.dk"
-const SITE_URL = process.env.CRM_SITE_URL ?? "https://cenhub-crm.vercel.app"
 
 function loadEnvLocal() {
   try {
@@ -50,12 +50,13 @@ async function main() {
   let userId = await findUserIdByEmail(admin, ADMIN_EMAIL)
 
   if (!userId) {
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(ADMIN_EMAIL, {
-      redirectTo: `${SITE_URL}/auth/callback`,
+    const inviteResult = await sendUserInviteEmail(admin, {
+      email: ADMIN_EMAIL,
+      role: "censio_admin",
+      fullName: "Censio Admin",
     })
-    if (error) throw error
-    userId = data.user.id
-    console.log(`Invite sent to ${ADMIN_EMAIL}`)
+    userId = inviteResult.userId
+    console.log(`Invite sent to ${ADMIN_EMAIL} from Censio Mailgun`)
   } else {
     console.log(`User already exists for ${ADMIN_EMAIL}`)
   }

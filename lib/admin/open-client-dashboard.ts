@@ -1,17 +1,28 @@
 type DashboardRouter = {
   push: (href: string) => void
-  refresh: () => void
+}
+
+type OpenClientDashboardOptions = {
+  /** Open the client dashboard in a new browser tab (keeps admin open in the current tab). */
+  newTab?: boolean
+  router?: DashboardRouter
 }
 
 export async function openClientDashboard(
   slug: string,
   setActiveOrganization: (slug: string | null) => Promise<boolean>,
-  router: DashboardRouter
+  options: OpenClientDashboardOptions = {}
 ) {
   const success = await setActiveOrganization(slug)
-  if (success) {
-    router.push("/overblik")
-    router.refresh()
+  if (!success) return false
+
+  if (options.newTab) {
+    window.open("/overblik", "_blank", "noopener,noreferrer")
+  } else if (options.router) {
+    options.router.push("/overblik")
+  } else {
+    window.location.assign("/overblik")
   }
-  return success
+
+  return true
 }

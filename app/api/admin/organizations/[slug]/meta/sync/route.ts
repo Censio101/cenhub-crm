@@ -5,6 +5,7 @@ import {
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
+import { ensureMetaIdsForOrganization } from "@/lib/meta/ensure-meta-ids"
 import { reconcileOrganizationLeads } from "@/lib/meta/reconcile-leads"
 import { syncOrganizationAdMetrics } from "@/lib/meta/sync-ad-metrics"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -27,6 +28,10 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
+    const ensured = await ensureMetaIdsForOrganization(admin, organization.id, {
+      organizationName: organization.name,
+    })
+
     const metrics =
       scope === "leads"
         ? null
@@ -41,6 +46,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
+      ensured,
       metrics,
       leads,
     })

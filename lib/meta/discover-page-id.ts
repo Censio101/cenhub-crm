@@ -39,6 +39,23 @@ export async function discoverPageIdFromAdAccount(
       if (pageId) return pageId
     }
   } catch {
+    // fall through to ad sets lookup
+  }
+
+  const adsetsUrl =
+    `https://graph.facebook.com/${GRAPH_VERSION}/act_${accountId}/adsets` +
+    "?fields=promoted_object{page_id}&limit=50"
+
+  try {
+    const adsets = await fetchAllGraphPages<{
+      promoted_object?: { page_id?: string }
+    }>(adsetsUrl, accessToken, 2)
+
+    for (const adset of adsets) {
+      const pageId = String(adset.promoted_object?.page_id || "").trim()
+      if (pageId) return pageId
+    }
+  } catch {
     return null
   }
 

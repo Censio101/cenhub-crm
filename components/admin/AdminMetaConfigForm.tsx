@@ -1,19 +1,24 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from "react"
+import { FormEvent, useEffect, useState, type ReactNode } from "react"
+import {
+  AppWindowIcon,
+  CircleDotIcon,
+  MegaphoneIcon,
+  PlugZapIcon,
+  RefreshCwIcon,
+  SaveIcon,
+  ScanLineIcon,
+} from "lucide-react"
 
+import {
+  adminFieldClass,
+  adminIconBoxClass,
+  adminSectionCardClass,
+} from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-
-const fieldClass =
-  "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
+import { cn } from "cn"
 
 export type MetaConfig = {
   metaAdAccountId: string
@@ -48,6 +53,73 @@ function toMetaConfig(
     metaSyncError: config.metaSyncError ?? null,
     metaLastSyncedAt: config.metaLastSyncedAt ?? null,
   }
+}
+
+function MetaToggle({
+  checked,
+  disabled,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  disabled?: boolean
+  onChange: (next: boolean) => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-emerald-600" : "bg-[#d3c3b2]"
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-[22px]" : "translate-x-0.5"
+        )}
+      />
+    </button>
+  )
+}
+
+function MetaField({
+  icon,
+  tone,
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  icon: ReactNode
+  tone: "brand" | "blue" | "violet" | "neutral"
+  label: string
+  value: string
+  placeholder?: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <span className={adminIconBoxClass(tone)} aria-hidden="true">
+          {icon}
+        </span>
+        <span className="text-[14px] font-semibold text-foreground">{label}</span>
+      </div>
+      <input
+        className={adminFieldClass}
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  )
 }
 
 export function AdminMetaConfigForm({
@@ -109,10 +181,24 @@ export function AdminMetaConfigForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       })
-      const data = (await response.json()) as { error?: string; config?: MetaConfig }
+      const data = (await response.json()) as {
+        error?: string
+        config?: MetaConfig
+        onboard?: { adAccountDiscovered?: boolean; pageIdDiscovered?: boolean }
+      }
       if (!response.ok) throw new Error(data.error ?? t("errorSaveMeta"))
       if (data.config) setConfig(toMetaConfig(data.config))
-      setMessage(t("metaSetupSaved"))
+
+      let message = t("metaSetupSaved")
+      if (data.onboard?.adAccountDiscovered) {
+        message += ` ${t("metaAdAccountDiscovered")}`
+      }
+      if (data.onboard?.pageIdDiscovered) {
+        message += t("onboardPageFound")
+      } else if (data.config?.enabled && !data.config.metaPageId?.trim()) {
+        message += t("onboardAddPageId")
+      }
+      setMessage(message.trim())
       onSaved?.()
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t("errorSaveMeta"))
@@ -153,12 +239,19 @@ export function AdminMetaConfigForm({
       })
       const data = (await response.json()) as {
         error?: string
+        ensured?: { adAccountDiscovered?: boolean; pageIdDiscovered?: boolean }
         metrics?: { success?: boolean; reason?: string; monthCount?: number }
         leads?: { imported?: number; scanned?: number; reason?: string }
       }
       if (!response.ok) throw new Error(data.error ?? t("syncFailed"))
 
       const parts = []
+      if (data.ensured?.adAccountDiscovered) {
+        parts.push(t("metaAdAccountDiscovered"))
+      }
+      if (data.ensured?.pageIdDiscovered) {
+        parts.push(t("onboardPageFound"))
+      }
       if (data.metrics?.success) {
         parts.push(t("adSpendSynced", { months: data.metrics.monthCount ?? 0 }))
       } else if (data.metrics?.reason) {
@@ -177,6 +270,7 @@ export function AdminMetaConfigForm({
 
       setMessage(parts.join(" · ") || t("syncComplete"))
       await loadConfig()
+      onSaved?.()
     } catch (syncError) {
       setError(syncError instanceof Error ? syncError.message : t("syncFailed"))
     } finally {
@@ -184,124 +278,145 @@ export function AdminMetaConfigForm({
     }
   }
 
+  const syncStatusTone =
+    config.metaSyncStatus === "ok"
+      ? "text-emerald-700"
+      : config.metaSyncStatus === "error"
+        ? "text-red-700"
+        : "text-muted-foreground"
+
   return (
-    <Card className="border border-border shadow-sm">
-      <CardHeader>
-        <CardTitle>{t("metaSetupTitle")}</CardTitle>
-        <CardDescription>{t("metaSetupDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <section className={cn(adminSectionCardClass, "overflow-hidden")}>
+      <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5 sm:px-6">
+        <span className={adminIconBoxClass("brand")} aria-hidden="true">
+          <CircleDotIcon className="size-[18px]" />
+        </span>
+        <h2 className="text-base font-semibold text-foreground">{t("metaSetupTitle")}</h2>
+      </div>
+
+      <div className="px-5 py-4 sm:px-6">
         {loading ? (
           <div className="grid gap-4" aria-busy="true" aria-live="polite">
             <p className="sr-only">{t("loading")}</p>
-            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
-            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
-            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
-            <div className="h-5 w-40 animate-pulse rounded-md bg-muted" />
-            <div className="h-16 animate-pulse rounded-[15px] bg-muted" />
-            <div className="flex flex-wrap gap-2">
-              <div className="h-10 w-28 animate-pulse rounded-[10px] bg-muted" />
-              <div className="h-10 w-32 animate-pulse rounded-[10px] bg-muted" />
-              <div className="h-10 w-24 animate-pulse rounded-[10px] bg-muted" />
+            <div className="h-14 animate-pulse rounded-xl bg-muted" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="h-28 animate-pulse rounded-xl bg-muted" />
+              <div className="h-28 animate-pulse rounded-xl bg-muted" />
             </div>
           </div>
         ) : (
-        <form className="grid gap-4" onSubmit={handleSubmit}>
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">{t("metaAdAccountId")}</span>
-            <input
-              className={fieldClass}
-              value={config.metaAdAccountId}
-              onChange={(event) =>
-                setConfig((current) => ({
-                  ...current,
-                  metaAdAccountId: event.target.value,
-                }))
-              }
-              placeholder={t("metaAdAccountPlaceholder")}
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">{t("metaPageId")}</span>
-            <input
-              className={fieldClass}
-              value={config.metaPageId}
-              onChange={(event) =>
-                setConfig((current) => ({ ...current, metaPageId: event.target.value }))
-              }
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">{t("metaPixelId")}</span>
-            <input
-              className={fieldClass}
+          <form className="grid gap-4" onSubmit={handleSubmit}>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-[#d3c3b2] bg-white px-4 py-3">
+              <p className="text-[14px] font-semibold text-foreground">
+                {t("metaEnabledForClient")}
+              </p>
+              <MetaToggle
+                checked={config.enabled}
+                label={t("metaEnabledForClient")}
+                onChange={(enabled) => setConfig((current) => ({ ...current, enabled }))}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <MetaField
+                tone="brand"
+                icon={<MegaphoneIcon className="size-[18px]" />}
+                label={t("metaAdAccountId")}
+                placeholder={t("metaAdAccountPlaceholder")}
+                value={config.metaAdAccountId}
+                onChange={(metaAdAccountId) =>
+                  setConfig((current) => ({ ...current, metaAdAccountId }))
+                }
+              />
+              <MetaField
+                tone="blue"
+                icon={<AppWindowIcon className="size-[18px]" />}
+                label={t("metaPageId")}
+                value={config.metaPageId}
+                onChange={(metaPageId) => setConfig((current) => ({ ...current, metaPageId }))}
+              />
+            </div>
+
+            <MetaField
+              tone="violet"
+              icon={<ScanLineIcon className="size-[18px]" />}
+              label={t("metaPixelId")}
               value={config.metaPixelId}
-              onChange={(event) =>
-                setConfig((current) => ({ ...current, metaPixelId: event.target.value }))
-              }
+              onChange={(metaPixelId) => setConfig((current) => ({ ...current, metaPixelId }))}
             />
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={config.enabled}
-              onChange={(event) =>
-                setConfig((current) => ({ ...current, enabled: event.target.checked }))
-              }
-            />
-            {t("metaEnabledForClient")}
-          </label>
-          <div className="rounded-[15px] bg-muted/70 px-3 py-2 text-sm text-muted-foreground">
-            <p>
-              {t("syncStatus")} {config.metaSyncStatus}
-            </p>
-            <p>
-              {t("lastSynced")} {formatTimestamp(config.metaLastSyncedAt)}
-            </p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-[#e8e0d8] bg-[#faf8f6] px-3.5 py-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase">
+                  {t("syncStatus")}
+                </p>
+                <p className={cn("mt-0.5 text-[14px] font-semibold capitalize", syncStatusTone)}>
+                  {config.metaSyncStatus}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#e8e0d8] bg-[#faf8f6] px-3.5 py-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase">
+                  {t("lastSynced")}
+                </p>
+                <p className="mt-0.5 text-[14px] font-semibold text-foreground">
+                  {formatTimestamp(config.metaLastSyncedAt)}
+                </p>
+              </div>
+            </div>
+
             {config.metaSyncError ? (
-              <p className="mt-1 text-destructive">{config.metaSyncError}</p>
+              <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800">
+                {config.metaSyncError}
+              </p>
             ) : null}
-          </div>
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {message ? (
-            <p className="text-sm text-muted-foreground" role="status">
-              {message}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" className="h-10" disabled={saving || loading}>
-              {saving ? t("saving") : t("saveMetaSetup")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10"
-              disabled={testing || loading}
-              onClick={() => {
-                void handleTestConnection()
-              }}
-            >
-              {testing ? t("testing") : t("testConnection")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10"
-              disabled={syncing || loading}
-              onClick={() => {
-                void handleSyncNow()
-              }}
-            >
-              {syncing ? t("syncing") : t("syncNow")}
-            </Button>
-          </div>
-        </form>
+
+            {error ? (
+              <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800" role="alert">
+                {error}
+              </p>
+            ) : null}
+            {message ? (
+              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-800" role="status">
+                {message}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2 border-t border-[#e8e0d8] pt-4">
+              <Button type="submit" className="h-10 gap-2 px-4" disabled={saving || loading}>
+                <SaveIcon className="size-4" aria-hidden="true" />
+                {saving ? t("saving") : t("saveMetaSetup")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 border-[#d3c3b2] bg-white px-4"
+                disabled={testing || loading}
+                onClick={() => {
+                  void handleTestConnection()
+                }}
+              >
+                <PlugZapIcon className="size-4" aria-hidden="true" />
+                {testing ? t("testing") : t("testConnection")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 border-[#d3c3b2] bg-white px-4"
+                disabled={syncing || loading}
+                onClick={() => {
+                  void handleSyncNow()
+                }}
+              >
+                <RefreshCwIcon
+                  className={cn("size-4", syncing && "animate-spin")}
+                  aria-hidden="true"
+                />
+                {syncing ? t("syncing") : t("syncNow")}
+              </Button>
+            </div>
+          </form>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

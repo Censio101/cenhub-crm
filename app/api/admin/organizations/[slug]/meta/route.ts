@@ -65,10 +65,14 @@ export async function PATCH(request: Request, context: RouteContext) {
     const onboard = body.enabled
       ? await onboardMetaClient(admin, organization.id, {
           source: "admin-toggle",
+          organizationName: organization.name,
         })
       : null
 
-    return NextResponse.json({ config, onboard })
+    const fresh =
+      (await getMetaConfig(admin, organization.id)) ?? config
+
+    return NextResponse.json({ config: fresh, onboard })
   } catch (error) {
     return adminErrorResponse(error)
   }

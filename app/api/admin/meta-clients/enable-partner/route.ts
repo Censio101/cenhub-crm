@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       body.enabled
         ? await onboardMetaClient(admin, result.organization.id, {
             source: "admin-enable-partner",
+            organizationName: result.organization.name,
           })
         : null
 

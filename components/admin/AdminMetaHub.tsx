@@ -38,6 +38,7 @@ type PartnerClient = {
 type Filter = "all" | "enabled" | "needs-setup"
 
 type OnboardPayload = {
+  adAccountDiscovered?: boolean
   pageIdDiscovered?: boolean
   metrics?: {
     success?: boolean
@@ -187,7 +188,7 @@ function CompactMetaList({
             </button>
 
             <Link
-              href={`/admin/${client.slug}`}
+              href={`/admin/${client.slug}/meta`}
               className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label={t("editClient", { name: client.name })}
             >

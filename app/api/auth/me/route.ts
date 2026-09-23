@@ -7,6 +7,8 @@ export async function GET() {
 
   return NextResponse.json({
     userId: ctx.userId,
+    email: ctx.email,
+    fullName: ctx.fullName,
     role: ctx.role,
     organization: ctx.organization
       ? {
