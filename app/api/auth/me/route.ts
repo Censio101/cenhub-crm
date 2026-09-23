@@ -9,6 +9,7 @@ export async function GET() {
     userId: ctx.userId,
     email: ctx.email,
     fullName: ctx.fullName,
+    avatarUrl: ctx.profile?.avatar_url ?? null,
     role: ctx.role,
     organization: ctx.organization
       ? {

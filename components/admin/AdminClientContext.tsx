@@ -31,7 +31,7 @@ type AdminClientContextValue = {
   metaConfig: MetaConfig | null
   loading: boolean
   error: string | null
-  reload: () => Promise<void>
+  reload: (options?: { silent?: boolean }) => Promise<void>
 }
 
 const AdminClientContext = createContext<AdminClientContextValue | null>(null)
@@ -50,9 +50,11 @@ export function AdminClientProvider({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const reload = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const reload = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const [orgResponse, usersResponse, metaResponse] = await Promise.all([
         fetch(`/api/admin/organizations/${slug}`, { cache: "no-store" }),

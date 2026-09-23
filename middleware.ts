@@ -4,7 +4,8 @@ import { NextResponse, type NextRequest } from "next/server"
 function isPublicPath(pathname: string) {
   return (
     pathname.startsWith("/login") ||
-    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/auth/invite") ||
+    pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/logget-ud")
   )
 }
@@ -59,6 +60,10 @@ export async function middleware(request: NextRequest) {
 
     const destination = profile?.role === "censio_admin" ? "/admin" : "/"
     return NextResponse.redirect(new URL(destination, request.url))
+  }
+
+  if (user && pathname.startsWith("/auth/setup-password")) {
+    return response
   }
 
   if (

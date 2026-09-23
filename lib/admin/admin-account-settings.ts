@@ -32,5 +32,19 @@ export function readAdminAccountSettings(): AdminAccountSettings {
 }
 
 export function writeAdminAccountSettings(settings: AdminAccountSettings) {
-  window.localStorage.setItem(ADMIN_ACCOUNT_SETTINGS_KEY, JSON.stringify(settings))
+  try {
+    window.localStorage.setItem(ADMIN_ACCOUNT_SETTINGS_KEY, JSON.stringify(settings))
+  } catch {
+    try {
+      window.localStorage.setItem(
+        ADMIN_ACCOUNT_SETTINGS_KEY,
+        JSON.stringify({
+          displayName: settings.displayName,
+          profileImage: "",
+        })
+      )
+    } catch {
+      // Ignore quota errors — avatar is persisted on the server.
+    }
+  }
 }

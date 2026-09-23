@@ -72,10 +72,11 @@ export async function sendUserInviteEmail(
 
   if (error) throw error
 
-  const actionLink = data.properties.action_link
-  if (!actionLink) {
+  if (!data.properties.action_link) {
     throw new Error("Invite link could not be generated")
   }
+
+  const actionLink = `${settings.inviteAcceptUrl}?email=${encodeURIComponent(email)}`
 
   await sendInviteEmail(settings, {
     to: email,

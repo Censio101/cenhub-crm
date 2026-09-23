@@ -170,7 +170,25 @@ export const en: Messages = {
   loginWrongCredentials: "Wrong email or password.",
   loginEmailDisabled: "Email login is disabled in Supabase. Contact Censio support.",
   loginCallbackError: "The login link could not be verified. Try again.",
+  loginInviteExpired:
+    "This invitation link has expired or was already used. Ask a Censio admin to resend your invite, then open the new email and click Accept invitation.",
+  loginInviteSessionError:
+    "Your invitation session expired. Open the invite email again and click Accept invitation.",
   loginInvalidLink: "Invalid login link.",
+  inviteAcceptTitle: "Accept your invitation",
+  inviteAcceptDescription:
+    "Click the button below to continue. This extra step keeps email scanners from invalidating your invite link.",
+  inviteAcceptButton: "Accept invitation",
+  inviteAcceptSubmitting: "Preparing your invite…",
+  inviteAcceptEmailRequired: "Enter the email address that received the invitation.",
+  inviteAcceptError: "Could not start the invitation. Ask a Censio admin to resend it.",
+  inviteAcceptAlreadyActive: "Your account is already active. Redirecting to login…",
+  inviteAcceptLoginHint: "Already set up your account?",
+  setupPasswordTitle: "Create your password",
+  setupPasswordDescription:
+    "Your invitation was accepted. Choose a password to finish setting up your Censio account.",
+  setupPasswordSubmit: "Save password and continue",
+  setupPasswordSubmitting: "Saving…",
   loginSupabaseMissingTitle: "Supabase is not configured",
   loginSupabaseMissingDescription:
     "Add Supabase environment variables to enable login. Until then the CRM runs with demo data.",
@@ -289,6 +307,10 @@ export const en: Messages = {
   cropPhotoSave: "Save photo",
   cropPhotoSaving: "Saving…",
   cropPhotoError: "Could not crop the image.",
+  profilePhotoSaved: "Profile photo saved.",
+  profilePhotoRemoved: "Profile photo removed.",
+  profilePhotoSaveError: "Could not save the profile photo.",
+  removePhoto: "Remove photo",
   changeEmailTitle: "Change email",
   changeEmailDescription: "The email you sign in with and receive notifications on.",
   emailLabel: "Email",

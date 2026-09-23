@@ -40,9 +40,16 @@ function readImageFile(file: File): Promise<string> {
 type ProfilePhotoFieldProps = {
   image: string
   onImageChange: (dataUrl: string) => void
+  onRemove?: () => void
+  disabled?: boolean
 }
 
-export function ProfilePhotoField({ image, onImageChange }: ProfilePhotoFieldProps) {
+export function ProfilePhotoField({
+  image,
+  onImageChange,
+  onRemove,
+  disabled = false,
+}: ProfilePhotoFieldProps) {
   const { t } = useLanguage()
   const inputRef = useRef<HTMLInputElement>(null)
   const [imageError, setImageError] = useState<string | null>(null)
@@ -161,17 +168,34 @@ export function ProfilePhotoField({ image, onImageChange }: ProfilePhotoFieldPro
               {!isDraggingPhoto ? <p className="mt-0.5">{t("dropPhotoHint")}</p> : null}
             </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3 h-10"
-            onClick={(event) => {
-              event.stopPropagation()
-              inputRef.current?.click()
-            }}
-          >
-            {t("changePhoto")}
-          </Button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10"
+              disabled={disabled}
+              onClick={(event) => {
+                event.stopPropagation()
+                inputRef.current?.click()
+              }}
+            >
+              {t("changePhoto")}
+            </Button>
+            {image && onRemove ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 text-red-700 hover:border-red-200 hover:bg-red-50 hover:text-red-800"
+                disabled={disabled}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onRemove()
+                }}
+              >
+                {t("removePhoto")}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       {imageError ? (

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation"
 
+import { AuthHashErrorHandler } from "@/components/auth/AuthHashErrorHandler"
 import { ClientContextBar } from "@/components/admin/ClientContextBar"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
@@ -30,6 +31,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
         isLoggedOut ? "bg-background" : "dashboard-page"
       )}
     >
+      <AuthHashErrorHandler />
       <AppTopbar />
       {showClientContextBar ? <ClientContextBar /> : null}
       <main

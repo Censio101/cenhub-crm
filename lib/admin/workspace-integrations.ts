@@ -50,6 +50,8 @@ export type WorkspaceIntegrationsPublic = WorkspaceIntegrations & {
   authCallbackUrl: string
   loginUrl: string
   inviteRedirectUrl: string
+  sessionRedirectUrl: string
+  inviteAcceptUrl: string
   source: {
     mailgunApiKey: "database" | "environment" | "missing"
     mailgunDomain: "database" | "environment" | "missing"
@@ -141,7 +143,8 @@ export function mergeWorkspaceIntegrations(
 
   const normalizedSiteUrl = normalizeSiteUrl(siteUrl.value)
   const normalizedAuthPath = normalizeAuthCallbackPath(authCallbackPath.value)
-  const inviteRedirectUrl = `${normalizedSiteUrl}${normalizedAuthPath}?next=/`
+  const inviteRedirectUrl = `${normalizedSiteUrl}${normalizedAuthPath}?next=${encodeURIComponent("/auth/setup-password")}`
+  const sessionRedirectUrl = `${normalizedSiteUrl}${normalizedAuthPath}?next=${encodeURIComponent("/")}`
 
   return {
     mailgunApiKey: mailgunApiKey.value,
@@ -158,6 +161,8 @@ export function mergeWorkspaceIntegrations(
     authCallbackUrl: inviteRedirectUrl,
     loginUrl: `${normalizedSiteUrl}/login`,
     inviteRedirectUrl,
+    sessionRedirectUrl,
+    inviteAcceptUrl: `${normalizedSiteUrl}/auth/invite`,
     source: {
       mailgunApiKey: mailgunApiKey.source,
       mailgunDomain: mailgunDomain.source,

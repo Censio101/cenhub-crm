@@ -168,7 +168,25 @@ const daMessages = {
   loginWrongCredentials: "Forkert e-mail eller adgangskode.",
   loginEmailDisabled: "E-mail login er deaktiveret i Supabase. Kontakt Censio support.",
   loginCallbackError: "Login-linket kunne ikke bekræftes. Prøv igen.",
+  loginInviteExpired:
+    "Invitationslinket er udløbet eller allerede brugt. Bed en Censio admin om at sende invitationen igen, og klik Acceptér invitation i den nye e-mail.",
+  loginInviteSessionError:
+    "Din invitationssession udløb. Åbn invitations-e-mailen igen og klik Acceptér invitation.",
   loginInvalidLink: "Ugyldigt login-link.",
+  inviteAcceptTitle: "Acceptér din invitation",
+  inviteAcceptDescription:
+    "Klik på knappen herunder for at fortsætte. Dette ekstra trin sikrer, at e-mail-scannere ikke ugyldiggør dit invitationslink.",
+  inviteAcceptButton: "Acceptér invitation",
+  inviteAcceptSubmitting: "Forbereder invitation…",
+  inviteAcceptEmailRequired: "Indtast den e-mail, der modtog invitationen.",
+  inviteAcceptError: "Invitationen kunne ikke startes. Bed en Censio admin om at sende den igen.",
+  inviteAcceptAlreadyActive: "Din konto er allerede aktiv. Sender dig videre til login…",
+  inviteAcceptLoginHint: "Har du allerede oprettet din konto?",
+  setupPasswordTitle: "Opret din adgangskode",
+  setupPasswordDescription:
+    "Din invitation er accepteret. Vælg en adgangskode for at færdiggøre din Censio-konto.",
+  setupPasswordSubmit: "Gem adgangskode og fortsæt",
+  setupPasswordSubmitting: "Gemmer…",
   loginSupabaseMissingTitle: "Supabase er ikke sat op",
   loginSupabaseMissingDescription:
     "Tilføj Supabase-miljøvariabler for at aktivere login. Indtil da kører CRM'et med demo-data.",
@@ -287,6 +305,10 @@ const daMessages = {
   cropPhotoSave: "Gem billede",
   cropPhotoSaving: "Gemmer…",
   cropPhotoError: "Billedet kunne ikke beskæres.",
+  profilePhotoSaved: "Profilbilledet er gemt.",
+  profilePhotoRemoved: "Profilbilledet er fjernet.",
+  profilePhotoSaveError: "Profilbilledet kunne ikke gemmes.",
+  removePhoto: "Fjern billede",
   changeEmailTitle: "Skift e-mail",
   changeEmailDescription: "Den e-mail du logger ind med og får beskeder på.",
   emailLabel: "E-mail",

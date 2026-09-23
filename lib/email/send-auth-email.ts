@@ -38,7 +38,7 @@ export async function sendMagicLinkLoginEmail(
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
-    options: { redirectTo: settings.inviteRedirectUrl },
+    options: { redirectTo: settings.sessionRedirectUrl },
   })
 
   if (error) throw error

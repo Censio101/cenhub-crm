@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { ProfilePhotoField } from "@/components/account/ProfilePhotoField"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
+import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import {
   createClient,
@@ -40,17 +41,42 @@ export function AdminKontoBoard() {
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSaving, setPasswordSaving] = useState(false)
-  const hasSyncedAvatar = useRef(false)
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [photoSaving, setPhotoSaving] = useState(false)
 
-  useEffect(() => {
-    if (hasSyncedAvatar.current || !settings.profileImage) return
-    hasSyncedAvatar.current = true
-    void fetch("/api/admin/me/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avatarUrl: settings.profileImage }),
-    })
-  }, [settings.profileImage])
+  const dismissPhotoMessage = useCallback(() => setPhotoMessage(null), [])
+  const dismissPhotoError = useCallback(() => setPhotoError(null), [])
+
+  useAutoDismiss(photoMessage, dismissPhotoMessage)
+  useAutoDismiss(photoError, dismissPhotoError, 6000)
+
+  async function saveProfilePhoto(dataUrl: string | null) {
+    const previousImage = settings.profileImage
+    setPhotoSaving(true)
+    setPhotoMessage(null)
+    setPhotoError(null)
+    updateSettings({ profileImage: dataUrl ?? "" })
+
+    try {
+      const response = await fetch("/api/admin/me/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: dataUrl ?? "" }),
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? t("profilePhotoSaveError"))
+
+      setPhotoMessage(dataUrl ? t("profilePhotoSaved") : t("profilePhotoRemoved"))
+    } catch (saveError) {
+      updateSettings({ profileImage: previousImage })
+      setPhotoError(
+        saveError instanceof Error ? saveError.message : t("profilePhotoSaveError")
+      )
+    } finally {
+      setPhotoSaving(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -146,15 +172,28 @@ export function AdminKontoBoard() {
           <CardContent>
             <ProfilePhotoField
               image={settings.profileImage}
+              disabled={photoSaving}
               onImageChange={(dataUrl) => {
-                updateSettings({ profileImage: dataUrl })
-                void fetch("/api/admin/me/profile", {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ avatarUrl: dataUrl }),
-                })
+                void saveProfilePhoto(dataUrl)
               }}
+              onRemove={
+                settings.profileImage
+                  ? () => {
+                      void saveProfilePhoto(null)
+                    }
+                  : undefined
+              }
             />
+            {photoError ? (
+              <p className="mt-3 text-sm text-danger-foreground" role="alert">
+                {photoError}
+              </p>
+            ) : null}
+            {photoMessage ? (
+              <p className="mt-3 text-sm text-success-foreground" role="status">
+                {photoMessage}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 

@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useState } from "react"
-import { MailIcon, RotateCwIcon, Trash2Icon, UsersIcon } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { Loader2Icon, MailIcon, RotateCwIcon, Trash2Icon, UsersIcon } from "lucide-react"
 
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
@@ -23,11 +23,15 @@ type ClientUser = {
 function ClientUserRow({
   user,
   disabled,
+  isRemoving,
+  isResending,
   onRemove,
   onResend,
 }: {
   user: ClientUser
   disabled?: boolean
+  isRemoving?: boolean
+  isResending?: boolean
   onRemove: (user: ClientUser) => void
   onResend: (user: ClientUser) => void
 }) {
@@ -35,8 +39,15 @@ function ClientUserRow({
   const label = user.email ?? user.full_name ?? user.id
   const isPending = user.accessStatus === "pending"
 
+  const rowBusy = isRemoving || isResending
+
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-[#e8e0d8] bg-white px-3.5 py-2.5">
+    <li
+      className={cn(
+        "flex items-center gap-3 rounded-xl border border-[#e8e0d8] bg-white px-3.5 py-2.5",
+        rowBusy && "opacity-70"
+      )}
+    >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-[14px] font-medium text-foreground">{label}</p>
@@ -64,10 +75,14 @@ function ClientUserRow({
             type="button"
             variant="outline"
             className="h-9 gap-1.5 px-3 text-[13px]"
-            disabled={disabled}
+            disabled={disabled || isResending}
+            aria-busy={isResending}
             onClick={() => onResend(user)}
           >
-            <RotateCwIcon className="size-3.5" aria-hidden="true" />
+            <RotateCwIcon
+              className={cn("size-3.5", isResending && "animate-spin")}
+              aria-hidden="true"
+            />
             <span className="hidden sm:inline">{t("adminResendInvite")}</span>
           </Button>
         ) : null}
@@ -76,10 +91,15 @@ function ClientUserRow({
           variant="outline"
           className="h-9 w-9 shrink-0 px-0 text-red-700 hover:border-red-200 hover:bg-red-50 hover:text-red-800"
           aria-label={t("clientUserRemove")}
-          disabled={disabled}
+          aria-busy={isRemoving}
+          disabled={disabled || isRemoving}
           onClick={() => onRemove(user)}
         >
-          <Trash2Icon className="size-4" aria-hidden="true" />
+          {isRemoving ? (
+            <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Trash2Icon className="size-4" aria-hidden="true" />
+          )}
         </Button>
       </div>
     </li>
@@ -91,7 +111,15 @@ export function AdminClientUsersPanel() {
   const { slug, organization, users, reload } = useAdminClient()
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
-  const [busyUserId, setBusyUserId] = useState<string | null>(null)
+  const [busyAction, setBusyAction] = useState<{
+    id: string
+    action: "remove" | "resend"
+  } | null>(null)
+  const [displayUsers, setDisplayUsers] = useState<ClientUser[] | null>(null)
+
+  useEffect(() => {
+    setDisplayUsers(null)
+  }, [users])
 
   const dismissNotice = useCallback(() => setActionNotice(null), [])
   const dismissError = useCallback(() => setActionError(null), [])
@@ -105,7 +133,7 @@ export function AdminClientUsersPanel() {
     const label = user.email ?? user.full_name ?? user.id
     if (!window.confirm(t("clientUserRemoveConfirm", { email: label }))) return
 
-    setBusyUserId(user.id)
+    setBusyAction({ id: user.id, action: "remove" })
     setActionError(null)
     setActionNotice(null)
 
@@ -116,19 +144,23 @@ export function AdminClientUsersPanel() {
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("clientUserRemoveError"))
 
+      setDisplayUsers((current) => {
+        const base = current ?? (users as ClientUser[])
+        return base.filter((entry) => entry.id !== user.id)
+      })
       setActionNotice(t("clientUserRemoved", { email: label }))
-      await reload()
+      void reload({ silent: true }).finally(() => setDisplayUsers(null))
     } catch (removeError) {
       setActionError(
         removeError instanceof Error ? removeError.message : t("clientUserRemoveError")
       )
     } finally {
-      setBusyUserId(null)
+      setBusyAction(null)
     }
   }
 
   async function handleResendInvite(user: ClientUser) {
-    setBusyUserId(user.id)
+    setBusyAction({ id: user.id, action: "resend" })
     setActionError(null)
     setActionNotice(null)
 
@@ -146,11 +178,11 @@ export function AdminClientUsersPanel() {
         resendError instanceof Error ? resendError.message : t("adminResendError")
       )
     } finally {
-      setBusyUserId(null)
+      setBusyAction(null)
     }
   }
 
-  const clientUsers = users as ClientUser[]
+  const clientUsers = displayUsers ?? (users as ClientUser[])
 
   return (
     <div className="grid gap-5">
@@ -191,7 +223,13 @@ export function AdminClientUsersPanel() {
                 <ClientUserRow
                   key={user.id}
                   user={user}
-                  disabled={busyUserId === user.id}
+                  disabled={busyAction?.id === user.id}
+                  isRemoving={
+                    busyAction?.id === user.id && busyAction.action === "remove"
+                  }
+                  isResending={
+                    busyAction?.id === user.id && busyAction.action === "resend"
+                  }
                   onRemove={handleRemoveUser}
                   onResend={handleResendInvite}
                 />

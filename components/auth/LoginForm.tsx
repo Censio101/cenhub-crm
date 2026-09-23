@@ -48,10 +48,14 @@ export function LoginForm() {
 
   useEffect(() => {
     const callbackError = searchParams.get("error")
-    if (callbackError === "auth_callback") {
+    if (callbackError === "auth_callback" || callbackError === "access_denied") {
       setError(t("loginCallbackError"))
+    } else if (callbackError === "otp_expired") {
+      setError(t("loginInviteExpired"))
     } else if (callbackError === "missing_code") {
       setError(t("loginInvalidLink"))
+    } else if (callbackError === "invite_session") {
+      setError(t("loginInviteSessionError"))
     }
   }, [searchParams, t])
 

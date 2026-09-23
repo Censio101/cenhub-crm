@@ -16,6 +16,14 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
   const next = searchParams.get("next") ?? "/"
+  const authError = searchParams.get("error")
+  const authErrorCode = searchParams.get("error_code")
+
+  if (authError || authErrorCode) {
+    const loginUrl = new URL("/login", origin)
+    loginUrl.searchParams.set("error", authErrorCode ?? authError ?? "auth_callback")
+    return NextResponse.redirect(loginUrl)
+  }
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=missing_code", origin))

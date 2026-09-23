@@ -1,7 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { MailIcon, RotateCwIcon, ShieldCheckIcon, Trash2Icon, UsersIcon } from "lucide-react"
+import {
+  Loader2Icon,
+  MailIcon,
+  RotateCwIcon,
+  ShieldCheckIcon,
+  Trash2Icon,
+  UsersIcon,
+} from "lucide-react"
 
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { adminIconBoxClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
@@ -77,6 +84,8 @@ function AdminListRow({
   localProfileImage,
   onRemove,
   onResend,
+  isRemoving,
+  isResending,
   disabled,
 }: {
   admin: CensioAdmin
@@ -84,6 +93,8 @@ function AdminListRow({
   localProfileImage?: string
   onRemove: (admin: CensioAdmin) => void
   onResend: (admin: CensioAdmin) => void
+  isRemoving?: boolean
+  isResending?: boolean
   disabled?: boolean
 }) {
   const { t } = useLanguage()
@@ -93,8 +104,15 @@ function AdminListRow({
     admin.avatarUrl || (isCurrentUser && localProfileImage ? localProfileImage : null)
   const isPending = admin.accessStatus === "pending"
 
+  const rowBusy = isRemoving || isResending
+
   return (
-    <li className="flex items-center gap-3.5 rounded-xl border border-[#e8e0d8] bg-white px-4 py-3.5 transition-colors hover:border-[#d3c3b2] hover:bg-[#faf8f6]/40">
+    <li
+      className={cn(
+        "flex items-center gap-3.5 rounded-xl border border-[#e8e0d8] bg-white px-4 py-3.5 transition-colors hover:border-[#d3c3b2] hover:bg-[#faf8f6]/40",
+        rowBusy && "opacity-70"
+      )}
+    >
       <AdminAvatar image={profileImage} initials={initials} />
 
       <div className="min-w-0 flex-1">
@@ -125,10 +143,14 @@ function AdminListRow({
             type="button"
             variant="outline"
             className="h-9 gap-1.5 px-3 text-[13px]"
-            disabled={disabled}
+            disabled={disabled || isResending}
+            aria-busy={isResending}
             onClick={() => onResend(admin)}
           >
-            <RotateCwIcon className="size-3.5" aria-hidden="true" />
+            <RotateCwIcon
+              className={cn("size-3.5", isResending && "animate-spin")}
+              aria-hidden="true"
+            />
             <span className="hidden sm:inline">{t("adminResendInvite")}</span>
           </Button>
         ) : (
@@ -144,10 +166,15 @@ function AdminListRow({
             variant="outline"
             className="h-9 w-9 shrink-0 px-0 text-red-700 hover:border-red-200 hover:bg-red-50 hover:text-red-800"
             aria-label={t("adminRemoveAdmin")}
-            disabled={disabled}
+            aria-busy={isRemoving}
+            disabled={disabled || isRemoving}
             onClick={() => onRemove(admin)}
           >
-            <Trash2Icon className="size-4" aria-hidden="true" />
+            {isRemoving ? (
+              <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Trash2Icon className="size-4" aria-hidden="true" />
+            )}
           </Button>
         ) : null}
       </div>
@@ -164,7 +191,10 @@ export function AdminAdminsPanel() {
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
-  const [busyAdminId, setBusyAdminId] = useState<string | null>(null)
+  const [busyAction, setBusyAction] = useState<{
+    id: string
+    action: "remove" | "resend"
+  } | null>(null)
 
   const dismissActionNotice = useCallback(() => setActionNotice(null), [])
   const dismissActionError = useCallback(() => setActionError(null), [])
@@ -172,9 +202,11 @@ export function AdminAdminsPanel() {
   useAutoDismiss(actionNotice, dismissActionNotice)
   useAutoDismiss(actionError, dismissActionError, 6000)
 
-  async function loadAdmins() {
-    setLoading(true)
-    setError(null)
+  async function loadAdmins(options?: { silent?: boolean }) {
+    if (!options?.silent) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const [adminsResponse, meResponse] = await Promise.all([
         fetch("/api/admin/admins", { cache: "no-store" }),
@@ -203,7 +235,7 @@ export function AdminAdminsPanel() {
     const label = admin.email ?? formatAdminDisplayName(admin)
     if (!window.confirm(t("adminRemoveConfirm", { email: label }))) return
 
-    setBusyAdminId(admin.id)
+    setBusyAction({ id: admin.id, action: "remove" })
     setActionError(null)
     setActionNotice(null)
 
@@ -212,19 +244,20 @@ export function AdminAdminsPanel() {
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("adminRemoveError"))
 
+      setAdmins((current) => current.filter((entry) => entry.id !== admin.id))
       setActionNotice(t("adminRemoved", { email: label }))
-      await loadAdmins()
+      void loadAdmins({ silent: true })
     } catch (removeError) {
       setActionError(
         removeError instanceof Error ? removeError.message : t("adminRemoveError")
       )
     } finally {
-      setBusyAdminId(null)
+      setBusyAction(null)
     }
   }
 
   async function handleResendInvite(admin: CensioAdmin) {
-    setBusyAdminId(admin.id)
+    setBusyAction({ id: admin.id, action: "resend" })
     setActionError(null)
     setActionNotice(null)
 
@@ -239,7 +272,7 @@ export function AdminAdminsPanel() {
         resendError instanceof Error ? resendError.message : t("adminResendError")
       )
     } finally {
-      setBusyAdminId(null)
+      setBusyAction(null)
     }
   }
 
@@ -316,7 +349,13 @@ export function AdminAdminsPanel() {
                   }
                   onRemove={handleRemoveAdmin}
                   onResend={handleResendInvite}
-                  disabled={busyAdminId === admin.id}
+                  isRemoving={
+                    busyAction?.id === admin.id && busyAction.action === "remove"
+                  }
+                  isResending={
+                    busyAction?.id === admin.id && busyAction.action === "resend"
+                  }
+                  disabled={busyAction?.id === admin.id}
                 />
               ))}
             </ul>
