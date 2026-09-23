@@ -9,6 +9,7 @@ import {
   WrenchIcon,
 } from "lucide-react"
 
+import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import {
   Table,
   TableBody,
@@ -98,7 +99,7 @@ export function CustomersBoard() {
   const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
 
   if (needsClientSelection) {
-    return null
+    return <SelectClientEmptyState />
   }
 
   return (

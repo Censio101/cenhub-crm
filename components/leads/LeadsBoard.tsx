@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import { useLeads } from "@/hooks/useLeads"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { Button } from "@/components/ui/button"
@@ -766,7 +767,7 @@ export function LeadsBoard() {
   )
 
   if (needsClientSelection) {
-    return null
+    return <SelectClientEmptyState />
   }
 
   return (

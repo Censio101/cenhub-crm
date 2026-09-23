@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState, useTransition } from "react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import {
   DashboardEmptyState,
@@ -73,7 +74,7 @@ export function OverviewBoard() {
   }
 
   if (needsClientSelection) {
-    return null
+    return <SelectClientEmptyState />
   }
 
   if (data == null) {

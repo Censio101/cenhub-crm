@@ -51,7 +51,14 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (user && pathname.startsWith("/login")) {
-    return NextResponse.redirect(new URL("/", request.url))
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    const destination = profile?.role === "censio_admin" ? "/admin" : "/"
+    return NextResponse.redirect(new URL(destination, request.url))
   }
 
   if (

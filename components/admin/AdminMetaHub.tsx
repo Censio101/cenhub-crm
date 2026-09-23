@@ -4,7 +4,6 @@ import Link from "next/link"
 import { RefreshCwIcon, Settings2Icon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { AdminNav } from "@/components/admin/AdminNav"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { deriveMetaClientStatus } from "@/lib/db/meta-clients-repository"
@@ -313,8 +312,8 @@ export function AdminMetaHub() {
 
   const filterLabels: Record<Filter, MessageKey> = {
     all: "filterAll",
-    enabled: "filterActive",
-    "needs-setup": "filterSetup",
+    enabled: "filterLive",
+    "needs-setup": "filterNotLive",
   }
 
   const filteredClients = useMemo(() => {
@@ -546,7 +545,6 @@ export function AdminMetaHub() {
             {t("metaHubCount", { enabled: counts.enabled, total: counts.total })}
           </p>
         </div>
-        <AdminNav />
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

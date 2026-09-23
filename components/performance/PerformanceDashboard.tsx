@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState, useTransition } from "react"
 
+import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import { DashboardHeader } from "@/components/performance/DashboardHeader"
 import {
   DashboardEmptyState,
@@ -35,7 +36,7 @@ export function PerformanceDashboard() {
   const [pending, startTransition] = useTransition()
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
-  const { leads, adSpendByMonth, error } = useDashboardData()
+  const { leads, adSpendByMonth, error, needsClientSelection } = useDashboardData()
 
   useEffect(() => {
     setView(parseDashboardParams(new URLSearchParams(queryKey)))
@@ -86,6 +87,10 @@ export function PerformanceDashboard() {
         ? "Før"
         : comparisonSeriesLabel(view.comparisonRange)
       : null
+
+  if (needsClientSelection) {
+    return <SelectClientEmptyState />
+  }
 
   if (data == null) {
     return (

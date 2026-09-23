@@ -21,8 +21,8 @@ const FILTERS: ClientFilter[] = ["all", "enabled", "needs-setup"]
 
 const FILTER_LABELS: Record<ClientFilter, MessageKey> = {
   all: "filterAll",
-  enabled: "filterActive",
-  "needs-setup": "filterSetup",
+  enabled: "filterLive",
+  "needs-setup": "filterNotLive",
 }
 
 type OrganizationSummary = {
@@ -80,17 +80,24 @@ export function AdminClientList() {
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return organizations.filter((organization) => {
-      const matchesFilter =
-        filter === "all"
-          ? true
-          : filter === "enabled"
-            ? organization.metaEnabled
-            : !organization.metaEnabled
-      if (!matchesFilter) return false
-      if (!needle) return true
-      return `${organization.name} ${organization.slug}`.toLowerCase().includes(needle)
-    })
+    return organizations
+      .filter((organization) => {
+        const matchesFilter =
+          filter === "all"
+            ? true
+            : filter === "enabled"
+              ? organization.metaEnabled
+              : !organization.metaEnabled
+        if (!matchesFilter) return false
+        if (!needle) return true
+        return `${organization.name} ${organization.slug}`.toLowerCase().includes(needle)
+      })
+      .sort((left, right) => {
+        if (filter === "all" && left.metaEnabled !== right.metaEnabled) {
+          return left.metaEnabled ? -1 : 1
+        }
+        return left.name.localeCompare(right.name, "da")
+      })
   }, [filter, organizations, query])
 
   async function handleCreate(event: FormEvent) {
@@ -162,7 +169,10 @@ export function AdminClientList() {
             aria-hidden="true"
           />
           <input
-            className={cn(fieldClass, "pl-9")}
+            className={cn(
+              fieldClass,
+              "border-[#d3c3b2] pl-9 focus:border-primary focus:ring-primary"
+            )}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("searchClients")}
@@ -235,95 +245,115 @@ export function AdminClientList() {
         </p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
-          {visible.map((organization) => (
-            <article
-              key={organization.id}
-              className="flex flex-col gap-3 rounded-2xl bg-card p-[18px] shadow-[0_1px_3px_rgba(26,18,8,0.06)] transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(26,18,8,0.12)]"
-            >
-              <div className="flex items-start gap-3">
-                <span
-                  className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-[15px] font-semibold tracking-wide text-white"
-                  aria-hidden="true"
-                >
-                  {clientInitials(organization.name)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-lg leading-tight font-semibold">
-                    {organization.name}
-                  </h2>
-                  <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                    /{organization.slug}
-                  </p>
+          {visible.map((organization) => {
+            const isLive = organization.metaEnabled
+            const quietButtonClass =
+              "inline-flex items-center justify-center rounded-[10px] bg-[#faf8f6] px-3.5 py-2.5 text-center text-[13px] font-semibold text-foreground transition-colors hover:bg-[#e8e0d8] disabled:cursor-not-allowed disabled:opacity-65"
+            const primaryButtonClass =
+              "inline-flex items-center justify-center rounded-[10px] bg-primary px-3.5 py-2.5 text-center text-[13px] font-semibold text-white transition-colors hover:bg-[#c4530a] disabled:cursor-wait disabled:opacity-65"
+
+            return (
+              <article
+                key={organization.id}
+                className={cn(
+                  "flex flex-col gap-3 rounded-2xl border border-[#d3c3b2] bg-card p-[18px]",
+                  isLive
+                    ? "shadow-[0_1px_3px_rgba(26,18,8,0.06)] transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(26,18,8,0.12)]"
+                    : "shadow-[0_1px_2px_rgba(26,18,8,0.04)]"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-[15px] font-semibold tracking-wide text-white"
+                    aria-hidden="true"
+                  >
+                    {clientInitials(organization.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-lg leading-tight font-semibold">
+                      {organization.name}
+                    </h2>
+                    <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                      /{organization.slug}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground">
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold",
-                    organization.metaEnabled
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-primary/10 text-primary"
-                  )}
-                >
-                  <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-                  {organization.metaEnabled ? t("filterActive") : t("filterSetup")}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span>
-                  {organization.leadCount} {t("leads")}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span>
-                  {organization.userCount} {t("users")}
-                </span>
-              </div>
-
-              <div className="mt-1 grid grid-cols-3 gap-2">
-                <Link
-                  href={`/admin/${organization.slug}`}
-                  className="inline-flex items-center justify-center rounded-[10px] bg-[#faf8f6] px-3.5 py-2.5 text-center text-[13px] font-semibold text-foreground transition-colors hover:bg-[#e8e0d8]"
-                >
-                  {t("setting")}
-                </Link>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-[10px] bg-primary px-3.5 py-2.5 text-center text-[13px] font-semibold text-white transition-colors hover:bg-[#c4530a] disabled:cursor-wait disabled:opacity-65"
-                  disabled={openingSlug === organization.slug}
-                  onClick={() => {
-                    setOpeningSlug(organization.slug)
-                    void openClientDashboard(
-                      organization.slug,
-                      setActiveOrganization,
-                      router
-                    ).finally(() => setOpeningSlug(null))
-                  }}
-                >
-                  {openingSlug === organization.slug
-                    ? t("openingDashboard")
-                    : t("openDashboard")}
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-[10px] bg-[#faf8f6] px-3.5 py-2.5 text-center text-[13px] font-semibold text-foreground transition-colors hover:bg-[#e8e0d8] disabled:cursor-not-allowed disabled:opacity-65"
-                  disabled={
-                    !organization.metaEnabled || syncingSlug === organization.slug
-                  }
-                  onClick={() => {
-                    void handleSync(organization.slug)
-                  }}
-                >
-                  <RefreshCwIcon
+                <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground">
+                  <span
                     className={cn(
-                      "size-3.5",
-                      syncingSlug === organization.slug && "animate-spin"
+                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold",
+                      isLive
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-primary/10 text-primary"
                     )}
-                  />
-                  {syncingSlug === organization.slug ? t("syncing") : t("sync")}
-                </button>
-              </div>
-            </article>
-          ))}
+                  >
+                    <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+                    {isLive ? t("filterLive") : t("filterNotLive")}
+                  </span>
+                  {isLive ? (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span>
+                        {organization.leadCount} {t("leads")}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <span>
+                        {organization.userCount} {t("users")}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span>{t("metaNotConnected")}</span>
+                    </>
+                  )}
+                </div>
+
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  <Link
+                    href={`/admin/${organization.slug}`}
+                    className={isLive ? quietButtonClass : primaryButtonClass}
+                  >
+                    {t("setting")}
+                  </Link>
+                  <button
+                    type="button"
+                    className={isLive ? primaryButtonClass : quietButtonClass}
+                    disabled={openingSlug === organization.slug}
+                    onClick={() => {
+                      setOpeningSlug(organization.slug)
+                      void openClientDashboard(
+                        organization.slug,
+                        setActiveOrganization,
+                        router
+                      ).finally(() => setOpeningSlug(null))
+                    }}
+                  >
+                    {openingSlug === organization.slug
+                      ? t("openingDashboard")
+                      : t("openDashboard")}
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(quietButtonClass, "gap-1.5")}
+                    disabled={!isLive || syncingSlug === organization.slug}
+                    onClick={() => {
+                      void handleSync(organization.slug)
+                    }}
+                  >
+                    <RefreshCwIcon
+                      className={cn(
+                        "size-3.5",
+                        syncingSlug === organization.slug && "animate-spin"
+                      )}
+                    />
+                    {syncingSlug === organization.slug ? t("syncing") : t("sync")}
+                  </button>
+                </div>
+              </article>
+            )
+          })}
         </div>
       )}
 

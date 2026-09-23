@@ -11,6 +11,7 @@ import {
   MessageCircleIcon,
   SettingsIcon,
   ShieldIcon,
+  UserRoundIcon,
 } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
@@ -49,8 +50,9 @@ export function ProfileMenu() {
 
   const signedIn = configured ? isAuthenticated : mockSignedIn
   const isAdmin = (activeRole ?? role) === "censio_admin"
-  const displayName =
-    organization?.name ?? (isAdmin ? "Censio Admin" : CURRENT_COMPANY.name)
+  const displayName = isAdmin
+    ? "Censio Admin"
+    : (organization?.name ?? CURRENT_COMPANY.name)
 
   if (!loading && !signedIn) {
     return (
@@ -104,6 +106,11 @@ export function ProfileMenu() {
           <DropdownMenuLabel className="text-foreground">
             {displayName}
           </DropdownMenuLabel>
+          {isAdmin && organization ? (
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              {organization.name}
+            </DropdownMenuLabel>
+          ) : null}
           {isAdmin ? (
             <>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/meta" />}>
@@ -114,29 +121,40 @@ export function ProfileMenu() {
                 <SettingsIcon />
                 Admin indstillinger
               </DropdownMenuItem>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/konto" />}>
+                <UserRoundIcon />
+                Min konto
+              </DropdownMenuItem>
             </>
-          ) : null}
-          <DropdownMenuItem
-            nativeButton={false}
-            render={<Link href="/indstillinger" />}
-          >
-            <SettingsIcon />
-            Indstillinger
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            nativeButton={false}
-            render={<Link href="/onboarding" />}
-          >
-            <GraduationCapIcon />
-            Onboarding
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            nativeButton={false}
-            render={<Link href="/kontakt" />}
-          >
-            <MessageCircleIcon />
-            Kontakt Censio
-          </DropdownMenuItem>
+          ) : (
+            <>
+              <DropdownMenuItem
+                nativeButton={false}
+                render={<Link href="/indstillinger" />}
+              >
+                <SettingsIcon />
+                Indstillinger
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                nativeButton={false}
+                render={<Link href="/onboarding" />}
+              >
+                <GraduationCapIcon />
+                Onboarding
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                nativeButton={false}
+                render={<Link href="/kontakt" />}
+              >
+                <MessageCircleIcon />
+                Kontakt Censio
+              </DropdownMenuItem>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/konto" />}>
+                <UserRoundIcon />
+                Min konto
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem

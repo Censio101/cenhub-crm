@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation"
 
-import { AdminClientGate } from "@/components/admin/AdminClientGate"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { cn } from "cn"
 
@@ -20,10 +19,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       )}
     >
       <AppTopbar />
-      <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
-        {!isLoggedOut ? <AdminClientGate /> : null}
-        {children}
-      </main>
+      <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 xl:px-10">{children}</main>
     </div>
   )
 }

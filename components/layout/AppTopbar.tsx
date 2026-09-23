@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { ClientHeaderSwitcher } from "@/components/admin/ClientHeaderSwitcher"
 import { ProfileMenu } from "@/components/layout/ProfileMenu"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { CURRENT_COMPANY } from "@/lib/company"
@@ -42,10 +43,15 @@ export function AppTopbar() {
   const { organization, role } = useActiveOrganization()
 
   const isAdmin = role === "censio_admin"
+  const adminHasClient = isAdmin && organization !== null
   const clientName =
     organization?.name ?? (isAdmin ? null : CURRENT_COMPANY.name)
   const showClientBranding = clientName !== null
-  const navItems = isAdmin ? [ALL_CLIENTS_NAV, ...CLIENT_NAV] : CLIENT_NAV
+  const navItems = isAdmin
+    ? adminHasClient
+      ? [ALL_CLIENTS_NAV, ...CLIENT_NAV]
+      : [ALL_CLIENTS_NAV]
+    : CLIENT_NAV
   const homeHref = isAdmin && !organization ? "/admin" : "/"
 
   return (
@@ -129,6 +135,7 @@ export function AppTopbar() {
             </Link>
           )
         })}
+        {adminHasClient ? <ClientHeaderSwitcher /> : null}
       </nav>
 
       <div className="z-10 col-start-2 row-start-1 flex min-w-0 items-center justify-self-end xl:col-start-3">

@@ -151,6 +151,8 @@ export function AdminClientDetail({ slug }: { slug: string }) {
 
       {organization ? (
         <>
+          {!organization.metaEnabled ? <AdminMetaConfigForm slug={slug} /> : null}
+
           <Card>
             <CardHeader>
               <CardTitle>{t("overviewTitle")}</CardTitle>
@@ -179,6 +181,8 @@ export function AdminClientDetail({ slug }: { slug: string }) {
               </Button>
             </CardContent>
           </Card>
+
+          {organization.metaEnabled ? <AdminMetaConfigForm slug={slug} /> : null}
 
           <div className="grid gap-6 lg:grid-cols-2">
             <AdminInviteUserForm
@@ -213,18 +217,6 @@ export function AdminClientDetail({ slug }: { slug: string }) {
               </CardContent>
             </Card>
           </div>
-
-          <AdminMetaConfigForm slug={slug} />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("censioAdminsTitle")}</CardTitle>
-              <CardDescription>{t("censioAdminsDescription")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AdminInviteUserForm onInvited={() => undefined} />
-            </CardContent>
-          </Card>
         </>
       ) : null}
     </div>

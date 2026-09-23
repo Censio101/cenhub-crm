@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-import { AdminNav } from "@/components/admin/AdminNav"
+import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import {
   Card,
   CardContent,
@@ -38,7 +38,6 @@ export function AdminSettings() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("settingsDescription")}</p>
         </div>
-        <AdminNav />
       </header>
 
       <Card>
@@ -85,6 +84,16 @@ export function AdminSettings() {
               {notice}
             </p>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("censioAdminsTitle")}</CardTitle>
+          <CardDescription>{t("censioAdminsDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AdminInviteUserForm />
         </CardContent>
       </Card>
     </div>
