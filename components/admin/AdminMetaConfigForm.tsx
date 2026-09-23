@@ -185,7 +185,7 @@ export function AdminMetaConfigForm({
   }
 
   return (
-    <Card>
+    <Card className="border border-border shadow-sm">
       <CardHeader>
         <CardTitle>{t("metaSetupTitle")}</CardTitle>
         <CardDescription>{t("metaSetupDescription")}</CardDescription>

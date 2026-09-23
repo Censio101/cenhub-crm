@@ -309,12 +309,12 @@
 
 
 .admin-ui {
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-poppins);
   --font-heading: var(--font-poppins);
-  font-family: var(--font-inter), ui-sans-serif, sans-serif;
+  font-family: var(--font-poppins), ui-sans-serif, sans-serif;
 }
 
-.admin-ui :where(h1, h2, h3) {
+.admin-ui :where(h1, h2, h3, h4) {
   font-family: var(--font-poppins), ui-sans-serif, sans-serif;
   letter-spacing: -0.02em;
 }

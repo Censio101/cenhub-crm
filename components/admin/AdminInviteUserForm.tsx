@@ -75,7 +75,7 @@ export function AdminInviteUserForm({
   }
 
   return (
-    <Card>
+    <Card className="border border-border shadow-sm">
       <CardHeader>
         <CardTitle>{t("inviteUserTitle")}</CardTitle>
         <CardDescription>{t("inviteUserDescription")}</CardDescription>

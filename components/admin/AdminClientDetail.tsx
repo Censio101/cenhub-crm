@@ -70,20 +70,18 @@ function AdminClientDetailSkeleton() {
         <div className="mt-4 h-10 w-36 animate-pulse rounded-[10px] bg-muted" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="h-5 w-32 animate-pulse rounded-md bg-muted" />
-          <div className="mt-5 space-y-3">
-            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
-            <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
-          </div>
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="h-5 w-32 animate-pulse rounded-md bg-muted" />
+        <div className="mt-5 space-y-3">
+          <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
+          <div className="h-10 animate-pulse rounded-[15px] bg-muted" />
         </div>
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="h-5 w-24 animate-pulse rounded-md bg-muted" />
-          <div className="mt-5 space-y-2">
-            <div className="h-12 animate-pulse rounded-[15px] bg-muted" />
-            <div className="h-12 animate-pulse rounded-[15px] bg-muted" />
-          </div>
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="h-5 w-24 animate-pulse rounded-md bg-muted" />
+        <div className="mt-5 space-y-2">
+          <div className="h-12 animate-pulse rounded-[15px] bg-muted" />
+          <div className="h-12 animate-pulse rounded-[15px] bg-muted" />
         </div>
       </div>
     </div>
@@ -261,17 +259,7 @@ export function AdminClientDetail({ slug }: { slug: string }) {
         </p>
       ) : null}
 
-      {!organization.metaEnabled ? (
-        <AdminMetaConfigForm
-          slug={slug}
-          initialConfig={metaConfig}
-          onSaved={() => {
-            void load()
-          }}
-        />
-      ) : null}
-
-      <Card>
+      <Card className="border border-border shadow-sm">
         <CardHeader>
           <CardTitle>{t("overviewTitle")}</CardTitle>
           <CardDescription>{t("overviewDescription")}</CardDescription>
@@ -298,49 +286,46 @@ export function AdminClientDetail({ slug }: { slug: string }) {
         </CardContent>
       </Card>
 
-      {organization.metaEnabled ? (
-        <AdminMetaConfigForm
-          slug={slug}
-          initialConfig={metaConfig}
-          onSaved={() => {
-            void load()
-          }}
-        />
-      ) : null}
+      <AdminMetaConfigForm
+        slug={slug}
+        initialConfig={metaConfig}
+        onSaved={() => {
+          void load()
+        }}
+      />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <AdminInviteUserForm
-          organizationId={organization.id}
-          onInvited={() => {
-            void load()
-          }}
-        />
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("usersTitle")}</CardTitle>
-            <CardDescription>{t("usersDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {users.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("noUsersYet")}</p>
-            ) : (
-              <ul className="grid gap-2">
-                {users.map((user) => (
-                  <li
-                    key={user.id}
-                    className="rounded-[15px] bg-muted/70 px-3 py-2 text-sm"
-                  >
-                    <p className="font-medium">
-                      {user.email ?? user.full_name ?? user.id}
-                    </p>
-                    <p className="text-muted-foreground">{user.role}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <AdminInviteUserForm
+        organizationId={organization.id}
+        onInvited={() => {
+          void load()
+        }}
+      />
+
+      <Card className="border border-border shadow-sm">
+        <CardHeader>
+          <CardTitle>{t("usersTitle")}</CardTitle>
+          <CardDescription>{t("usersDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noUsersYet")}</p>
+          ) : (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {users.map((user) => (
+                <li
+                  key={user.id}
+                  className="rounded-[15px] bg-muted/70 px-3 py-2 text-sm"
+                >
+                  <p className="font-medium">
+                    {user.email ?? user.full_name ?? user.id}
+                  </p>
+                  <p className="text-muted-foreground">{user.role}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
