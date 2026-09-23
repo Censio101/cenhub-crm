@@ -127,6 +127,64 @@ export async function resendCensioAdminInvite(
   })
 }
 
+export async function getOrganizationUserProfile(
+  admin: SupabaseClient,
+  userId: string,
+  organizationId: string
+): Promise<ProfileRow | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .eq("organization_id", organizationId)
+    .maybeSingle()
+
+  if (error) throw error
+  return (data as ProfileRow | null) ?? null
+}
+
+export async function removeOrganizationUser(
+  admin: SupabaseClient,
+  userId: string,
+  organizationId: string
+): Promise<void> {
+  const profile = await getOrganizationUserProfile(admin, userId, organizationId)
+  if (!profile) {
+    throw new Error("User not found")
+  }
+
+  if (profile.role === "censio_admin") {
+    throw new Error("Cannot remove a Censio admin from a client workspace")
+  }
+
+  const { error: authError } = await admin.auth.admin.deleteUser(userId)
+  if (authError && !/not found|invalid/i.test(authError.message)) {
+    throw authError
+  }
+
+  const { error: profileError } = await admin.from("profiles").delete().eq("id", userId)
+  if (profileError) throw profileError
+}
+
+export async function resendOrganizationUserInvite(
+  admin: SupabaseClient,
+  userId: string,
+  organizationId: string,
+  organizationName: string
+): Promise<void> {
+  const profile = await getOrganizationUserProfile(admin, userId, organizationId)
+  if (!profile?.email) {
+    throw new Error("User not found")
+  }
+
+  await sendUserInviteEmail(admin, {
+    email: profile.email,
+    role: profile.role,
+    fullName: profile.full_name,
+    organizationName,
+  })
+}
+
 async function findUserIdByEmail(
   admin: SupabaseClient,
   email: string

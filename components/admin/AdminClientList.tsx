@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
 import {
   ExternalLinkIcon,
   LayoutGridIcon,
@@ -25,6 +25,7 @@ import {
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import type { MessageKey } from "@/lib/i18n"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { outfit, poppins } from "@/lib/fonts/app-fonts"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
@@ -111,6 +112,10 @@ export function AdminClientList() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const dismissNotice = useCallback(() => setNotice(null), [])
+
+  useAutoDismiss(notice, dismissNotice)
+
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<ClientFilter>("enabled")
   const [view, setView] = useState<ClientView>("cards")

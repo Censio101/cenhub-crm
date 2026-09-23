@@ -1,18 +1,156 @@
 "use client"
 
-import { UsersIcon } from "lucide-react"
+import { useCallback, useState } from "react"
+import { MailIcon, RotateCwIcon, Trash2Icon, UsersIcon } from "lucide-react"
 
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { adminIconBoxClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useAutoDismiss } from "@/hooks/useAutoDismiss"
+import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
+import { Button } from "@/components/ui/button"
 import { cn } from "cn"
+
+type ClientUser = {
+  id: string
+  email: string | null
+  full_name: string | null
+  role: string
+  accessStatus?: "active" | "pending"
+}
+
+function ClientUserRow({
+  user,
+  disabled,
+  onRemove,
+  onResend,
+}: {
+  user: ClientUser
+  disabled?: boolean
+  onRemove: (user: ClientUser) => void
+  onResend: (user: ClientUser) => void
+}) {
+  const { t } = useLanguage()
+  const label = user.email ?? user.full_name ?? user.id
+  const isPending = user.accessStatus === "pending"
+
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-[#e8e0d8] bg-white px-3.5 py-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-[14px] font-medium text-foreground">{label}</p>
+          {isPending ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+              {t("adminInvitePending")}
+            </span>
+          ) : null}
+        </div>
+        {user.full_name && user.email ? (
+          <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+            <MailIcon className="size-3 shrink-0 opacity-70" aria-hidden="true" />
+            <span className="truncate">{user.email}</span>
+          </p>
+        ) : null}
+      </div>
+
+      <span className="hidden shrink-0 rounded-full bg-[#faf8f6] px-2 py-0.5 text-[11px] font-semibold text-muted-foreground uppercase sm:inline-flex">
+        {user.role.replace("_", " ")}
+      </span>
+
+      <div className="flex shrink-0 items-center gap-2">
+        {isPending ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 gap-1.5 px-3 text-[13px]"
+            disabled={disabled}
+            onClick={() => onResend(user)}
+          >
+            <RotateCwIcon className="size-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("adminResendInvite")}</span>
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          className="h-9 w-9 shrink-0 px-0 text-red-700 hover:border-red-200 hover:bg-red-50 hover:text-red-800"
+          aria-label={t("clientUserRemove")}
+          disabled={disabled}
+          onClick={() => onRemove(user)}
+        >
+          <Trash2Icon className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+    </li>
+  )
+}
 
 export function AdminClientUsersPanel() {
   const { t } = useLanguage()
-  const { organization, users, reload } = useAdminClient()
+  const { slug, organization, users, reload } = useAdminClient()
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionNotice, setActionNotice] = useState<string | null>(null)
+  const [busyUserId, setBusyUserId] = useState<string | null>(null)
+
+  const dismissNotice = useCallback(() => setActionNotice(null), [])
+  const dismissError = useCallback(() => setActionError(null), [])
+
+  useAutoDismiss(actionNotice, dismissNotice)
+  useAutoDismiss(actionError, dismissError, 6000)
 
   if (!organization) return null
+
+  async function handleRemoveUser(user: ClientUser) {
+    const label = user.email ?? user.full_name ?? user.id
+    if (!window.confirm(t("clientUserRemoveConfirm", { email: label }))) return
+
+    setBusyUserId(user.id)
+    setActionError(null)
+    setActionNotice(null)
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${slug}/users/${user.id}`, {
+        method: "DELETE",
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? t("clientUserRemoveError"))
+
+      setActionNotice(t("clientUserRemoved", { email: label }))
+      await reload()
+    } catch (removeError) {
+      setActionError(
+        removeError instanceof Error ? removeError.message : t("clientUserRemoveError")
+      )
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
+  async function handleResendInvite(user: ClientUser) {
+    setBusyUserId(user.id)
+    setActionError(null)
+    setActionNotice(null)
+
+    try {
+      const response = await fetch(
+        `/api/admin/organizations/${slug}/users/${user.id}/resend`,
+        { method: "POST" }
+      )
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? t("adminResendError"))
+
+      setActionNotice(t("adminResent", { email: user.email ?? "" }))
+    } catch (resendError) {
+      setActionError(
+        resendError instanceof Error ? resendError.message : t("adminResendError")
+      )
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
+  const clientUsers = users as ClientUser[]
 
   return (
     <div className="grid gap-5">
@@ -30,25 +168,33 @@ export function AdminClientUsersPanel() {
           <span className={adminIconBoxClass("neutral")} aria-hidden="true">
             <UsersIcon className="size-[18px]" />
           </span>
-          <h2 className="text-base font-semibold text-foreground">{t("usersTitle")}</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            {t("usersTitle")} · {formatClientDisplayName(organization.name)}
+          </h2>
         </div>
         <div className="px-5 py-4">
-          {users.length === 0 ? (
+          {actionError ? (
+            <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800" role="alert">
+              {actionError}
+            </p>
+          ) : null}
+          {actionNotice ? (
+            <p className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
+              {actionNotice}
+            </p>
+          ) : null}
+          {clientUsers.length === 0 ? (
             <p className="text-center text-[13px] text-muted-foreground">{t("noUsersYet")}</p>
           ) : (
             <ul className="grid gap-2">
-              {users.map((user) => (
-                <li
+              {clientUsers.map((user) => (
+                <ClientUserRow
                   key={user.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[#e8e0d8] bg-white px-3.5 py-2.5"
-                >
-                  <p className="truncate text-[14px] font-medium text-foreground">
-                    {user.email ?? user.full_name ?? user.id}
-                  </p>
-                  <span className="shrink-0 rounded-full bg-[#faf8f6] px-2 py-0.5 text-[11px] font-semibold text-muted-foreground uppercase">
-                    {user.role.replace("_", " ")}
-                  </span>
-                </li>
+                  user={user}
+                  disabled={busyUserId === user.id}
+                  onRemove={handleRemoveUser}
+                  onResend={handleResendInvite}
+                />
               ))}
             </ul>
           )}

@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useUserProfile } from "@/lib/auth/use-user-profile"
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function ProfileMenu() {
+  const { t } = useLanguage()
   const pathname = usePathname()
   const router = useRouter()
   const { settings } = useAccountSettings()
@@ -58,7 +60,7 @@ export function ProfileMenu() {
   const displayName = savedName
     ? savedName
     : isAdmin
-      ? "Censio Admin"
+      ? t("profileMenuAdminFallback")
       : (organization?.name ?? CURRENT_COMPANY.name)
   const profileImage = isAdmin ? adminSettings.profileImage : settings.profileImage
 
@@ -68,7 +70,7 @@ export function ProfileMenu() {
         href="/login"
         className="rounded-lg px-3 py-2 text-base font-medium text-white transition-colors hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none"
       >
-        Log ind
+        {t("loginSubmit")}
       </Link>
     )
   }
@@ -76,7 +78,7 @@ export function ProfileMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Profilmenu"
+        aria-label={t("profileMenuAria")}
         render={
           <Button
             variant="ghost"
@@ -137,15 +139,15 @@ export function ProfileMenu() {
             <>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
                 <ShieldIcon />
-                Alle klienter
+                {t("allClients")}
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/settings" />}>
                 <SettingsIcon />
-                Admin indstillinger
+                {t("navSettings")}
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/konto" />}>
                 <UserRoundIcon />
-                Min konto
+                {t("navMyAccount")}
               </DropdownMenuItem>
             </>
           ) : (
@@ -155,25 +157,25 @@ export function ProfileMenu() {
                 render={<Link href="/indstillinger" />}
               >
                 <SettingsIcon />
-                Indstillinger
+                {t("profileMenuSettings")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 nativeButton={false}
                 render={<Link href="/onboarding" />}
               >
                 <GraduationCapIcon />
-                Onboarding
+                {t("profileMenuOnboarding")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 nativeButton={false}
                 render={<Link href="/kontakt" />}
               >
                 <MessageCircleIcon />
-                Kontakt Censio
+                {t("profileMenuContact")}
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/konto" />}>
                 <UserRoundIcon />
-                Min konto
+                {t("navMyAccount")}
               </DropdownMenuItem>
             </>
           )}
@@ -195,7 +197,7 @@ export function ProfileMenu() {
           }}
         >
           <LogOutIcon />
-          Log ud
+          {t("profileMenuSignOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -36,6 +36,8 @@ export async function getSessionContext(): Promise<SessionContext> {
   if (!isSupabaseConfigured()) {
     return {
       userId: null,
+      email: null,
+      fullName: null,
       role: null,
       organization: null,
       profile: null,

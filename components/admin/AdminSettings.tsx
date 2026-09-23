@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 
 import {
   Card,
@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { LOCALES, type Locale } from "@/lib/i18n/types"
 import { cn } from "cn"
 
@@ -19,6 +20,9 @@ const fieldClass =
 export function AdminSettings() {
   const { locale, setLocale, t } = useLanguage()
   const [notice, setNotice] = useState<string | null>(null)
+  const dismissNotice = useCallback(() => setNotice(null), [])
+
+  useAutoDismiss(notice, dismissNotice)
 
   function handleChange(next: Locale) {
     setLocale(next)

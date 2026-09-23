@@ -4,7 +4,11 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
-import { listProfilesForOrganization } from "@/lib/db/admin-users"
+import {
+  getAdminAccessStatus,
+  listAuthUsersById,
+  listProfilesForOrganization,
+} from "@/lib/db/admin-users"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -21,8 +25,17 @@ export async function GET(_request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
-    const users = await listProfilesForOrganization(admin, organization.id)
-    return NextResponse.json({ users })
+    const [users, authUsersById] = await Promise.all([
+      listProfilesForOrganization(admin, organization.id),
+      listAuthUsersById(admin),
+    ])
+
+    return NextResponse.json({
+      users: users.map((user) => ({
+        ...user,
+        accessStatus: getAdminAccessStatus(authUsersById.get(user.id)),
+      })),
+    })
   } catch (error) {
     return adminErrorResponse(error)
   }

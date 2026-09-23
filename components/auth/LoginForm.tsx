@@ -2,8 +2,10 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FormEvent, useEffect, useState } from "react"
+import { FormEvent, useCallback, useEffect, useState } from "react"
 
+import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import {
   createClient,
@@ -24,12 +26,19 @@ const fieldClass =
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { t } = useLanguage()
   const { configured, isAuthenticated, loading } = useSupabaseSession()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const dismissMessage = useCallback(() => setMessage(null), [])
+  const dismissError = useCallback(() => setError(null), [])
+
+  useAutoDismiss(message, dismissMessage)
+  useAutoDismiss(error, dismissError, 6000)
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -40,11 +49,11 @@ export function LoginForm() {
   useEffect(() => {
     const callbackError = searchParams.get("error")
     if (callbackError === "auth_callback") {
-      setError("Login-linket kunne ikke bekræftes. Prøv igen.")
+      setError(t("loginCallbackError"))
     } else if (callbackError === "missing_code") {
-      setError("Ugyldigt login-link.")
+      setError(t("loginInvalidLink"))
     }
-  }, [searchParams])
+  }, [searchParams, t])
 
   async function handlePasswordLogin(event: FormEvent) {
     event.preventDefault()
@@ -65,8 +74,8 @@ export function LoginForm() {
     if (signInError) {
       setError(
         signInError.message.toLowerCase().includes("email logins are disabled")
-          ? "E-mail login er deaktiveret i Supabase. Kontakt Censio support."
-          : "Forkert e-mail eller adgangskode."
+          ? t("loginEmailDisabled")
+          : t("loginWrongCredentials")
       )
       return
     }
@@ -76,7 +85,7 @@ export function LoginForm() {
 
   async function handleMagicLink() {
     if (!configured || !email.trim()) {
-      setError("Indtast din e-mail for at modtage et login-link.")
+      setError(t("loginEmailRequired"))
       return
     }
 
@@ -84,21 +93,50 @@ export function LoginForm() {
     setError(null)
     setMessage(null)
 
-    const supabase = createClient()
-    const redirectTo = `${window.location.origin}/auth/callback`
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: redirectTo },
-    })
+    try {
+      const response = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), type: "magiclink" }),
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? t("loginMagicLinkError"))
 
-    setSubmitting(false)
+      setMessage(t("loginMagicLinkSent"))
+    } catch (magicLinkError) {
+      setError(
+        magicLinkError instanceof Error ? magicLinkError.message : t("loginMagicLinkError")
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
-    if (otpError) {
-      setError("Kunne ikke sende login-link. Tjek e-mailen og prøv igen.")
+  async function handleForgotPassword() {
+    if (!configured || !email.trim()) {
+      setError(t("loginEmailRequired"))
       return
     }
 
-    setMessage("Tjek din indbakke — vi har sendt et login-link.")
+    setSubmitting(true)
+    setError(null)
+    setMessage(null)
+
+    try {
+      const response = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), type: "recovery" }),
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? t("loginResetError"))
+
+      setMessage(t("loginResetSent"))
+    } catch (resetError) {
+      setError(resetError instanceof Error ? resetError.message : t("loginResetError"))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (!isBrowserSupabaseConfigured()) {
@@ -107,17 +145,14 @@ export function LoginForm() {
         <Card className="w-full">
           <CardHeader>
             <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-              Login
+              {t("loginTitle")}
             </p>
-            <CardTitle className="mt-1 text-lg">Supabase er ikke sat op</CardTitle>
-            <CardDescription>
-              Tilføj Supabase-miljøvariabler for at aktivere login. Indtil da
-              kører CRM&apos;et med demo-data uden rigtig auth.
-            </CardDescription>
+            <CardTitle className="mt-1 text-lg">{t("loginSupabaseMissingTitle")}</CardTitle>
+            <CardDescription>{t("loginSupabaseMissingDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button render={<Link href="/" />} className="h-10">
-              Gå til dashboard
+              {t("loginGoToDashboard")}
             </Button>
           </CardContent>
         </Card>
@@ -130,18 +165,15 @@ export function LoginForm() {
       <Card className="w-full">
         <CardHeader>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            Login
+            {t("loginTitle")}
           </p>
-          <CardTitle className="mt-1 text-lg">Log ind på Censio</CardTitle>
-          <CardDescription>
-            Adgang er kun for inviterede brugere. Brug den e-mail og adgangskode,
-            du har modtaget fra Censio.
-          </CardDescription>
+          <CardTitle className="mt-1 text-lg">{t("loginHeading")}</CardTitle>
+          <CardDescription>{t("loginDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={handlePasswordLogin}>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">E-mail</span>
+              <span className="font-medium">{t("email")}</span>
               <input
                 type="email"
                 autoComplete="email"
@@ -149,11 +181,11 @@ export function LoginForm() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className={fieldClass}
-                placeholder="kontakt@virksomhed.dk"
+                placeholder={t("loginEmailPlaceholder")}
               />
             </label>
             <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">Adgangskode</span>
+              <span className="font-medium">{t("password")}</span>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -176,7 +208,7 @@ export function LoginForm() {
             ) : null}
 
             <Button type="submit" className="h-10" disabled={submitting || loading}>
-              {submitting ? "Logger ind…" : "Log ind"}
+              {submitting ? t("loginSubmitting") : t("loginSubmit")}
             </Button>
             <Button
               type="button"
@@ -187,7 +219,18 @@ export function LoginForm() {
                 void handleMagicLink()
               }}
             >
-              Send login-link i stedet
+              {t("loginSendMagicLink")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 text-muted-foreground"
+              disabled={submitting || loading}
+              onClick={() => {
+                void handleForgotPassword()
+              }}
+            >
+              {t("loginForgotPassword")}
             </Button>
           </form>
         </CardContent>

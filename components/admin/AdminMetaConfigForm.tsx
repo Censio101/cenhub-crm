@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useState, type ReactNode } from "react"
+import { FormEvent, useCallback, useEffect, useState, type ReactNode } from "react"
 import {
   AppWindowIcon,
   CircleDotIcon,
@@ -17,6 +17,7 @@ import {
   adminSectionCardClass,
 } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 
@@ -139,6 +140,12 @@ export function AdminMetaConfigForm({
   const [syncing, setSyncing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const dismissMessage = useCallback(() => setMessage(null), [])
+  const dismissError = useCallback(() => setError(null), [])
+
+  useAutoDismiss(message, dismissMessage)
+  useAutoDismiss(error, dismissError, 6000)
 
   function formatTimestamp(value: string | null) {
     if (!value) return t("never")

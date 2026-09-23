@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from "react"
+import { FormEvent, useCallback, useEffect, useState } from "react"
 import {
   CopyIcon,
   LinkIcon,
@@ -16,6 +16,7 @@ import {
   adminSectionCardClass,
 } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 
@@ -229,6 +230,12 @@ export function AdminIntegrationsPanel() {
   const [authCallbackPath, setAuthCallbackPath] = useState("/auth/callback")
   const [contactFormUrl, setContactFormUrl] = useState("")
   const [testEmail, setTestEmail] = useState("")
+
+  const dismissNotice = useCallback(() => setNotice(null), [])
+  const dismissError = useCallback(() => setError(null), [])
+
+  useAutoDismiss(notice, dismissNotice)
+  useAutoDismiss(error, dismissError, 6000)
 
   async function loadSettings() {
     setLoading(true)
