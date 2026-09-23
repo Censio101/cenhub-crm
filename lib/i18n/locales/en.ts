@@ -190,6 +190,7 @@ export const en: Messages = {
   setupPasswordSubmit: "Save password",
   setupPasswordSubmitting: "Saving…",
   loginAccountReady: "Your password was created. Sign in to continue.",
+  authCallbackWorking: "Completing your invitation…",
   loginSupabaseMissingTitle: "Supabase is not configured",
   loginSupabaseMissingDescription:
     "Add Supabase environment variables to enable login. Until then the CRM runs with demo data.",

@@ -25,8 +25,13 @@ export function SetupPasswordForm() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!loading && configured && !isAuthenticated) {
-      router.replace("/login?error=invite_session")
+    if (loading || !configured) return
+
+    if (!isAuthenticated) {
+      const timeout = window.setTimeout(() => {
+        router.replace("/login?error=invite_session")
+      }, 1500)
+      return () => window.clearTimeout(timeout)
     }
   }, [configured, isAuthenticated, loading, router])
 
@@ -50,7 +55,10 @@ export function SetupPasswordForm() {
     setSubmitting(true)
 
     const supabase = createClient()
-    const { error: updateError } = await supabase.auth.updateUser({ password })
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      data: { password_setup_complete: true },
+    })
 
     if (updateError) {
       setSubmitting(false)

@@ -188,6 +188,7 @@ const daMessages = {
   setupPasswordSubmit: "Gem adgangskode",
   setupPasswordSubmitting: "Gemmer…",
   loginAccountReady: "Din adgangskode er oprettet. Log ind for at fortsætte.",
+  authCallbackWorking: "Fuldfører din invitation…",
   loginSupabaseMissingTitle: "Supabase er ikke sat op",
   loginSupabaseMissingDescription:
     "Tilføj Supabase-miljøvariabler for at aktivere login. Indtil da kører CRM'et med demo-data.",

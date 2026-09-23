@@ -36,15 +36,19 @@ export async function POST(request: Request) {
     }
 
     const isConfirmed = Boolean(user.email_confirmed_at ?? user.confirmed_at)
-    if (isConfirmed) {
+    const passwordSetupComplete =
+      user.user_metadata?.password_setup_complete === true
+
+    if (isConfirmed && passwordSetupComplete) {
       return NextResponse.json({
         alreadyActive: true,
         redirectUrl: settings.loginUrl,
       })
     }
 
+    const linkType = isConfirmed ? "magiclink" : "invite"
     const { data, error } = await admin.auth.admin.generateLink({
-      type: "invite",
+      type: linkType,
       email,
       options: { redirectTo: settings.inviteRedirectUrl },
     })
