@@ -39,22 +39,24 @@ export function AppTopbar() {
   const pathname = usePathname()
   const { t } = useLanguage()
   const { settings } = useAccountSettings()
-  const { organization, role } = useActiveOrganization()
+  const { organization, role, loading: orgLoading } = useActiveOrganization()
 
+  const sessionReady = !orgLoading
   const isAdmin = role === "censio_admin"
   const minimalHeader = isMinimalHeaderPath(pathname)
   const onAdminPath = isAdminPath(pathname)
   const onClientDashboard = isClientDashboardPath(pathname)
   const adminViewingClientDashboard =
-    isAdmin && organization !== null && onClientDashboard
+    sessionReady && isAdmin && organization !== null && onClientDashboard
   const showClientBranding =
+    sessionReady &&
     !minimalHeader &&
     organization !== null &&
     (!isAdmin || adminViewingClientDashboard)
   const clientName = organization
     ? formatClientDisplayName(organization.name)
     : CURRENT_COMPANY.name
-  const navItems = minimalHeader
+  const navItems = minimalHeader || !sessionReady
     ? []
     : onAdminPath
     ? []

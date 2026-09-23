@@ -16,11 +16,12 @@ import { cn } from "cn"
 
 export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { organization, role } = useActiveOrganization()
+  const { organization, role, loading: orgLoading } = useActiveOrganization()
   const isLoggedOut = isLoggedOutPath(pathname)
   const isAuthRoute = isAuthPath(pathname)
   const isAdminRoute = !isLoggedOut && !isAuthRoute && isAdminPath(pathname)
   const showClientContextBar =
+    !orgLoading &&
     !isLoggedOut &&
     !isAuthRoute &&
     role === "censio_admin" &&

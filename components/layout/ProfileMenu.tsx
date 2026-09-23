@@ -42,9 +42,11 @@ export function ProfileMenu() {
   const { settings } = useAccountSettings()
   const { settings: adminSettings } = useAdminAccountSettings()
   const { configured, isAuthenticated, loading } = useSupabaseSession()
-  const { role } = useUserProfile()
+  const { role, loading: profileLoading } = useUserProfile()
   const { organization, role: activeRole, loading: orgLoading } =
     useActiveOrganization()
+  const sessionLoading = orgLoading || profileLoading
+  const resolvedRole = activeRole ?? role
   const [mockSignedIn, setMockSignedIn] = useState(true)
 
   useEffect(() => {
@@ -54,14 +56,16 @@ export function ProfileMenu() {
   }, [configured, pathname])
 
   const signedIn = configured ? isAuthenticated : mockSignedIn
-  const isAdmin = (activeRole ?? role) === "censio_admin"
+  const isAdmin = resolvedRole === "censio_admin"
   const savedName = (isAdmin ? adminSettings.displayName : settings.displayName)
     ?.trim() ?? ""
-  const displayName = savedName
-    ? savedName
-    : isAdmin
-      ? t("profileMenuAdminFallback")
-      : (organization?.name ?? CURRENT_COMPANY.name)
+  const displayName = sessionLoading
+    ? ""
+    : savedName
+      ? savedName
+      : isAdmin
+        ? t("profileMenuAdminFallback")
+        : (organization?.name ?? CURRENT_COMPANY.name)
   const profileImage = isAdmin
     ? adminSettings.profileImage.trim() || null
     : settings.profileImage
@@ -89,7 +93,11 @@ export function ProfileMenu() {
         }
       >
         <p className="hidden max-w-52 truncate text-right text-base font-medium text-inherit sm:block">
-          {orgLoading ? CURRENT_COMPANY.name : displayName}
+          {sessionLoading ? (
+            <span className="inline-block h-5 w-24 animate-pulse rounded bg-white/20" aria-hidden="true" />
+          ) : (
+            displayName
+          )}
         </p>
         {profileImage ? (
           profileImage.startsWith("data:") || profileImage.startsWith("blob:") ? (

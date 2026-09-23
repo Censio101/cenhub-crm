@@ -29,7 +29,7 @@ type OrganizationOption = {
 export function ClientContextBar() {
   const router = useRouter()
   const { t } = useLanguage()
-  const { organization, role, setActiveOrganization } = useActiveOrganization()
+  const { organization, role, loading, setActiveOrganization } = useActiveOrganization()
   const [organizations, setOrganizations] = useState<OrganizationOption[]>([])
   const [switchingSlug, setSwitchingSlug] = useState<string | null>(null)
 
@@ -60,7 +60,7 @@ export function ClientContextBar() {
     }
   }, [])
 
-  if (role !== "censio_admin" || !organization) return null
+  if (loading || role !== "censio_admin" || !organization) return null
 
   async function handleSelect(slug: string) {
     if (slug === organization?.slug || switchingSlug) return
