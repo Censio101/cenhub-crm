@@ -11,6 +11,7 @@ import {
   createClient,
   isBrowserSupabaseConfigured,
 } from "@/lib/supabase/client"
+import { FormNotice } from "@/components/ui/form-notice"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -49,14 +50,12 @@ export function LoginForm() {
   useEffect(() => {
     const callbackError = searchParams.get("error")
     const successMessage = searchParams.get("message")
+    const hasQueryNotice = Boolean(callbackError || successMessage)
 
     if (successMessage === "account_ready") {
       setMessage(t("loginAccountReady"))
       setError(null)
-      return
-    }
-
-    if (callbackError === "auth_callback" || callbackError === "access_denied") {
+    } else if (callbackError === "auth_callback" || callbackError === "access_denied") {
       setError(t("loginCallbackError"))
     } else if (callbackError === "otp_expired") {
       setError(t("loginInviteExpired"))
@@ -65,7 +64,11 @@ export function LoginForm() {
     } else if (callbackError === "invite_session") {
       setError(t("loginInviteSessionError"))
     }
-  }, [searchParams, t])
+
+    if (hasQueryNotice) {
+      router.replace("/login", { scroll: false })
+    }
+  }, [router, searchParams, t])
 
   async function handlePasswordLogin(event: FormEvent) {
     event.preventDefault()
@@ -210,20 +213,10 @@ export function LoginForm() {
             </label>
 
             {error ? (
-              <p
-                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-                role="alert"
-              >
-                {error}
-              </p>
+              <FormNotice message={error} tone="error" onDismiss={dismissError} />
             ) : null}
             {message ? (
-              <p
-                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-                role="status"
-              >
-                {message}
-              </p>
+              <FormNotice message={message} tone="success" onDismiss={dismissMessage} />
             ) : null}
 
             <Button type="submit" className="h-11 rounded-[5px]" disabled={submitting || loading}>

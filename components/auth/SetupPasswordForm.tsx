@@ -1,9 +1,14 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { FormEvent, useEffect, useState } from "react"
+import { FormEvent, useCallback, useEffect, useState } from "react"
 
+import {
+  getMatchingPasswordState,
+  MatchingPasswordFields,
+} from "@/components/auth/MatchingPasswordFields"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { FormNotice } from "@/components/ui/form-notice"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import {
   createClient,
@@ -11,9 +16,6 @@ import {
 } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const fieldClass =
-  "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
 
 export function SetupPasswordForm() {
   const router = useRouter()
@@ -23,6 +25,9 @@ export function SetupPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const dismissError = useCallback(() => setError(null), [])
+  const { isValid } = getMatchingPasswordState(password, confirmPassword)
 
   useEffect(() => {
     if (loading || !configured) return
@@ -39,14 +44,15 @@ export function SetupPasswordForm() {
     event.preventDefault()
     setError(null)
 
-    if (password.length < 8) {
-      setError(t("passwordTooShort"))
+    if (!isValid) {
+      if (password.length < 8) {
+        setError(t("passwordTooShort"))
+      } else {
+        setError(t("passwordMismatch"))
+      }
       return
     }
-    if (password !== confirmPassword) {
-      setError(t("passwordMismatch"))
-      return
-    }
+
     if (!configured || !isBrowserSupabaseConfigured()) {
       setError(t("adminPasswordUnavailable"))
       return
@@ -88,44 +94,22 @@ export function SetupPasswordForm() {
         </CardHeader>
         <CardContent>
           <form className="grid gap-5" onSubmit={handleSubmit}>
-            <label className="grid gap-2 text-sm">
-              <span className="font-medium text-muted-foreground">{t("newPasswordLabel")}</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            <label className="grid gap-2 text-sm">
-              <span className="font-medium text-muted-foreground">
-                {t("confirmPasswordLabel")}
-              </span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                className={fieldClass}
-              />
-            </label>
-
             {error ? (
-              <p
-                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-                role="alert"
-              >
-                {error}
-              </p>
+              <FormNotice message={error} tone="error" onDismiss={dismissError} />
             ) : null}
+
+            <MatchingPasswordFields
+              password={password}
+              confirmPassword={confirmPassword}
+              onPasswordChange={setPassword}
+              onConfirmPasswordChange={setConfirmPassword}
+              disabled={submitting}
+            />
 
             <Button
               type="submit"
               className="h-11 w-full rounded-[5px] sm:w-auto sm:min-w-48"
-              disabled={submitting}
+              disabled={submitting || !isValid}
             >
               {submitting ? t("setupPasswordSubmitting") : t("setupPasswordSubmit")}
             </Button>
