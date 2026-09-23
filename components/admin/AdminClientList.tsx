@@ -7,7 +7,11 @@ import { RefreshCwIcon } from "lucide-react"
 
 import { AdminHubToolbar } from "@/components/admin/AdminHubToolbar"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
-import type { HubClient } from "@/lib/admin/hub-clients"
+import {
+  hubClientInEnabledTab,
+  hubClientInNeedsSetupTab,
+  type HubClient,
+} from "@/lib/admin/hub-clients"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import type { MessageKey } from "@/lib/i18n"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
@@ -19,12 +23,12 @@ const fieldClass =
 
 type ClientFilter = "all" | "enabled" | "needs-setup"
 
-const FILTERS: ClientFilter[] = ["all", "enabled", "needs-setup"]
+const FILTERS: ClientFilter[] = ["enabled", "needs-setup", "all"]
 
 const FILTER_LABELS: Record<ClientFilter, MessageKey> = {
+  enabled: "filterEnabled",
+  "needs-setup": "filterNeedsSetup",
   all: "filterAll",
-  enabled: "filterLive",
-  "needs-setup": "filterNotLive",
 }
 
 function clientInitials(name: string) {
@@ -49,7 +53,7 @@ export function AdminClientList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<ClientFilter>("all")
+  const [filter, setFilter] = useState<ClientFilter>("enabled")
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [creating, setCreating] = useState(false)
@@ -90,8 +94,8 @@ export function AdminClientList() {
           filter === "all"
             ? true
             : filter === "enabled"
-              ? client.metaLive
-              : !client.metaLive
+              ? hubClientInEnabledTab(client)
+              : hubClientInNeedsSetupTab(client)
         if (!matchesFilter) return false
         if (!needle) return true
         const haystack = [
@@ -104,8 +108,10 @@ export function AdminClientList() {
         return haystack.includes(needle)
       })
       .sort((left, right) => {
-        if (filter === "all" && left.metaLive !== right.metaLive) {
-          return left.metaLive ? -1 : 1
+        if (filter === "all") {
+          const leftEnabled = hubClientInEnabledTab(left)
+          const rightEnabled = hubClientInEnabledTab(right)
+          if (leftEnabled !== rightEnabled) return leftEnabled ? -1 : 1
         }
         return left.name.localeCompare(right.name, "da")
       })
@@ -266,6 +272,7 @@ export function AdminClientList() {
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
           {visible.map((client) => {
+            const isEnabled = hubClientInEnabledTab(client)
             const isLive = client.metaLive
             const isPartnerOnly = client.partnerOnly
             const quietButtonClass =
@@ -278,7 +285,7 @@ export function AdminClientList() {
                 key={client.key}
                 className={cn(
                   "flex flex-col gap-3 rounded-2xl border border-[#d3c3b2] bg-card p-[18px]",
-                  isLive
+                  isEnabled
                     ? "shadow-[0_1px_3px_rgba(26,18,8,0.06)] transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(26,18,8,0.12)]"
                     : "shadow-[0_1px_2px_rgba(26,18,8,0.04)]"
                 )}
@@ -306,15 +313,15 @@ export function AdminClientList() {
                   <span
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold",
-                      isLive
+                      isEnabled
                         ? "bg-emerald-50 text-emerald-700"
                         : "bg-primary/10 text-primary"
                     )}
                   >
                     <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-                    {isLive ? t("filterLive") : t("filterNotLive")}
+                    {isEnabled ? t("filterEnabled") : t("filterNeedsSetup")}
                   </span>
-                  {isLive ? (
+                  {isEnabled ? (
                     <>
                       <span aria-hidden="true">·</span>
                       <span>
@@ -353,13 +360,13 @@ export function AdminClientList() {
                     <>
                       <Link
                         href={`/admin/${client.slug}`}
-                        className={isLive ? quietButtonClass : primaryButtonClass}
+                        className={isEnabled ? quietButtonClass : primaryButtonClass}
                       >
                         {t("setting")}
                       </Link>
                       <button
                         type="button"
-                        className={isLive ? primaryButtonClass : quietButtonClass}
+                        className={isEnabled ? primaryButtonClass : quietButtonClass}
                         disabled={openingSlug === client.slug}
                         onClick={() => {
                           if (!client.slug) return

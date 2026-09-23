@@ -109,6 +109,8 @@ export const en: Messages = {
   searchClientPlaceholder: "Search clients…",
   filterAll: "All",
   filterActive: "Active",
+  filterEnabled: "Enabled",
+  filterNeedsSetup: "Need setup",
   filterSetup: "Setup",
   filterLive: "Live",
   filterNotLive: "Not live",

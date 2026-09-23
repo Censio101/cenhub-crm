@@ -107,6 +107,8 @@ const daMessages = {
   searchClientPlaceholder: "Søg klient…",
   filterAll: "Alle",
   filterActive: "Aktive",
+  filterEnabled: "Aktiveret",
+  filterNeedsSetup: "Skal sættes op",
   filterSetup: "Setup",
   filterLive: "Live",
   filterNotLive: "Ikke live",

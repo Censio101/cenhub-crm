@@ -21,6 +21,7 @@ export type HubClient = {
   slug: string | null
   name: string
   demo_mode: boolean
+  isTestAccount: boolean
   leadCount: number
   userCount: number
   metaLive: boolean
@@ -28,6 +29,18 @@ export type HubClient = {
   status: MetaClientStatus | "needs-setup"
   metaAdAccountId: string
   currency: string | null
+}
+
+export function isHubTestAccount(input: { name: string; demo_mode?: boolean }): boolean {
+  return Boolean(input.demo_mode) || /\btest\b/i.test(input.name)
+}
+
+export function hubClientInEnabledTab(client: HubClient): boolean {
+  return client.metaEnabled || client.isTestAccount
+}
+
+export function hubClientInNeedsSetupTab(client: HubClient): boolean {
+  return !hubClientInEnabledTab(client)
 }
 
 export type HubClientsMeta = {
@@ -48,6 +61,7 @@ function toHubClient(
     slug: meta.slug,
     name: meta.name,
     demo_mode: meta.demoMode,
+    isTestAccount: isHubTestAccount({ name: meta.name, demo_mode: meta.demoMode }),
     leadCount: org.leadCount,
     userCount: org.userCount,
     metaLive: meta.status === "live",
@@ -98,6 +112,7 @@ export async function listHubClients(supabase: SupabaseClient): Promise<{
       slug: null,
       name: account.accountName,
       demo_mode: true,
+      isTestAccount: isHubTestAccount({ name: account.accountName, demo_mode: true }),
       leadCount: 0,
       userCount: 0,
       metaLive: false,
