@@ -311,11 +311,9 @@
 .admin-ui {
   --font-sans: var(--font-outfit);
   --font-heading: var(--font-outfit);
-  font-family: var(--font-outfit), ui-sans-serif, sans-serif;
 }
 
 .admin-ui :where(h1, h2, h3, h4, [data-slot="card-title"]) {
-  font-family: var(--font-outfit), ui-sans-serif, sans-serif;
   letter-spacing: -0.02em;
 }
 

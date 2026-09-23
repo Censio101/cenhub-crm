@@ -1,3 +1,6 @@
+import { outfit } from "@/lib/fonts/app-fonts"
+import { cn } from "cn"
+
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
-  return <div className="admin-ui font-sans">{children}</div>
+  return <div className={cn("admin-ui", outfit.className)}>{children}</div>
 }
