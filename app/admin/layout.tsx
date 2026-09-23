@@ -1,3 +1,9 @@
+import { inter, poppins } from "@/lib/fonts/admin-fonts"
+
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
-  return children
+  return (
+    <div className={`admin-ui ${inter.className}`}>
+      {children}
+    </div>
+  )
 }

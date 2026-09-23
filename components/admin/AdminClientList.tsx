@@ -3,9 +3,11 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useEffect, useMemo, useState } from "react"
-import { RefreshCwIcon, SearchIcon } from "lucide-react"
+import { RefreshCwIcon } from "lucide-react"
 
+import { AdminHubToolbar } from "@/components/admin/AdminHubToolbar"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
+import type { HubClient } from "@/lib/admin/hub-clients"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import type { MessageKey } from "@/lib/i18n"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
@@ -25,16 +27,6 @@ const FILTER_LABELS: Record<ClientFilter, MessageKey> = {
   "needs-setup": "filterNotLive",
 }
 
-type OrganizationSummary = {
-  id: string
-  slug: string
-  name: string
-  demo_mode: boolean
-  leadCount: number
-  userCount: number
-  metaEnabled: boolean
-}
-
 function clientInitials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean)
   if (words.length === 0) return "?"
@@ -42,11 +34,18 @@ function clientInitials(name: string) {
   return (words[0][0] + words[1][0]).toUpperCase()
 }
 
+function formatAdAccountId(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  return trimmed.startsWith("act_") ? trimmed : `act_${trimmed}`
+}
+
 export function AdminClientList() {
   const router = useRouter()
   const { t } = useLanguage()
   const { setActiveOrganization } = useActiveOrganization()
-  const [organizations, setOrganizations] = useState<OrganizationSummary[]>([])
+  const [clients, setClients] = useState<HubClient[]>([])
+  const [partnerFetchError, setPartnerFetchError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
@@ -56,15 +55,20 @@ export function AdminClientList() {
   const [creating, setCreating] = useState(false)
   const [openingSlug, setOpeningSlug] = useState<string | null>(null)
   const [syncingSlug, setSyncingSlug] = useState<string | null>(null)
+  const [enablingPartnerId, setEnablingPartnerId] = useState<string | null>(null)
 
-  async function loadOrganizations(silent = false) {
+  async function loadClients(silent = false) {
     if (!silent) setLoading(true)
     setError(null)
     try {
       const response = await fetch("/api/admin/organizations", { cache: "no-store" })
       if (!response.ok) throw new Error(t("errorFetchClients"))
-      const data = (await response.json()) as { organizations: OrganizationSummary[] }
-      setOrganizations(data.organizations)
+      const data = (await response.json()) as {
+        clients: HubClient[]
+        meta?: { partnerFetchError?: string | null }
+      }
+      setClients(data.clients)
+      setPartnerFetchError(data.meta?.partnerFetchError ?? null)
     } catch (loadError) {
       console.error(loadError)
       setError(t("errorLoadClients"))
@@ -74,31 +78,38 @@ export function AdminClientList() {
   }
 
   useEffect(() => {
-    void loadOrganizations()
+    void loadClients()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return organizations
-      .filter((organization) => {
+    return clients
+      .filter((client) => {
         const matchesFilter =
           filter === "all"
             ? true
             : filter === "enabled"
-              ? organization.metaEnabled
-              : !organization.metaEnabled
+              ? client.metaLive
+              : !client.metaLive
         if (!matchesFilter) return false
         if (!needle) return true
-        return `${organization.name} ${organization.slug}`.toLowerCase().includes(needle)
+        const haystack = [
+          client.name,
+          client.slug ?? "",
+          client.metaAdAccountId,
+        ]
+          .join(" ")
+          .toLowerCase()
+        return haystack.includes(needle)
       })
       .sort((left, right) => {
-        if (filter === "all" && left.metaEnabled !== right.metaEnabled) {
-          return left.metaEnabled ? -1 : 1
+        if (filter === "all" && left.metaLive !== right.metaLive) {
+          return left.metaLive ? -1 : 1
         }
         return left.name.localeCompare(right.name, "da")
       })
-  }, [filter, organizations, query])
+  }, [clients, filter, query])
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault()
@@ -121,7 +132,7 @@ export function AdminClientList() {
       if (!response.ok) throw new Error(data.error ?? t("errorCreateClient"))
       setName("")
       setSlug("")
-      await loadOrganizations(true)
+      await loadClients(true)
       if (data.organization?.slug) {
         router.push(`/admin/${data.organization.slug}`)
       }
@@ -129,6 +140,39 @@ export function AdminClientList() {
       setError(createError instanceof Error ? createError.message : t("errorCreate"))
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handlePartnerEnable(client: HubClient) {
+    setEnablingPartnerId(client.metaAdAccountId)
+    setError(null)
+    try {
+      const response = await fetch("/api/admin/meta-clients/enable-partner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          metaAdAccountId: client.metaAdAccountId,
+          accountName: client.name,
+          enabled: true,
+        }),
+      })
+      const data = (await response.json()) as {
+        error?: string
+        organization?: { slug: string }
+      }
+      if (!response.ok) throw new Error(data.error ?? t("errorEnableMetaClient"))
+
+      await loadClients(true)
+      if (data.organization?.slug) {
+        router.push(`/admin/${data.organization.slug}`)
+      }
+    } catch (enableError) {
+      setError(
+        enableError instanceof Error ? enableError.message : t("errorEnableMetaClient")
+      )
+    } finally {
+      setEnablingPartnerId(null)
     }
   }
 
@@ -142,7 +186,7 @@ export function AdminClientList() {
       )
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("syncFailed"))
-      await loadOrganizations(true)
+      await loadClients(true)
     } catch (syncError) {
       setError(syncError instanceof Error ? syncError.message : t("syncFailed"))
     } finally {
@@ -162,48 +206,24 @@ export function AdminClientList() {
         <p className="mt-1 text-sm text-muted-foreground">{t("clientsDescription")}</p>
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <label className="relative min-w-0 flex-1 sm:max-w-sm">
-          <SearchIcon
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <input
-            className={cn(
-              fieldClass,
-              "border-[#d3c3b2] pl-9 focus:border-primary focus:ring-primary"
-            )}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("searchClients")}
-            aria-label={t("searchClients")}
-          />
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
-          {FILTERS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              className={cn(
-                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                filter === value
-                  ? "bg-primary text-white"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-              onClick={() => setFilter(value)}
-            >
-              {t(FILTER_LABELS[value])}
-            </button>
-          ))}
-          {loading ? (
-            <p className="text-sm text-muted-foreground">{t("loadingClients")}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {t("clientsCount", { count: visible.length })}
-            </p>
-          )}
-        </div>
-      </div>
+      <AdminHubToolbar
+        search={query}
+        onSearchChange={setQuery}
+        searchPlaceholder={t("searchClients")}
+        filter={filter}
+        onFilterChange={setFilter}
+        filters={FILTERS}
+        filterLabels={FILTER_LABELS}
+        countLabel={t("clientsCount", { count: visible.length })}
+        loading={loading}
+        loadingLabel={t("loadingClients")}
+      />
+
+      {partnerFetchError ? (
+        <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {t("businessManager")} {partnerFetchError}
+        </p>
+      ) : null}
 
       {error ? (
         <p className="text-sm text-destructive" role="alert">
@@ -241,12 +261,13 @@ export function AdminClientList() {
         </div>
       ) : visible.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-[#d3c3b2] bg-card px-6 py-10 text-center text-sm text-muted-foreground">
-          {organizations.length === 0 ? t("noClientsYet") : t("noMatchingClients")}
+          {clients.length === 0 ? t("noClientsYet") : t("noMatchingClients")}
         </p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
-          {visible.map((organization) => {
-            const isLive = organization.metaEnabled
+          {visible.map((client) => {
+            const isLive = client.metaLive
+            const isPartnerOnly = client.partnerOnly
             const quietButtonClass =
               "inline-flex items-center justify-center rounded-[10px] bg-[#faf8f6] px-3.5 py-2.5 text-center text-[13px] font-semibold text-foreground transition-colors hover:bg-[#e8e0d8] disabled:cursor-not-allowed disabled:opacity-65"
             const primaryButtonClass =
@@ -254,7 +275,7 @@ export function AdminClientList() {
 
             return (
               <article
-                key={organization.id}
+                key={client.key}
                 className={cn(
                   "flex flex-col gap-3 rounded-2xl border border-[#d3c3b2] bg-card p-[18px]",
                   isLive
@@ -267,14 +288,16 @@ export function AdminClientList() {
                     className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-[15px] font-semibold tracking-wide text-white"
                     aria-hidden="true"
                   >
-                    {clientInitials(organization.name)}
+                    {clientInitials(client.name)}
                   </span>
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate text-lg leading-tight font-semibold">
-                      {organization.name}
+                      {client.name}
                     </h2>
                     <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                      /{organization.slug}
+                      {isPartnerOnly
+                        ? formatAdAccountId(client.metaAdAccountId)
+                        : `/${client.slug}`}
                     </p>
                   </div>
                 </div>
@@ -295,61 +318,82 @@ export function AdminClientList() {
                     <>
                       <span aria-hidden="true">·</span>
                       <span>
-                        {organization.leadCount} {t("leads")}
+                        {client.leadCount} {t("leads")}
                       </span>
                       <span aria-hidden="true">·</span>
                       <span>
-                        {organization.userCount} {t("users")}
+                        {client.userCount} {t("users")}
                       </span>
                     </>
                   ) : (
                     <>
                       <span aria-hidden="true">·</span>
-                      <span>{t("metaNotConnected")}</span>
+                      <span>
+                        {isPartnerOnly ? t("bmUnlinked") : t("metaNotConnected")}
+                      </span>
                     </>
                   )}
                 </div>
 
                 <div className="mt-1 grid grid-cols-3 gap-2">
-                  <Link
-                    href={`/admin/${organization.slug}`}
-                    className={isLive ? quietButtonClass : primaryButtonClass}
-                  >
-                    {t("setting")}
-                  </Link>
-                  <button
-                    type="button"
-                    className={isLive ? primaryButtonClass : quietButtonClass}
-                    disabled={openingSlug === organization.slug}
-                    onClick={() => {
-                      setOpeningSlug(organization.slug)
-                      void openClientDashboard(
-                        organization.slug,
-                        setActiveOrganization,
-                        router
-                      ).finally(() => setOpeningSlug(null))
-                    }}
-                  >
-                    {openingSlug === organization.slug
-                      ? t("openingDashboard")
-                      : t("openDashboard")}
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(quietButtonClass, "gap-1.5")}
-                    disabled={!isLive || syncingSlug === organization.slug}
-                    onClick={() => {
-                      void handleSync(organization.slug)
-                    }}
-                  >
-                    <RefreshCwIcon
-                      className={cn(
-                        "size-3.5",
-                        syncingSlug === organization.slug && "animate-spin"
-                      )}
-                    />
-                    {syncingSlug === organization.slug ? t("syncing") : t("sync")}
-                  </button>
+                  {isPartnerOnly ? (
+                    <button
+                      type="button"
+                      className={cn(primaryButtonClass, "col-span-3")}
+                      disabled={enablingPartnerId === client.metaAdAccountId}
+                      onClick={() => {
+                        void handlePartnerEnable(client)
+                      }}
+                    >
+                      {enablingPartnerId === client.metaAdAccountId
+                        ? t("activating")
+                        : t("enableClient")}
+                    </button>
+                  ) : (
+                    <>
+                      <Link
+                        href={`/admin/${client.slug}`}
+                        className={isLive ? quietButtonClass : primaryButtonClass}
+                      >
+                        {t("setting")}
+                      </Link>
+                      <button
+                        type="button"
+                        className={isLive ? primaryButtonClass : quietButtonClass}
+                        disabled={openingSlug === client.slug}
+                        onClick={() => {
+                          if (!client.slug) return
+                          setOpeningSlug(client.slug)
+                          void openClientDashboard(
+                            client.slug,
+                            setActiveOrganization,
+                            router
+                          ).finally(() => setOpeningSlug(null))
+                        }}
+                      >
+                        {openingSlug === client.slug
+                          ? t("openingDashboard")
+                          : t("openDashboard")}
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(quietButtonClass, "gap-1.5")}
+                        disabled={!isLive || syncingSlug === client.slug}
+                        onClick={() => {
+                          if (!client.slug) return
+                          void handleSync(client.slug)
+                        }}
+                      >
+                        <RefreshCwIcon
+                          className={cn(
+                            "size-3.5",
+                            syncingSlug === client.slug && "animate-spin"
+                          )}
+                        />
+                        {syncingSlug === client.slug ? t("syncing") : t("sync")}
+                      </button>
+                    </>
+                  )}
                 </div>
               </article>
             )

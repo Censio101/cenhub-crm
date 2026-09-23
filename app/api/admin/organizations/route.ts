@@ -4,18 +4,16 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
-import {
-  createOrganization,
-  listOrganizationsWithStats,
-} from "@/lib/db/organizations-repository"
+import { listHubClients } from "@/lib/admin/hub-clients"
+import { createOrganization } from "@/lib/db/organizations-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function GET() {
   try {
     await requireCensioAdmin()
     const admin = createAdminClient()
-    const organizations = await listOrganizationsWithStats(admin)
-    return NextResponse.json({ organizations })
+    const { clients, organizations, meta } = await listHubClients(admin)
+    return NextResponse.json({ clients, organizations, meta })
   } catch (error) {
     return adminErrorResponse(error)
   }

@@ -69,7 +69,7 @@ export function ClientContextBar() {
   }
 
   return (
-    <div className="border-b border-[#d3c3b2] bg-[#faf8f6]">
+    <div className="admin-ui border-b border-[#d3c3b2] bg-[#faf8f6]">
       <div className="flex items-center justify-end gap-3 px-4 py-2.5 sm:px-6 lg:px-8 xl:px-10">
         <span className="shrink-0 text-sm font-medium text-muted-foreground">
           {t("viewingClient")}
@@ -92,7 +92,7 @@ export function ClientContextBar() {
             <span className="truncate">{organization.name}</span>
             <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="max-h-80 min-w-56 overflow-y-auto">
+          <DropdownMenuContent align="end" className="admin-ui max-h-80 min-w-56 overflow-y-auto">
             {organizations.map((option) => {
               const isActive = option.slug === organization.slug
               return (

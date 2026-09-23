@@ -4,6 +4,7 @@ import Link from "next/link"
 import { RefreshCwIcon, Settings2Icon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { AdminHubToolbar } from "@/components/admin/AdminHubToolbar"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { deriveMetaClientStatus } from "@/lib/db/meta-clients-repository"
@@ -351,6 +352,8 @@ export function AdminMetaHub() {
     })
   }, [filter, partnerClients, search])
 
+  const visibleCount = filteredClients.length + filteredPartnerClients.length
+
   const counts = useMemo(
     () => ({
       enabled: clients.filter((client) => client.enabled).length,
@@ -547,55 +550,42 @@ export function AdminMetaHub() {
         </div>
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <input
-          className="h-9 w-full rounded-[12px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring sm:max-w-xs"
-          placeholder={t("searchClientPlaceholder")}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          {(["all", "enabled", "needs-setup"] as const).map((value) => (
+      <AdminHubToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("searchClientPlaceholder")}
+        filter={filter}
+        onFilterChange={setFilter}
+        filters={["all", "enabled", "needs-setup"] as const}
+        filterLabels={filterLabels}
+        countLabel={t("clientsCount", { count: visibleCount })}
+        loading={loading}
+        loadingLabel={t("loading")}
+        actions={
+          <>
             <button
-              key={value}
               type="button"
-              className={cn(
-                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                filter === value
-                  ? "bg-primary text-white"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-              onClick={() => setFilter(value)}
+              className="admin-btn admin-btn--secondary"
+              disabled={syncingAll || refreshing}
+              onClick={() => {
+                void handleSyncAll()
+              }}
             >
-              {t(filterLabels[value])}
+              {syncingAll ? t("syncing") : t("syncAll")}
             </button>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8"
-            disabled={syncingAll || refreshing}
-            onClick={() => {
-              void handleSyncAll()
-            }}
-          >
-            {syncingAll ? t("syncing") : t("syncAll")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8"
-            disabled={refreshing || syncingAll}
-            onClick={() => {
-              void load(true)
-            }}
-          >
-            {refreshing ? "…" : t("refresh")}
-          </Button>
-        </div>
-      </div>
+            <button
+              type="button"
+              className="admin-btn admin-btn--secondary"
+              disabled={refreshing || syncingAll}
+              onClick={() => {
+                void load(true)
+              }}
+            >
+              {refreshing ? "…" : t("refresh")}
+            </button>
+          </>
+        }
+      />
 
       {partnerFetchError ? (
         <p className="rounded-[12px] bg-amber-50 px-3 py-2 text-xs text-amber-900">
