@@ -3,7 +3,7 @@ import { Geist_Mono } from "next/font/google"
 
 import { AppShell } from "@/components/layout/AppShell"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { outfit } from "@/lib/fonts/app-fonts"
+import { outfit, poppins } from "@/lib/fonts/app-fonts"
 
 import "./globals.css"
 
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="da"
-      className={`${outfit.variable} ${outfit.className} ${geistMono.variable} h-full antialiased`}
+      className={`${outfit.variable} ${outfit.className} ${poppins.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background font-sans text-foreground">
         <TooltipProvider>

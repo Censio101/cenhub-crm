@@ -317,6 +317,15 @@
   letter-spacing: -0.02em;
 }
 
+.admin-hub {
+  --font-sans: var(--font-poppins);
+  --font-heading: var(--font-poppins);
+}
+
+.admin-hub :where(h1, h2, h3, h4, [data-slot="card-title"]) {
+  letter-spacing: -0.02em;
+}
+
 .admin-ui :where(p, label, li, [data-slot="card-description"], input, select, textarea) {
   line-height: 1.55;
 }

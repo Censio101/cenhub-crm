@@ -15,6 +15,7 @@ import {
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import type { MessageKey } from "@/lib/i18n"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { poppins } from "@/lib/fonts/app-fonts"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 
@@ -201,7 +202,7 @@ export function AdminClientList() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <div className={cn("admin-hub", poppins.className, "mx-auto flex w-full max-w-6xl flex-col gap-6")}>
       <header>
         <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
           {t("brand")}

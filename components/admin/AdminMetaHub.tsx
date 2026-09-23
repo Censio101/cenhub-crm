@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { hubClientInEnabledTab, hubClientInNeedsSetupTab } from "@/lib/admin/hub-clients"
 import { deriveMetaClientStatus } from "@/lib/db/meta-clients-repository"
+import { poppins } from "@/lib/fonts/app-fonts"
 import type { MessageKey } from "@/lib/i18n"
 import { cn } from "cn"
 
@@ -542,7 +543,7 @@ export function AdminMetaHub() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <div className={cn("admin-hub", poppins.className, "mx-auto flex w-full max-w-5xl flex-col gap-5")}>
       <header className="flex flex-col gap-4">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
