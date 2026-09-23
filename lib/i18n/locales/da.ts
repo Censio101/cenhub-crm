@@ -185,8 +185,9 @@ const daMessages = {
   setupPasswordTitle: "Opret din adgangskode",
   setupPasswordDescription:
     "Din invitation er accepteret. Vælg en adgangskode for at færdiggøre din Censio-konto.",
-  setupPasswordSubmit: "Gem adgangskode og fortsæt",
+  setupPasswordSubmit: "Gem adgangskode",
   setupPasswordSubmitting: "Gemmer…",
+  loginAccountReady: "Din adgangskode er oprettet. Log ind for at fortsætte.",
   loginSupabaseMissingTitle: "Supabase er ikke sat op",
   loginSupabaseMissingDescription:
     "Tilføj Supabase-miljøvariabler for at aktivere login. Indtil da kører CRM'et med demo-data.",

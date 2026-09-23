@@ -10,13 +10,7 @@ import {
   isBrowserSupabaseConfigured,
 } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
@@ -29,27 +23,12 @@ export function SetupPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [destination, setDestination] = useState("/")
 
   useEffect(() => {
     if (!loading && configured && !isAuthenticated) {
       router.replace("/login?error=invite_session")
     }
   }, [configured, isAuthenticated, loading, router])
-
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    void fetch("/api/auth/me", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!data) return
-        setDestination(data.role === "censio_admin" ? "/admin" : "/")
-      })
-      .catch(() => {
-        setDestination("/")
-      })
-  }, [isAuthenticated])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -73,38 +52,36 @@ export function SetupPasswordForm() {
     const supabase = createClient()
     const { error: updateError } = await supabase.auth.updateUser({ password })
 
-    setSubmitting(false)
-
     if (updateError) {
+      setSubmitting(false)
       setError(updateError.message)
       return
     }
 
-    router.replace(destination)
+    await supabase.auth.signOut()
+    router.replace("/login?message=account_ready")
   }
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-2xl justify-center py-10 sm:py-14">
+      <div className="mx-auto flex w-full max-w-xl justify-center py-10 sm:py-14">
         <div className="h-56 w-full animate-pulse rounded-2xl bg-muted/70" />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl justify-center py-10 sm:py-14">
-      <Card className="w-full">
-        <CardHeader>
-          <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            {t("brand")}
-          </p>
-          <CardTitle className="mt-1 text-lg">{t("setupPasswordTitle")}</CardTitle>
-          <CardDescription>{t("setupPasswordDescription")}</CardDescription>
+    <div className="mx-auto flex w-full max-w-xl justify-center py-10 sm:py-14">
+      <Card className="dashboard-card w-full">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-medium sm:text-2xl">
+            {t("setupPasswordTitle")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">{t("newPasswordLabel")}</span>
+          <form className="grid gap-5" onSubmit={handleSubmit}>
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium text-muted-foreground">{t("newPasswordLabel")}</span>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -114,8 +91,10 @@ export function SetupPasswordForm() {
                 className={fieldClass}
               />
             </label>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">{t("confirmPasswordLabel")}</span>
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium text-muted-foreground">
+                {t("confirmPasswordLabel")}
+              </span>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -127,12 +106,19 @@ export function SetupPasswordForm() {
             </label>
 
             {error ? (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+              <p
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                role="alert"
+              >
                 {error}
               </p>
             ) : null}
 
-            <Button type="submit" className="h-11 rounded-[5px]" disabled={submitting}>
+            <Button
+              type="submit"
+              className="h-11 w-full rounded-[5px] sm:w-auto sm:min-w-48"
+              disabled={submitting}
+            >
               {submitting ? t("setupPasswordSubmitting") : t("setupPasswordSubmit")}
             </Button>
           </form>

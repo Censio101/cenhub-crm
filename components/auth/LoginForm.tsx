@@ -48,6 +48,14 @@ export function LoginForm() {
 
   useEffect(() => {
     const callbackError = searchParams.get("error")
+    const successMessage = searchParams.get("message")
+
+    if (successMessage === "account_ready") {
+      setMessage(t("loginAccountReady"))
+      setError(null)
+      return
+    }
+
     if (callbackError === "auth_callback" || callbackError === "access_denied") {
       setError(t("loginCallbackError"))
     } else if (callbackError === "otp_expired") {
@@ -84,7 +92,11 @@ export function LoginForm() {
       return
     }
 
-    router.replace("/")
+    const meResponse = await fetch("/api/auth/me", { cache: "no-store" })
+    const me = meResponse.ok
+      ? ((await meResponse.json()) as { role?: string | null })
+      : null
+    router.replace(me?.role === "censio_admin" ? "/admin" : "/")
   }
 
   async function handleMagicLink() {
@@ -145,8 +157,8 @@ export function LoginForm() {
 
   if (!isBrowserSupabaseConfigured()) {
     return (
-      <div className="mx-auto flex max-w-lg justify-center py-10">
-        <Card className="w-full">
+      <div className="mx-auto flex w-full max-w-xl justify-center py-10 sm:py-14">
+        <Card className="dashboard-card w-full">
           <CardHeader>
             <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
               {t("loginTitle")}
@@ -165,19 +177,16 @@ export function LoginForm() {
   }
 
   return (
-    <div className="mx-auto flex max-w-lg justify-center py-10">
-      <Card className="w-full">
-        <CardHeader>
-          <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            {t("loginTitle")}
-          </p>
-          <CardTitle className="mt-1 text-lg">{t("loginHeading")}</CardTitle>
+    <div className="mx-auto flex w-full max-w-xl justify-center py-10 sm:py-14">
+      <Card className="dashboard-card w-full">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-medium sm:text-2xl">{t("loginHeading")}</CardTitle>
           <CardDescription>{t("loginDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4" onSubmit={handlePasswordLogin}>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">{t("email")}</span>
+          <form className="grid gap-5" onSubmit={handlePasswordLogin}>
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium text-muted-foreground">{t("email")}</span>
               <input
                 type="email"
                 autoComplete="email"
@@ -188,8 +197,8 @@ export function LoginForm() {
                 placeholder={t("loginEmailPlaceholder")}
               />
             </label>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">{t("password")}</span>
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium text-muted-foreground">{t("password")}</span>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -201,17 +210,23 @@ export function LoginForm() {
             </label>
 
             {error ? (
-              <p className="text-sm text-destructive" role="alert">
+              <p
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                role="alert"
+              >
                 {error}
               </p>
             ) : null}
             {message ? (
-              <p className="text-sm text-muted-foreground" role="status">
+              <p
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+                role="status"
+              >
                 {message}
               </p>
             ) : null}
 
-            <Button type="submit" className="h-10" disabled={submitting || loading}>
+            <Button type="submit" className="h-11 rounded-[5px]" disabled={submitting || loading}>
               {submitting ? t("loginSubmitting") : t("loginSubmit")}
             </Button>
             <Button

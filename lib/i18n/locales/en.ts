@@ -187,8 +187,9 @@ export const en: Messages = {
   setupPasswordTitle: "Create your password",
   setupPasswordDescription:
     "Your invitation was accepted. Choose a password to finish setting up your Censio account.",
-  setupPasswordSubmit: "Save password and continue",
+  setupPasswordSubmit: "Save password",
   setupPasswordSubmitting: "Saving…",
+  loginAccountReady: "Your password was created. Sign in to continue.",
   loginSupabaseMissingTitle: "Supabase is not configured",
   loginSupabaseMissingDescription:
     "Add Supabase environment variables to enable login. Until then the CRM runs with demo data.",

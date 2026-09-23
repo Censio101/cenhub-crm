@@ -77,7 +77,7 @@ export function InviteAcceptForm() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl justify-center py-10 sm:py-14">
+    <div className="mx-auto flex w-full max-w-lg justify-center py-10 sm:py-14">
       <Card className="dashboard-card w-full">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-medium sm:text-2xl">
