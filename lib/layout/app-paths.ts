@@ -4,6 +4,17 @@ export function isLoggedOutPath(pathname: string) {
   return LOGGED_OUT_PATHS.has(pathname)
 }
 
+export function isAuthPath(pathname: string) {
+  return (
+    pathname.startsWith("/auth/invite") ||
+    pathname.startsWith("/auth/setup-password")
+  )
+}
+
+export function isMinimalHeaderPath(pathname: string) {
+  return isLoggedOutPath(pathname) || isAuthPath(pathname)
+}
+
 export function isAdminPath(pathname: string) {
   return pathname.startsWith("/admin")
 }

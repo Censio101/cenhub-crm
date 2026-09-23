@@ -85,14 +85,14 @@ export function SetupPasswordForm() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex max-w-lg justify-center py-10">
+      <div className="mx-auto flex w-full max-w-2xl justify-center py-10 sm:py-14">
         <div className="h-56 w-full animate-pulse rounded-2xl bg-muted/70" />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex max-w-lg justify-center py-10">
+    <div className="mx-auto flex w-full max-w-2xl justify-center py-10 sm:py-14">
       <Card className="w-full">
         <CardHeader>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">

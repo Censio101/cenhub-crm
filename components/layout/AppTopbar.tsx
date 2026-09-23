@@ -17,7 +17,11 @@ import { ProfileMenu } from "@/components/layout/ProfileMenu"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { CURRENT_COMPANY } from "@/lib/company"
-import { isAdminPath, isClientDashboardPath } from "@/lib/layout/app-paths"
+import {
+  isAdminPath,
+  isClientDashboardPath,
+  isMinimalHeaderPath,
+} from "@/lib/layout/app-paths"
 import { cn } from "cn"
 
 const CLIENT_NAV = [
@@ -38,16 +42,21 @@ export function AppTopbar() {
   const { organization, role } = useActiveOrganization()
 
   const isAdmin = role === "censio_admin"
+  const minimalHeader = isMinimalHeaderPath(pathname)
   const onAdminPath = isAdminPath(pathname)
   const onClientDashboard = isClientDashboardPath(pathname)
   const adminViewingClientDashboard =
     isAdmin && organization !== null && onClientDashboard
   const showClientBranding =
-    organization !== null && (!isAdmin || adminViewingClientDashboard)
+    !minimalHeader &&
+    organization !== null &&
+    (!isAdmin || adminViewingClientDashboard)
   const clientName = organization
     ? formatClientDisplayName(organization.name)
     : CURRENT_COMPANY.name
-  const navItems = onAdminPath
+  const navItems = minimalHeader
+    ? []
+    : onAdminPath
     ? []
     : isAdmin
       ? adminViewingClientDashboard
@@ -72,9 +81,14 @@ export function AppTopbar() {
           : "xl:min-h-[4.5rem] xl:grid-cols-[minmax(0,1fr)_auto] xl:py-2"
       )}
     >
-      <div className="z-10 col-start-1 row-start-1 flex min-w-0 max-w-full items-center justify-self-start xl:max-w-[min(280px,35%)]">
+      <div
+        className={cn(
+          "z-10 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start",
+          minimalHeader ? "max-w-none" : "max-w-full xl:max-w-[min(280px,35%)]"
+        )}
+      >
         <Link
-          href={homeHref}
+          href={minimalHeader ? "/login" : homeHref}
           className="flex min-w-0 items-center gap-3.5 sm:gap-4"
           aria-label={
             showClientBranding ? `Censio × ${clientName}` : "Censio"
@@ -85,7 +99,10 @@ export function AppTopbar() {
             alt="Censio"
             width={1024}
             height={251}
-            className="h-9 w-auto shrink-0 sm:h-10"
+            className={cn(
+              "w-auto shrink-0",
+              minimalHeader ? "h-10 sm:h-11 md:h-12" : "h-9 sm:h-10"
+            )}
             priority
           />
           {showClientBranding ? (

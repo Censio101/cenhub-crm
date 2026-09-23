@@ -8,6 +8,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import {
   isAdminPath,
+  isAuthPath,
   isClientDashboardPath,
   isLoggedOutPath,
 } from "@/lib/layout/app-paths"
@@ -17,9 +18,11 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { organization, role } = useActiveOrganization()
   const isLoggedOut = isLoggedOutPath(pathname)
-  const isAdminRoute = !isLoggedOut && isAdminPath(pathname)
+  const isAuthRoute = isAuthPath(pathname)
+  const isAdminRoute = !isLoggedOut && !isAuthRoute && isAdminPath(pathname)
   const showClientContextBar =
     !isLoggedOut &&
+    !isAuthRoute &&
     role === "censio_admin" &&
     organization !== null &&
     isClientDashboardPath(pathname)
@@ -28,7 +31,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     <div
       className={cn(
         "flex min-h-dvh flex-col",
-        isLoggedOut ? "bg-background" : "dashboard-page"
+        isLoggedOut || isAuthRoute ? "bg-background" : "dashboard-page"
       )}
     >
       <AuthHashErrorHandler />
