@@ -309,14 +309,18 @@
 
 
 .admin-ui {
-  --font-sans: var(--font-poppins);
+  --font-sans: var(--font-inter);
   --font-heading: var(--font-poppins);
-  font-family: var(--font-poppins), ui-sans-serif, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, sans-serif;
 }
 
-.admin-ui :where(h1, h2, h3, h4) {
+.admin-ui :where(h1, h2, h3, h4, [data-slot="card-title"]) {
   font-family: var(--font-poppins), ui-sans-serif, sans-serif;
   letter-spacing: -0.02em;
+}
+
+.admin-ui :where(p, label, li, [data-slot="card-description"], input, select, textarea) {
+  line-height: 1.55;
 }
 
 .hub-toolbar-row {
