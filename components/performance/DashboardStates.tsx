@@ -1,10 +1,14 @@
+"use client"
+
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function DashboardSkeleton() {
+  const { t } = useLanguage()
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Indlæser overblik">
+    <div className="space-y-6" aria-busy="true" aria-label={t("dashboardLoadingOverview")}>
       <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
         <div className="space-y-2">
           <Skeleton className="h-3 w-24" />
@@ -31,34 +35,41 @@ export function DashboardSkeleton() {
 }
 
 export function DashboardEmptyState() {
+  const { t } = useLanguage()
   return (
     <Card className="dashboard-card px-5 py-8 text-center">
-      <p className="text-sm font-medium text-[var(--text-primary)]">Ingen leads i den valgte periode</p>
+      <p className="text-sm font-medium text-[var(--text-primary)]">
+        {t("dashboardEmptyTitle")}
+      </p>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        Prøv en anden periode, service, funnel eller Privat/Erhverv, eller vent til de første leads kommer ind.
+        {t("dashboardEmptyBody")}
       </p>
     </Card>
   )
 }
 
 export function DashboardErrorState({ onRetry }: { onRetry: () => void }) {
+  const { t } = useLanguage()
   return (
     <Card className="dashboard-card px-5 py-8 text-center">
-      <p className="text-sm font-medium text-[var(--text-primary)]">Kunne ikke hente nøgletal</p>
+      <p className="text-sm font-medium text-[var(--text-primary)]">
+        {t("dashboardErrorTitle")}
+      </p>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        Der opstod en fejl. Prøv igen om et øjeblik.
+        {t("dashboardErrorBody")}
       </p>
       <Button className="mt-4" variant="outline" onClick={onRetry}>
-        Prøv igen
+        {t("dashboardRetry")}
       </Button>
     </Card>
   )
 }
 
 export function PartialDataNotice() {
+  const { t } = useLanguage()
   return (
     <p className="text-xs text-[var(--text-muted)]">
-      Ufuldstændige data – perioden rækker ud over de tilgængelige måneder.
+      {t("dashboardPartialData")}
     </p>
   )
 }

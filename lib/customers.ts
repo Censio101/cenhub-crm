@@ -308,6 +308,29 @@ export function customerMonthKey(date: string): string {
   return date.slice(0, 7)
 }
 
+export type DashboardCustomerFilter = {
+  range?: { start: Date; end: Date } | null
+  service?: string | null
+  segment?: LeadSegmentId | null
+}
+
+export function filterDashboardCustomers(
+  customers: readonly Customer[],
+  filter: DashboardCustomerFilter
+): Customer[] {
+  return customers.filter((customer) => {
+    if (filter.range) {
+      const date = new Date(`${customer.closedDate}T12:00:00`)
+      if (date < filter.range.start || date > filter.range.end) return false
+    }
+    if (filter.service && !customer.serviceIds.includes(filter.service)) {
+      return false
+    }
+    if (filter.segment && customer.segment !== filter.segment) return false
+    return true
+  })
+}
+
 export function sumCustomerValue(customers: readonly Customer[]): {
   count: number
   sales: number

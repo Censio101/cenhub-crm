@@ -7,6 +7,7 @@ import {
   type WorkspaceIntegrationsPublic,
 } from "@/lib/admin/workspace-integrations"
 import { adminErrorResponse, requireCensioAdmin } from "@/lib/auth/require-censio-admin"
+import { validateNotifyEmailList } from "@/lib/onboarding/notify-emails"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 function toPublicResponse(settings: WorkspaceIntegrationsPublic) {
@@ -37,6 +38,20 @@ export async function PUT(request: Request) {
       siteUrl?: string | null
       authCallbackPath?: string | null
       contactFormUrl?: string | null
+      onboardingNotifyEmails?: string | null
+    }
+
+    if (body.onboardingNotifyEmails !== undefined) {
+      const validated = validateNotifyEmailList(body.onboardingNotifyEmails)
+      if (!validated.ok) {
+        return NextResponse.json(
+          {
+            error: `Invalid notification email: ${validated.invalid.join(", ")}`,
+          },
+          { status: 400 }
+        )
+      }
+      body.onboardingNotifyEmails = validated.normalized
     }
 
     const admin = createAdminClient()
@@ -56,6 +71,7 @@ export async function PUT(request: Request) {
         siteUrl: body.siteUrl,
         authCallbackPath: body.authCallbackPath,
         contactFormUrl: body.contactFormUrl,
+        onboardingNotifyEmails: body.onboardingNotifyEmails,
       },
       currentRow
     )

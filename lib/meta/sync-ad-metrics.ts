@@ -7,9 +7,26 @@ import {
 } from "@/lib/db/meta-config-repository"
 import { logMetaSyncRun } from "@/lib/db/meta-sync-runs-repository"
 import { decryptSecret } from "@/lib/meta/crypto"
-import { fetchMonthlyInsights } from "@/lib/meta/insights"
+import {
+  fetchMonthlyInsights,
+  type MetricsInsightsRange,
+} from "@/lib/meta/insights"
 import { resolveMetaAccessToken, verifyMetaAccessToken } from "@/lib/meta/token"
 import type { SupabaseClient } from "@supabase/supabase-js"
+
+export type SyncOrganizationAdMetricsResult = {
+  success: boolean
+  skipped: boolean
+  organizationId: string
+  reason?: string
+  monthCount?: number
+}
+
+export type SyncOrganizationAdMetricsOptions = {
+  source?: string
+  batchId?: string | null
+  metricsRange?: MetricsInsightsRange
+}
 
 function tokenFromConfig(row: MetaConfigRow) {
   return resolveMetaAccessToken({
@@ -22,35 +39,69 @@ function tokenFromConfig(row: MetaConfigRow) {
   })
 }
 
+async function logSkippedRun(
+  supabase: SupabaseClient,
+  input: {
+    organizationId: string
+    message: string
+    source: string
+    batchId?: string | null
+    startedAt: string
+    details?: Record<string, unknown>
+  }
+) {
+  await logMetaSyncRun(supabase, {
+    organizationId: input.organizationId,
+    status: "skipped",
+    message: input.message,
+    details: { source: input.source, ...input.details },
+    startedAt: input.startedAt,
+    finishedAt: new Date().toISOString(),
+    batchId: input.batchId ?? null,
+  })
+}
+
 export async function syncOrganizationAdMetrics(
   supabase: SupabaseClient,
   organizationId: string,
-  options: { source?: string } = {}
-): Promise<{
-  success: boolean
-  skipped: boolean
-  organizationId: string
-  reason?: string
-  monthCount?: number
-}> {
+  options: SyncOrganizationAdMetricsOptions = {}
+): Promise<SyncOrganizationAdMetricsResult> {
   const source = options.source ?? "manual"
+  const batchId = options.batchId ?? null
+  const metricsRange = options.metricsRange ?? "maximum"
   const startedAt = new Date().toISOString()
   const row = await getMetaConfigRow(supabase, organizationId)
 
   if (!row?.enabled) {
-    return { success: false, skipped: true, organizationId, reason: "Meta not enabled." }
+    const reason = "Meta not enabled."
+    await logSkippedRun(supabase, {
+      organizationId,
+      message: reason,
+      source,
+      batchId,
+      startedAt,
+    })
+    return { success: false, skipped: true, organizationId, reason }
   }
 
   if (!row.meta_ad_account_id) {
+    const reason = "Missing Meta ad account ID."
     await setMetaSyncState(supabase, organizationId, {
       metaSyncStatus: "error",
-      metaSyncError: "Missing Meta ad account ID.",
+      metaSyncError: reason,
+    })
+    await logSkippedRun(supabase, {
+      organizationId,
+      message: reason,
+      source,
+      batchId,
+      startedAt,
     })
     return {
       success: false,
       skipped: true,
       organizationId,
-      reason: "Missing Meta ad account ID.",
+      reason,
     }
   }
 
@@ -60,6 +111,14 @@ export async function syncOrganizationAdMetrics(
     await setMetaSyncState(supabase, organizationId, {
       metaSyncStatus: "error",
       metaSyncError: reason,
+    })
+    await logSkippedRun(supabase, {
+      organizationId,
+      message: reason,
+      source,
+      batchId,
+      startedAt,
+      details: { tokenSource: resolved.source },
     })
     return { success: false, skipped: true, organizationId, reason }
   }
@@ -77,9 +136,10 @@ export async function syncOrganizationAdMetrics(
       organizationId,
       status: "error",
       message: reason,
-      details: { source, tokenSource: resolved.source },
+      details: { source, tokenSource: resolved.source, metricsRange },
       startedAt,
       finishedAt: new Date().toISOString(),
+      batchId,
     })
     return { success: false, skipped: false, organizationId, reason }
   }
@@ -87,7 +147,8 @@ export async function syncOrganizationAdMetrics(
   try {
     const monthly = await fetchMonthlyInsights(
       row.meta_ad_account_id,
-      verified.token!
+      verified.token!,
+      { range: metricsRange }
     )
     await upsertMonthlyAdMetrics(supabase, organizationId, monthly)
 
@@ -101,9 +162,15 @@ export async function syncOrganizationAdMetrics(
       organizationId,
       status: "success",
       message: `Synced ${monthly.length} months of ad spend.`,
-      details: { source, tokenSource: resolved.source, monthCount: monthly.length },
+      details: {
+        source,
+        tokenSource: resolved.source,
+        monthCount: monthly.length,
+        metricsRange,
+      },
       startedAt,
       finishedAt,
+      batchId,
     })
 
     return {
@@ -122,9 +189,10 @@ export async function syncOrganizationAdMetrics(
       organizationId,
       status: "error",
       message,
-      details: { source },
+      details: { source, metricsRange },
       startedAt,
       finishedAt: new Date().toISOString(),
+      batchId,
     })
     return { success: false, skipped: false, organizationId, reason: message }
   }
@@ -132,10 +200,10 @@ export async function syncOrganizationAdMetrics(
 
 export async function syncAllOrganizationAdMetrics(
   supabase: SupabaseClient,
-  options: { source?: string } = {}
+  options: SyncOrganizationAdMetricsOptions = {}
 ) {
   const organizations = await listMetaSyncableOrganizations(supabase)
-  const results = []
+  const results: SyncOrganizationAdMetricsResult[] = []
 
   for (const organization of organizations) {
     results.push(

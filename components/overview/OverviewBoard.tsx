@@ -1,10 +1,11 @@
 "use client"
 
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { useMemo } from "react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import {
   DashboardEmptyState,
@@ -12,6 +13,7 @@ import {
   PartialDataNotice,
 } from "@/components/performance/DashboardStates"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { EconomyInsights } from "@/components/overview/EconomyInsights"
 import { LeadFlowCard } from "@/components/overview/LeadFlowCard"
@@ -20,34 +22,27 @@ import { ValueStory } from "@/components/overview/ValueStory"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { CURRENT_COMPANY } from "@/lib/company"
 import { formatDateRangeLabel } from "@/lib/performance/format"
-import { previousPeriod, previousYear, resolvePreset } from "@/lib/performance/date-ranges"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
-import {
-  dashboardStateToParams,
-  parseDashboardParams,
-} from "@/lib/performance/url-state"
-import type {
-  ComparisonMode,
-  DatePreset,
-  DateRange,
-} from "@/lib/performance/types"
 
 export function OverviewBoard() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const [pending, startTransition] = useTransition()
-  const [view, setView] = useState(() => parseDashboardParams(searchParams))
-  const queryKey = searchParams.toString()
+  const { t } = useLanguage()
+  const {
+    view,
+    pending,
+    onPresetChange,
+    onCustomRange,
+    onComparisonChange,
+    onServiceChange,
+    onFunnelChange,
+    onSegmentChange,
+  } = useDashboardViewState("/overblik")
   const { settings } = useAccountSettings()
   const { organization, role } = useActiveOrganization()
   const { leads, adSpendByMonth, needsClientSelection } = useDashboardData()
   const clientName =
     organization?.name ??
     (role === "censio_admin" ? "klienten" : CURRENT_COMPANY.name)
-
-  useEffect(() => {
-    setView(parseDashboardParams(new URLSearchParams(queryKey)))
-  }, [queryKey])
 
   const data = useMemo(() => {
     try {
@@ -66,14 +61,6 @@ export function OverviewBoard() {
     }
   }, [view, leads, adSpendByMonth])
 
-  function replaceState(next: typeof view) {
-    setView(next)
-    const query = dashboardStateToParams(next)
-    startTransition(() => {
-      router.replace(`/overblik?${query}`, { scroll: false })
-    })
-  }
-
   if (needsClientSelection) {
     return <SelectClientEmptyState />
   }
@@ -82,12 +69,14 @@ export function OverviewBoard() {
     return <DashboardErrorState onRetry={() => router.refresh()} />
   }
 
+  const dateRangeLabel = formatDateRangeLabel(view.range.start, view.range.end)
+
   return (
     <div className="flex w-full flex-col gap-8">
       <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
           <h1 className="text-3xl font-medium tracking-tight text-[var(--text-primary)] sm:text-4xl">
-            Overblik
+            {t("overviewBoardTitle")}
           </h1>
           {settings.hvidbjergPartner ? (
             <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
@@ -97,12 +86,14 @@ export function OverviewBoard() {
                 alt=""
                 className="h-4 w-auto shrink-0"
               />
-              <span>Certificeret marketing program</span>
+              <span>{t("overviewCertifiedProgram")}</span>
             </p>
           ) : null}
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Hvad Censio og annoncerne har givet {clientName} ·{" "}
-            {formatDateRangeLabel(view.range.start, view.range.end)}
+            {t("overviewBoardSubtitle", {
+              clientName: formatClientDisplayName(clientName),
+              dateRange: dateRangeLabel,
+            })}
           </p>
         </div>
         <DateRangeControls
@@ -111,60 +102,21 @@ export function OverviewBoard() {
           comparisonEnabled={view.comparisonEnabled}
           comparisonMode={view.comparisonMode}
           comparisonRange={view.comparisonRange}
-          onPresetChange={(preset: DatePreset) => {
-            const range = resolvePreset(preset)
-            replaceState({
-              ...view,
-              preset,
-              range,
-              comparisonRange: view.comparisonEnabled
-                ? resolveComparison(range, view.comparisonMode, view.comparisonRange)
-                : null,
-            })
-          }}
-          onCustomRange={(range, target) => {
-            if (target === "current") {
-              replaceState({
-                ...view,
-                preset: "custom",
-                range,
-                comparisonRange: view.comparisonEnabled
-                  ? resolveComparison(range, view.comparisonMode, view.comparisonRange)
-                  : null,
-              })
-            } else {
-              replaceState({
-                ...view,
-                comparisonEnabled: true,
-                comparisonMode: "custom",
-                comparisonRange: range,
-              })
-            }
-          }}
-          onComparisonChange={({ enabled, mode, customRange }) => {
-            replaceState({
-              ...view,
-              comparisonEnabled: enabled,
-              comparisonMode: mode,
-              comparisonRange: enabled
-                ? resolveComparison(
-                    view.range,
-                    mode,
-                    customRange ?? view.comparisonRange
-                  )
-                : null,
-            })
-          }}
+          onPresetChange={onPresetChange}
+          onCustomRange={onCustomRange}
+          onComparisonChange={onComparisonChange}
           service={view.service}
-          onServiceChange={(service) => replaceState({ ...view, service })}
+          onServiceChange={onServiceChange}
           funnel={view.funnel}
-          onFunnelChange={(funnel) => replaceState({ ...view, funnel })}
+          onFunnelChange={onFunnelChange}
           segment={view.segment}
-          onSegmentChange={(segment) => replaceState({ ...view, segment })}
+          onSegmentChange={onSegmentChange}
         />
       </header>
 
-      {pending ? <span className="sr-only">Opdaterer overblik</span> : null}
+      {pending ? (
+        <span className="sr-only">{t("dashboardUpdating")}</span>
+      ) : null}
       {data.status === "partial" ? <PartialDataNotice /> : null}
 
       {data.status === "empty" ? (
@@ -209,14 +161,4 @@ export function OverviewBoard() {
       )}
     </div>
   )
-}
-
-function resolveComparison(
-  range: DateRange,
-  mode: ComparisonMode,
-  customRange?: DateRange | null
-): DateRange {
-  if (mode === "previous_year") return previousYear(range)
-  if (mode === "custom" && customRange) return customRange
-  return previousPeriod(range)
 }

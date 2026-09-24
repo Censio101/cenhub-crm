@@ -11,6 +11,11 @@ import {
   ScanLineIcon,
 } from "lucide-react"
 
+import type { MetaPartnerAccountSelection } from "@/components/admin/MetaPartnerAccountPicker"
+import {
+  MetaPartnerLinkPanel,
+  type LinkedMetaDisplay,
+} from "@/components/admin/MetaPartnerLinkPanel"
 import {
   adminFieldClass,
   adminIconBoxClass,
@@ -125,10 +130,12 @@ function MetaField({
 
 export function AdminMetaConfigForm({
   slug,
+  organizationName,
   initialConfig,
   onSaved,
 }: {
   slug: string
+  organizationName?: string
   initialConfig?: MetaConfig | null
   onSaved?: () => void
 }) {
@@ -140,6 +147,8 @@ export function AdminMetaConfigForm({
   const [syncing, setSyncing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [partnerSelection, setPartnerSelection] = useState<MetaPartnerAccountSelection>(null)
+  const [linkedPartnerName, setLinkedPartnerName] = useState<string | null>(null)
 
   const dismissMessage = useCallback(() => setMessage(null), [])
   const dismissError = useCallback(() => setError(null), [])
@@ -175,6 +184,42 @@ export function AdminMetaConfigForm({
     void loadConfig().finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, initialConfig])
+
+  useEffect(() => {
+    const linkedId = config.metaAdAccountId?.trim()
+    if (!linkedId) {
+      setLinkedPartnerName(null)
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const params = new URLSearchParams({ forSlug: slug })
+        if (organizationName?.trim()) params.set("suggestName", organizationName.trim())
+        const response = await fetch(
+          `/api/admin/meta/partner-ad-accounts?${params.toString()}`,
+          { cache: "no-store" }
+        )
+        if (!response.ok || cancelled) return
+        const data = (await response.json()) as {
+          accounts?: { metaAdAccountId: string; accountName: string }[]
+        }
+        const normalized = linkedId.replace(/^act_/i, "")
+        const match = data.accounts?.find((row) => {
+          const rowId = row.metaAdAccountId.replace(/^act_/i, "")
+          return rowId === normalized || row.metaAdAccountId === linkedId
+        })
+        if (!cancelled) setLinkedPartnerName(match?.accountName ?? null)
+      } catch {
+        if (!cancelled) setLinkedPartnerName(null)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [config.metaAdAccountId, slug, organizationName])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -292,6 +337,16 @@ export function AdminMetaConfigForm({
         ? "text-red-700"
         : "text-muted-foreground"
 
+  const linkedMetaDisplay: LinkedMetaDisplay = config.metaAdAccountId.trim()
+    ? {
+        metaAdAccountId: config.metaAdAccountId,
+        accountName:
+          linkedPartnerName?.trim() ||
+          organizationName?.trim() ||
+          config.metaAdAccountId,
+      }
+    : null
+
   return (
     <section className={cn(adminSectionCardClass, "overflow-hidden")}>
       <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5 sm:px-6">
@@ -313,6 +368,26 @@ export function AdminMetaConfigForm({
           </div>
         ) : (
           <form className="grid gap-4" onSubmit={handleSubmit}>
+            <div className="rounded-xl border border-[#d3c3b2] bg-[#faf8f6]/50 px-4 py-4">
+              <MetaPartnerLinkPanel
+                mode="linked"
+                organizationSlug={slug}
+                suggestName={organizationName ?? ""}
+                linkedAccount={linkedMetaDisplay}
+                draftSelection={partnerSelection}
+                onDraftSelectionChange={setPartnerSelection}
+                disabled={saving}
+                onLinked={() => {
+                  void loadConfig().then(() => onSaved?.())
+                }}
+                onLinkSuccess={(text) => {
+                  setMessage(text)
+                  setError(null)
+                }}
+                onLinkError={setError}
+              />
+            </div>
+
             <div className="flex items-center justify-between gap-4 rounded-xl border border-[#d3c3b2] bg-white px-4 py-3">
               <p className="text-[14px] font-semibold text-foreground">
                 {t("metaEnabledForClient")}

@@ -38,14 +38,33 @@ function insightRowToMonthly(row: Record<string, unknown>): MonthlyInsight | nul
   }
 }
 
+export type MetricsInsightsRange = "maximum" | "ytd"
+
+function buildInsightsInitialUrl(adAccountId: string, range: MetricsInsightsRange): string {
+  const version = process.env.META_GRAPH_API_VERSION || "v21.0"
+  const base = `https://graph.facebook.com/${version}/act_${adAccountId}/insights?fields=${INSIGHT_FIELDS}&time_increment=monthly`
+
+  if (range === "ytd") {
+    const year = new Date().getFullYear()
+    const since = `${year}-01-01`
+    const until = new Date().toISOString().slice(0, 10)
+    const timeRange = encodeURIComponent(JSON.stringify({ since, until }))
+    return `${base}&time_range=${timeRange}`
+  }
+
+  return `${base}&date_preset=maximum`
+}
+
 export async function fetchMonthlyInsights(
   adAccountId: string,
-  accessToken: string
+  accessToken: string,
+  options: { range?: MetricsInsightsRange } = {}
 ): Promise<MonthlyInsight[]> {
   const id = normalizeMetaAdAccountId(adAccountId)
   if (!id) throw new Error("Meta ad account ID is required.")
 
-  let url: string | null = `https://graph.facebook.com/${process.env.META_GRAPH_API_VERSION || "v21.0"}/act_${id}/insights?fields=${INSIGHT_FIELDS}&time_increment=monthly&date_preset=maximum`
+  const range = options.range ?? "maximum"
+  let url: string | null = buildInsightsInitialUrl(id, range)
   const rows: MonthlyInsight[] = []
   let pages = 0
 

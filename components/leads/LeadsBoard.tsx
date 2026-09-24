@@ -4,9 +4,7 @@ import { useMemo, useState } from "react"
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  CalendarIcon,
   CheckIcon,
-  WrenchIcon,
   ChevronDownIcon,
   PlusIcon,
   Trash2Icon,
@@ -14,6 +12,8 @@ import {
 
 import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { DateRangeControls } from "@/components/performance/DateRangeControls"
+import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useLeads } from "@/hooks/useLeads"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { Button } from "@/components/ui/button"
@@ -48,6 +48,7 @@ import {
   LEAD_STATUSES,
   computeLeadPipelineStats,
   emptyLead,
+  filterDashboardLeads,
   formatLeadMonth,
   formatLeadServices,
   getLeadServiceIds,
@@ -721,7 +722,16 @@ function LeadsTable({
 }
 
 export function LeadsBoard() {
-  const { enabledServices } = useCompanyServices()
+  useCompanyServices()
+  const {
+    view,
+    onPresetChange,
+    onCustomRange,
+    onComparisonChange,
+    onServiceChange,
+    onFunnelChange,
+    onSegmentChange,
+  } = useDashboardViewState("/leads")
   const {
     leads,
     error,
@@ -732,34 +742,17 @@ export function LeadsBoard() {
     deleteLead,
   } = useLeads()
   const [statusFilter, setStatusFilter] = useState<LeadStatusId | "all">("all")
-  const [serviceFilter, setServiceFilter] = useState<string | "all">("all")
-  const [monthFilter, setMonthFilter] = useState<string>("all")
   const [dateSort, setDateSort] = useState<"asc" | "desc">("desc")
 
-  const months = useMemo(() => {
-    const keys = new Set(leads.map((lead) => leadMonthKey(lead.date)))
-    return [...keys].sort((left, right) => right.localeCompare(left))
-  }, [leads])
-
-  const activeServiceFilter =
-    serviceFilter !== "all" &&
-    enabledServices.some((item) => item.id === serviceFilter)
-      ? serviceFilter
-      : "all"
-
   const filtered = useMemo(() => {
-    const next = leads.filter((lead) => {
-      const matchesStatus =
-        statusFilter === "all" || lead.status === statusFilter
-      const matchesService =
-        activeServiceFilter === "all" ||
-        getLeadServiceIds(lead).includes(activeServiceFilter)
-      const matchesMonth =
-        monthFilter === "all" || leadMonthKey(lead.date) === monthFilter
-      return matchesStatus && matchesService && matchesMonth
-    })
+    const next = filterDashboardLeads(leads, {
+      range: view.range,
+      service: view.service,
+      funnel: view.funnel,
+      segment: view.segment,
+    }).filter((lead) => statusFilter === "all" || lead.status === statusFilter)
     return sortLeadsByDate(next, dateSort)
-  }, [activeServiceFilter, dateSort, leads, monthFilter, statusFilter])
+  }, [dateSort, leads, statusFilter, view])
 
   const pipelineStats = useMemo(
     () => computeLeadPipelineStats(filtered),
@@ -792,70 +785,25 @@ export function LeadsBoard() {
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <Select
-            value={monthFilter}
-            onValueChange={(value) => {
-              if (typeof value === "string") setMonthFilter(value)
-            }}
-          >
-            <SelectTrigger
-              className="dashboard-chip min-w-48 px-4"
-              aria-label="Filtrer på måned"
-            >
-              <CalendarIcon className="size-4 text-muted-foreground" />
-              <SelectValue>
-                {monthFilter === "all"
-                  ? "Alle måneder"
-                  : formatLeadMonth(monthFilter)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              alignItemWithTrigger={false}
-              className="dashboard-filter-menu"
-            >
-              <SelectItem value="all">Alle måneder</SelectItem>
-              {months.map((month) => (
-                <SelectItem key={month} value={month}>
-                  {formatLeadMonth(month)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={activeServiceFilter}
-            onValueChange={(value) => {
-              if (typeof value === "string") {
-                setServiceFilter(value === "all" ? "all" : value)
-              }
-            }}
-          >
-            <SelectTrigger
-              className="dashboard-chip min-w-44 px-4"
-              aria-label="Filtrer på service"
-            >
-              <WrenchIcon className="size-4 text-muted-foreground" />
-              <SelectValue>
-                {activeServiceFilter === "all"
-                  ? "Alle services"
-                  : (enabledServices.find((item) => item.id === activeServiceFilter)
-                      ?.label ?? "Alle services")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              alignItemWithTrigger={false}
-              className="dashboard-filter-menu"
-            >
-              <SelectItem value="all">Alle services</SelectItem>
-              {enabledServices.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col items-stretch gap-4 sm:items-end">
+          <DateRangeControls
+            preset={view.preset}
+            range={view.range}
+            comparisonEnabled={view.comparisonEnabled}
+            comparisonMode={view.comparisonMode}
+            comparisonRange={view.comparisonRange}
+            onPresetChange={onPresetChange}
+            onCustomRange={onCustomRange}
+            onComparisonChange={onComparisonChange}
+            service={view.service}
+            onServiceChange={onServiceChange}
+            funnel={view.funnel}
+            onFunnelChange={onFunnelChange}
+            segment={view.segment}
+            onSegmentChange={onSegmentChange}
+            showComparison={false}
+          />
+          <div className="flex flex-wrap items-center justify-end gap-4">
           <Select
             value={statusFilter}
             onValueChange={(value) => {
@@ -906,18 +854,14 @@ export function LeadsBoard() {
           <Button
             onClick={() => {
               void createLead(
-                emptyLead(
-                  `lead-${Date.now()}`,
-                  monthFilter === "all"
-                    ? new Date()
-                    : new Date(`${monthFilter}-01T00:00:00`)
-                )
+                emptyLead(`lead-${Date.now()}`, view.range.end)
               )
             }}
           >
             <PlusIcon />
             Tilføj lead
           </Button>
+          </div>
         </div>
       </header>
 
@@ -931,11 +875,7 @@ export function LeadsBoard() {
             onToggleDateSort={() =>
               setDateSort((current) => (current === "desc" ? "asc" : "desc"))
             }
-            emptyText={
-              monthFilter === "all"
-                ? "Ingen leads med den valgte status."
-                : "Ingen leads i den valgte måned."
-            }
+            emptyText="Ingen leads matcher filtrene."
             onUpdate={updateLead}
             onDelete={(id) => {
               void deleteLead(id)

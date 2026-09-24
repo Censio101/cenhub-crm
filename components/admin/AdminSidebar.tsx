@@ -5,7 +5,10 @@ import { usePathname } from "next/navigation"
 import {
   Building2Icon,
   CircleDotIcon,
+  RefreshCwIcon,
+  ClipboardListIcon,
   FlaskConicalIcon,
+  FunnelIcon,
   MailIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -82,6 +85,18 @@ export function AdminSidebar() {
       icon: Building2Icon,
       active: pathname === "/admin",
     },
+    {
+      href: "/admin/onboarding",
+      labelKey: "navOnboarding",
+      icon: ClipboardListIcon,
+      active: pathname.startsWith("/admin/onboarding"),
+    },
+    {
+      href: "/admin/meta-sync",
+      labelKey: "navMetaSync",
+      icon: RefreshCwIcon,
+      active: pathname.startsWith("/admin/meta-sync"),
+    },
   ]
 
   const accountItems: NavItem[] = [
@@ -130,6 +145,12 @@ export function AdminSidebar() {
           labelKey: "clientNavUsers",
           icon: UsersIcon,
           active: clientSection === "users",
+        },
+        {
+          href: `/admin/${clientSlug}/funnels`,
+          labelKey: "clientNavFunnels",
+          icon: FunnelIcon,
+          active: clientSection === "funnels",
         },
       ]
     : []

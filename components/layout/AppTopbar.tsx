@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
   Building2Icon,
   ContactRoundIcon,
@@ -12,38 +12,52 @@ import {
 } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { DashboardLocaleSwitcher } from "@/components/i18n/DashboardLocaleSwitcher"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { ProfileMenu } from "@/components/layout/ProfileMenu"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { CURRENT_COMPANY } from "@/lib/company"
+import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import {
   isAdminPath,
   isClientDashboardPath,
-  isMinimalHeaderPath,
+  isClientPickerPath,
+  isGuestShellPath,
+  isPublicSignupPath,
 } from "@/lib/layout/app-paths"
 import { cn } from "cn"
 
 const CLIENT_NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboardIcon },
-  { href: "/overblik", label: "Overblik", icon: EyeIcon },
-  { href: "/leads", label: "Leads", icon: ContactRoundIcon },
-  { href: "/kunder", label: "Kunder", icon: UsersIcon },
+  { href: "/", labelKey: "navDashboard" as const, icon: LayoutDashboardIcon },
+  { href: "/overblik", labelKey: "navOverview" as const, icon: EyeIcon },
+  { href: "/leads", labelKey: "navLeads" as const, icon: ContactRoundIcon },
+  { href: "/kunder", labelKey: "navCustomers" as const, icon: UsersIcon },
 ] as const
 
 const ADMIN_CLIENT_NAV = [
-  { href: "/admin", labelKey: "allClients" as const, icon: Building2Icon },
+  { href: "/klienter", labelKey: "selectClient" as const, icon: Building2Icon },
 ] as const
+
+const censioLogoClass = "h-9 w-auto shrink-0 sm:h-10"
 
 export function AppTopbar() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const dashboardFilterQuery =
+    isClientDashboardPath(pathname) && searchParams.toString()
+      ? `?${searchParams.toString()}`
+      : ""
   const { t } = useLanguage()
   const { settings } = useAccountSettings()
   const { organization, role, loading: orgLoading } = useActiveOrganization()
+  const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
 
-  const sessionReady = !orgLoading
+  const sessionReady = !orgLoading && !authLoading
+  const signedIn = configured ? isAuthenticated : false
   const isAdmin = role === "censio_admin"
-  const minimalHeader = isMinimalHeaderPath(pathname)
+  const guestShell = isGuestShellPath(pathname)
+  const minimalHeader = guestShell
   const onAdminPath = isAdminPath(pathname)
   const onClientDashboard = isClientDashboardPath(pathname)
   const adminViewingClientDashboard =
@@ -56,7 +70,7 @@ export function AppTopbar() {
   const clientName = organization
     ? formatClientDisplayName(organization.name)
     : CURRENT_COMPANY.name
-  const navItems = minimalHeader || !sessionReady
+  const navItems = guestShell || !sessionReady || !signedIn
     ? []
     : onAdminPath
     ? []
@@ -68,11 +82,27 @@ export function AppTopbar() {
               label: t(item.labelKey),
               icon: item.icon,
             })),
-            ...CLIENT_NAV,
+            ...CLIENT_NAV.map((item) => ({
+              href: item.href,
+              label: t(item.labelKey),
+              icon: item.icon,
+            })),
           ]
-        : [{ href: "/admin", label: t("allClients"), icon: Building2Icon }]
-      : CLIENT_NAV
-  const homeHref = isAdmin && (onAdminPath || !organization) ? "/admin" : "/"
+        : [{ href: "/klienter", label: t("selectClient"), icon: Building2Icon }]
+      : CLIENT_NAV.map((item) => ({
+          href: item.href,
+          label: t(item.labelKey),
+          icon: item.icon,
+        }))
+  const homeHref = isPublicSignupPath(pathname)
+    ? "/tilmelding"
+    : guestShell
+      ? "/login"
+      : isAdmin && onAdminPath
+        ? "/admin"
+        : isAdmin && (!organization || isClientPickerPath(pathname))
+          ? "/klienter"
+          : "/"
 
   return (
     <header
@@ -90,7 +120,7 @@ export function AppTopbar() {
         )}
       >
         <Link
-          href={minimalHeader ? "/login" : homeHref}
+          href={homeHref}
           className="flex min-w-0 items-center gap-3.5 sm:gap-4"
           aria-label={
             showClientBranding ? `Censio × ${clientName}` : "Censio"
@@ -101,10 +131,7 @@ export function AppTopbar() {
             alt="Censio"
             width={1024}
             height={251}
-            className={cn(
-              "w-auto shrink-0",
-              minimalHeader ? "h-10 sm:h-11 md:h-12" : "h-9 sm:h-10"
-            )}
+            className={censioLogoClass}
             priority
           />
           {showClientBranding ? (
@@ -148,13 +175,19 @@ export function AppTopbar() {
             const active =
               item.href === "/"
                 ? pathname === "/"
-                : pathname.startsWith(item.href)
+                : item.href === "/klienter"
+                  ? isClientPickerPath(pathname)
+                  : pathname.startsWith(item.href)
             const Icon = item.icon
 
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={
+                  item.href === "/klienter"
+                    ? item.href
+                    : `${item.href}${dashboardFilterQuery}`
+                }
                 aria-label={item.label}
                 className={cn(
                   "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
@@ -173,7 +206,8 @@ export function AppTopbar() {
         </nav>
       ) : null}
 
-      <div className="z-10 col-start-2 row-start-1 flex shrink-0 items-center justify-self-end xl:col-start-3">
+      <div className="z-10 col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end xl:col-start-3">
+        {adminViewingClientDashboard ? <DashboardLocaleSwitcher /> : null}
         <ProfileMenu />
       </div>
     </header>

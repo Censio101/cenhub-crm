@@ -1,15 +1,12 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  Building2Icon,
-  CalendarIcon,
-  WrenchIcon,
-} from "lucide-react"
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 
+import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { DateRangeControls } from "@/components/performance/DateRangeControls"
+import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import {
   Table,
   TableBody,
@@ -28,7 +25,7 @@ import {
 import { useCustomers } from "@/hooks/useCustomers"
 import {
   CUSTOMER_SOURCES,
-  customerMonthKey,
+  filterDashboardCustomers,
   formatCustomerServices,
   getCustomerSegmentLabel,
   getCustomerSourceLabel,
@@ -37,9 +34,8 @@ import {
   type Customer,
   type CustomerSourceId,
 } from "@/lib/customers"
-import { LEAD_SEGMENTS, formatLeadMonth, type LeadSegmentId } from "@/lib/leads"
+import { formatLeadMonth } from "@/lib/leads"
 import { formatCurrencyDKK } from "@/lib/performance/format"
-import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
 import { cn } from "cn"
 
 function danishCount(count: number, one: string, many: string) {
@@ -54,47 +50,33 @@ function formatClosedDate(value: string): string {
 
 export function CustomersBoard() {
   const { enabledServices } = useCompanyServices()
+  const {
+    view,
+    onPresetChange,
+    onCustomRange,
+    onComparisonChange,
+    onServiceChange,
+    onFunnelChange,
+    onSegmentChange,
+  } = useDashboardViewState("/kunder")
   const { customers, organizationName, error, needsClientSelection } =
     useCustomers()
-  const [segmentFilter, setSegmentFilter] = useState<LeadSegmentId | "all">(
-    "all"
-  )
-  const [serviceFilter, setServiceFilter] = useState<string | "all">("all")
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">(
     "all"
   )
-  const [monthFilter, setMonthFilter] = useState<string>("all")
   const [dateSort, setDateSort] = useState<"asc" | "desc">("desc")
 
-  const months = useMemo(() => {
-    const keys = new Set(
-      customers.map((customer) => customerMonthKey(customer.closedDate))
-    )
-    return [...keys].sort((left, right) => right.localeCompare(left))
-  }, [customers])
-
-  const activeServiceFilter =
-    serviceFilter !== "all" &&
-    enabledServices.some((item) => item.id === serviceFilter)
-      ? serviceFilter
-      : "all"
-
   const filtered = useMemo(() => {
-    const next = customers.filter((customer) => {
-      const matchesSegment =
-        segmentFilter === "all" || customer.segment === segmentFilter
-      const matchesService =
-        activeServiceFilter === "all" ||
-        customer.serviceIds.includes(activeServiceFilter)
-      const matchesSource =
+    const next = filterDashboardCustomers(customers, {
+      range: view.range,
+      service: view.service,
+      segment: view.segment,
+    }).filter(
+      (customer) =>
         sourceFilter === "all" || customer.source === sourceFilter
-      const matchesMonth =
-        monthFilter === "all" ||
-        customerMonthKey(customer.closedDate) === monthFilter
-      return matchesSegment && matchesService && matchesSource && matchesMonth
-    })
+    )
     return sortCustomersByDate(next, dateSort)
-  }, [activeServiceFilter, customers, dateSort, monthFilter, segmentFilter, sourceFilter])
+  }, [customers, dateSort, sourceFilter, view])
 
   const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
 
@@ -123,104 +105,24 @@ export function CustomersBoard() {
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <Select
-            value={monthFilter}
-            onValueChange={(value) => {
-              if (typeof value === "string") setMonthFilter(value)
-            }}
-          >
-            <SelectTrigger
-              className="dashboard-chip min-w-48 px-4"
-              aria-label="Filtrer på måned"
-            >
-              <CalendarIcon className="size-4 text-muted-foreground" />
-              <SelectValue>
-                {monthFilter === "all"
-                  ? "Alle måneder"
-                  : formatLeadMonth(monthFilter)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              alignItemWithTrigger={false}
-              className="dashboard-filter-menu"
-            >
-              <SelectItem value="all">Alle måneder</SelectItem>
-              {months.map((month) => (
-                <SelectItem key={month} value={month}>
-                  {formatLeadMonth(month)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={activeServiceFilter}
-            onValueChange={(value) => {
-              if (typeof value === "string") {
-                setServiceFilter(value === "all" ? "all" : value)
-              }
-            }}
-          >
-            <SelectTrigger
-              className="dashboard-chip min-w-44 px-4"
-              aria-label="Filtrer på service"
-            >
-              <WrenchIcon className="size-4 text-muted-foreground" />
-              <SelectValue>
-                {activeServiceFilter === "all"
-                  ? "Alle services"
-                  : enabledServices.find((item) => item.id === activeServiceFilter)
-                      ?.label}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              alignItemWithTrigger={false}
-              className="dashboard-filter-menu"
-            >
-              <SelectItem value="all">Alle services</SelectItem>
-              {enabledServices.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={segmentFilter}
-            onValueChange={(value) => {
-              if (typeof value === "string") {
-                setSegmentFilter(
-                  value === "all" ? "all" : (value as LeadSegmentId)
-                )
-              }
-            }}
-          >
-            <SelectTrigger
-              className="dashboard-chip min-w-40 px-4"
-              aria-label="Filtrer på Privat eller Erhverv"
-            >
-              <Building2Icon className="size-4 text-muted-foreground" />
-              <SelectValue>
-                {segmentFilter === "all"
-                  ? "Privat & Erhverv"
-                  : getCustomerSegmentLabel(segmentFilter)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              alignItemWithTrigger={false}
-              className="dashboard-filter-menu"
-            >
-              <SelectItem value="all">Privat & Erhverv</SelectItem>
-              {LEAD_SEGMENTS.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col items-stretch gap-4 sm:items-end">
+          <DateRangeControls
+            preset={view.preset}
+            range={view.range}
+            comparisonEnabled={view.comparisonEnabled}
+            comparisonMode={view.comparisonMode}
+            comparisonRange={view.comparisonRange}
+            onPresetChange={onPresetChange}
+            onCustomRange={onCustomRange}
+            onComparisonChange={onComparisonChange}
+            service={view.service}
+            onServiceChange={onServiceChange}
+            funnel={view.funnel}
+            onFunnelChange={onFunnelChange}
+            segment={view.segment}
+            onSegmentChange={onSegmentChange}
+            showComparison={false}
+          />
           <Select
             value={sourceFilter}
             onValueChange={(value) => {
@@ -232,7 +134,7 @@ export function CustomersBoard() {
             }}
           >
             <SelectTrigger
-              className="dashboard-chip min-w-40 px-4"
+              className="dashboard-chip min-w-40 self-end px-4"
               aria-label="Filtrer på kilde"
             >
               <SelectValue>

@@ -35,7 +35,7 @@ export async function createLead(
   organizationId: string,
   lead: Lead
 ): Promise<Lead> {
-  const row = leadToInsertRow(lead, organizationId, "manual")
+  const row = leadToInsertRow(lead, organizationId, lead.source ?? "manual")
   const { data, error } = await supabase
     .from("leads")
     .insert(row)

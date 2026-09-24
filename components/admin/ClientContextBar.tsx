@@ -1,18 +1,15 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { CheckIcon, ChevronDownIcon } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useAdminOrganizationList } from "@/hooks/useAdminOrganizationList"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
-import { isVisibleInClientSwitcher } from "@/lib/admin/admin-routes"
+import { resolveContextBarClientList } from "@/lib/admin/client-picker"
 import {
   clientInitialsFromName,
   formatClientDisplayName,
@@ -20,45 +17,32 @@ import {
 import { outfit } from "@/lib/fonts/app-fonts"
 import { cn } from "cn"
 
-type OrganizationOption = {
-  id: string
-  slug: string
-  name: string
-}
-
 export function ClientContextBar() {
   const router = useRouter()
   const { t } = useLanguage()
   const { organization, role, loading, setActiveOrganization } = useActiveOrganization()
-  const [organizations, setOrganizations] = useState<OrganizationOption[]>([])
+  const { pickerOrganizations, loading: listLoading } = useAdminOrganizationList()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
   const [switchingSlug, setSwitchingSlug] = useState<string | null>(null)
 
   const displayName = organization ? formatClientDisplayName(organization.name) : ""
 
+  const listState = useMemo(
+    () =>
+      resolveContextBarClientList(
+        pickerOrganizations,
+        query,
+        organization?.slug ?? null
+      ),
+    [pickerOrganizations, query, organization?.slug]
+  )
+
+  const isSearching = query.trim().length > 0
+
   useEffect(() => {
-    let cancelled = false
-
-    async function loadOrganizations() {
-      try {
-        const response = await fetch("/api/admin/organizations", { cache: "no-store" })
-        if (!response.ok || cancelled) return
-        const data = (await response.json()) as { organizations: OrganizationOption[] }
-        if (!cancelled) {
-          setOrganizations(
-            data.organizations.filter((option) => isVisibleInClientSwitcher(option.slug))
-          )
-        }
-      } catch {
-        // Keep the current client visible if the list fails to load.
-      }
-    }
-
-    void loadOrganizations()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    if (!open) setQuery("")
+  }, [open])
 
   if (loading || role !== "censio_admin" || !organization) return null
 
@@ -67,7 +51,10 @@ export function ClientContextBar() {
     setSwitchingSlug(slug)
     try {
       const success = await setActiveOrganization(slug)
-      if (success) router.refresh()
+      if (success) {
+        setOpen(false)
+        router.refresh()
+      }
     } finally {
       setSwitchingSlug(null)
     }
@@ -79,8 +66,8 @@ export function ClientContextBar() {
         <span className="shrink-0 text-sm font-medium text-muted-foreground">
           {t("viewingClient")}
         </span>
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger
             aria-label={`${t("switchClient")}: ${displayName}`}
             className={cn(
               "inline-flex min-w-0 max-w-full items-center gap-2.5 rounded-full border border-[#d3c3b2] bg-white px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition-colors",
@@ -96,38 +83,106 @@ export function ClientContextBar() {
             </span>
             <span className="truncate">{displayName}</span>
             <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
+          </PopoverTrigger>
+          <PopoverContent
             align="end"
-            className={cn("admin-ui", outfit.className, "max-h-80 min-w-56 overflow-y-auto")}
+            className={cn(
+              "admin-ui",
+              outfit.className,
+              "w-[min(100vw-2rem,22rem)] gap-0 p-0"
+            )}
           >
-            {organizations.map((option) => {
-              const isActive = option.slug === organization.slug
-              const optionName = formatClientDisplayName(option.name)
-              return (
-                <DropdownMenuItem
-                  key={option.id}
-                  disabled={switchingSlug !== null}
-                  onClick={() => {
-                    void handleSelect(option.slug)
-                  }}
-                  className="flex items-center gap-2 py-2"
+            <div className="border-b border-border p-2.5">
+              <div className="relative">
+                <SearchIcon
+                  className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("searchClients")}
+                  aria-label={t("searchClients")}
+                  autoComplete="off"
+                  className="h-9 w-full rounded-md border border-border bg-white pr-2 pl-8 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              {!isSearching && listState.hiddenCount > 0 ? (
+                <p className="mt-2 px-0.5 text-xs text-muted-foreground">
+                  {t("clientSwitcherSearchHint")}
+                </p>
+              ) : null}
+            </div>
+            <ul
+              className="max-h-64 overflow-y-auto px-1 pt-1 pb-3"
+              role="listbox"
+              aria-label={t("switchClient")}
+            >
+              {listLoading ? (
+                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  {t("loadingClients")}
+                </li>
+              ) : isSearching && listState.items.length === 0 ? (
+                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  {t("noMatchingClients")}
+                </li>
+              ) : listState.items.length === 0 ? (
+                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  {t("clientPickerEmptyList")}
+                </li>
+              ) : (
+                listState.items.map((option) => {
+                  const isActive = option.slug === organization.slug
+                  const optionName = formatClientDisplayName(option.name)
+                  return (
+                    <li key={option.id} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isActive}
+                        disabled={switchingSlug !== null}
+                        onClick={() => {
+                          void handleSelect(option.slug)
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors",
+                          "hover:bg-[#faf8f6] focus-visible:bg-[#faf8f6] focus-visible:outline-none",
+                          isActive && "bg-[#faf8f6] font-semibold"
+                        )}
+                      >
+                        <CheckIcon
+                          className={cn(
+                            "size-4 shrink-0 text-primary",
+                            isActive ? "opacity-100" : "opacity-0"
+                          )}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0 flex-1 truncate">{optionName}</span>
+                      </button>
+                    </li>
+                  )
+                })
+              )}
+            </ul>
+            {!listLoading && listState.hiddenCount > 0 ? (
+              <div className="space-y-2 border-t border-border px-3 py-3">
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {listState.mode === "preview"
+                    ? t("clientSwitcherMoreCount", { count: listState.hiddenCount })
+                    : t("clientSwitcherSearchLimit", { count: listState.hiddenCount })}
+                </p>
+                <Link
+                  href="/klienter"
+                  onClick={() => setOpen(false)}
+                  className="block text-xs font-medium text-primary underline-offset-4 hover:underline"
                 >
-                  <CheckIcon
-                    className={cn(
-                      "size-4 shrink-0 text-primary",
-                      isActive ? "opacity-100" : "opacity-0"
-                    )}
-                    aria-hidden="true"
-                  />
-                  <span className={cn("min-w-0 flex-1 truncate", isActive && "font-semibold")}>
-                    {optionName}
-                  </span>
-                </DropdownMenuItem>
-              )
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  {t("clientSwitcherFullList")}
+                </Link>
+              </div>
+            ) : null}
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   )

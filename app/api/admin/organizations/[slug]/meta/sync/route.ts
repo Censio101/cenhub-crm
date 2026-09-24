@@ -18,8 +18,12 @@ export async function POST(request: Request, context: RouteContext) {
     const { slug } = await context.params
     const body = (await request.json().catch(() => ({}))) as {
       scope?: "metrics" | "leads" | "all"
+      metricsRange?: "maximum" | "ytd"
+      source?: string
     }
     const scope = body.scope ?? "all"
+    const metricsRange = body.metricsRange ?? "maximum"
+    const syncSource = body.source ?? "admin-manual"
 
     const admin = createAdminClient()
     const organization = await getOrganizationBySlug(admin, slug)

@@ -133,10 +133,69 @@ export async function createOrganization(
   return data as OrganizationRow
 }
 
+export type OrganizationDetailsPatch = Partial<
+  Pick<
+    OrganizationRow,
+    | "name"
+    | "demo_mode"
+    | "cvr"
+    | "address"
+    | "zip_code"
+    | "city"
+    | "country"
+    | "primary_contact_name"
+    | "primary_contact_email"
+    | "primary_contact_phone"
+    | "website_url"
+  >
+>
+
+export async function getOrganizationById(
+  supabase: SupabaseClient,
+  id: string
+): Promise<OrganizationRow | null> {
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (error) throw error
+  return (data as OrganizationRow | null) ?? null
+}
+
+export async function isOrganizationSlugTaken(
+  supabase: SupabaseClient,
+  slug: string
+): Promise<boolean> {
+  const org = await getOrganizationBySlug(supabase, slug)
+  return org !== null
+}
+
+export async function resolveAvailableOrganizationSlug(
+  supabase: SupabaseClient,
+  baseName: string,
+  preferredSlug?: string
+): Promise<string> {
+  const base = preferredSlug
+    ? normalizeOrgSlug(preferredSlug)
+    : normalizeOrgSlug(baseName)
+
+  if (!(await isOrganizationSlugTaken(supabase, base))) return base
+
+  for (let suffix = 2; suffix <= 99; suffix += 1) {
+    const candidate = `${base.slice(0, 44)}-${suffix}`.replace(/-+$/g, "")
+    const normalized = normalizeOrgSlug(candidate)
+    if (!(await isOrganizationSlugTaken(supabase, normalized))) return normalized
+  }
+
+  throw new Error("Could not generate a unique organization slug")
+}
+
 export async function updateOrganizationBySlug(
   supabase: SupabaseClient,
   slug: string,
-  patch: Partial<Pick<OrganizationRow, "name" | "demo_mode">>
+  patch: OrganizationDetailsPatch
 ): Promise<OrganizationRow> {
   const { data, error } = await supabase
     .from("organizations")

@@ -18,6 +18,7 @@ export type WorkspaceIntegrationsRow = {
   site_url: string | null
   auth_callback_path: string | null
   contact_form_url: string | null
+  onboarding_notify_emails: string | null
   updated_at: string
 }
 
@@ -30,6 +31,7 @@ export type WorkspaceIntegrations = {
   siteUrl: string
   authCallbackPath: string
   contactFormUrl: string | null
+  onboardingNotifyEmails: string | null
   updatedAt: string | null
 }
 
@@ -42,6 +44,7 @@ export type WorkspaceIntegrationsInput = {
   siteUrl?: string | null
   authCallbackPath?: string | null
   contactFormUrl?: string | null
+  onboardingNotifyEmails?: string | null
 }
 
 export type WorkspaceIntegrationsPublic = WorkspaceIntegrations & {
@@ -155,6 +158,7 @@ export function mergeWorkspaceIntegrations(
     siteUrl: normalizedSiteUrl,
     authCallbackPath: normalizedAuthPath,
     contactFormUrl: trimOrNull(contactFormUrl.value),
+    onboardingNotifyEmails: trimOrNull(row?.onboarding_notify_emails ?? null),
     updatedAt: row?.updated_at ?? null,
     mailConfigured: Boolean(mailgunApiKey.value && mailgunDomain.value),
     mailgunApiKeyMasked: maskSecret(mailgunApiKey.value),
@@ -240,6 +244,10 @@ export async function saveWorkspaceIntegrations(
       input.contactFormUrl === undefined
         ? currentRow?.contact_form_url ?? null
         : trimOrNull(input.contactFormUrl),
+    onboarding_notify_emails:
+      input.onboardingNotifyEmails === undefined
+        ? currentRow?.onboarding_notify_emails ?? null
+        : trimOrNull(input.onboardingNotifyEmails),
     updated_at: new Date().toISOString(),
   }
 

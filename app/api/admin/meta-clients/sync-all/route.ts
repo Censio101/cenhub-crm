@@ -4,20 +4,22 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
-import { syncAllOrganizationAdMetrics } from "@/lib/meta/sync-ad-metrics"
+import { runMetaMetricsSyncBatch } from "@/lib/meta/run-meta-metrics-sync-batch"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function POST() {
   try {
     await requireCensioAdmin()
     const admin = createAdminClient()
-    const metricsResults = await syncAllOrganizationAdMetrics(admin, {
+    const { batchId, results, summary } = await runMetaMetricsSyncBatch(admin, {
       source: "admin-sync-all",
     })
 
     return NextResponse.json({
-      success: true,
-      metricsResults,
+      success: summary.failed === 0,
+      batchId,
+      summary,
+      metricsResults: results,
     })
   } catch (error) {
     return adminErrorResponse(error)

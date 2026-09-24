@@ -1,9 +1,11 @@
 const RESERVED_ADMIN_SEGMENTS = new Set([
   "meta",
+  "meta-sync",
   "settings",
   "konto",
   "admins",
   "integrations",
+  "onboarding",
 ])
 
 /** Internal/demo clients hidden from the admin header client switcher. */
@@ -21,11 +23,14 @@ export function parseAdminClientSlug(pathname: string): string | null {
   return slug
 }
 
-export function adminClientSection(pathname: string): "meta" | "demo" | "users" | null {
+export function adminClientSection(
+  pathname: string
+): "meta" | "demo" | "users" | "funnels" | null {
   const slug = parseAdminClientSlug(pathname)
   if (!slug) return null
   if (pathname.startsWith(`/admin/${slug}/demo`)) return "demo"
   if (pathname.startsWith(`/admin/${slug}/users`)) return "users"
+  if (pathname.startsWith(`/admin/${slug}/funnels`)) return "funnels"
   if (pathname.startsWith(`/admin/${slug}/meta`) || pathname === `/admin/${slug}`) {
     return "meta"
   }

@@ -4,13 +4,14 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react"
 
 import { isLocale, translate, type MessageKey } from "@/lib/i18n"
+import { readStoredLocale, writeStoredLocale } from "@/lib/i18n/stored-locale"
 import { LOCALE_STORAGE_KEY, type Locale } from "@/lib/i18n/types"
 
 type LanguageContextValue = {
@@ -21,30 +22,59 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
-function readStoredLocale(): Locale {
-  if (typeof window === "undefined") return "da"
-  const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-  return stored && isLocale(stored) ? stored : "da"
-}
-
-function LanguageHtmlSync({ locale }: { locale: Locale }) {
-  useEffect(() => {
+function LanguageHtmlSync({
+  locale,
+  restoreDocumentLangOnUnmount,
+}: {
+  locale: Locale
+  restoreDocumentLangOnUnmount?: boolean
+}) {
+  useLayoutEffect(() => {
     document.documentElement.lang = locale
-  }, [locale])
+    if (!restoreDocumentLangOnUnmount) return
+    return () => {
+      document.documentElement.lang = readStoredLocale(LOCALE_STORAGE_KEY)
+    }
+  }, [locale, restoreDocumentLangOnUnmount])
   return null
 }
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
+type LanguageProviderProps = {
+  children: ReactNode
+  storageKey?: string
+  restoreDocumentLangOnUnmount?: boolean
+}
+
+export function LanguageProvider({
+  children,
+  storageKey = LOCALE_STORAGE_KEY,
+  restoreDocumentLangOnUnmount = false,
+}: LanguageProviderProps) {
+  // Match SSR first paint (da), then hydrate stored/profile locale in layout effect.
   const [locale, setLocaleState] = useState<Locale>("da")
 
-  useEffect(() => {
-    setLocaleState(readStoredLocale())
-  }, [])
+  useLayoutEffect(() => {
+    setLocaleState(readStoredLocale(storageKey))
+  }, [storageKey])
 
-  const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next)
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, next)
-  }, [])
+  useLayoutEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== storageKey) return
+      if (event.newValue && isLocale(event.newValue)) {
+        setLocaleState(event.newValue)
+      }
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [storageKey])
+
+  const setLocale = useCallback(
+    (next: Locale) => {
+      setLocaleState(next)
+      writeStoredLocale(storageKey, next)
+    },
+    [storageKey]
+  )
 
   const t = useCallback(
     (key: MessageKey, vars?: Record<string, string | number>) =>
@@ -63,7 +93,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   return (
     <LanguageContext.Provider value={value}>
-      <LanguageHtmlSync locale={locale} />
+      <LanguageHtmlSync
+        locale={locale}
+        restoreDocumentLangOnUnmount={restoreDocumentLangOnUnmount}
+      />
       {children}
     </LanguageContext.Provider>
   )

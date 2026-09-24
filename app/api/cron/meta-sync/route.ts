@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { isCronAuthorized } from "@/lib/meta/cron-auth"
-import { syncAllOrganizationAdMetrics } from "@/lib/meta/sync-ad-metrics"
+import { runMetaMetricsSyncBatch } from "@/lib/meta/run-meta-metrics-sync-batch"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function GET(request: Request) {
@@ -18,19 +18,19 @@ export async function GET(request: Request) {
 
   try {
     const admin = createAdminClient()
-    const results = await syncAllOrganizationAdMetrics(admin, {
-      source: request.headers.get("x-vercel-cron") === "1" ? "vercel-cron" : "cron",
+    const source =
+      request.headers.get("x-vercel-cron") === "1" ? "vercel-cron" : "cron"
+    const { batchId, results, summary } = await runMetaMetricsSyncBatch(admin, {
+      source,
     })
 
-    const synced = results.filter((row) => row.success).length
-    const skipped = results.filter((row) => row.skipped).length
-    const failed = results.filter((row) => !row.success && !row.skipped).length
-
     return NextResponse.json({
-      success: failed === 0,
-      synced,
-      skipped,
-      failed,
+      success: summary.failed === 0,
+      batchId,
+      synced: summary.synced,
+      skipped: summary.skipped,
+      failed: summary.failed,
+      total: summary.total,
       results,
     })
   } catch (error) {

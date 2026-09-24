@@ -10,6 +10,7 @@ import {
   SendIcon,
 } from "lucide-react"
 
+import { OnboardingNotifyRecipientsPanel } from "@/components/admin/OnboardingNotifyRecipientsPanel"
 import {
   adminFieldClass,
   adminIconBoxClass,
@@ -19,6 +20,7 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
+import { parseNotifyEmailList } from "@/lib/onboarding/notify-emails"
 
 type IntegrationsSettings = {
   mailgunDomain: string | null
@@ -28,6 +30,7 @@ type IntegrationsSettings = {
   siteUrl: string
   authCallbackPath: string
   contactFormUrl: string | null
+  onboardingNotifyEmails: string | null
   updatedAt: string | null
   mailConfigured: boolean
   mailgunApiKeyMasked: string | null
@@ -190,6 +193,10 @@ function MailReadinessWidget({
   )
 }
 
+function notifyEmailsToPayload(emails: string[]): string {
+  return emails.join(", ")
+}
+
 function SourceBadge({
   source,
 }: {
@@ -229,6 +236,7 @@ export function AdminIntegrationsPanel() {
   const [siteUrl, setSiteUrl] = useState("")
   const [authCallbackPath, setAuthCallbackPath] = useState("/auth/callback")
   const [contactFormUrl, setContactFormUrl] = useState("")
+  const [savedNotifyEmails, setSavedNotifyEmails] = useState<string[]>([])
   const [testEmail, setTestEmail] = useState("")
 
   const dismissNotice = useCallback(() => setNotice(null), [])
@@ -236,6 +244,37 @@ export function AdminIntegrationsPanel() {
 
   useAutoDismiss(notice, dismissNotice)
   useAutoDismiss(error, dismissError, 6000)
+
+  function applyNotifyEmailsFromSettings(raw: string | null | undefined) {
+    setSavedNotifyEmails(parseNotifyEmailList(raw))
+  }
+
+  async function putIntegrationsSettings(onboardingNotifyEmails: string) {
+    const response = await fetch("/api/admin/integrations", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mailgunApiKey: mailgunApiKey.trim() || undefined,
+        mailgunDomain,
+        mailgunApiBase,
+        mailFrom,
+        mailFromName,
+        siteUrl,
+        authCallbackPath,
+        contactFormUrl,
+        onboardingNotifyEmails,
+      }),
+    })
+    const data = (await response.json()) as {
+      settings?: IntegrationsSettings
+      error?: string
+    }
+    if (!response.ok) throw new Error(data.error ?? t("integrationsErrorSave"))
+    setSettings(data.settings!)
+    applyNotifyEmailsFromSettings(data.settings!.onboardingNotifyEmails)
+    setMailgunApiKey("")
+    return data.settings!
+  }
 
   async function loadSettings() {
     setLoading(true)
@@ -256,6 +295,7 @@ export function AdminIntegrationsPanel() {
       setSiteUrl(next.siteUrl)
       setAuthCallbackPath(next.authCallbackPath)
       setContactFormUrl(next.contactFormUrl ?? "")
+      applyNotifyEmailsFromSettings(next.onboardingNotifyEmails)
       setMailgunApiKey("")
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("integrationsErrorLoad"))
@@ -275,28 +315,7 @@ export function AdminIntegrationsPanel() {
     setNotice(null)
 
     try {
-      const response = await fetch("/api/admin/integrations", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mailgunApiKey: mailgunApiKey.trim() || undefined,
-          mailgunDomain,
-          mailgunApiBase,
-          mailFrom,
-          mailFromName,
-          siteUrl,
-          authCallbackPath,
-          contactFormUrl,
-        }),
-      })
-      const data = (await response.json()) as {
-        settings?: IntegrationsSettings
-        error?: string
-      }
-      if (!response.ok) throw new Error(data.error ?? t("integrationsErrorSave"))
-
-      setSettings(data.settings!)
-      setMailgunApiKey("")
+      await putIntegrationsSettings(notifyEmailsToPayload(savedNotifyEmails))
       setNotice(t("integrationsSaved"))
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t("integrationsErrorSave"))
@@ -347,7 +366,7 @@ export function AdminIntegrationsPanel() {
           </div>
         </section>
       ) : (
-        <form className="grid gap-6" onSubmit={handleSave}>
+        <div className="grid gap-6">
           <MailReadinessWidget
             mailgunDomain={mailgunDomain}
             hasApiKey={Boolean(settings?.mailgunApiKeyMasked || mailgunApiKey.trim())}
@@ -355,6 +374,7 @@ export function AdminIntegrationsPanel() {
             siteUrl={siteUrl}
           />
 
+          <form className="grid gap-6" onSubmit={handleSave}>
           <section className={cn(adminSectionCardClass, "overflow-hidden")}>
             <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
               <span className={adminIconBoxClass("brand")}>
@@ -445,7 +465,15 @@ export function AdminIntegrationsPanel() {
               </div>
             </div>
           </section>
+          </form>
 
+          <OnboardingNotifyRecipientsPanel
+            initialEmails={savedNotifyEmails}
+            mailConfigured={settings?.mailConfigured ?? false}
+            onEmailsChange={setSavedNotifyEmails}
+          />
+
+          <form className="grid gap-6" onSubmit={handleSave}>
           <section className={cn(adminSectionCardClass, "overflow-hidden")}>
             <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
               <span className={adminIconBoxClass("blue")}>
@@ -577,7 +605,8 @@ export function AdminIntegrationsPanel() {
             <SaveIcon className="size-4" aria-hidden="true" />
             {saving ? t("saving") : t("integrationsSave")}
           </Button>
-        </form>
+          </form>
+        </div>
       )}
     </div>
   )

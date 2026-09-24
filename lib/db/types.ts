@@ -8,6 +8,44 @@ export type OrganizationRow = {
   name: string
   logo_url: string | null
   demo_mode: boolean
+  cvr?: string | null
+  address?: string | null
+  zip_code?: string | null
+  city?: string | null
+  country?: string | null
+  primary_contact_name?: string | null
+  primary_contact_email?: string | null
+  primary_contact_phone?: string | null
+  website_url?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type OnboardingApplicationStatus = "pending" | "approved" | "rejected"
+export type OnboardingApplicationSource = "public_form" | "admin_manual"
+
+export type OnboardingApplicationRow = {
+  id: string
+  status: OnboardingApplicationStatus
+  source: OnboardingApplicationSource
+  submitted_at: string
+  company_name: string
+  cvr: string | null
+  contact_full_name: string
+  contact_email: string
+  contact_phone: string
+  address: string
+  zip_code: string
+  city: string
+  country: string
+  website_url: string | null
+  consent_given: boolean
+  notes: string | null
+  rejection_reason: string | null
+  organization_id: string | null
+  approved_by: string | null
+  approved_at: string | null
+  submitter_ip_hash: string | null
   created_at: string
   updated_at: string
 }
@@ -19,6 +57,22 @@ export type ProfileRow = {
   email: string | null
   full_name: string | null
   avatar_url: string | null
+  preferred_locale: string
+  created_at: string
+  updated_at: string
+}
+
+export type LeadFunnelPlatform = "website" | "landing" | "manual"
+
+export type LeadFunnelRow = {
+  id: string
+  organization_id: string
+  name: string
+  slug: string
+  platform: LeadFunnelPlatform
+  webhook_secret: string
+  field_mapping: Record<string, string>
+  enabled: boolean
   created_at: string
   updated_at: string
 }

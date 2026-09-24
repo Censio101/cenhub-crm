@@ -99,7 +99,7 @@ export function LoginForm() {
     const me = meResponse.ok
       ? ((await meResponse.json()) as { role?: string | null })
       : null
-    router.replace(me?.role === "censio_admin" ? "/admin" : "/")
+    router.replace(me?.role === "censio_admin" ? "/klienter" : "/")
   }
 
   async function handleMagicLink() {

@@ -3,7 +3,6 @@
  * Run: npm run db:seed
  */
 import { readFileSync } from "node:fs"
-import { randomUUID } from "node:crypto"
 import { resolve } from "node:path"
 
 function loadEnvLocal() {
@@ -26,8 +25,7 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-import { leadToInsertRow } from "../lib/db/lead-mapper"
-import { MOCK_LEADS } from "../lib/leads"
+import { seedDemoOrganizationData } from "../lib/db/demo-organization-seed"
 import { createAdminClient } from "../lib/supabase/admin"
 
 async function main() {
@@ -44,27 +42,10 @@ async function main() {
     throw orgError ?? new Error(`Organization not found: ${slug}`)
   }
 
-  const rows = MOCK_LEADS.map((lead) => {
-    const row = leadToInsertRow(
-      { ...lead, id: randomUUID() },
-      organization.id,
-      "demo"
-    )
-    return row
-  })
-
-  const { error: deleteError } = await admin
-    .from("leads")
-    .delete()
-    .eq("organization_id", organization.id)
-    .eq("source", "demo")
-
-  if (deleteError) throw deleteError
-
-  const { error: insertError } = await admin.from("leads").insert(rows)
-  if (insertError) throw insertError
-
-  console.log(`Seeded ${rows.length} demo leads for ${organization.name} (${slug})`)
+  const result = await seedDemoOrganizationData(admin, organization.id)
+  console.log(
+    `Seeded ${result.leadsCount} demo leads and ${result.adMetricsMonths} ad months for ${organization.name} (${slug})`
+  )
 }
 
 main().catch((error) => {

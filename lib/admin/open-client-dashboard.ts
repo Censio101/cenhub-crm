@@ -6,6 +6,8 @@ type OpenClientDashboardOptions = {
   /** Open the client dashboard in a new browser tab (keeps admin open in the current tab). */
   newTab?: boolean
   router?: DashboardRouter
+  /** Dashboard route after the active organization is set. Defaults to `/overblik`. */
+  path?: string
 }
 
 export async function openClientDashboard(
@@ -16,12 +18,14 @@ export async function openClientDashboard(
   const success = await setActiveOrganization(slug)
   if (!success) return false
 
+  const path = options.path ?? "/overblik"
+
   if (options.newTab) {
-    window.open("/overblik", "_blank", "noopener,noreferrer")
+    window.open(path, "_blank", "noopener,noreferrer")
   } else if (options.router) {
-    options.router.push("/overblik")
+    options.router.push(path)
   } else {
-    window.location.assign("/overblik")
+    window.location.assign(path)
   }
 
   return true

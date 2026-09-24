@@ -59,6 +59,7 @@ export async function upsertMonthlyAdMetrics(
     spend: number
     impressions: number
     clicks: number
+    leadsCount?: number
   }>
 ) {
   if (!rows.length) return
@@ -69,6 +70,7 @@ export async function upsertMonthlyAdMetrics(
     spend: row.spend,
     impressions: row.impressions,
     clicks: row.clicks,
+    ...(row.leadsCount !== undefined ? { leads_count: row.leadsCount } : {}),
     synced_at: new Date().toISOString(),
   }))
 

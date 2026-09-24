@@ -330,6 +330,23 @@
   line-height: 1.55;
 }
 
+/* Meta sync table: avoid cap-height clipping (scroll + tight line boxes). */
+.admin-meta-sync-table-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.admin-meta-sync-table th,
+.admin-meta-sync-table td {
+  overflow: visible;
+  vertical-align: top;
+}
+
+.admin-meta-sync-table .client-name {
+  line-height: 1.45;
+  padding-block: 2px;
+}
+
 .hub-toolbar-row {
   display: flex;
   flex-wrap: wrap;
@@ -538,6 +555,15 @@
 .admin-btn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+@keyframes form-notice-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 @layer base {

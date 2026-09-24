@@ -11,16 +11,30 @@ export function isAuthPath(pathname: string) {
   )
 }
 
+export function isPublicSignupPath(pathname: string) {
+  return pathname === "/tilmelding" || pathname.startsWith("/tilmelding/")
+}
+
+/** Public pages shown to prospects: logo + login only, no app navigation. */
+export function isGuestShellPath(pathname: string) {
+  return isLoggedOutPath(pathname) || isAuthPath(pathname) || isPublicSignupPath(pathname)
+}
+
 export function isMinimalHeaderPath(pathname: string) {
-  return isLoggedOutPath(pathname) || isAuthPath(pathname)
+  return isGuestShellPath(pathname)
 }
 
 export function isAdminPath(pathname: string) {
   return pathname.startsWith("/admin")
 }
 
+export function isClientPickerPath(pathname: string) {
+  return pathname === "/klienter" || pathname.startsWith("/klienter/")
+}
+
 export function isClientDashboardPath(pathname: string) {
   if (isLoggedOutPath(pathname) || isAdminPath(pathname)) return false
+  if (isPublicSignupPath(pathname)) return false
 
   return (
     pathname === "/" ||
@@ -28,6 +42,7 @@ export function isClientDashboardPath(pathname: string) {
     pathname.startsWith("/leads") ||
     pathname.startsWith("/kunder") ||
     pathname.startsWith("/lead-performance") ||
-    pathname.startsWith("/indstillinger")
+    pathname.startsWith("/indstillinger") ||
+    isClientPickerPath(pathname)
   )
 }

@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { persistAdminPreferredLocale } from "@/components/i18n/LocaleSync"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { LOCALES, type Locale } from "@/lib/i18n/types"

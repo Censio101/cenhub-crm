@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
   ChevronDownIcon,
+  ClipboardListIcon,
   GraduationCapIcon,
   LogOutIcon,
   MessageCircleIcon,
@@ -147,9 +148,16 @@ export function ProfileMenu() {
           ) : null}
           {isAdmin ? (
             <>
-              <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
+              <DropdownMenuItem nativeButton={false} render={<Link href="/klienter" />}>
                 <ShieldIcon />
-                {t("allClients")}
+                {t("selectClient")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                nativeButton={false}
+                render={<Link href="/admin/onboarding" />}
+              >
+                <ClipboardListIcon />
+                {t("navOnboarding")}
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/settings" />}>
                 <SettingsIcon />

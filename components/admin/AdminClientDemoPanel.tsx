@@ -6,6 +6,10 @@ import { FlaskConicalIcon } from "lucide-react"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { adminIconBoxClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import {
+  clearClientCaches,
+  emitClientOrgChanged,
+} from "@/lib/data/client-cache"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 
@@ -14,6 +18,7 @@ export function AdminClientDemoPanel() {
   const { slug, organization, reload } = useAdminClient()
   const [savingDemo, setSavingDemo] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   if (!organization) return null
 
@@ -21,14 +26,34 @@ export function AdminClientDemoPanel() {
     if (!organization) return
     setSavingDemo(true)
     setError(null)
+    setNotice(null)
     try {
+      const enabling = !organization.demo_mode
       const response = await fetch(`/api/admin/organizations/${slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ demoMode: !organization.demo_mode }),
+        body: JSON.stringify({ demoMode: enabling }),
       })
-      if (!response.ok) throw new Error(t("errorUpdateDemo"))
+      const data = (await response.json()) as {
+        error?: string
+        demoSeed?: { leadsCount: number; adMetricsMonths: number }
+      }
+      if (!response.ok) throw new Error(data.error ?? t("errorUpdateDemo"))
+
+      clearClientCaches()
+      emitClientOrgChanged()
       await reload()
+
+      if (enabling && data.demoSeed) {
+        setNotice(
+          t("demoSeedSuccess", {
+            leads: data.demoSeed.leadsCount,
+            months: data.demoSeed.adMetricsMonths,
+          })
+        )
+      } else if (!enabling) {
+        setNotice(t("demoClearSuccess"))
+      }
     } catch (toggleError) {
       setError(
         toggleError instanceof Error ? toggleError.message : t("errorUpdateDemo")
@@ -59,9 +84,23 @@ export function AdminClientDemoPanel() {
         </span>
       </div>
       <div className="grid gap-3 px-5 py-4">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          {t("demoModeAdminDescription")}
+        </p>
         {error ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800" role="alert">
+          <p
+            className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800"
+            role="alert"
+          >
             {error}
+          </p>
+        ) : null}
+        {notice ? (
+          <p
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-900"
+            role="status"
+          >
+            {notice}
           </p>
         ) : null}
         <Button

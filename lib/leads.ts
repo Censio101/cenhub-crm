@@ -261,7 +261,7 @@ export function filterDashboardLeads(
 ): Lead[] {
   return leads.filter((lead) => {
     if (!filter.ignoreDate && filter.range) {
-      const date = new Date(`${lead.date}T00:00:00`)
+      const date = new Date(`${lead.date}T12:00:00`)
       if (date < filter.range.start || date > filter.range.end) return false
     }
     if (filter.service && !getLeadServiceIds(lead).includes(filter.service)) {

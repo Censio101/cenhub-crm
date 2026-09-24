@@ -6,7 +6,9 @@ function isPublicPath(pathname: string) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/invite") ||
     pathname.startsWith("/auth/callback") ||
-    pathname.startsWith("/logget-ud")
+    pathname.startsWith("/logget-ud") ||
+    pathname === "/tilmelding" ||
+    pathname.startsWith("/tilmelding/")
   )
 }
 
@@ -58,7 +60,7 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle()
 
-    const destination = profile?.role === "censio_admin" ? "/admin" : "/"
+    const destination = profile?.role === "censio_admin" ? "/klienter" : "/"
     return NextResponse.redirect(new URL(destination, request.url))
   }
 
@@ -78,7 +80,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAdminRoute =
-    pathname.startsWith("/admin") || pathname.startsWith("/api/admin/")
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/admin/") ||
+    pathname.startsWith("/klienter")
 
   if (isAdminRoute) {
     if (!user) {
