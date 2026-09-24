@@ -6,6 +6,7 @@ export function isLoggedOutPath(pathname: string) {
 
 export function isAuthPath(pathname: string) {
   return (
+    pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/auth/invite") ||
     pathname.startsWith("/auth/setup-password")
   )

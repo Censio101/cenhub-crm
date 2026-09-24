@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { Suspense } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import {
   Building2Icon,
@@ -41,7 +42,25 @@ const ADMIN_CLIENT_NAV = [
 
 const censioLogoClass = "h-9 w-auto shrink-0 sm:h-10"
 
-export function AppTopbar() {
+function AppTopbarFallback() {
+  return (
+    <header className="relative sticky top-0 z-40 grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-4 py-2 sm:px-6 lg:px-8 xl:min-h-[4.5rem]">
+      <div className="col-start-1 row-start-1 flex min-w-0 items-center">
+        <Image
+          src="/censio-logo-white.png"
+          alt="Censio"
+          width={1024}
+          height={251}
+          className={censioLogoClass}
+          priority
+        />
+      </div>
+      <div className="col-start-2 row-start-1 h-9 w-9 animate-pulse rounded-full bg-white/10" />
+    </header>
+  )
+}
+
+function AppTopbarContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const dashboardFilterQuery =
@@ -211,5 +230,13 @@ export function AppTopbar() {
         <ProfileMenu />
       </div>
     </header>
+  )
+}
+
+export function AppTopbar() {
+  return (
+    <Suspense fallback={<AppTopbarFallback />}>
+      <AppTopbarContent />
+    </Suspense>
   )
 }
