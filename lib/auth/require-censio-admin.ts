@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
-import { getSessionContext } from "@/lib/auth/session-context"
+import { getCachedSessionContext } from "@/lib/auth/cached-session"
+import type { SessionContext } from "@/lib/auth/session-context"
 
 export class AdminAuthError extends Error {
   constructor(message: string) {
@@ -9,8 +10,8 @@ export class AdminAuthError extends Error {
   }
 }
 
-export async function requireCensioAdmin() {
-  const ctx = await getSessionContext()
+export async function requireCensioAdmin(): Promise<SessionContext> {
+  const ctx = await getCachedSessionContext()
 
   if (!ctx.userId) {
     throw new AdminAuthError("Unauthorized")

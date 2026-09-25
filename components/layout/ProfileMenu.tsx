@@ -6,12 +6,13 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
   ChevronDownIcon,
-  ClipboardListIcon,
   GraduationCapIcon,
+  LayoutDashboardIcon,
+  LayoutGridIcon,
   LogOutIcon,
   MessageCircleIcon,
   SettingsIcon,
-  ShieldIcon,
+  Settings2Icon,
   UserRoundIcon,
 } from "lucide-react"
 
@@ -21,10 +22,12 @@ import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useUserProfile } from "@/lib/auth/use-user-profile"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
-import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { CURRENT_COMPANY } from "@/lib/company"
 import { createClient } from "@/lib/supabase/client"
 import { isSignedIn, signOut as mockSignOut } from "@/lib/session"
+import { parseAdminClientSlug } from "@/lib/admin/admin-routes"
+import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
+import { isAdminPath } from "@/lib/layout/app-paths"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -42,13 +45,18 @@ export function ProfileMenu() {
   const router = useRouter()
   const { settings } = useAccountSettings()
   const { settings: adminSettings } = useAdminAccountSettings()
-  const { configured, isAuthenticated, loading } = useSupabaseSession()
+  const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
   const { role, loading: profileLoading } = useUserProfile()
-  const { organization, role: activeRole, loading: orgLoading } =
-    useActiveOrganization()
-  const sessionLoading = orgLoading || profileLoading
+  const {
+    organization,
+    role: activeRole,
+    loading: orgLoading,
+    setActiveOrganization,
+  } = useActiveOrganization()
+  const sessionLoading = authLoading || orgLoading || profileLoading
   const resolvedRole = activeRole ?? role
   const [mockSignedIn, setMockSignedIn] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!configured) {
@@ -57,7 +65,10 @@ export function ProfileMenu() {
   }, [configured, pathname])
 
   const signedIn = configured ? isAuthenticated : mockSignedIn
-  const isAdmin = resolvedRole === "censio_admin"
+  const menuReady = signedIn && !sessionLoading
+  const isAdmin = menuReady
+    ? resolvedRole === "censio_admin"
+    : isAdminPath(pathname)
   const savedName = (isAdmin ? adminSettings.displayName : settings.displayName)
     ?.trim() ?? ""
   const displayName = sessionLoading
@@ -70,8 +81,12 @@ export function ProfileMenu() {
   const profileImage = isAdmin
     ? adminSettings.profileImage.trim() || null
     : settings.profileImage
+  const adminClientDashboardSlug =
+    menuReady && isAdmin
+      ? (parseAdminClientSlug(pathname) ?? organization?.slug ?? null)
+      : null
 
-  if (!loading && !signedIn) {
+  if (!authLoading && !signedIn) {
     return (
       <Link
         href="/login"
@@ -83,8 +98,18 @@ export function ProfileMenu() {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      open={menuOpen}
+      onOpenChange={(nextOpen) => {
+        if (!menuReady) {
+          setMenuOpen(false)
+          return
+        }
+        setMenuOpen(nextOpen)
+      }}
+    >
       <DropdownMenuTrigger
+        aria-busy={!menuReady || undefined}
         aria-label={t("profileMenuAria")}
         render={
           <Button
@@ -139,29 +164,44 @@ export function ProfileMenu() {
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-foreground">
-            {displayName}
+            {menuReady ? (
+              displayName
+            ) : (
+              <span className="inline-block h-4 w-28 animate-pulse rounded bg-muted" aria-hidden="true" />
+            )}
           </DropdownMenuLabel>
-          {isAdmin && organization ? (
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-              {formatClientDisplayName(organization.name)}
-            </DropdownMenuLabel>
-          ) : null}
-          {isAdmin ? (
+          {!menuReady ? (
+            <DropdownMenuItem disabled className="text-muted-foreground">
+              {t("loading")}
+            </DropdownMenuItem>
+          ) : isAdmin ? (
             <>
-              <DropdownMenuItem nativeButton={false} render={<Link href="/klienter" />}>
-                <ShieldIcon />
-                {t("selectClient")}
+              {adminClientDashboardSlug ? (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setMenuOpen(false)
+                    void openClientDashboard(adminClientDashboardSlug, setActiveOrganization, {
+                      router,
+                      path: "/",
+                    })
+                  }}
+                >
+                  <LayoutDashboardIcon />
+                  {t("profileMenuClientDashboard")}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem nativeButton={false} render={<Link href="/klienter" />}>
+                  <LayoutDashboardIcon />
+                  {t("profileMenuClientDashboard")}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/clients" />}>
+                <Settings2Icon />
+                {t("clientSettingsLabel")}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                nativeButton={false}
-                render={<Link href="/admin/onboarding" />}
-              >
-                <ClipboardListIcon />
-                {t("navOnboarding")}
-              </DropdownMenuItem>
-              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/settings" />}>
-                <SettingsIcon />
-                {t("navSettings")}
+              <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
+                <LayoutGridIcon />
+                {t("profileMenuAdminHub")}
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin/konto" />}>
                 <UserRoundIcon />
@@ -201,7 +241,9 @@ export function ProfileMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
+          disabled={!menuReady}
           onClick={() => {
+            if (!menuReady) return
             void (async () => {
               if (configured) {
                 const supabase = createClient()

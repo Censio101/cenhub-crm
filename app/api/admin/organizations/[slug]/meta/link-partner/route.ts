@@ -10,6 +10,7 @@ import {
   linkPartnerAdAccountToOrganization,
   MetaPartnerLinkConflictError,
 } from "@/lib/meta/link-partner-to-organization"
+import { clearPartnerAdAccountsCache } from "@/lib/meta/ad-accounts"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type RouteContext = { params: Promise<{ slug: string }> }
@@ -44,6 +45,8 @@ export async function POST(request: Request, context: RouteContext) {
       metaPageId: row?.meta_page_id ?? "",
       metaSyncStatus: row?.meta_sync_status ?? "",
     })
+
+    clearPartnerAdAccountsCache()
 
     return NextResponse.json({
       ...result,

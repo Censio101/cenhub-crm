@@ -36,11 +36,24 @@ export async function listOrganizationsWithStats(
   if (error) throw error
 
   const rows = (organizations ?? []) as OrganizationRow[]
-  const summaries: OrganizationSummary[] = []
+  if (rows.length === 0) return []
 
-  for (const organization of rows) {
-    const [{ count: leadCount }, { count: userCount }, metaConfig] =
-      await Promise.all([
+  const orgIds = rows.map((row) => row.id)
+  const metaEnabledByOrgId = new Map<string, boolean>()
+
+  const { data: metaRows, error: metaError } = await supabase
+    .from("client_meta_config")
+    .select("organization_id, enabled")
+    .in("organization_id", orgIds)
+
+  if (metaError) throw metaError
+  for (const row of metaRows ?? []) {
+    metaEnabledByOrgId.set(String(row.organization_id), Boolean(row.enabled))
+  }
+
+  const summaries = await Promise.all(
+    rows.map(async (organization) => {
+      const [{ count: leadCount }, { count: userCount }] = await Promise.all([
         supabase
           .from("leads")
           .select("id", { count: "exact", head: true })
@@ -49,20 +62,16 @@ export async function listOrganizationsWithStats(
           .from("profiles")
           .select("id", { count: "exact", head: true })
           .eq("organization_id", organization.id),
-        supabase
-          .from("client_meta_config")
-          .select("enabled")
-          .eq("organization_id", organization.id)
-          .maybeSingle(),
       ])
 
-    summaries.push({
-      ...organization,
-      leadCount: leadCount ?? 0,
-      userCount: userCount ?? 0,
-      metaEnabled: Boolean(metaConfig.data?.enabled),
+      return {
+        ...organization,
+        leadCount: leadCount ?? 0,
+        userCount: userCount ?? 0,
+        metaEnabled: metaEnabledByOrgId.get(organization.id) ?? false,
+      }
     })
-  }
+  )
 
   return summaries
 }

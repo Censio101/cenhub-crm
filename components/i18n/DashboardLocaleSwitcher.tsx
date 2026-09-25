@@ -19,8 +19,10 @@ export function DashboardLocaleSwitcher({ className }: { className?: string }) {
 
   const handleChange = useCallback(
     (next: Locale) => {
-      setLocale(next)
-      void persistAdminPreferredLocale(next)
+      void (async () => {
+        const ok = await persistAdminPreferredLocale(next)
+        if (ok) setLocale(next)
+      })()
     },
     [setLocale]
   )

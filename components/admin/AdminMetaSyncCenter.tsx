@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -109,6 +109,63 @@ function relativeSyncTime(
   return t("metaSyncRelativeDays", { count: days })
 }
 
+function MetaSyncCenterSkeleton() {
+  return (
+    <div className="grid gap-4" aria-busy="true" aria-live="polite">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className={cn(adminSectionCardClass, "px-4 py-3")}>
+            <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+            <div className="mt-3 h-8 w-12 animate-pulse rounded-md bg-muted" />
+          </div>
+        ))}
+      </div>
+      <div className={cn(adminSectionCardClass, "overflow-hidden")}>
+        <div className="flex flex-col gap-3 border-b border-[#e8e0d8] px-5 py-4 sm:flex-row sm:items-center sm:px-6">
+          <div className="h-10 max-w-md flex-1 animate-pulse rounded-xl bg-muted" />
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="h-8 w-16 animate-pulse rounded-full bg-muted" />
+            ))}
+          </div>
+          <div className="flex gap-2 sm:ml-auto">
+            <div className="h-10 w-28 animate-pulse rounded-[10px] bg-muted" />
+            <div className="h-10 w-24 animate-pulse rounded-[10px] bg-muted" />
+          </div>
+        </div>
+        <div className="divide-y divide-[#e8e0d8]">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div
+              key={index}
+              className="flex flex-wrap items-center gap-3 px-5 py-3.5 sm:px-6"
+            >
+              <div className="min-w-[140px] flex-1 space-y-2">
+                <div className="h-4 w-36 animate-pulse rounded-md bg-muted" />
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+              </div>
+              <div className="h-6 w-14 animate-pulse rounded-full bg-muted" />
+              <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+              <div className="ml-auto flex gap-2">
+                <div className="h-8 w-20 animate-pulse rounded-md bg-muted" />
+                <div className="size-8 animate-pulse rounded-md bg-muted" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className={cn(adminSectionCardClass, "px-5 py-4 sm:px-6")}>
+        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+        <div className="mt-3 space-y-2">
+          {Array.from({ length: 2 }, (_, index) => (
+            <div key={index} className="h-11 animate-pulse rounded-xl bg-muted" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function statusPillClass(status: string) {
   switch (status) {
     case "live":
@@ -141,13 +198,17 @@ export function AdminMetaSyncCenter() {
   const [historyRuns, setHistoryRuns] = useState<
     Array<{ status: string; message: string | null; started_at: string }>
   >([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const dataRef = useRef<OverviewPayload | null>(null)
 
   useAutoDismiss(notice, useCallback(() => setNotice(null), []))
   useAutoDismiss(error, useCallback(() => setError(null), []), 8000)
 
   const load = useCallback(async () => {
-    setLoading(true)
     setError(null)
+    if (dataRef.current === null) {
+      setLoading(true)
+    }
     try {
       const response = await fetch("/api/admin/meta-sync/overview", {
         cache: "no-store",
@@ -156,6 +217,7 @@ export function AdminMetaSyncCenter() {
       if (!response.ok) throw new Error(t("metaSyncLoadError"))
       const json = (await response.json()) as OverviewPayload
       setData(json)
+      dataRef.current = json
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("metaSyncLoadError"))
     } finally {
@@ -166,6 +228,8 @@ export function AdminMetaSyncCenter() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const showInitialSkeleton = loading && data === null
 
   const clients = useMemo(() => {
     if (!data) return []
@@ -270,6 +334,8 @@ export function AdminMetaSyncCenter() {
 
   async function openHistory(slug: string) {
     setHistorySlug(slug)
+    setHistoryRuns([])
+    setHistoryLoading(true)
     try {
       const response = await fetch(
         `/api/admin/meta-sync/runs?slug=${encodeURIComponent(slug)}&limit=10`,
@@ -282,6 +348,8 @@ export function AdminMetaSyncCenter() {
       setHistoryRuns(json.runs ?? [])
     } catch {
       setHistoryRuns([])
+    } finally {
+      setHistoryLoading(false)
     }
   }
 
@@ -316,11 +384,11 @@ export function AdminMetaSyncCenter() {
         </p>
       ) : null}
 
-      {loading && !data ? (
-        <div className="grid gap-4">
-          <div className={cn(adminSectionCardClass, "h-24 animate-pulse bg-muted/40")} />
-          <div className={cn(adminSectionCardClass, "h-64 animate-pulse bg-muted/40")} />
-        </div>
+      {showInitialSkeleton ? (
+        <>
+          <p className="sr-only">{t("loading")}</p>
+          <MetaSyncCenterSkeleton />
+        </>
       ) : data ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -494,7 +562,7 @@ export function AdminMetaSyncCenter() {
                                 {t("metaSyncRunHistory")}
                               </Button>
                               <Link
-                                href={`/admin/${client.slug}/meta`}
+                                href={`/admin/clients/${client.slug}/meta`}
                                 className={cn(
                                   adminOutlineButtonClass,
                                   "inline-flex h-8 items-center rounded-md px-2.5 text-[12px] font-semibold"
@@ -611,7 +679,14 @@ export function AdminMetaSyncCenter() {
                       {expanded ? (
                         <div className="border-t border-[#e8e0d8] px-3 py-2">
                           {batchRunsLoading ? (
-                            <p className="text-[12px] text-muted-foreground">{t("loading")}</p>
+                            <ul className="grid gap-1.5" aria-busy="true">
+                              {Array.from({ length: 2 }, (_, index) => (
+                                <li
+                                  key={index}
+                                  className="h-8 animate-pulse rounded-md bg-muted"
+                                />
+                              ))}
+                            </ul>
                           ) : batchRuns.length === 0 ? (
                             <p className="text-[12px] text-muted-foreground">—</p>
                           ) : (
@@ -639,6 +714,13 @@ export function AdminMetaSyncCenter() {
             </ul>
           </div>
         </>
+      ) : !loading && data === null && !error ? (
+        <div className={cn(adminSectionCardClass, "px-5 py-10 text-center text-sm text-muted-foreground")}>
+          <p>{t("metaSyncNoClients")}</p>
+          <Button type="button" variant="outline" className="mt-4" onClick={() => void load()}>
+            {t("refresh")}
+          </Button>
+        </div>
       ) : null}
 
       {historySlug ? (
@@ -659,8 +741,14 @@ export function AdminMetaSyncCenter() {
               </Button>
             </div>
             <ul className="mt-4 grid gap-2 text-[13px]">
-              {historyRuns.length === 0 ? (
-                <li className="text-muted-foreground">{t("loading")}</li>
+              {historyLoading ? (
+                <li className="space-y-2" aria-busy="true">
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <div key={index} className="h-14 animate-pulse rounded-lg bg-muted" />
+                  ))}
+                </li>
+              ) : historyRuns.length === 0 ? (
+                <li className="text-muted-foreground">—</li>
               ) : (
                 historyRuns.map((run, index) => (
                   <li key={`${run.started_at}-${index}`} className="rounded-lg bg-[#faf8f6] px-3 py-2">

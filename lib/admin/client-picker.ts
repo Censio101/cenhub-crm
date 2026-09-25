@@ -6,6 +6,8 @@ export type PickerOrganization = {
   slug: string
   name: string
   metaAdAccountId: string
+  demoMode: boolean
+  metaEnabled: boolean
 }
 
 export function hubClientToPickerOrganization(client: HubClient): PickerOrganization | null {

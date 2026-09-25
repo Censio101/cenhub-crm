@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation"
 
+import { adminClientSettingsBasePath } from "@/lib/admin/admin-routes"
+
 type PageProps = {
   params: Promise<{ slug: string }>
 }
 
-export default async function AdminClientIndexPage({ params }: PageProps) {
+export default async function AdminClientLegacyIndexPage({ params }: PageProps) {
   const { slug } = await params
-  redirect(`/admin/${slug}/meta`)
+  redirect(adminClientSettingsBasePath(slug))
 }

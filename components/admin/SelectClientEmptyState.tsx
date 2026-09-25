@@ -20,9 +20,19 @@ export function SelectClientEmptyState() {
     >
       <h2 className="text-lg font-medium text-foreground">{t("selectClientTitle")}</h2>
       <p className="text-sm text-muted-foreground">{t("selectClientPrompt")}</p>
-      <Button nativeButton={false} render={<Link href="/klienter" />} className="mt-2 h-10">
-        {t("selectClient")}
-      </Button>
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+        <Button nativeButton={false} render={<Link href="/klienter" />} className="h-10">
+          {t("selectClient")}
+        </Button>
+        <Button
+          nativeButton={false}
+          render={<Link href="/admin/clients" />}
+          variant="outline"
+          className="h-10"
+        >
+          {t("navClientSettings")}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -9,6 +9,8 @@ import {
 import { fetchPartnerAdAccounts } from "@/lib/meta/ad-accounts"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import type { OrganizationRow } from "@/lib/db/types"
+
 function normalizeAdAccountId(value: string): string {
   return String(value || "").trim().replace(/^act_/i, "")
 }
@@ -79,6 +81,48 @@ function toHubClient(
     metaAdAccountId: meta.metaAdAccountId,
     currency: null,
   }
+}
+
+/** Lightweight in-app client list for scope bar, directory, and pickers (no Meta Graph, no lead/user counts). */
+export async function listInAppClientsForPicker(supabase: SupabaseClient): Promise<{
+  clients: HubClient[]
+}> {
+  const metaClients = await listMetaClients(supabase)
+  const { data: organizations, error } = await supabase
+    .from("organizations")
+    .select("*")
+    .order("name", { ascending: true })
+
+  if (error) throw error
+
+  const orgById = new Map(
+    ((organizations ?? []) as OrganizationRow[]).map((org) => [org.id, org])
+  )
+
+  const clients: HubClient[] = []
+  for (const meta of metaClients) {
+    const org = orgById.get(meta.organizationId)
+    if (!org) continue
+    clients.push({
+      key: meta.organizationId,
+      inApp: true,
+      partnerOnly: false,
+      organizationId: meta.organizationId,
+      slug: meta.slug,
+      name: meta.name,
+      demo_mode: meta.demoMode,
+      isTestAccount: isHubTestAccount(meta.name),
+      leadCount: 0,
+      userCount: 0,
+      metaLive: meta.status === "live",
+      metaEnabled: meta.enabled,
+      status: meta.status,
+      metaAdAccountId: meta.metaAdAccountId,
+      currency: null,
+    })
+  }
+
+  return { clients }
 }
 
 export async function listHubClients(supabase: SupabaseClient): Promise<{

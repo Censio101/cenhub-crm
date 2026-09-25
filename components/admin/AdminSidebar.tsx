@@ -4,26 +4,16 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Building2Icon,
-  CircleDotIcon,
   RefreshCwIcon,
   ClipboardListIcon,
-  FlaskConicalIcon,
-  FunnelIcon,
   MailIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  Settings2Icon,
   UserCircleIcon,
-  UsersIcon,
 } from "lucide-react"
 
-import { useOptionalAdminClient } from "@/components/admin/AdminClientContext"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import {
-  adminClientBasePath,
-  adminClientSection,
-  parseAdminClientSlug,
-} from "@/lib/admin/admin-routes"
-import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import type { MessageKey } from "@/lib/i18n"
 import { cn } from "cn"
 
@@ -42,9 +32,9 @@ function SidebarLink({ item }: { item: NavItem }) {
     <Link
       href={item.href}
       className={cn(
-        "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors",
+        "flex w-full min-w-0 max-w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors",
         item.active
-          ? "bg-primary text-white shadow-sm"
+          ? "bg-primary text-white"
           : "text-foreground/80 hover:bg-[#faf8f6] hover:text-foreground"
       )}
     >
@@ -56,7 +46,7 @@ function SidebarLink({ item }: { item: NavItem }) {
 
 function SidebarSection({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1">
+    <div className="grid min-w-0 w-full max-w-full gap-1 overflow-hidden">
       {title ? (
         <p className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
           {title}
@@ -70,15 +60,14 @@ function SidebarSection({ title, children }: { title?: string; children: React.R
 export function AdminSidebar() {
   const pathname = usePathname() ?? ""
   const { t } = useLanguage()
-  const clientSlug = parseAdminClientSlug(pathname)
-  const clientSection = adminClientSection(pathname)
-
-  const clientContext = useOptionalAdminClient()
-  const clientName = clientContext?.organization?.name
-    ? formatClientDisplayName(clientContext.organization.name)
-    : null
 
   const workspaceItems: NavItem[] = [
+    {
+      href: "/admin/clients",
+      labelKey: "navClientSettings",
+      icon: Settings2Icon,
+      active: pathname === "/admin/clients",
+    },
     {
       href: "/admin",
       labelKey: "navClients",
@@ -126,38 +115,9 @@ export function AdminSidebar() {
     },
   ]
 
-  const clientItems: NavItem[] = clientSlug
-    ? [
-        {
-          href: adminClientBasePath(clientSlug),
-          labelKey: "clientNavMeta",
-          icon: CircleDotIcon,
-          active: clientSection === "meta",
-        },
-        {
-          href: `/admin/${clientSlug}/demo`,
-          labelKey: "clientNavDemo",
-          icon: FlaskConicalIcon,
-          active: clientSection === "demo",
-        },
-        {
-          href: `/admin/${clientSlug}/users`,
-          labelKey: "clientNavUsers",
-          icon: UsersIcon,
-          active: clientSection === "users",
-        },
-        {
-          href: `/admin/${clientSlug}/funnels`,
-          labelKey: "clientNavFunnels",
-          icon: FunnelIcon,
-          active: clientSection === "funnels",
-        },
-      ]
-    : []
-
   return (
     <aside
-      className="flex min-h-full w-full shrink-0 flex-col self-stretch border-b border-[#e8e0d8] bg-white md:w-56 md:border-r md:border-b-0"
+      className="flex min-h-full w-full min-w-0 max-w-full shrink-0 flex-col self-stretch overflow-x-clip border-b border-[#e8e0d8] bg-white md:w-56 md:max-w-56 md:border-r md:border-b-0"
       aria-label={t("adminSidebarAria")}
     >
       <div className="border-b border-[#e8e0d8] px-4 py-3">
@@ -166,21 +126,13 @@ export function AdminSidebar() {
         </p>
       </div>
 
-      <nav className="flex flex-1 gap-2 overflow-x-auto px-3 py-3 md:grid md:overflow-visible md:content-start">
-        <div className="flex min-w-max gap-2 md:min-w-0 md:grid md:w-full md:gap-4">
+      <nav className="flex flex-1 gap-2 overflow-x-auto overflow-y-visible px-3 py-3 [scrollbar-width:none] md:grid md:overflow-x-clip md:content-start [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-max gap-2 md:min-w-0 md:grid md:w-full md:max-w-full md:gap-4">
           <SidebarSection title={t("adminSidebarWorkspace")}>
             {workspaceItems.map((item) => (
               <SidebarLink key={item.href} item={item} />
             ))}
           </SidebarSection>
-
-          {clientSlug ? (
-            <SidebarSection title={clientName ?? t("clientSettingsLabel")}>
-              {clientItems.map((item) => (
-                <SidebarLink key={item.href} item={item} />
-              ))}
-            </SidebarSection>
-          ) : null}
 
           <SidebarSection title={t("adminSidebarAccount")}>
             {accountItems.map((item) => (

@@ -80,9 +80,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAdminRoute =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/api/admin/") ||
-    pathname.startsWith("/klienter")
+    pathname.startsWith("/admin") || pathname.startsWith("/klienter")
 
   if (isAdminRoute) {
     if (!user) {
@@ -113,6 +111,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

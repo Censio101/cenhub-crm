@@ -191,7 +191,7 @@ export function AdminClientUsersPanel() {
         organizationId={organization.id}
         clientName={organization.name}
         onInvited={() => {
-          void reload()
+          void reload({ silent: true })
         }}
       />
 

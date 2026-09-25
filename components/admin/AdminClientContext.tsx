@@ -6,12 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
 
 import type { MetaConfig } from "@/components/admin/AdminMetaConfigForm"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import type { ProfileRow } from "@/lib/db/types"
 
 export type AdminClientOrganization = {
@@ -44,6 +46,8 @@ export function AdminClientProvider({
   children: ReactNode
 }) {
   const { t } = useLanguage()
+  const { setActiveOrganization } = useActiveOrganization()
+  const syncedSlugRef = useRef<string | null>(null)
   const [organization, setOrganization] = useState<AdminClientOrganization | null>(null)
   const [users, setUsers] = useState<ProfileRow[]>([])
   const [metaConfig, setMetaConfig] = useState<MetaConfig | null>(null)
@@ -56,55 +60,54 @@ export function AdminClientProvider({
       setError(null)
     }
     try {
-      const [orgResponse, usersResponse, metaResponse] = await Promise.all([
-        fetch(`/api/admin/organizations/${slug}`, { cache: "no-store" }),
-        fetch(`/api/admin/organizations/${slug}/users`, { cache: "no-store" }),
-        fetch(`/api/admin/organizations/${slug}/meta`, { cache: "no-store" }),
-      ])
+      const response = await fetch(
+        `/api/admin/organizations/${slug}/manage-bootstrap`,
+        { cache: "no-store" }
+      )
 
-      if (!orgResponse.ok) throw new Error(t("clientNotFound"))
+      if (!response.ok) throw new Error(t("clientNotFound"))
 
-      const orgData = (await orgResponse.json()) as { organization: AdminClientOrganization }
-      setOrganization(orgData.organization)
-
-      if (usersResponse.ok) {
-        const usersData = (await usersResponse.json()) as { users: ProfileRow[] }
-        setUsers(usersData.users)
-      } else {
-        setUsers([])
+      const data = (await response.json()) as {
+        organization: AdminClientOrganization
+        users: ProfileRow[]
+        metaConfig: MetaConfig | null
       }
 
-      if (metaResponse.ok) {
-        const metaData = (await metaResponse.json()) as {
-          config?: MetaConfig & { organizationId?: string }
-        }
-        setMetaConfig(
-          metaData.config
-            ? {
-                metaAdAccountId: metaData.config.metaAdAccountId ?? "",
-                metaPageId: metaData.config.metaPageId ?? "",
-                metaPixelId: metaData.config.metaPixelId ?? "",
-                enabled: Boolean(metaData.config.enabled),
-                metaSyncStatus: metaData.config.metaSyncStatus ?? "disabled",
-                metaSyncError: metaData.config.metaSyncError ?? null,
-                metaLastSyncedAt: metaData.config.metaLastSyncedAt ?? null,
-              }
-            : null
-        )
-      } else {
-        setMetaConfig(null)
-      }
+      setOrganization(data.organization)
+      setUsers(data.users ?? [])
+      setMetaConfig(
+        data.metaConfig
+          ? {
+              metaAdAccountId: data.metaConfig.metaAdAccountId ?? "",
+              metaPageId: data.metaConfig.metaPageId ?? "",
+              metaPixelId: data.metaConfig.metaPixelId ?? "",
+              enabled: Boolean(data.metaConfig.enabled),
+              metaSyncStatus: data.metaConfig.metaSyncStatus ?? "disabled",
+              metaSyncError: data.metaConfig.metaSyncError ?? null,
+              metaLastSyncedAt: data.metaConfig.metaLastSyncedAt ?? null,
+            }
+          : null
+      )
     } catch (loadError) {
       setOrganization(null)
       setError(loadError instanceof Error ? loadError.message : t("errorLoadClient"))
     } finally {
-      setLoading(false)
+      if (!options?.silent) {
+        setLoading(false)
+      }
     }
   }, [slug, t])
 
   useEffect(() => {
     void reload()
   }, [reload])
+
+  useEffect(() => {
+    if (!organization) return
+    if (syncedSlugRef.current === slug) return
+    syncedSlugRef.current = slug
+    void setActiveOrganization(slug)
+  }, [organization, slug, setActiveOrganization])
 
   const value = useMemo(
     () => ({

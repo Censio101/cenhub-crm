@@ -185,42 +185,6 @@ export function AdminMetaConfigForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, initialConfig])
 
-  useEffect(() => {
-    const linkedId = config.metaAdAccountId?.trim()
-    if (!linkedId) {
-      setLinkedPartnerName(null)
-      return
-    }
-
-    let cancelled = false
-    void (async () => {
-      try {
-        const params = new URLSearchParams({ forSlug: slug })
-        if (organizationName?.trim()) params.set("suggestName", organizationName.trim())
-        const response = await fetch(
-          `/api/admin/meta/partner-ad-accounts?${params.toString()}`,
-          { cache: "no-store" }
-        )
-        if (!response.ok || cancelled) return
-        const data = (await response.json()) as {
-          accounts?: { metaAdAccountId: string; accountName: string }[]
-        }
-        const normalized = linkedId.replace(/^act_/i, "")
-        const match = data.accounts?.find((row) => {
-          const rowId = row.metaAdAccountId.replace(/^act_/i, "")
-          return rowId === normalized || row.metaAdAccountId === linkedId
-        })
-        if (!cancelled) setLinkedPartnerName(match?.accountName ?? null)
-      } catch {
-        if (!cancelled) setLinkedPartnerName(null)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [config.metaAdAccountId, slug, organizationName])
-
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setSaving(true)

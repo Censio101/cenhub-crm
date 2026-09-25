@@ -42,6 +42,26 @@ const EXAMPLE_JSON = JSON.stringify(CANONICAL_INBOUND_EXAMPLE, null, 2)
 const readOnlyFieldClass =
   "min-w-0 flex-1 rounded-xl border border-[#e8e0d8] bg-[#faf8f5] px-3 py-2 font-mono text-xs text-foreground outline-none sm:text-[13px]"
 
+function FunnelsPanelSkeleton() {
+  return (
+    <div className="space-y-2" aria-busy="true" aria-live="polite">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div
+          key={index}
+          className={cn(adminSectionCardClass, "flex items-center gap-3 p-3 sm:px-4")}
+        >
+          <div className="size-4 shrink-0 animate-pulse rounded bg-muted" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-4 w-2/3 max-w-[14rem] animate-pulse rounded-md bg-muted" />
+            <div className="h-3 w-24 animate-pulse rounded-md bg-muted" />
+          </div>
+          <div className="size-8 shrink-0 animate-pulse rounded-md bg-muted" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function platformLabel(
   platform: FunnelDto["platform"],
   t: (key: "funnelPlatformWebsite" | "funnelPlatformLanding" | "funnelPlatformManual") => string
@@ -70,23 +90,12 @@ export function AdminClientFunnelsPanel() {
   const copiedTimerRef = useRef<number | null>(null)
   const [newName, setNewName] = useState("")
   const [newPlatform, setNewPlatform] = useState<FunnelDto["platform"]>("website")
-  const [siteOrigin, setSiteOrigin] = useState<string | null>(null)
-
-  useEffect(() => {
-    void fetch("/api/admin/integrations")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { settings?: { siteUrl?: string } } | null) => {
-        const url = data?.settings?.siteUrl?.trim()
-        if (url) setSiteOrigin(url.replace(/\/$/, ""))
-      })
-      .catch(() => {})
-  }, [])
-
   const webhookBase = useMemo(() => {
-    if (siteOrigin) return siteOrigin
+    const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "")
+    if (configured) return configured
     if (typeof window !== "undefined") return window.location.origin
     return ""
-  }, [siteOrigin])
+  }, [])
 
   const webhookUrl = useCallback(
     (funnelId: string) =>
@@ -94,10 +103,12 @@ export function AdminClientFunnelsPanel() {
     [webhookBase]
   )
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { silent?: boolean }) => {
     if (!slug) return
-    setLoading(true)
-    setError(null)
+    if (!options?.silent) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const response = await fetch(`/api/admin/organizations/${slug}/funnels`)
       if (!response.ok) throw new Error("load")
@@ -105,9 +116,9 @@ export function AdminClientFunnelsPanel() {
       setFunnels(data.funnels)
       if (data.funnels.length === 0) setShowCreate(true)
     } catch {
-      setError(t("funnelsLoadError"))
+      if (!options?.silent) setError(t("funnelsLoadError"))
     } finally {
-      setLoading(false)
+      if (!options?.silent) setLoading(false)
     }
   }, [slug, t])
 
@@ -132,7 +143,7 @@ export function AdminClientFunnelsPanel() {
       setNewName("")
       setShowCreate(false)
       setExpandedId(data.funnel.id)
-      await load()
+      await load({ silent: true })
     } catch {
       setError(t("funnelsLoadError"))
     } finally {
@@ -155,7 +166,7 @@ export function AdminClientFunnelsPanel() {
       return
     }
     setNotice(t("funnelSaved"))
-    await load()
+    await load({ silent: true })
   }
 
   async function removeFunnel(id: string) {
@@ -165,7 +176,7 @@ export function AdminClientFunnelsPanel() {
     })
     setNotice(t("funnelDeleted"))
     if (expandedId === id) setExpandedId(null)
-    await load()
+    await load({ silent: true })
   }
 
   async function copyText(key: string, value: string) {
@@ -200,7 +211,9 @@ export function AdminClientFunnelsPanel() {
     <div className="space-y-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold tracking-tight">{t("funnelsAdminTitle")}</h2>
-        {!showCreate && funnels.length > 0 ? (
+        {loading && funnels.length === 0 ? (
+          <div className="h-9 w-28 animate-pulse rounded-[10px] bg-muted sm:ml-auto" aria-hidden />
+        ) : !showCreate && funnels.length > 0 ? (
           <Button
             type="button"
             variant="outline"
@@ -278,10 +291,11 @@ export function AdminClientFunnelsPanel() {
         </form>
       ) : null}
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">
-          <Loader2Icon className="mr-2 inline size-4 animate-spin" aria-hidden />
-        </p>
+      {loading && funnels.length === 0 ? (
+        <>
+          <p className="sr-only">{t("loading")}</p>
+          <FunnelsPanelSkeleton />
+        </>
       ) : funnels.length === 0 && !showCreate ? (
         <p className={cn(adminSectionCardClass, "px-4 py-8 text-center text-sm text-muted-foreground")}>
           {t("funnelsEmpty")}

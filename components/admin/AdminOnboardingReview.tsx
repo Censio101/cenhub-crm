@@ -318,7 +318,7 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
                 />
                 <Button
                   nativeButton={false}
-                  render={<Link href={`/admin/${organization.slug}/meta`} />}
+                  render={<Link href={`/admin/clients/${organization.slug}`} />}
                   className="h-10 w-fit gap-2 px-4"
                 >
                   {t("onboardingOpenClient")}

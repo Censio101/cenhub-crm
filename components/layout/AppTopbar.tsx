@@ -20,6 +20,7 @@ import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { CURRENT_COMPANY } from "@/lib/company"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { isClientManagePath } from "@/lib/admin/admin-routes"
 import {
   isAdminPath,
   isClientDashboardPath,
@@ -117,16 +118,18 @@ function AppTopbarContent() {
     ? "/tilmelding"
     : guestShell
       ? "/login"
-      : isAdmin && onAdminPath
-        ? "/admin"
-        : isAdmin && (!organization || isClientPickerPath(pathname))
+      : isAdmin && isClientManagePath(pathname)
+        ? "/admin/clients"
+        : isAdmin && onAdminPath
+          ? "/admin"
+          : isAdmin && (!organization || isClientPickerPath(pathname))
           ? "/klienter"
           : "/"
 
   return (
     <header
       className={cn(
-        "relative sticky top-0 z-40 grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-4 py-2 font-sans sm:gap-x-3 sm:px-6 lg:px-8",
+        "relative sticky top-0 z-40 grid min-h-[4.5rem] w-full max-w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 overflow-x-clip bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-4 py-2 font-sans sm:gap-x-3 sm:px-6 lg:px-8",
         navItems.length > 0
           ? "xl:min-h-20 xl:grid-cols-[minmax(0,280px)_minmax(0,1fr)_auto] xl:py-0"
           : "xl:min-h-[4.5rem] xl:grid-cols-[minmax(0,1fr)_auto] xl:py-2"
@@ -187,7 +190,7 @@ function AppTopbarContent() {
 
       {navItems.length > 0 ? (
         <nav
-          className="z-10 col-span-2 row-start-2 -mx-4 flex min-w-0 max-w-[calc(100%+2rem)] items-center justify-start gap-0.5 overflow-x-auto px-4 [scrollbar-width:none] sm:-mx-6 sm:max-w-[calc(100%+3rem)] sm:gap-2 sm:px-6 sm:justify-center lg:-mx-8 lg:max-w-[calc(100%+4rem)] lg:px-8 xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:mx-0 xl:max-w-none xl:justify-center xl:px-0 [&::-webkit-scrollbar]:hidden"
+          className="z-10 col-span-2 row-start-2 flex min-w-0 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto [scrollbar-width:none] sm:gap-2 sm:justify-center xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:justify-center [&::-webkit-scrollbar]:hidden"
           aria-label="Hovedmenu"
         >
           {navItems.map((item) => {

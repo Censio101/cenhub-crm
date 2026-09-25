@@ -6,7 +6,7 @@ import {
 } from "@/lib/auth/require-censio-admin"
 import {
   getAdminAccessStatus,
-  listAuthUsersById,
+  getAuthUsersByIds,
   listProfilesForOrganization,
 } from "@/lib/db/admin-users"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"

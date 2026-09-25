@@ -3,12 +3,14 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react"
+import { ChevronDownIcon, Loader2Icon, SearchIcon } from "lucide-react"
 
+import { ClientSwitcherOptionRow } from "@/components/admin/ClientSwitcherOptionRow"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useAdminOrganizationList } from "@/hooks/useAdminOrganizationList"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { adminClientSettingsBasePath } from "@/lib/admin/admin-routes"
 import { resolveContextBarClientList } from "@/lib/admin/client-picker"
 import {
   clientInitialsFromName,
@@ -44,44 +46,98 @@ export function ClientContextBar() {
     if (!open) setQuery("")
   }, [open])
 
+  useEffect(() => {
+    if (!switchingSlug || !organization) return
+    if (organization.slug === switchingSlug) {
+      setSwitchingSlug(null)
+    }
+  }, [organization?.slug, organization, switchingSlug])
+
+  const switchingClient = useMemo(() => {
+    if (!switchingSlug) return null
+    return pickerOrganizations.find((option) => option.slug === switchingSlug) ?? null
+  }, [pickerOrganizations, switchingSlug])
+
+  const switchingDisplayName = switchingClient
+    ? formatClientDisplayName(switchingClient.name)
+    : switchingSlug
+      ? `/${switchingSlug}`
+      : ""
+
   if (loading || role !== "censio_admin" || !organization) return null
 
-  async function handleSelect(slug: string) {
-    if (slug === organization?.slug || switchingSlug) return
-    setSwitchingSlug(slug)
+  async function handleSelect(nextSlug: string) {
+    if (nextSlug === organization?.slug || switchingSlug) return
+    setSwitchingSlug(nextSlug)
     try {
-      const success = await setActiveOrganization(slug)
+      const success = await setActiveOrganization(nextSlug)
       if (success) {
         setOpen(false)
         router.refresh()
+      } else {
+        setSwitchingSlug(null)
       }
-    } finally {
+    } catch {
       setSwitchingSlug(null)
     }
   }
 
   return (
-    <div className={cn("admin-ui", outfit.className, "border-b border-[#d3c3b2] bg-[#faf8f6]")}>
-      <div className="flex items-center justify-end gap-3 px-4 py-2.5 sm:px-6 lg:px-8 xl:px-10">
+    <div
+      className={cn(
+        "admin-ui w-full min-w-0 overflow-x-clip",
+        outfit.className,
+        "border-b border-[#d3c3b2] bg-[#faf8f6]"
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 lg:px-8 xl:px-10">
+        <Link
+          href={adminClientSettingsBasePath(organization.slug)}
+          className="shrink-0 text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {t("clientSettingsContextLink")}
+        </Link>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
         <span className="shrink-0 text-sm font-medium text-muted-foreground">
           {t("viewingClient")}
         </span>
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+          open={open}
+          onOpenChange={(next) => {
+            if (switchingSlug) return
+            setOpen(next)
+          }}
+        >
           <PopoverTrigger
             aria-label={`${t("switchClient")}: ${displayName}`}
+            aria-busy={switchingSlug !== null || undefined}
+            disabled={switchingSlug !== null}
             className={cn(
               "inline-flex min-w-0 max-w-full items-center gap-2.5 rounded-full border border-[#d3c3b2] bg-white px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition-colors",
               "hover:border-primary/40 hover:bg-white focus-visible:ring-3 focus-visible:ring-primary/30 focus-visible:outline-none",
-              "data-popup-open:border-primary/40 data-popup-open:ring-3 data-popup-open:ring-primary/20"
+              "data-popup-open:border-primary/40 data-popup-open:ring-3 data-popup-open:ring-primary/20",
+              "disabled:cursor-not-allowed disabled:opacity-70",
+              switchingSlug && "border-primary/40 ring-2 ring-primary/15"
             )}
           >
-            <span
-              className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-xs font-semibold tracking-wide text-white"
-              aria-hidden="true"
-            >
-              {clientInitialsFromName(displayName)}
+            {switchingSlug ? (
+              <Loader2Icon
+                className="size-7 shrink-0 animate-spin text-primary p-1.5"
+                aria-hidden="true"
+              />
+            ) : (
+              <span
+                className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-xs font-semibold tracking-wide text-white"
+                aria-hidden="true"
+              >
+                {clientInitialsFromName(displayName)}
+              </span>
+            )}
+            <span className="truncate">
+              {switchingSlug
+                ? t("switchingClient", { name: switchingDisplayName ?? switchingSlug })
+                : displayName}
             </span>
-            <span className="truncate">{displayName}</span>
             <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </PopoverTrigger>
           <PopoverContent
@@ -132,37 +188,18 @@ export function ClientContextBar() {
                   {t("clientPickerEmptyList")}
                 </li>
               ) : (
-                listState.items.map((option) => {
-                  const isActive = option.slug === organization.slug
-                  const optionName = formatClientDisplayName(option.name)
-                  return (
-                    <li key={option.id} role="presentation">
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={isActive}
-                        disabled={switchingSlug !== null}
-                        onClick={() => {
-                          void handleSelect(option.slug)
-                        }}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors",
-                          "hover:bg-[#faf8f6] focus-visible:bg-[#faf8f6] focus-visible:outline-none",
-                          isActive && "bg-[#faf8f6] font-semibold"
-                        )}
-                      >
-                        <CheckIcon
-                          className={cn(
-                            "size-4 shrink-0 text-primary",
-                            isActive ? "opacity-100" : "opacity-0"
-                          )}
-                          aria-hidden="true"
-                        />
-                        <span className="min-w-0 flex-1 truncate">{optionName}</span>
-                      </button>
-                    </li>
-                  )
-                })
+                listState.items.map((option) => (
+                  <ClientSwitcherOptionRow
+                    key={option.id}
+                    option={option}
+                    isActive={option.slug === organization.slug}
+                    isSwitching={option.slug === switchingSlug}
+                    disabled={switchingSlug !== null && option.slug !== switchingSlug}
+                    onSelect={() => {
+                      void handleSelect(option.slug)
+                    }}
+                  />
+                ))
               )}
             </ul>
             {!listLoading && listState.hiddenCount > 0 ? (
@@ -183,6 +220,7 @@ export function ClientContextBar() {
             ) : null}
           </PopoverContent>
         </Popover>
+        </div>
       </div>
     </div>
   )

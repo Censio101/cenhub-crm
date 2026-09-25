@@ -1,5 +1,12 @@
-import { AdminClientFunnelsPanel } from "@/components/admin/AdminClientFunnelsPanel"
+import { redirect } from "next/navigation"
 
-export default function AdminClientFunnelsPage() {
-  return <AdminClientFunnelsPanel />
+import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
+
+type PageProps = {
+  params: Promise<{ slug: string }>
+}
+
+export default async function AdminClientLegacyFunnelsPage({ params }: PageProps) {
+  const { slug } = await params
+  redirect(adminClientSettingsSectionPath(slug, "funnels"))
 }

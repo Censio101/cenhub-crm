@@ -24,7 +24,7 @@ export function useAdminOrganizationList(): UseAdminOrganizationListResult {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/admin/organizations", { cache: "no-store" })
+      const response = await fetch("/api/admin/organizations/picker", { cache: "no-store" })
       if (!response.ok) {
         setError("fetch_failed")
         setClients([])

@@ -17,3 +17,21 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Add SQL under `supabase/migrations/` (sequential numbering).
 - Apply to the linked remote project: `npm run db:migrate` (`supabase db push --linked`).
 - After adding migrations, run this command in the agent session unless the user says not to.
+
+## Admin API performance
+
+- Every route under `app/api/admin/**` must call `requireCensioAdmin()`. Middleware does **not** gate `/api/*` (auth once per handler via `getCachedSessionContext`).
+- **Full hub** (Meta Graph + org stats): `GET /api/admin/organizations` only — used by `/admin` hub UI (`AdminClientList`).
+- **Picker / directory / scope bar**: `GET /api/admin/organizations/picker` — no Meta partner fetch, no lead/user counts.
+- **Client-manage shell**: `GET /api/admin/organizations/[slug]/manage-bootstrap` — one request for org stats + users + meta.
+- Prefer `getOrganizationBySlug` on slug routes; use `getOrganizationWithStatsBySlug` only when the UI needs counts.
+- Never use `listAuthUsersById` for a single org — use `getAuthUsersByIds` for the profile IDs you return.
+- Meta `fetchPartnerAdAccounts`: hub/onboarding only; client Meta settings load partner list when the user opens the picker (edit/link). Optional 90s server cache; call `clearPartnerAdAccountsCache()` after link/unlink.
+- Before adding client `fetch("/api/admin/…")`, choose **picker**, **bootstrap**, or **full hub** — do not pull the hub list from client-manage pages.
+
+### Manual perf smoke (Network tab)
+
+- `/admin/clients/{slug}`: one `manage-bootstrap`, picker for scope bar — no `partner-ad-accounts`, no full `organizations`.
+- `/admin/clients/{slug}/funnels`: funnels API only (no integrations on mount).
+- `/admin`: full `organizations` still loads (Meta OK here).
+- Unauthenticated `GET /api/admin/organizations` → 401.

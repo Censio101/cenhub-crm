@@ -61,10 +61,11 @@ export function LocaleSync() {
   return null
 }
 
-export async function persistAdminPreferredLocale(locale: Locale) {
-  await fetch("/api/admin/me/profile", {
+export async function persistAdminPreferredLocale(locale: Locale): Promise<boolean> {
+  const response = await fetch("/api/admin/me/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ preferredLocale: locale }),
   })
+  return response.ok
 }

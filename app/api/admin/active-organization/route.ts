@@ -6,7 +6,6 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
-import { getSessionContext } from "@/lib/auth/session-context"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -22,8 +21,7 @@ function cookieOptions() {
 
 export async function GET() {
   try {
-    await requireCensioAdmin()
-    const ctx = await getSessionContext()
+    const ctx = await requireCensioAdmin()
 
     if (!ctx.organization) {
       return NextResponse.json({ organization: null })

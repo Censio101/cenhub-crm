@@ -4,6 +4,7 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
+import { clearPartnerAdAccountsCache } from "@/lib/meta/ad-accounts"
 import { unlinkPartnerAdAccountFromOrganization } from "@/lib/meta/unlink-partner-from-organization"
 import { createAdminClient } from "@/lib/supabase/admin"
 

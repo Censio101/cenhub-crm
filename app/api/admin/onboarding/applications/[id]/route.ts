@@ -8,12 +8,7 @@ import { getMetaConfigRow } from "@/lib/db/meta-config-repository"
 import { deriveMetaClientStatus } from "@/lib/db/meta-clients-repository"
 import { getOnboardingApplicationById } from "@/lib/db/onboarding-applications-repository"
 import { getOrganizationById } from "@/lib/db/organizations-repository"
-import { fetchPartnerAdAccounts } from "@/lib/meta/ad-accounts"
 import { createAdminClient } from "@/lib/supabase/admin"
-
-function normalizeAdAccountId(value: string): string {
-  return String(value || "").trim().replace(/^act_/i, "")
-}
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -50,18 +45,7 @@ export async function GET(_request: Request, context: RouteContext) {
           metaSyncStatus: row.meta_sync_status ?? "",
         })
         const adId = row.meta_ad_account_id ?? ""
-        let partnerAccountName = ""
-        if (adId.trim()) {
-          const partner = await fetchPartnerAdAccounts()
-          if (!partner.error) {
-            const match = partner.accounts.find(
-              (a) => normalizeAdAccountId(a.metaAdAccountId) === normalizeAdAccountId(adId)
-            )
-            partnerAccountName = match?.accountName ?? organization.name
-          } else {
-            partnerAccountName = organization.name
-          }
-        }
+        const partnerAccountName = adId.trim() ? organization.name : ""
         meta = {
           metaAdAccountId: adId,
           partnerAccountName,

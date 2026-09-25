@@ -47,6 +47,26 @@ export function getAdminAccessStatus(user: User | null | undefined): AdminAccess
   return user.email_confirmed_at || user.confirmed_at ? "active" : "pending"
 }
 
+export async function getAuthUsersByIds(
+  admin: SupabaseClient,
+  ids: string[]
+): Promise<Map<string, User>> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))]
+  const usersById = new Map<string, User>()
+  if (uniqueIds.length === 0) return usersById
+
+  await Promise.all(
+    uniqueIds.map(async (id) => {
+      const { data, error } = await admin.auth.admin.getUserById(id)
+      if (!error && data.user) {
+        usersById.set(id, data.user)
+      }
+    })
+  )
+
+  return usersById
+}
+
 export async function listAuthUsersById(
   admin: SupabaseClient
 ): Promise<Map<string, User>> {

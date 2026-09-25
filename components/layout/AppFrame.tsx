@@ -31,12 +31,14 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "flex min-h-dvh flex-col",
+        "flex min-h-dvh min-w-0 flex-col overflow-x-clip",
         guestShell
           ? publicSignupPage
             ? "bg-[#faf8f6]"
             : "bg-background"
-          : "dashboard-page"
+          : isAdminRoute
+            ? "bg-background"
+            : "dashboard-page"
       )}
     >
       <AuthHashErrorHandler />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import {
   Card,
@@ -12,6 +12,7 @@ import {
 import { persistAdminPreferredLocale } from "@/components/i18n/LocaleSync"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
+import { Button } from "@/components/ui/button"
 import { LOCALES, type Locale } from "@/lib/i18n/types"
 import { cn } from "cn"
 
@@ -20,14 +21,38 @@ const fieldClass =
 
 export function AdminSettings() {
   const { locale, setLocale, t } = useLanguage()
+  const [draftLocale, setDraftLocale] = useState<Locale>(locale)
+  const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const dismissNotice = useCallback(() => setNotice(null), [])
 
   useAutoDismiss(notice, dismissNotice)
 
-  function handleChange(next: Locale) {
-    setLocale(next)
-    setNotice(t("settingsSaved"))
+  useEffect(() => {
+    setDraftLocale(locale)
+  }, [locale])
+
+  const hasUnsavedChanges = draftLocale !== locale
+
+  async function handleSave() {
+    if (!hasUnsavedChanges || saving) return
+    setSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const ok = await persistAdminPreferredLocale(draftLocale)
+      if (!ok) {
+        setError(t("settingsSaveFailed"))
+        return
+      }
+      setLocale(draftLocale)
+      setNotice(t("settingsSaved"))
+    } catch {
+      setError(t("settingsSaveFailed"))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -54,8 +79,9 @@ export function AdminSettings() {
             <span className="font-medium">{t("settingsLanguageTitle")}</span>
             <select
               className={fieldClass}
-              value={locale}
-              onChange={(event) => handleChange(event.target.value as Locale)}
+              value={draftLocale}
+              disabled={saving}
+              onChange={(event) => setDraftLocale(event.target.value as Locale)}
             >
               {LOCALES.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -70,22 +96,44 @@ export function AdminSettings() {
               <button
                 key={option.value}
                 type="button"
+                disabled={saving}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                  locale === option.value
+                  draftLocale === option.value
                     ? "bg-primary text-white"
                     : "bg-muted text-muted-foreground hover:text-foreground"
                 )}
-                onClick={() => handleChange(option.value)}
+                onClick={() => setDraftLocale(option.value)}
               >
                 {t(option.labelKey)}
               </button>
             ))}
           </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              className="h-10 px-4"
+              disabled={!hasUnsavedChanges || saving}
+              onClick={() => {
+                void handleSave()
+              }}
+            >
+              {saving ? t("settingsSaving") : t("settingsSaveLanguage")}
+            </Button>
+            {hasUnsavedChanges ? (
+              <p className="text-sm text-muted-foreground">{t("settingsUnsavedLanguage")}</p>
+            ) : null}
+          </div>
+
           {notice ? (
             <p className="text-sm text-muted-foreground" role="status">
               {notice}
+            </p>
+          ) : null}
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
             </p>
           ) : null}
         </CardContent>

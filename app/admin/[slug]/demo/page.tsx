@@ -1,5 +1,12 @@
-import { AdminClientDemoPanel } from "@/components/admin/AdminClientDemoPanel"
+import { redirect } from "next/navigation"
 
-export default function AdminClientDemoPage() {
-  return <AdminClientDemoPanel />
+import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
+
+type PageProps = {
+  params: Promise<{ slug: string }>
+}
+
+export default async function AdminClientLegacyDemoPage({ params }: PageProps) {
+  const { slug } = await params
+  redirect(adminClientSettingsSectionPath(slug, "demo"))
 }

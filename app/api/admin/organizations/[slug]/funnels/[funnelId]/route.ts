@@ -11,7 +11,7 @@ import {
   updateLeadFunnel,
 } from "@/lib/db/lead-funnels-repository"
 import type { LeadFunnelPlatform } from "@/lib/db/types"
-import { getOrganizationWithStatsBySlug } from "@/lib/db/organizations-repository"
+import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -47,7 +47,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const admin = createAdminClient()
-    const organization = await getOrganizationWithStatsBySlug(admin, slug)
+    const organization = await getOrganizationBySlug(admin, slug)
     if (!organization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
@@ -77,7 +77,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     await requireCensioAdmin()
     const { slug, funnelId } = await context.params
     const admin = createAdminClient()
-    const organization = await getOrganizationWithStatsBySlug(admin, slug)
+    const organization = await getOrganizationBySlug(admin, slug)
     if (!organization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }

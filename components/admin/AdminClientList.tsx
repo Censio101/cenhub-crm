@@ -16,6 +16,7 @@ import {
   clientInitialsFromName,
   formatClientDisplayName,
 } from "@/lib/admin/format-client-display-name"
+import { adminClientSettingsBasePath } from "@/lib/admin/admin-routes"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import {
   hubClientInEnabledTab,
@@ -218,7 +219,7 @@ export function AdminClientList() {
       setSlug("")
       await loadClients(true)
       if (data.organization?.slug) {
-        router.push(`/admin/${data.organization.slug}/meta`)
+        router.push(adminClientSettingsBasePath(data.organization.slug))
       }
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : t("errorCreate"))
@@ -250,7 +251,7 @@ export function AdminClientList() {
 
       await loadClients(true)
       if (data.organization?.slug) {
-        router.push(`/admin/${data.organization.slug}/meta`)
+        router.push(adminClientSettingsBasePath(data.organization.slug))
       }
     } catch (enableError) {
       setError(
@@ -455,7 +456,7 @@ export function AdminClientList() {
           ) : (
             <>
               <Link
-                href={`/admin/${client.slug}/meta`}
+                href={adminClientSettingsBasePath(client.slug!)}
                 className={isEnabled ? quietButtonClass : primaryButtonClass}
               >
                 {t("setting")}
@@ -545,7 +546,7 @@ export function AdminClientList() {
                 }}
               />
               <Link
-                href={`/admin/${client.slug}/meta`}
+                href={adminClientSettingsBasePath(client.slug!)}
                 className={iconButtonClass}
                 aria-label={t("editClient", { name: displayName })}
                 title={t("setting")}

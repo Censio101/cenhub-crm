@@ -1,5 +1,12 @@
-import { AdminClientUsersPanel } from "@/components/admin/AdminClientUsersPanel"
+import { redirect } from "next/navigation"
 
-export default function AdminClientUsersPage() {
-  return <AdminClientUsersPanel />
+import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
+
+type PageProps = {
+  params: Promise<{ slug: string }>
+}
+
+export default async function AdminClientLegacyUsersPage({ params }: PageProps) {
+  const { slug } = await params
+  redirect(adminClientSettingsSectionPath(slug, "users"))
 }

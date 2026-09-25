@@ -49,11 +49,23 @@ function rowToPartnerAccount(
   }
 }
 
-export async function fetchPartnerAdAccounts(): Promise<{
+type PartnerFetchResult = {
   businessId: string | null
   accounts: PartnerAccount[]
   error: string | null
-}> {
+}
+
+const PARTNER_CACHE_TTL_MS = 90_000
+let partnerCache: { expiresAt: number; value: PartnerFetchResult } | null = null
+
+export async function fetchPartnerAdAccounts(options?: {
+  bypassCache?: boolean
+}): Promise<PartnerFetchResult> {
+  const now = Date.now()
+  if (!options?.bypassCache && partnerCache && partnerCache.expiresAt > now) {
+    return partnerCache.value
+  }
+
   const resolved = resolveMetaAccessToken()
   if (!resolved.token) {
     return {
@@ -93,18 +105,25 @@ export async function fetchPartnerAdAccounts(): Promise<{
       if (account) byId.set(account.metaAdAccountId, account)
     }
 
-    return {
+    const value: PartnerFetchResult = {
       businessId,
       accounts: [...byId.values()].sort((left, right) =>
         left.accountName.localeCompare(right.accountName, "da")
       ),
       error: null,
     }
+    partnerCache = { expiresAt: now + PARTNER_CACHE_TTL_MS, value }
+    return value
   } catch (error) {
-    return {
+    const value: PartnerFetchResult = {
       businessId,
       accounts: [],
       error: error instanceof Error ? error.message : "Could not fetch Meta ad accounts.",
     }
+    return value
   }
+}
+
+export function clearPartnerAdAccountsCache() {
+  partnerCache = null
 }
