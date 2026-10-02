@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server"
 
-import { getOrganizationIdByPageId } from "@/lib/db/meta-config-repository"
-import { getMetaConfigRow } from "@/lib/db/meta-config-repository"
-import { decryptSecret } from "@/lib/meta/crypto"
-import { ingestMetaLeadById } from "@/lib/meta/ingest-lead"
-import { resolveMetaAccessToken } from "@/lib/meta/token"
+import { processMetaLeadgenWebhookEvent } from "@/lib/meta/meta-instant-forms-service"
+import { verifyMetaWebhookSignature } from "@/lib/meta/verify-webhook-signature"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function GET(request: Request) {
@@ -37,70 +34,49 @@ type MetaWebhookBody = {
 }
 
 export async function POST(request: Request) {
+  const rawBody = await request.text()
+  const signature = request.headers.get("x-hub-signature-256")
+
+  if (!verifyMetaWebhookSignature(rawBody, signature)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+  }
+
   try {
-    const body = (await request.json()) as MetaWebhookBody
+    const body = JSON.parse(rawBody) as MetaWebhookBody
     if (body.object !== "page") {
       return NextResponse.json({ ok: true, ignored: true })
     }
 
     const admin = createAdminClient()
-    const results: Array<{ leadgenId: string; created: boolean; leadId?: string; error?: string }> = []
+    const results: Array<{
+      leadgenId: string
+      created?: boolean
+      leadId?: string
+      skipped?: boolean
+      error?: string
+    }> = []
 
     for (const entry of body.entry ?? []) {
       for (const change of entry.changes ?? []) {
         if (change.field !== "leadgen") continue
         const leadgenId = change.value?.leadgen_id
         const pageId = change.value?.page_id ?? entry.id
+        const formId = change.value?.form_id
         if (!leadgenId || !pageId) continue
 
-        try {
-          const organizationId = await getOrganizationIdByPageId(admin, String(pageId))
-          if (!organizationId) {
-            results.push({
-              leadgenId,
-              created: false,
-              error: `No organization for page ${pageId}`,
-            })
-            continue
-          }
+        const outcome = await processMetaLeadgenWebhookEvent(admin, {
+          pageId: String(pageId),
+          leadgenId: String(leadgenId),
+          formId: formId ? String(formId) : null,
+        })
 
-          const config = await getMetaConfigRow(admin, organizationId)
-          const resolved = resolveMetaAccessToken({
-            metaSystemUserToken: config?.meta_system_user_token_encrypted
-              ? decryptSecret(config.meta_system_user_token_encrypted)
-              : "",
-            metaPageAccessToken: config?.meta_page_access_token_encrypted
-              ? decryptSecret(config.meta_page_access_token_encrypted)
-              : "",
-          })
-
-          if (!resolved.token) {
-            results.push({
-              leadgenId,
-              created: false,
-              error: resolved.reason ?? "Missing Meta token",
-            })
-            continue
-          }
-
-          const ingested = await ingestMetaLeadById(
-            admin,
-            organizationId,
-            leadgenId,
-            resolved.token
-          )
-          results.push({
-            leadgenId,
-            created: ingested.created,
-            leadId: ingested.leadId,
-          })
-        } catch (error) {
-          results.push({
-            leadgenId,
-            created: false,
-            error: error instanceof Error ? error.message : "Ingest failed",
-          })
-        }
+        results.push({
+          leadgenId,
+          created: outcome.ok && "created" in outcome ? outcome.created : undefined,
+          leadId: outcome.ok && "leadId" in outcome ? outcome.leadId : undefined,
+          skipped: outcome.ok && "skipped" in outcome ? outcome.skipped : undefined,
+          error: !outcome.ok ? outcome.error : undefined,
+        })
       }
     }
 

@@ -55,6 +55,7 @@ export async function GET(_request: Request, context: RouteContext) {
         slug: organization.slug,
         name: organization.name,
         demo_mode: organization.demo_mode,
+        logo_url: organization.logo_url,
         leadCount: organization.leadCount,
         userCount: organization.userCount,
         metaEnabled: organization.metaEnabled,

@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState, useSyncExternalStore } from "react"
 import {
   ChevronDownIcon,
   GraduationCapIcon,
@@ -24,8 +24,8 @@ import { useUserProfile } from "@/lib/auth/use-user-profile"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { CURRENT_COMPANY } from "@/lib/company"
 import { createClient } from "@/lib/supabase/client"
-import { isSignedIn, signOut as mockSignOut } from "@/lib/session"
-import { parseAdminClientSlug } from "@/lib/admin/admin-routes"
+import { isSignedIn, signOut as mockSignOut, subscribeToSession } from "@/lib/session"
+import { adminClientSettingsBasePath, parseAdminClientSlug } from "@/lib/admin/admin-routes"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import { isAdminPath } from "@/lib/layout/app-paths"
 import { Button } from "@/components/ui/button"
@@ -55,14 +55,9 @@ export function ProfileMenu() {
   } = useActiveOrganization()
   const sessionLoading = authLoading || orgLoading || profileLoading
   const resolvedRole = activeRole ?? role
-  const [mockSignedIn, setMockSignedIn] = useState(true)
+  // Mock session (only used when Supabase is not configured); signed in on the server.
+  const mockSignedIn = useSyncExternalStore(subscribeToSession, isSignedIn, () => true)
   const [menuOpen, setMenuOpen] = useState(false)
-
-  useEffect(() => {
-    if (!configured) {
-      setMockSignedIn(isSignedIn())
-    }
-  }, [configured, pathname])
 
   const signedIn = configured ? isAuthenticated : mockSignedIn
   const menuReady = signedIn && !sessionLoading
@@ -85,7 +80,10 @@ export function ProfileMenu() {
     menuReady && isAdmin
       ? (parseAdminClientSlug(pathname) ?? organization?.slug ?? null)
       : null
-
+  const adminClientSetupSlug =
+    menuReady && isAdmin
+      ? (organization?.slug ?? parseAdminClientSlug(pathname) ?? null)
+      : null
   if (!authLoading && !signedIn) {
     return (
       <Link
@@ -195,10 +193,31 @@ export function ProfileMenu() {
                   {t("profileMenuClientDashboard")}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/clients" />}>
-                <Settings2Icon />
-                {t("clientSettingsLabel")}
-              </DropdownMenuItem>
+              {adminClientSetupSlug ? (
+                <DropdownMenuItem
+                  nativeButton={false}
+                  render={
+                    <Link href={adminClientSettingsBasePath(adminClientSetupSlug)} />
+                  }
+                >
+                  <Settings2Icon />
+                  {t("profileMenuClientSetup")}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem nativeButton={false} render={<Link href="/admin/clients" />}>
+                  <Settings2Icon />
+                  {t("profileMenuClientSetupAll")}
+                </DropdownMenuItem>
+              )}
+              {organization ? (
+                <DropdownMenuItem
+                  nativeButton={false}
+                  render={<Link href="/indstillinger" />}
+                >
+                  <SettingsIcon />
+                  {t("profileMenuWorkspaceSettings")}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
                 <LayoutGridIcon />
                 {t("profileMenuAdminHub")}
@@ -250,7 +269,6 @@ export function ProfileMenu() {
                 await supabase.auth.signOut()
               } else {
                 mockSignOut()
-                setMockSignedIn(false)
               }
               router.push("/logget-ud")
             })()

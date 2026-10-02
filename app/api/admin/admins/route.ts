@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { adminErrorResponse, requireCensioAdmin } from "@/lib/auth/require-censio-admin"
 import {
   getAdminAccessStatus,
-  getAuthUsersByIds,
+  listAuthUsersById,
   listCensioAdmins,
 } from "@/lib/db/admin-users"
 import { createAdminClient } from "@/lib/supabase/admin"

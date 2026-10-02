@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
+import type { MessageKey } from "@/lib/i18n"
 import {
   CLIENT_ORG_CHANGED_EVENT,
   getCustomersCache,
   hasCustomersCache,
   setCustomersCache,
 } from "@/lib/data/client-cache"
-import { MOCK_CUSTOMERS, type Customer } from "@/lib/customers"
+import type { Customer } from "@/lib/customers"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type CustomersResponse = {
   customers: Customer[]
@@ -24,20 +26,6 @@ type CustomersResponse = {
   message?: string
 }
 
-async function shouldUseMockFallback(): Promise<boolean> {
-  try {
-    const response = await fetch("/api/auth/me", { cache: "no-store" })
-    if (!response.ok) return false
-    const data = (await response.json()) as {
-      isDemoFallback?: boolean
-      userId?: string | null
-    }
-    return Boolean(data.isDemoFallback && !data.userId)
-  } catch {
-    return false
-  }
-}
-
 export function useCustomers() {
   const cached = getCustomersCache()
   const [customers, setCustomers] = useState<Customer[]>(() => cached?.customers ?? [])
@@ -45,10 +33,10 @@ export function useCustomers() {
     () => cached?.organizationName ?? null
   )
   const [loading, setLoading] = useState(() => !hasCustomersCache())
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<MessageKey | null>(null)
   const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [dataSource, setDataSource] = useState<"mock" | "supabase">(
-    () => cached?.source ?? "mock"
+    () => cached?.source ?? "supabase"
   )
 
   const loadCustomers = useCallback(async () => {
@@ -67,7 +55,7 @@ export function useCustomers() {
           setOrganizationName(null)
           setDataSource("supabase")
           setNeedsClientSelection(true)
-          setError(data.message ?? "Vælg en klient for at se deres dashboard.")
+          setError("leadsSelectClient")
           setCustomersCache({
             customers: [],
             source: "supabase",
@@ -76,20 +64,7 @@ export function useCustomers() {
           return
         }
 
-        if (await shouldUseMockFallback()) {
-          setCustomers(MOCK_CUSTOMERS)
-          setDataSource("mock")
-          setOrganizationName(null)
-          setCustomersCache({
-            customers: MOCK_CUSTOMERS,
-            source: "mock",
-            organizationName: null,
-          })
-          setError("Viser demo-data — database ikke tilgængelig")
-          return
-        }
-
-        throw new Error(data.message ?? "Kunne ikke hente kunder")
+        throw new Error("customersLoadError")
       }
 
       setCustomers(data.customers)
@@ -103,29 +78,15 @@ export function useCustomers() {
       })
     } catch (loadError) {
       console.error(loadError)
-      if (await shouldUseMockFallback()) {
-        setCustomers(MOCK_CUSTOMERS)
-        setDataSource("mock")
-        setOrganizationName(null)
-        setCustomersCache({
-          customers: MOCK_CUSTOMERS,
-          source: "mock",
-          organizationName: null,
-        })
-        setError("Viser demo-data — database ikke tilgængelig")
-      } else {
-        setCustomers([])
-        setDataSource("supabase")
-        setError(
-          loadError instanceof Error ? loadError.message : "Kunne ikke hente kunder"
-        )
-      }
+      setCustomers([])
+      setDataSource("supabase")
+      setError("customersLoadError")
     } finally {
       if (showLoading) setLoading(false)
     }
   }, [])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void loadCustomers()
   }, [loadCustomers])
 

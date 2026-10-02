@@ -8,6 +8,10 @@ function getEncryptionKeyBuffer(): Buffer | null {
   return createHash("sha256").update(String(key)).digest()
 }
 
+export function hasSecretEncryptionKey(): boolean {
+  return getEncryptionKeyBuffer() !== null
+}
+
 export function encryptSecret(value: string): string {
   const normalized = String(value || "").trim()
   if (!normalized) return ""

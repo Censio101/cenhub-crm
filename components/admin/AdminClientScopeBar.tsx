@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { ChevronDownIcon, ExternalLinkIcon, Loader2Icon, SearchIcon } from "lucide-react"
@@ -21,6 +20,7 @@ import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import { outfit } from "@/lib/fonts/app-fonts"
 import { cn } from "cn"
+import { useKeyedState } from "@/lib/react/use-keyed-state"
 
 function AdminClientScopeBarContent() {
   const router = useRouter()
@@ -28,7 +28,7 @@ function AdminClientScopeBarContent() {
   const { setActiveOrganization } = useActiveOrganization()
   const { pickerOrganizations, loading: listLoading } = useAdminOrganizationList()
   const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useKeyedState("", open)
   const { switchingSlug, beginSwitch, endSwitch } = useAdminClientSwitch()
   const [openingDashboard, setOpeningDashboard] = useState(false)
 
@@ -41,10 +41,6 @@ function AdminClientScopeBarContent() {
   )
 
   const isSearching = query.trim().length > 0
-
-  useEffect(() => {
-    if (!open) setQuery("")
-  }, [open])
 
   useEffect(() => {
     if (!switchingSlug || !slug) return
@@ -76,9 +72,7 @@ function AdminClientScopeBarContent() {
   }
 
   const scopeSlug = organization?.slug ?? slug
-  const scopeDisplayName = organization
-    ? formatClientDisplayName(organization.name)
-    : slug
+  const scopeDisplayName = organization ? formatClientDisplayName(organization.name) : slug
 
   async function handleSelect(nextSlug: string) {
     if (nextSlug === slug || switchingSlug) return
@@ -112,11 +106,8 @@ function AdminClientScopeBarContent() {
           aria-hidden="true"
         />
       ) : null}
-      <div className="relative flex min-w-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-primary uppercase">
-            {t("adminClientScopeBadge")}
-          </span>
+      <div className="relative flex min-w-0 flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 lg:flex-1">
           <ClientManageScopeIdentity
             displayName={scopeDisplayName}
             slug={scopeSlug}
@@ -124,17 +115,7 @@ function AdminClientScopeBarContent() {
           />
         </div>
 
-        <div className="relative z-20 flex flex-wrap items-center gap-2 sm:justify-end">
-          <Link
-            href="/admin/clients"
-            className={cn(
-              "text-sm font-medium text-primary underline-offset-4 hover:underline",
-              isPending && "pointer-events-none opacity-50"
-            )}
-          >
-            {t("adminClientScopeAllClients")}
-          </Link>
-
+        <div className="relative z-20 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
           <Popover
             open={open}
             onOpenChange={(next) => {
@@ -153,14 +134,20 @@ function AdminClientScopeBarContent() {
               )}
             >
               {showSwitchingUI ? (
-                <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" aria-hidden="true" />
+                <Loader2Icon
+                  className="size-4 shrink-0 animate-spin text-primary"
+                  aria-hidden="true"
+                />
               ) : null}
               <span className="truncate">
                 {showSwitchingUI
                   ? t("switchingClient", { name: switchingDisplayName ?? switchingSlug })
                   : t("switchClient")}
               </span>
-              <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <ChevronDownIcon
+                className="size-4 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
             </PopoverTrigger>
             <PopoverContent align="end" className="w-[min(100vw-2rem,22rem)] gap-0 p-0">
               <div className="border-b border-border p-2.5">
@@ -216,7 +203,7 @@ function AdminClientScopeBarContent() {
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 gap-1.5 bg-white"
+            className="h-9 shrink-0 gap-1.5 bg-white"
             disabled={openingDashboard || showSwitchingUI}
             onClick={() => {
               setOpeningDashboard(true)

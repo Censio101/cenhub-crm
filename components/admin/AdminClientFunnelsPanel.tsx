@@ -1,95 +1,58 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  ChevronDownIcon,
-  CopyIcon,
-  Loader2Icon,
-  PlusIcon,
-  Trash2Icon,
-} from "lucide-react"
+import { PlusIcon, WebhookIcon } from "lucide-react"
 
 import { useAdminClient } from "@/components/admin/AdminClientContext"
-import {
-  adminFieldClass,
-  adminOutlineButtonClass,
-  adminSectionCardClass,
-} from "@/components/admin/admin-ui-styles"
+import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
+import { FunnelDetail } from "@/components/admin/funnels/FunnelDetail"
+import { FunnelSheetBanner, FunnelStaleNotice } from "@/components/admin/funnels/FunnelSheetBanner"
+import { NewFunnelDialog } from "@/components/admin/funnels/NewFunnelDialog"
+import type { FunnelDto } from "@/components/admin/funnels/types"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { CANONICAL_INBOUND_EXAMPLE } from "@/lib/leads/inbound-payload"
+import { FormNoticeStack } from "@/components/ui/form-notice"
+import { adminFormNoticeDefaults } from "@/lib/admin/form-notice-defaults"
+import { FUNNEL_TARGET_PREFIX, findDanglingCustomTargets } from "@/lib/lead-sheet/mapping-review"
+import type { WebhookLeadSheetInfo } from "@/lib/lead-sheet/webhook-spec"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 import { cn } from "cn"
-
-type FunnelDto = {
-  id: string
-  name: string
-  slug: string
-  platform: "website" | "landing" | "manual"
-  enabled: boolean
-  fieldMapping: Record<string, string>
-  webhookSecret: string
-}
-
-const EXAMPLE_JSON = JSON.stringify(CANONICAL_INBOUND_EXAMPLE, null, 2)
-
-const readOnlyFieldClass =
-  "min-w-0 flex-1 rounded-xl border border-[#e8e0d8] bg-[#faf8f5] px-3 py-2 font-mono text-xs text-foreground outline-none sm:text-[13px]"
 
 function FunnelsPanelSkeleton() {
   return (
-    <div className="space-y-2" aria-busy="true" aria-live="polite">
-      {Array.from({ length: 3 }, (_, index) => (
-        <div
-          key={index}
-          className={cn(adminSectionCardClass, "flex items-center gap-3 p-3 sm:px-4")}
-        >
-          <div className="size-4 shrink-0 animate-pulse rounded bg-muted" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-4 w-2/3 max-w-[14rem] animate-pulse rounded-md bg-muted" />
-            <div className="h-3 w-24 animate-pulse rounded-md bg-muted" />
-          </div>
-          <div className="size-8 shrink-0 animate-pulse rounded-md bg-muted" />
-        </div>
-      ))}
+    <div className="space-y-4" aria-busy="true">
+      <div className="flex gap-2">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index} className="skeleton-shimmer h-10 w-36 rounded-xl" />
+        ))}
+      </div>
+      <div className={cn(adminSectionCardClass, "space-y-4 p-5")}>
+        <div className="skeleton-shimmer h-7 w-56 rounded-md" />
+        <div className="skeleton-shimmer h-10 w-64 rounded-xl" />
+        <div className="skeleton-shimmer h-40 w-full rounded-xl" />
+      </div>
     </div>
   )
-}
-
-function platformLabel(
-  platform: FunnelDto["platform"],
-  t: (key: "funnelPlatformWebsite" | "funnelPlatformLanding" | "funnelPlatformManual") => string
-) {
-  switch (platform) {
-    case "landing":
-      return t("funnelPlatformLanding")
-    case "manual":
-      return t("funnelPlatformManual")
-    default:
-      return t("funnelPlatformWebsite")
-  }
 }
 
 export function AdminClientFunnelsPanel() {
   const { slug } = useAdminClient()
   const { t } = useLanguage()
   const [funnels, setFunnels] = useState<FunnelDto[]>([])
+  const [leadSheet, setLeadSheet] = useState<WebhookLeadSheetInfo | null>(null)
+  const [staleSince, setStaleSince] = useState<string | null>(null)
+  const [acknowledging, setAcknowledging] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<FunnelDto | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const copiedTimerRef = useRef<number | null>(null)
-  const [newName, setNewName] = useState("")
-  const [newPlatform, setNewPlatform] = useState<FunnelDto["platform"]>("website")
+
   const webhookBase = useMemo(() => {
     const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "")
     if (configured) return configured
@@ -98,69 +61,74 @@ export function AdminClientFunnelsPanel() {
   }, [])
 
   const webhookUrl = useCallback(
-    (funnelId: string) =>
-      webhookBase ? `${webhookBase}/api/webhooks/funnels/${funnelId}` : "",
+    (funnelId: string) => (webhookBase ? `${webhookBase}/api/webhooks/funnels/${funnelId}` : ""),
     [webhookBase]
   )
 
-  const load = useCallback(async (options?: { silent?: boolean }) => {
-    if (!slug) return
-    if (!options?.silent) {
-      setLoading(true)
-      setError(null)
-    }
-    try {
-      const response = await fetch(`/api/admin/organizations/${slug}/funnels`)
-      if (!response.ok) throw new Error("load")
-      const data = (await response.json()) as { funnels: FunnelDto[] }
-      setFunnels(data.funnels)
-      if (data.funnels.length === 0) setShowCreate(true)
-    } catch {
-      if (!options?.silent) setError(t("funnelsLoadError"))
-    } finally {
-      if (!options?.silent) setLoading(false)
-    }
-  }, [slug, t])
+  const load = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!slug) return
+      if (!options?.silent) {
+        setLoading(true)
+        setError(null)
+      }
+      try {
+        const response = await fetch(`/api/admin/organizations/${slug}/funnels`)
+        if (!response.ok) throw new Error("load")
+        const data = (await response.json()) as {
+          funnels: FunnelDto[]
+          leadSheet: WebhookLeadSheetInfo | null
+          webhookStaleSince?: string | null
+        }
+        setFunnels(data.funnels)
+        setLeadSheet(data.leadSheet ?? null)
+        setStaleSince(data.webhookStaleSince ?? null)
+      } catch {
+        if (!options?.silent) setError(t("funnelsLoadError"))
+      } finally {
+        if (!options?.silent) setLoading(false)
+      }
+    },
+    [slug, t]
+  )
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void load()
   }, [load])
 
-  async function handleCreate(event: React.FormEvent) {
-    event.preventDefault()
-    if (!slug || !newName.trim()) return
-    setCreating(true)
-    setError(null)
+  // The first webhook is open by default; a removed one falls back to the first.
+  const selected = funnels.find((funnel) => funnel.id === selectedId) ?? funnels[0] ?? null
+  const customKeys = useMemo(() => (leadSheet?.customFields ?? []).map((f) => f.key), [leadSheet])
+
+  /** Returns an error message for the popup, or `null` once the webhook exists. */
+  async function createFunnel(input: {
+    name: string
+    platform: FunnelDto["platform"]
+  }): Promise<string | null> {
     try {
       const response = await fetch(`/api/admin/organizations/${slug}/funnels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim(), platform: newPlatform }),
+        body: JSON.stringify(input),
       })
       if (!response.ok) throw new Error("create")
       const data = (await response.json()) as { funnel: FunnelDto }
-      setNotice(t("funnelSaved"))
-      setNewName("")
-      setShowCreate(false)
-      setExpandedId(data.funnel.id)
       await load({ silent: true })
+      setSelectedId(data.funnel.id)
+      setShowCreate(false)
+      setNotice(t("funnelSaved"))
+      return null
     } catch {
-      setError(t("funnelsLoadError"))
-    } finally {
-      setCreating(false)
+      return t("funnelsLoadError")
     }
   }
 
   async function regenerateSecret(funnelId: string) {
-    if (!slug) return
-    const response = await fetch(
-      `/api/admin/organizations/${slug}/funnels/${funnelId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ regenerateSecret: true }),
-      }
-    )
+    const response = await fetch(`/api/admin/organizations/${slug}/funnels/${funnelId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ regenerateSecret: true }),
+    })
     if (!response.ok) {
       setError(t("funnelsLoadError"))
       return
@@ -169,23 +137,58 @@ export function AdminClientFunnelsPanel() {
     await load({ silent: true })
   }
 
-  async function removeFunnel(id: string) {
-    if (!slug || !window.confirm(t("funnelDeleteConfirm"))) return
-    await fetch(`/api/admin/organizations/${slug}/funnels/${id}`, {
-      method: "DELETE",
+  async function toggleEnabled(funnelId: string, enabled: boolean) {
+    patchFunnel(funnelId, { enabled })
+    const response = await fetch(`/api/admin/organizations/${slug}/funnels/${funnelId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
     })
-    setNotice(t("funnelDeleted"))
-    if (expandedId === id) setExpandedId(null)
-    await load({ silent: true })
+    if (!response.ok) {
+      patchFunnel(funnelId, { enabled: !enabled })
+      setError(t("funnelsLoadError"))
+    }
+  }
+
+  async function acknowledgeSheetChange() {
+    setAcknowledging(true)
+    try {
+      const response = await fetch(
+        `/api/admin/organizations/${slug}/funnels/acknowledge-sheet-change`,
+        { method: "POST" }
+      )
+      if (!response.ok) throw new Error("acknowledge")
+      setStaleSince(null)
+    } catch {
+      setError(t("funnelsLoadError"))
+    } finally {
+      setAcknowledging(false)
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/admin/organizations/${slug}/funnels/${deleteTarget.id}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) throw new Error("delete")
+      setNotice(t("funnelDeleted"))
+      await load({ silent: true })
+    } catch {
+      setError(t("funnelsLoadError"))
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
   }
 
   async function copyText(key: string, value: string) {
     try {
       await navigator.clipboard.writeText(value)
       setCopiedKey(key)
-      if (copiedTimerRef.current != null) {
-        window.clearTimeout(copiedTimerRef.current)
-      }
+      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
       copiedTimerRef.current = window.setTimeout(() => {
         setCopiedKey(null)
         copiedTimerRef.current = null
@@ -197,237 +200,153 @@ export function AdminClientFunnelsPanel() {
 
   useEffect(() => {
     return () => {
-      if (copiedTimerRef.current != null) {
-        window.clearTimeout(copiedTimerRef.current)
-      }
+      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
     }
   }, [])
 
-  function toggleExpanded(id: string) {
-    setExpandedId((current) => (current === id ? null : id))
-  }
+  /** Keeps the list in step with what the open webhook just changed (mapping, sample, on/off). */
+  const patchFunnel = useCallback((id: string, patch: Partial<FunnelDto>) => {
+    setFunnels((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+  }, [])
+
+  const newButton = (
+    <Button type="button" className="gap-2" onClick={() => setShowCreate(true)}>
+      <PlusIcon className="size-4" aria-hidden />
+      {t("funnelNew")}
+    </Button>
+  )
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold tracking-tight">{t("funnelsAdminTitle")}</h2>
-        {loading && funnels.length === 0 ? (
-          <div className="h-9 w-28 animate-pulse rounded-[10px] bg-muted sm:ml-auto" aria-hidden />
-        ) : !showCreate && funnels.length > 0 ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={adminOutlineButtonClass}
-            onClick={() => setShowCreate(true)}
-          >
-            <PlusIcon className="size-4" />
-            {t("funnelsAdd")}
-          </Button>
-        ) : null}
+        {funnels.length > 0 ? newButton : null}
       </header>
 
-      {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {notice ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
+      <FormNoticeStack
+        error={error}
+        success={notice}
+        onDismissError={() => setError(null)}
+        onDismissSuccess={() => setNotice(null)}
+        dismissLabel={t("noticeDismiss")}
+        size={adminFormNoticeDefaults.size}
+        successAutoDismissMs={adminFormNoticeDefaults.quickSuccessAutoDismissMs}
+        errorAutoDismissMs={adminFormNoticeDefaults.errorAutoDismissMs}
+      />
+
+      {staleSince && funnels.length > 0 ? (
+        <FunnelStaleNotice
+          staleSince={staleSince}
+          busy={acknowledging}
+          onAcknowledge={() => void acknowledgeSheetChange()}
+        />
       ) : null}
 
-      {showCreate ? (
-        <form
-          onSubmit={(event) => void handleCreate(event)}
-          className={cn(adminSectionCardClass, "grid gap-3 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-end")}
-        >
-          <label className="block min-w-0 space-y-1.5 text-sm sm:col-span-1">
-            <span className="font-medium">{t("funnelsSourceNameLabel")}</span>
-            <input
-              className={adminFieldClass}
-              value={newName}
-              onChange={(event) => setNewName(event.target.value)}
-              placeholder={t("funnelsSourceNamePlaceholder")}
-              required
-            />
-          </label>
-          <label className="block min-w-0 space-y-1.5 text-sm">
-            <span className="font-medium">{t("funnelPlatform")}</span>
-            <Select
-              value={newPlatform}
-              onValueChange={(value) => {
-                if (value === "website" || value === "landing" || value === "manual") {
-                  setNewPlatform(value)
-                }
-              }}
-            >
-              <SelectTrigger className={cn(adminFieldClass, "min-w-[10rem]")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="website">{t("funnelPlatformWebsite")}</SelectItem>
-                <SelectItem value="landing">{t("funnelPlatformLanding")}</SelectItem>
-                <SelectItem value="manual">{t("funnelPlatformManual")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </label>
-          <div className="flex flex-wrap gap-2 sm:justify-end">
-            <Button type="submit" disabled={creating || !newName.trim()}>
-              {creating ? (
-                <Loader2Icon className="size-4 animate-spin" />
-              ) : (
-                <PlusIcon className="size-4" />
-              )}
-              {t("funnelSave")}
-            </Button>
-            {funnels.length > 0 ? (
-              <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>
-                {t("noticeDismiss")}
-              </Button>
-            ) : null}
-          </div>
-        </form>
-      ) : null}
+      {leadSheet ? <FunnelSheetBanner slug={slug} leadSheet={leadSheet} /> : null}
 
       {loading && funnels.length === 0 ? (
         <>
           <p className="sr-only">{t("loading")}</p>
           <FunnelsPanelSkeleton />
         </>
-      ) : funnels.length === 0 && !showCreate ? (
-        <p className={cn(adminSectionCardClass, "px-4 py-8 text-center text-sm text-muted-foreground")}>
-          {t("funnelsEmpty")}
-        </p>
+      ) : funnels.length === 0 ? (
+        <div
+          className={cn(
+            adminSectionCardClass,
+            "flex flex-col items-center gap-4 px-6 py-14 text-center"
+          )}
+        >
+          <span className="flex size-14 items-center justify-center rounded-2xl bg-[#faf8f6] text-primary">
+            <WebhookIcon className="size-7" aria-hidden />
+          </span>
+          <p className="text-base font-semibold">{t("funnelEmptyTitle")}</p>
+          {newButton}
+        </div>
       ) : (
-        <ul className="space-y-2">
-          {funnels.map((funnel) => {
-            const open = expandedId === funnel.id
-            const url = webhookUrl(funnel.id)
-            const urlCopyKey = `${funnel.id}-url`
-            const secretCopyKey = `${funnel.id}-secret`
-            const jsonCopyKey = `${funnel.id}-json`
-
-            return (
-              <li key={funnel.id} className={cn(adminSectionCardClass, "overflow-hidden")}>
-                <div className="flex items-center gap-2 p-3 sm:px-4">
+        <div className="space-y-4">
+          <ul
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+            aria-label={t("funnelsAdminTitle")}
+          >
+            {funnels.map((funnel) => {
+              const active = funnel.id === selected?.id
+              const dangling = findDanglingCustomTargets(
+                funnel.fieldMapping,
+                FUNNEL_TARGET_PREFIX,
+                customKeys
+              ).length
+              return (
+                <li key={funnel.id} className="shrink-0">
                   <button
                     type="button"
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                    aria-expanded={open}
-                    onClick={() => toggleExpanded(funnel.id)}
+                    aria-current={active ? "true" : undefined}
+                    onClick={() => setSelectedId(funnel.id)}
+                    className={cn(
+                      "flex max-w-[16rem] items-center gap-2.5 rounded-xl border px-3.5 py-2 text-left text-sm font-medium transition-colors",
+                      "focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:outline-none",
+                      active
+                        ? "border-primary bg-white text-foreground ring-2 ring-primary/15"
+                        : "border-[#e2d6c8] bg-card/70 text-muted-foreground hover:border-primary/50 hover:bg-white hover:text-foreground"
+                    )}
                   >
-                    <ChevronDownIcon
+                    <span
                       className={cn(
-                        "size-4 shrink-0 text-muted-foreground transition-transform",
-                        open && "rotate-180"
+                        "size-2 shrink-0 rounded-full",
+                        funnel.enabled ? "bg-emerald-500" : "bg-[#d9cfc3]"
                       )}
+                      title={funnel.enabled ? t("funnelEnabled") : t("funnelDisabled")}
                       aria-hidden
                     />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">{funnel.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {platformLabel(funnel.platform, t)}
-                      </p>
-                    </div>
+                    <span className="min-w-0 truncate">{funnel.name}</span>
+                    {dangling > 0 ? (
+                      <span
+                        className="size-2 shrink-0 rounded-full bg-amber-500"
+                        title={t("funnelMappingAttention").replace("{count}", String(dangling))}
+                        aria-label={t("funnelMappingAttention").replace(
+                          "{count}",
+                          String(dangling)
+                        )}
+                      />
+                    ) : null}
                   </button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                    aria-label={t("funnelDelete")}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void removeFunnel(funnel.id)
-                    }}
-                  >
-                    <Trash2Icon className="size-4" />
-                  </Button>
-                </div>
+                </li>
+              )
+            })}
+          </ul>
 
-                {open ? (
-                  <div className="space-y-4 border-t border-[#e8e0d8] px-3 pb-4 pt-3 sm:px-4">
-                    <div className="rounded-xl border border-primary/25 bg-[#fff8f3] p-3 sm:p-4">
-                      <p className="text-xs font-semibold tracking-wide text-primary uppercase">
-                        {t("funnelWebhookUrl")}
-                      </p>
-                      <p className="mt-2 break-all font-mono text-[13px] leading-relaxed text-foreground">
-                        {url}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={cn("mt-3", adminOutlineButtonClass)}
-                        onClick={() => void copyText(urlCopyKey, url)}
-                      >
-                        <CopyIcon className="size-4" />
-                        {copiedKey === urlCopyKey ? t("funnelCopied") : t("funnelCopyWebhook")}
-                      </Button>
-                    </div>
-
-                    <label className="block space-y-1.5 text-sm">
-                      <span className="font-medium text-foreground">{t("funnelSecret")}</span>
-                      <div className="flex gap-2">
-                        <input
-                          readOnly
-                          className={readOnlyFieldClass}
-                          value={funnel.webhookSecret}
-                          aria-label={t("funnelSecret")}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className={cn("shrink-0", adminOutlineButtonClass)}
-                          aria-label={t("funnelCopySecret")}
-                          title={
-                            copiedKey === secretCopyKey ? t("funnelCopied") : t("funnelCopySecret")
-                          }
-                          onClick={() => void copyText(secretCopyKey, funnel.webhookSecret)}
-                        >
-                          <CopyIcon className="size-4" />
-                        </Button>
-                      </div>
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                        onClick={() => void regenerateSecret(funnel.id)}
-                      >
-                        {t("funnelRegenerateSecret")}
-                      </button>
-                    </label>
-
-                    <details className="text-sm">
-                      <summary className="cursor-pointer font-medium text-foreground">
-                        {t("funnelCanonicalDoc")}
-                      </summary>
-                      <div className="mt-2 flex justify-end">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className={adminOutlineButtonClass}
-                          onClick={() => void copyText(jsonCopyKey, EXAMPLE_JSON)}
-                        >
-                          <CopyIcon className="size-4" />
-                          {copiedKey === jsonCopyKey ? t("funnelCopied") : t("funnelCopyJson")}
-                        </Button>
-                      </div>
-                      <pre className="mt-2 max-h-48 overflow-auto rounded-lg border border-[#e8e0d8] bg-[#faf8f5] p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
-                        {EXAMPLE_JSON}
-                      </pre>
-                      <p className="mt-2 text-xs text-muted-foreground">{t("funnelAuthHeaderHint")}</p>
-                    </details>
-                  </div>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
+          {selected ? (
+            <FunnelDetail
+              key={selected.id}
+              slug={slug}
+              funnel={selected}
+              url={webhookUrl(selected.id)}
+              leadSheet={leadSheet}
+              copiedKey={copiedKey}
+              onCopy={(key, value) => void copyText(key, value)}
+              onRegenerateSecret={() => void regenerateSecret(selected.id)}
+              onFunnelChange={(patch) => patchFunnel(selected.id, patch)}
+              onToggleEnabled={(enabled) => void toggleEnabled(selected.id, enabled)}
+              onDelete={() => setDeleteTarget(selected)}
+            />
+          ) : null}
+        </div>
       )}
+
+      {showCreate ? (
+        <NewFunnelDialog onCreate={createFunnel} onClose={() => setShowCreate(false)} />
+      ) : null}
+
+      {deleteTarget ? (
+        <ConfirmDialog
+          destructive
+          title={t("funnelDeleteTitle").replace("{name}", deleteTarget.name)}
+          message={t("funnelDeleteBody")}
+          confirmLabel={t("funnelDelete")}
+          busy={deleting}
+          onConfirm={() => void confirmDelete()}
+          onClose={() => setDeleteTarget(null)}
+        />
+      ) : null}
     </div>
   )
 }

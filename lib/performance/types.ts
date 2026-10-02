@@ -25,6 +25,7 @@ export type PeriodTotals = Omit<PerformanceBucket, "start" | "end">
 export type MetricId =
   | "revenue"
   | "profit"
+  | "roas"
   | "cac"
   | "cpl"
   | "adSpend"
@@ -33,7 +34,7 @@ export type MetricId =
   | "customers"
   | "ltv"
 
-export type MetricFormat = "currency" | "percent" | "integer"
+export type MetricFormat = "currency" | "percent" | "integer" | "roas"
 
 export type PositiveDirection = "up" | "down" | "neutral"
 

@@ -19,8 +19,6 @@ export async function POST(request: Request, context: RouteContext) {
     const { id } = await context.params
     const body = (await request.json().catch(() => ({}))) as {
       slugOverride?: string
-      seedDemo?: boolean
-      demoMode?: boolean
       metaAdAccountId?: string
       metaAccountName?: string
     }
@@ -28,8 +26,6 @@ export async function POST(request: Request, context: RouteContext) {
     const admin = createAdminClient()
     const result = await provisionClientFromApplication(admin, id, {
       slugOverride: body.slugOverride?.trim() || undefined,
-      seedDemo: Boolean(body.seedDemo),
-      demoMode: Boolean(body.demoMode),
       approvedByUserId: ctx.userId,
     })
 
@@ -42,7 +38,6 @@ export async function POST(request: Request, context: RouteContext) {
       organization: result.organization,
       application: result.application,
       inviteSent: result.inviteSent,
-      demoSeed: result.demoSeed ?? null,
       meta,
     })
   } catch (error) {

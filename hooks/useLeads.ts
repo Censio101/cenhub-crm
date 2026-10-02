@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
+import type { MessageKey } from "@/lib/i18n"
 import {
   CLIENT_ORG_CHANGED_EVENT,
   getLeadsCache,
@@ -10,7 +11,11 @@ import {
   setLeadsCache,
 } from "@/lib/data/client-cache"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
-import { MOCK_LEADS, type Lead } from "@/lib/leads"
+import { fetchCompanyConfig, leadSheetOrDefault } from "@/lib/data/company-config"
+import { buildDefaultLeadSheetConfig } from "@/lib/lead-sheet/default-config"
+import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
+import type { Lead } from "@/lib/leads"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type LeadsResponse = {
   leads: Lead[]
@@ -25,32 +30,32 @@ type LeadsResponse = {
   message?: string
 }
 
-async function shouldUseMockFallback(): Promise<boolean> {
-  try {
-    const response = await fetch("/api/auth/me", { cache: "no-store" })
-    if (!response.ok) return false
-    const data = (await response.json()) as {
-      isDemoFallback?: boolean
-      userId?: string | null
-    }
-    return Boolean(data.isDemoFallback && !data.userId)
-  } catch {
-    return false
-  }
+/** Minimum time between focus-triggered refreshes of the lead sheet config. */
+const SHEET_REFRESH_MIN_MS = 60_000
+
+/** `null` when the request fails, so a transient error never replaces a good config. */
+async function fetchLeadSheetConfigOrNull(): Promise<ResolvedLeadSheetConfig | null> {
+  return leadSheetOrDefault(await fetchCompanyConfig())
+}
+
+async function fetchLeadSheetConfig(): Promise<ResolvedLeadSheetConfig> {
+  return (await fetchLeadSheetConfigOrNull()) ?? buildDefaultLeadSheetConfig()
 }
 
 export function useLeads() {
   const cached = getLeadsCache()
   const [leads, setLeads] = useState<Lead[]>(() => cached?.leads ?? [])
+  const [leadSheet, setLeadSheet] = useState<ResolvedLeadSheetConfig>(() =>
+    buildDefaultLeadSheetConfig()
+  )
   const [loading, setLoading] = useState(() => !hasLeadsCache())
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<MessageKey | null>(null)
   const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [dataSource, setDataSource] = useState<"mock" | "supabase">(
-    () => cached?.source ?? "mock"
+    () => cached?.source ?? "supabase"
   )
-  const pendingPatches = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map()
-  )
+  const pendingPatches = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const lastSheetFetchRef = useRef(0)
 
   const loadLeads = useCallback(async () => {
     const showLoading = !hasLeadsCache()
@@ -67,20 +72,13 @@ export function useLeads() {
           setLeads([])
           setDataSource("supabase")
           setNeedsClientSelection(true)
-          setError(data.message ?? "Vælg en klient for at se deres dashboard.")
+          setError("leadsSelectClient")
           setLeadsCache({ leads: [], source: "supabase" })
+          setLeadSheet(buildDefaultLeadSheetConfig())
           return
         }
 
-        if (await shouldUseMockFallback()) {
-          setLeads(MOCK_LEADS)
-          setDataSource("mock")
-          setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
-          setError("Viser demo-data — database ikke tilgængelig")
-          return
-        }
-
-        throw new Error(data.message ?? "Kunne ikke hente leads")
+        throw new Error("leadsLoadError")
       }
 
       setLeads(data.leads)
@@ -90,28 +88,52 @@ export function useLeads() {
         source: data.source,
         organizationSlug: data.organization?.slug ?? null,
       })
+
+      if (data.source === "supabase") {
+        const sheet = await fetchLeadSheetConfig()
+        lastSheetFetchRef.current = Date.now()
+        setLeadSheet(sheet)
+      } else {
+        setLeadSheet(buildDefaultLeadSheetConfig())
+      }
     } catch (loadError) {
       console.error(loadError)
-      if (await shouldUseMockFallback()) {
-        setLeads(MOCK_LEADS)
-        setDataSource("mock")
-        setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
-        setError("Viser demo-data — database ikke tilgængelig")
-      } else {
-        setLeads([])
-        setDataSource("supabase")
-        setError(
-          loadError instanceof Error ? loadError.message : "Kunne ikke hente leads"
-        )
-      }
+      setLeads([])
+      setDataSource("supabase")
+      setError("leadsLoadError")
     } finally {
       if (showLoading) setLoading(false)
     }
   }, [])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void loadLeads()
   }, [loadLeads])
+
+  // An admin may change the client's lead sheet while this page stays open in a tab.
+  // Re-check when the tab is used again (at most once a minute) so columns stay current.
+  useEffect(() => {
+    if (dataSource !== "supabase") return
+
+    const refreshSheet = () => {
+      if (document.visibilityState !== "visible") return
+      if (Date.now() - lastSheetFetchRef.current < SHEET_REFRESH_MIN_MS) return
+      lastSheetFetchRef.current = Date.now()
+      void fetchLeadSheetConfigOrNull().then((sheet) => {
+        if (!sheet) return
+        setLeadSheet((current) =>
+          JSON.stringify(current) === JSON.stringify(sheet) ? current : sheet
+        )
+      })
+    }
+
+    window.addEventListener("focus", refreshSheet)
+    document.addEventListener("visibilitychange", refreshSheet)
+    return () => {
+      window.removeEventListener("focus", refreshSheet)
+      document.removeEventListener("visibilitychange", refreshSheet)
+    }
+  }, [dataSource])
 
   useEffect(() => {
     const onOrgChanged = () => {
@@ -133,7 +155,7 @@ export function useLeads() {
         })
 
         if (!response.ok) {
-          throw new Error("Kunne ikke gemme lead")
+          throw new Error("leadsSaveError")
         }
 
         const data = (await response.json()) as { lead: Lead }
@@ -144,7 +166,7 @@ export function useLeads() {
         })
       } catch (patchError) {
         console.error(patchError)
-        setError("Ændring kunne ikke gemmes")
+        setError("leadsSaveError")
       }
     },
     [dataSource]
@@ -153,9 +175,17 @@ export function useLeads() {
   const updateLead = useCallback(
     (id: string, patch: LeadPatch) => {
       setLeads((current) => {
-        const next = current.map((lead) =>
-          lead.id === id ? { ...lead, ...patch } : lead
-        )
+        const next = current.map((lead) => {
+          if (lead.id !== id) return lead
+          if (patch.customFields !== undefined) {
+            return {
+              ...lead,
+              ...patch,
+              customFields: { ...lead.customFields, ...patch.customFields },
+            }
+          }
+          return { ...lead, ...patch }
+        })
         setLeadsCache({ leads: next, source: dataSource })
         return next
       })
@@ -194,7 +224,7 @@ export function useLeads() {
         })
 
         if (!response.ok) {
-          throw new Error("Kunne ikke oprette lead")
+          throw new Error("leadsCreateError")
         }
 
         const data = (await response.json()) as { lead: Lead }
@@ -206,7 +236,7 @@ export function useLeads() {
         return data.lead
       } catch (createError) {
         console.error(createError)
-        setError("Lead kunne ikke oprettes")
+        setError("leadsCreateError")
         await loadLeads()
         return lead
       }
@@ -227,11 +257,11 @@ export function useLeads() {
       try {
         const response = await fetch(`/api/leads/${id}`, { method: "DELETE" })
         if (!response.ok) {
-          throw new Error("Kunne ikke slette lead")
+          throw new Error("leadsDeleteError")
         }
       } catch (deleteError) {
         console.error(deleteError)
-        setError("Lead kunne ikke slettes")
+        setError("leadsDeleteError")
         await loadLeads()
       }
     },
@@ -240,6 +270,7 @@ export function useLeads() {
 
   return {
     leads,
+    leadSheet,
     loading,
     error,
     needsClientSelection,

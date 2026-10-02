@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { Loader2Icon, MailIcon, RotateCwIcon, Trash2Icon, UsersIcon } from "lucide-react"
 
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
@@ -11,6 +11,7 @@ import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
+import { useKeyedState } from "@/lib/react/use-keyed-state"
 
 type ClientUser = {
   id: string
@@ -115,11 +116,8 @@ export function AdminClientUsersPanel() {
     id: string
     action: "remove" | "resend"
   } | null>(null)
-  const [displayUsers, setDisplayUsers] = useState<ClientUser[] | null>(null)
-
-  useEffect(() => {
-    setDisplayUsers(null)
-  }, [users])
+  // Local edits of the user list; discarded whenever the loaded users change.
+  const [displayUsers, setDisplayUsers] = useKeyedState<ClientUser[] | null>(null, users)
 
   const dismissNotice = useCallback(() => setActionNotice(null), [])
   const dismissError = useCallback(() => setActionError(null), [])
@@ -165,18 +163,15 @@ export function AdminClientUsersPanel() {
     setActionNotice(null)
 
     try {
-      const response = await fetch(
-        `/api/admin/organizations/${slug}/users/${user.id}/resend`,
-        { method: "POST" }
-      )
+      const response = await fetch(`/api/admin/organizations/${slug}/users/${user.id}/resend`, {
+        method: "POST",
+      })
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("adminResendError"))
 
       setActionNotice(t("adminResent", { email: user.email ?? "" }))
     } catch (resendError) {
-      setActionError(
-        resendError instanceof Error ? resendError.message : t("adminResendError")
-      )
+      setActionError(resendError instanceof Error ? resendError.message : t("adminResendError"))
     } finally {
       setBusyAction(null)
     }
@@ -206,12 +201,18 @@ export function AdminClientUsersPanel() {
         </div>
         <div className="px-5 py-4">
           {actionError ? (
-            <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800" role="alert">
+            <p
+              className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+              role="alert"
+            >
               {actionError}
             </p>
           ) : null}
           {actionNotice ? (
-            <p className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
+            <p
+              className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800"
+              role="status"
+            >
               {actionNotice}
             </p>
           ) : null}
@@ -224,12 +225,8 @@ export function AdminClientUsersPanel() {
                   key={user.id}
                   user={user}
                   disabled={busyAction?.id === user.id}
-                  isRemoving={
-                    busyAction?.id === user.id && busyAction.action === "remove"
-                  }
-                  isResending={
-                    busyAction?.id === user.id && busyAction.action === "resend"
-                  }
+                  isRemoving={busyAction?.id === user.id && busyAction.action === "remove"}
+                  isResending={busyAction?.id === user.id && busyAction.action === "resend"}
                   onRemove={handleRemoveUser}
                   onResend={handleResendInvite}
                 />

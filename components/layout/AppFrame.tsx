@@ -42,7 +42,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       )}
     >
       <AuthHashErrorHandler />
-      <LocaleSync />
+      {!isAdminRoute ? <LocaleSync /> : null}
       <AppTopbar />
       {showClientContextBar ? <ClientContextBar /> : null}
       <main

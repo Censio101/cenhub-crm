@@ -27,6 +27,7 @@ export const META_LOCKED_FIELDS = [
 
 export type LeadPatch = Partial<{
   date: string
+  time: string | null
   fullName: string
   email: string
   phone: string
@@ -42,6 +43,7 @@ export type LeadPatch = Partial<{
   status: LeadStatusId
   salesPrice: number | null
   profit: number | null
+  customFields: Record<string, unknown>
 }>
 
 export function leadRowToLead(row: LeadRow): Lead {
@@ -50,6 +52,7 @@ export function leadRowToLead(row: LeadRow): Lead {
   return {
     id: row.id,
     date: row.lead_date,
+    time: row.lead_time ?? undefined,
     fullName: row.full_name,
     email: row.email,
     phone: row.phone,
@@ -62,11 +65,14 @@ export function leadRowToLead(row: LeadRow): Lead {
     service: serviceLegacy,
     platform: isLeadPlatformId(row.platform) ? row.platform : "",
     metaAdId: row.meta_ad_id,
+    metaFormId: row.meta_form_id ?? undefined,
+    metaExtra: row.meta_extra ?? {},
     status: isLeadStatusId(row.status) ? row.status : "new_waiting_call",
     salesPrice: row.sales_price,
     profit: row.profit,
     source: row.source,
     lockedFields: row.locked_fields ?? [],
+    customFields: row.custom_fields ?? {},
   }
 }
 
@@ -84,6 +90,7 @@ export function leadPatchToRow(
   Pick<
     LeadRow,
     | "lead_date"
+    | "lead_time"
     | "full_name"
     | "email"
     | "phone"
@@ -99,11 +106,13 @@ export function leadPatchToRow(
     | "status"
     | "sales_price"
     | "profit"
+    | "custom_fields"
   >
 > {
   const next: Partial<LeadRow> = {}
 
   if (patch.date !== undefined) next.lead_date = patch.date
+  if (patch.time !== undefined) next.lead_time = patch.time
   if (patch.fullName !== undefined) next.full_name = patch.fullName
   if (patch.email !== undefined) next.email = patch.email
   if (patch.phone !== undefined) next.phone = patch.phone
@@ -119,6 +128,7 @@ export function leadPatchToRow(
   if (patch.status !== undefined) next.status = patch.status
   if (patch.salesPrice !== undefined) next.sales_price = patch.salesPrice
   if (patch.profit !== undefined) next.profit = patch.profit
+  if (patch.customFields !== undefined) next.custom_fields = patch.customFields
 
   return next
 }
@@ -126,13 +136,16 @@ export function leadPatchToRow(
 export function leadToInsertRow(
   lead: Lead,
   organizationId: string,
-  source: LeadRow["source"] = "demo"
+  source: LeadRow["source"] = "demo",
+  /** Stable external identity (unique per organization); enables duplicate protection. */
+  legacyId?: string | null
 ): Omit<LeadRow, "created_at" | "updated_at"> {
   return {
     id: lead.id.includes("-") && lead.id.length === 36 ? lead.id : randomUUID(),
     organization_id: organizationId,
-    legacy_id: lead.id.startsWith("lead-") ? lead.id : null,
+    legacy_id: legacyId ?? (lead.id.startsWith("lead-") ? lead.id : null),
     lead_date: lead.date,
+    lead_time: lead.time ?? null,
     full_name: lead.fullName,
     email: lead.email,
     phone: lead.phone,
@@ -150,19 +163,30 @@ export function leadToInsertRow(
     profit: lead.profit,
     source,
     locked_fields: source === "meta" ? [...META_LOCKED_FIELDS] : [],
+    meta_form_id: lead.metaFormId ?? null,
+    meta_extra: lead.metaExtra ?? {},
+    custom_fields: lead.customFields ?? {},
+    import_id: null,
   }
 }
 
-export function filterPatchForLockedLead(
-  patch: LeadPatch,
-  row: LeadRow
-): LeadPatch {
+export function filterPatchForLockedLead(patch: LeadPatch, row: LeadRow): LeadPatch {
   if (row.source !== "meta") return patch
 
-  const allowed = new Set(["serviceIds", "service", "status", "salesPrice", "profit"])
+  const allowed = new Set([
+    "serviceIds",
+    "service",
+    "status",
+    "salesPrice",
+    "profit",
+    "customFields",
+  ])
   const next: LeadPatch = {}
 
-  for (const [key, value] of Object.entries(patch) as [keyof LeadPatch, LeadPatch[keyof LeadPatch]][]) {
+  for (const [key, value] of Object.entries(patch) as [
+    keyof LeadPatch,
+    LeadPatch[keyof LeadPatch],
+  ][]) {
     if (value === undefined) continue
     if (allowed.has(key)) {
       ;(next as Record<string, unknown>)[key] = value

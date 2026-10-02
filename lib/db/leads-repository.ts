@@ -21,6 +21,7 @@ export async function listLeadsForOrganization(
     .select("*")
     .eq("organization_id", organizationId)
     .order("lead_date", { ascending: false })
+    .order("lead_time", { ascending: false, nullsFirst: false })
 
   if (error) throw error
   return (data as LeadRow[]).map(leadRowToLead)
@@ -33,9 +34,10 @@ export function listMockLeads(): Lead[] {
 export async function createLead(
   supabase: SupabaseClient,
   organizationId: string,
-  lead: Lead
+  lead: Lead,
+  options: { legacyId?: string | null } = {}
 ): Promise<Lead> {
-  const row = leadToInsertRow(lead, organizationId, lead.source ?? "manual")
+  const row = leadToInsertRow(lead, organizationId, lead.source ?? "manual", options.legacyId)
   const { data, error } = await supabase
     .from("leads")
     .insert(row)
@@ -102,4 +104,21 @@ export async function deleteLeadById(
 
 export function usesDatabaseLeads(): boolean {
   return isSupabaseConfigured()
+}
+
+/** Finds a lead by its external identity (`legacy_id`), scoped to one organization. */
+export async function findLeadIdByLegacyId(
+  supabase: SupabaseClient,
+  organizationId: string,
+  legacyId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("legacy_id", legacyId)
+    .maybeSingle()
+
+  if (error) throw error
+  return (data?.id as string | undefined) ?? null
 }

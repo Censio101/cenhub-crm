@@ -7,12 +7,11 @@ import { usePathname, useSearchParams } from "next/navigation"
 import {
   Building2Icon,
   ContactRoundIcon,
-  EyeIcon,
   LayoutDashboardIcon,
   UsersIcon,
 } from "lucide-react"
 
-import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { ClientLogoMark } from "@/components/organization/ClientLogoMark"
 import { DashboardLocaleSwitcher } from "@/components/i18n/DashboardLocaleSwitcher"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { ProfileMenu } from "@/components/layout/ProfileMenu"
@@ -32,16 +31,13 @@ import { cn } from "cn"
 
 const CLIENT_NAV = [
   { href: "/", labelKey: "navDashboard" as const, icon: LayoutDashboardIcon },
-  { href: "/overblik", labelKey: "navOverview" as const, icon: EyeIcon },
   { href: "/leads", labelKey: "navLeads" as const, icon: ContactRoundIcon },
   { href: "/kunder", labelKey: "navCustomers" as const, icon: UsersIcon },
 ] as const
 
-const ADMIN_CLIENT_NAV = [
-  { href: "/klienter", labelKey: "selectClient" as const, icon: Building2Icon },
-] as const
-
-const censioLogoClass = "h-9 w-auto shrink-0 sm:h-10"
+/** Original file is 1024×251. Width follows that ratio so the header cannot squash it. */
+const censioLogoClass =
+  "h-8 w-[calc(2rem*1024/251)] max-w-none shrink-0 object-contain aspect-[1024/251] sm:h-9 sm:w-[calc(2.25rem*1024/251)]"
 
 function AppTopbarFallback() {
   return (
@@ -69,7 +65,6 @@ function AppTopbarContent() {
       ? `?${searchParams.toString()}`
       : ""
   const { t } = useLanguage()
-  const { settings } = useAccountSettings()
   const { organization, role, loading: orgLoading } = useActiveOrganization()
   const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
 
@@ -90,24 +85,18 @@ function AppTopbarContent() {
   const clientName = organization
     ? formatClientDisplayName(organization.name)
     : CURRENT_COMPANY.name
+  const clientLogoSrc = organization?.logoUrl ?? null
   const navItems = guestShell || !sessionReady || !signedIn
     ? []
     : onAdminPath
     ? []
     : isAdmin
       ? adminViewingClientDashboard
-        ? [
-            ...ADMIN_CLIENT_NAV.map((item) => ({
-              href: item.href,
-              label: t(item.labelKey),
-              icon: item.icon,
-            })),
-            ...CLIENT_NAV.map((item) => ({
-              href: item.href,
-              label: t(item.labelKey),
-              icon: item.icon,
-            })),
-          ]
+        ? CLIENT_NAV.map((item) => ({
+            href: item.href,
+            label: t(item.labelKey),
+            icon: item.icon,
+          }))
         : [{ href: "/klienter", label: t("selectClient"), icon: Building2Icon }]
       : CLIENT_NAV.map((item) => ({
           href: item.href,
@@ -156,7 +145,7 @@ function AppTopbarContent() {
             className={censioLogoClass}
             priority
           />
-          {showClientBranding ? (
+          {showClientBranding && clientLogoSrc ? (
             <>
               <span
                 className="select-none text-sm font-light leading-none text-white/45 sm:text-base"
@@ -164,25 +153,7 @@ function AppTopbarContent() {
               >
                 ×
               </span>
-              {settings.logo.startsWith("data:") ||
-              settings.logo.startsWith("blob:") ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={settings.logo}
-                  alt={clientName}
-                  className="h-9 max-w-[min(120px,30vw)] w-auto shrink object-contain sm:h-10 sm:max-w-[140px]"
-                />
-              ) : (
-                <Image
-                  src={settings.logo}
-                  alt={clientName}
-                  width={176}
-                  height={40}
-                  className="h-9 max-w-[min(120px,30vw)] w-auto shrink object-contain sm:h-10 sm:max-w-[140px]"
-                  priority
-                  unoptimized
-                />
-              )}
+              <ClientLogoMark src={clientLogoSrc} alt={clientName} />
             </>
           ) : null}
         </Link>
@@ -191,7 +162,7 @@ function AppTopbarContent() {
       {navItems.length > 0 ? (
         <nav
           className="z-10 col-span-2 row-start-2 flex min-w-0 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto [scrollbar-width:none] sm:gap-2 sm:justify-center xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:justify-center [&::-webkit-scrollbar]:hidden"
-          aria-label="Hovedmenu"
+          aria-label={t("navMainAria")}
         >
           {navItems.map((item) => {
             const active =
@@ -229,7 +200,12 @@ function AppTopbarContent() {
       ) : null}
 
       <div className="z-10 col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end xl:col-start-3">
-        {adminViewingClientDashboard ? <DashboardLocaleSwitcher /> : null}
+        {sessionReady &&
+        signedIn &&
+        onClientDashboard &&
+        !isClientPickerPath(pathname) ? (
+          <DashboardLocaleSwitcher />
+        ) : null}
         <ProfileMenu />
       </div>
     </header>

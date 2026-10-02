@@ -29,6 +29,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Meta `fetchPartnerAdAccounts`: hub/onboarding only; client Meta settings load partner list when the user opens the picker (edit/link). Optional 90s server cache; call `clearPartnerAdAccountsCache()` after link/unlink.
 - Before adding client `fetch("/api/admin/…")`, choose **picker**, **bootstrap**, or **full hub** — do not pull the hub list from client-manage pages.
 
+### Meta instant forms (Lead Ads)
+
+- Client settings tab: `/admin/clients/{slug}/meta-instant-forms` — list forms, enable ingest, map fields, subscribe Page to `leadgen`, import history.
+- Real-time: `POST /api/webhooks/meta/leads` (verify `META_WEBHOOK_VERIFY_TOKEN`, `META_APP_SECRET` for signature on POST).
+- Ingest uses **page access token** (`resolvePageAccessTokenForOrganization`); only **enabled** forms create leads; `legacy_id` = Meta lead id.
+- Cron backup: `/api/cron/meta-leads-reconcile` (enabled forms, last N days).
+
 ### Manual perf smoke (Network tab)
 
 - `/admin/clients/{slug}`: one `manage-bootstrap`, picker for scope bar — no `partner-ad-accounts`, no full `organizations`.

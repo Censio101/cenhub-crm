@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react"
 import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 
-import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import {
@@ -27,28 +28,38 @@ import {
   CUSTOMER_SOURCES,
   filterDashboardCustomers,
   formatCustomerServices,
-  getCustomerSegmentLabel,
-  getCustomerSourceLabel,
   sortCustomersByDate,
   sumCustomerValue,
   type Customer,
   type CustomerSourceId,
 } from "@/lib/customers"
-import { formatLeadMonth } from "@/lib/leads"
-import { formatCurrencyDKK } from "@/lib/performance/format"
+import type { MessageKey } from "@/lib/i18n"
+import type { Locale } from "@/lib/i18n/types"
+import { formatCurrencyDKK, formatMonthLabel } from "@/lib/performance/format"
 import { cn } from "cn"
 
-function danishCount(count: number, one: string, many: string) {
+function countLabel(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`
 }
 
-function formatClosedDate(value: string): string {
+function formatClosedDate(value: string, locale: Locale): string {
   const [year, month, day] = value.split("-")
   if (!year || !month || !day) return value
-  return `${Number(day)}. ${formatLeadMonth(`${year}-${month}`).toLowerCase()}`
+  const date = new Date(Number(year), Number(month) - 1, Number(day))
+  return `${Number(day)}. ${formatMonthLabel(date, locale).toLowerCase()}`
+}
+
+const SOURCE_LABEL_KEYS: Record<CustomerSourceId, MessageKey> = {
+  facebook: "customersSourceFacebook",
+  instagram: "customersSourceInstagram",
+  website: "customersSourceWebsite",
+  landing: "customersSourceLanding",
+  referral: "customersSourceReferral",
+  repeat: "customersSourceRepeat",
 }
 
 export function CustomersBoard() {
+  const { locale, t } = useLanguage()
   const { enabledServices } = useCompanyServices()
   const {
     view,
@@ -89,19 +100,19 @@ export function CustomersBoard() {
       <header className="flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            Kunder
+            {t("customersEyebrow")}
           </p>
           <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-[1.75rem]">
-            Kundeliste
+            {t("customersTitle")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {organizationName
-              ? `Vundne sager hos ${organizationName}`
-              : "Vundne sager fra leads med status Vundet"}
+              ? t("customersSubtitleOrg", { name: organizationName })
+              : t("customersSubtitleDefault")}
           </p>
           {error ? (
             <p className="mt-1 text-xs text-muted-foreground" role="status">
-              {error}
+              {t(error)}
             </p>
           ) : null}
         </div>
@@ -135,12 +146,12 @@ export function CustomersBoard() {
           >
             <SelectTrigger
               className="dashboard-chip min-w-40 self-end px-4"
-              aria-label="Filtrer på kilde"
+              aria-label={t("customersFilterSourceAria")}
             >
               <SelectValue>
                 {sourceFilter === "all"
-                  ? "Alle kilder"
-                  : getCustomerSourceLabel(sourceFilter)}
+                  ? t("customersAllSources")
+                  : t(SOURCE_LABEL_KEYS[sourceFilter])}
               </SelectValue>
             </SelectTrigger>
             <SelectContent
@@ -148,10 +159,10 @@ export function CustomersBoard() {
               alignItemWithTrigger={false}
               className="dashboard-filter-menu"
             >
-              <SelectItem value="all">Alle kilder</SelectItem>
+              <SelectItem value="all">{t("customersAllSources")}</SelectItem>
               {CUSTOMER_SOURCES.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
-                  {item.label}
+                  {t(SOURCE_LABEL_KEYS[item.id])}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -159,19 +170,19 @@ export function CustomersBoard() {
         </div>
       </header>
 
-      <section aria-label="Kundeoverblik">
+      <section aria-label={t("customersOverviewAria")}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <OverviewStat
-            label="Kunder"
-            value={danishCount(totals.count, "kunde", "kunder")}
+            label={t("customersStatCustomers")}
+            value={countLabel(totals.count, t("customersCountOne"), t("customersCountMany"))}
           />
           <OverviewStat
-            label="Omsætning"
+            label={t("customersStatRevenue")}
             value={formatCurrencyDKK(totals.sales)}
             tone="success"
           />
           <OverviewStat
-            label="Bundlinje"
+            label={t("customersStatProfit")}
             value={formatCurrencyDKK(totals.profit)}
             tone="success"
           />
@@ -184,6 +195,7 @@ export function CustomersBoard() {
             customers={filtered}
             dateSort={dateSort}
             enabledServices={enabledServices}
+            locale={locale}
             onToggleDateSort={() =>
               setDateSort((current) => (current === "desc" ? "asc" : "desc"))
             }
@@ -222,13 +234,29 @@ function CustomersTable({
   customers,
   dateSort,
   enabledServices,
+  locale,
   onToggleDateSort,
 }: {
   customers: Customer[]
   dateSort: "asc" | "desc"
   enabledServices: ReturnType<typeof useCompanyServices>["enabledServices"]
+  locale: Locale
   onToggleDateSort: () => void
 }) {
+  const { t } = useLanguage()
+  const columns = [
+    t("customersColClosed"),
+    t("customersColCustomer"),
+    t("customersColSegment"),
+    t("customersColCompany"),
+    t("customersColAddress"),
+    t("customersColCity"),
+    t("customersColService"),
+    t("customersColSource"),
+    t("customersColSalesPrice"),
+    t("customersColProfit"),
+  ]
+
   return (
     <Table
       containerClassName="overflow-visible"
@@ -236,18 +264,7 @@ function CustomersTable({
     >
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          {[
-            "Lukket",
-            "Kunde",
-            "Privat/Erhverv",
-            "Virksomhed",
-            "Adresse",
-            "By",
-            "Service",
-            "Kilde",
-            "Salgspris",
-            "Bundlinje",
-          ].map((label, index) => (
+          {columns.map((label, index) => (
             <TableHead
               key={label}
               className={cn(
@@ -262,9 +279,7 @@ function CustomersTable({
                   type="button"
                   className="inline-flex items-center gap-1 text-white hover:text-white/80"
                   aria-label={
-                    dateSort === "desc"
-                      ? "Sortér ældste først"
-                      : "Sortér nyeste først"
+                    dateSort === "desc" ? t("customersSortOldest") : t("customersSortNewest")
                   }
                   onClick={onToggleDateSort}
                 >
@@ -289,14 +304,14 @@ function CustomersTable({
               colSpan={10}
               className="px-4 py-10 text-center text-sm text-muted-foreground"
             >
-              Ingen kunder matcher filtrene.
+              {t("customersEmpty")}
             </TableCell>
           </TableRow>
         ) : (
           customers.map((customer) => (
             <TableRow key={customer.id} className="hover:bg-transparent">
               <TableCell className="sticky left-0 z-[1] w-40 min-w-40 bg-card px-3">
-                {formatClosedDate(customer.closedDate)}
+                {formatClosedDate(customer.closedDate, locale)}
               </TableCell>
               <TableCell className="sticky left-40 z-[1] min-w-48 border-r border-border bg-card px-3">
                 <div className="min-w-0">
@@ -307,7 +322,7 @@ function CustomersTable({
                 </div>
               </TableCell>
               <TableCell className="px-3">
-                {getCustomerSegmentLabel(customer.segment)}
+                {customer.segment === "b2b" ? t("filterSegmentB2b") : t("filterSegmentB2c")}
               </TableCell>
               <TableCell className="min-w-44 px-3">
                 {customer.companyName || "–"}
@@ -320,7 +335,7 @@ function CustomersTable({
                 {formatCustomerServices(customer, enabledServices)}
               </TableCell>
               <TableCell className="px-3">
-                {getCustomerSourceLabel(customer.source)}
+                {t(SOURCE_LABEL_KEYS[customer.source])}
               </TableCell>
               <TableCell className="px-3 text-right tabular-nums">
                 {formatCurrencyDKK(customer.salesPrice)}

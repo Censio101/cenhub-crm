@@ -6,11 +6,14 @@ import {
   Building2Icon,
   RefreshCwIcon,
   ClipboardListIcon,
+  LayersIcon,
+  TagsIcon,
   MailIcon,
   SettingsIcon,
   ShieldCheckIcon,
   Settings2Icon,
   UserCircleIcon,
+  WrenchIcon,
 } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -66,7 +69,7 @@ export function AdminSidebar() {
       href: "/admin/clients",
       labelKey: "navClientSettings",
       icon: Settings2Icon,
-      active: pathname === "/admin/clients",
+      active: pathname.startsWith("/admin/clients"),
     },
     {
       href: "/admin",
@@ -79,6 +82,26 @@ export function AdminSidebar() {
       labelKey: "navOnboarding",
       icon: ClipboardListIcon,
       active: pathname.startsWith("/admin/onboarding"),
+    },
+    {
+      href: "/admin/business-categories",
+      labelKey: "navBusinessCategories",
+      icon: TagsIcon,
+      active: pathname.startsWith("/admin/business-categories"),
+    },
+    {
+      href: "/admin/services",
+      labelKey: "navServices",
+      icon: WrenchIcon,
+      active: pathname.startsWith("/admin/services"),
+    },
+    {
+      href: "/admin/lead-sheets",
+      labelKey: "navLeadSheets",
+      icon: LayersIcon,
+      active:
+        pathname.startsWith("/admin/lead-sheets") ||
+        pathname.startsWith("/admin/lead-sheet-templates"),
     },
     {
       href: "/admin/meta-sync",

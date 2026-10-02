@@ -19,6 +19,8 @@ export function hubClientToPickerOrganization(client: HubClient): PickerOrganiza
     slug: client.slug,
     name: client.name,
     metaAdAccountId: client.metaAdAccountId,
+    demoMode: client.demo_mode,
+    metaEnabled: client.metaEnabled,
   }
 }
 

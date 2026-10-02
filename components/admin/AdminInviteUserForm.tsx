@@ -69,9 +69,8 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
   const { t } = useLanguage()
   const isAdminInvite = props.mode === "admin"
   const role: UserRole = isAdminInvite ? "censio_admin" : "client_user"
-  const clientName = props.mode === "client" && props.clientName
-    ? formatClientDisplayName(props.clientName)
-    : null
+  const clientName =
+    props.mode === "client" && props.clientName ? formatClientDisplayName(props.clientName) : null
 
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
@@ -124,9 +123,7 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
       setPassword("")
       props.onInvited?.()
     } catch (submitError) {
-      setError(
-        submitError instanceof Error ? submitError.message : t("errorInviteUser")
-      )
+      setError(submitError instanceof Error ? submitError.message : t("errorInviteUser"))
     } finally {
       setSubmitting(false)
     }
@@ -157,7 +154,10 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
       <div className="px-5 py-4">
         {!isAdminInvite ? (
           <div className="mb-4 flex gap-3 rounded-xl border border-[#d3c3b2] bg-white px-3.5 py-3">
-            <Building2Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <Building2Icon
+              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
             <p className="text-[13px] text-muted-foreground">{t("inviteClientUserCallout")}</p>
           </div>
         ) : null}
@@ -219,12 +219,18 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
           ) : null}
 
           {error ? (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800" role="alert">
+            <p
+              className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800"
+              role="alert"
+            >
               {error}
             </p>
           ) : null}
           {message ? (
-            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-800" role="status">
+            <p
+              className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-800"
+              role="status"
+            >
               {message}
             </p>
           ) : null}

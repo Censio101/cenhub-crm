@@ -1,14 +1,7 @@
 "use client"
 
-import { FormEvent, useCallback, useEffect, useState } from "react"
-import {
-  CopyIcon,
-  LinkIcon,
-  MailIcon,
-  PlugZapIcon,
-  SaveIcon,
-  SendIcon,
-} from "lucide-react"
+import { FormEvent, useCallback, useState } from "react"
+import { CopyIcon, LinkIcon, MailIcon, PlugZapIcon, SaveIcon, SendIcon } from "lucide-react"
 
 import { OnboardingNotifyRecipientsPanel } from "@/components/admin/OnboardingNotifyRecipientsPanel"
 import {
@@ -21,6 +14,7 @@ import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 import { parseNotifyEmailList } from "@/lib/onboarding/notify-emails"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type IntegrationsSettings = {
   mailgunDomain: string | null
@@ -72,11 +66,7 @@ function ReadonlyLink({
         <span className="text-[12px] text-muted-foreground">{description}</span>
       ) : null}
       <div className="flex gap-2">
-        <input
-          className={cn(adminFieldClass, "font-mono text-[13px]")}
-          value={value}
-          readOnly
-        />
+        <input className={cn(adminFieldClass, "font-mono text-[13px]")} value={value} readOnly />
         <Button type="button" variant="outline" className="h-11 shrink-0 px-3" onClick={handleCopy}>
           <CopyIcon className="size-4" aria-hidden="true" />
           <span className="sr-only">{copied ? "Copied" : "Copy"}</span>
@@ -117,11 +107,7 @@ function BatteryIndicator({
         : "border-[#d3c3b2] text-muted-foreground"
 
   const fillClass =
-    tone === "ready"
-      ? "bg-emerald-500"
-      : tone === "partial"
-        ? "bg-amber-400"
-        : "bg-[#d3c3b2]"
+    tone === "ready" ? "bg-emerald-500" : tone === "partial" ? "bg-amber-400" : "bg-[#d3c3b2]"
 
   return (
     <div className={cn("flex items-center", toneClass)} aria-hidden="true">
@@ -183,9 +169,7 @@ function MailReadinessWidget({
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            {percent === 100
-              ? t("integrationsMailReadyHint")
-              : t("integrationsMailNotReadyHint")}
+            {percent === 100 ? t("integrationsMailReadyHint") : t("integrationsMailNotReadyHint")}
           </p>
         </div>
       </div>
@@ -197,11 +181,7 @@ function notifyEmailsToPayload(emails: string[]): string {
   return emails.join(", ")
 }
 
-function SourceBadge({
-  source,
-}: {
-  source: "database" | "environment" | "missing" | "default"
-}) {
+function SourceBadge({ source }: { source: "database" | "environment" | "missing" | "default" }) {
   const { t } = useLanguage()
   const label =
     source === "database"
@@ -304,7 +284,7 @@ export function AdminIntegrationsPanel() {
     }
   }
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void loadSettings()
   }, [])
 
@@ -348,9 +328,7 @@ export function AdminIntegrationsPanel() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <header>
-        <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-          {t("brand")}
-        </p>
+        <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">{t("brand")}</p>
         <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
           {t("integrationsTitle")}
         </h1>
@@ -375,96 +353,98 @@ export function AdminIntegrationsPanel() {
           />
 
           <form className="grid gap-6" onSubmit={handleSave}>
-          <section className={cn(adminSectionCardClass, "overflow-hidden")}>
-            <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
-              <span className={adminIconBoxClass("brand")}>
-                <MailIcon className="size-[18px]" />
-              </span>
-              <div>
-                <h2 className="text-base font-semibold text-foreground">
-                  {t("integrationsMailgunTitle")}
-                </h2>
-                <p className="mt-0.5 text-[13px] text-muted-foreground">
-                  {t("integrationsMailgunDescription")}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 px-5 py-4">
-              <label className="grid gap-1.5">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                  {t("integrationsMailgunDomain")}
-                  <SourceBadge source={settings?.source.mailgunDomain ?? "missing"} />
+            <section className={cn(adminSectionCardClass, "overflow-hidden")}>
+              <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
+                <span className={adminIconBoxClass("brand")}>
+                  <MailIcon className="size-[18px]" />
                 </span>
-                <input
-                  className={adminFieldClass}
-                  value={mailgunDomain}
-                  onChange={(event) => setMailgunDomain(event.target.value)}
-                  placeholder="censio.dk"
-                />
-              </label>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    {t("integrationsMailgunTitle")}
+                  </h2>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    {t("integrationsMailgunDescription")}
+                  </p>
+                </div>
+              </div>
 
-              <label className="grid gap-1.5">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                  {t("integrationsMailgunApiKey")}
-                  {settings?.mailgunApiKeyMasked ? (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">
-                      {settings.mailgunApiKeyMasked}
+              <div className="grid gap-4 px-5 py-4">
+                <label className="grid gap-1.5">
+                  <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+                    {t("integrationsMailgunDomain")}
+                    <SourceBadge source={settings?.source.mailgunDomain ?? "missing"} />
+                  </span>
+                  <input
+                    className={adminFieldClass}
+                    value={mailgunDomain}
+                    onChange={(event) => setMailgunDomain(event.target.value)}
+                    placeholder="censio.dk"
+                  />
+                </label>
+
+                <label className="grid gap-1.5">
+                  <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+                    {t("integrationsMailgunApiKey")}
+                    {settings?.mailgunApiKeyMasked ? (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                        {settings.mailgunApiKeyMasked}
+                      </span>
+                    ) : null}
+                  </span>
+                  <input
+                    type="password"
+                    className={adminFieldClass}
+                    value={mailgunApiKey}
+                    onChange={(event) => setMailgunApiKey(event.target.value)}
+                    placeholder={t("integrationsMailgunApiKeyPlaceholder")}
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label className="grid gap-1.5">
+                  <span className="text-[13px] font-semibold text-foreground">
+                    {t("integrationsMailgunRegion")}
+                  </span>
+                  <select
+                    className={adminFieldClass}
+                    value={mailgunApiBase}
+                    onChange={(event) => setMailgunApiBase(event.target.value)}
+                  >
+                    <option value="https://api.mailgun.net">
+                      {t("integrationsMailgunRegionUs")}
+                    </option>
+                    <option value="https://api.eu.mailgun.net">
+                      {t("integrationsMailgunRegionEu")}
+                    </option>
+                  </select>
+                </label>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="grid gap-1.5">
+                    <span className="text-[13px] font-semibold text-foreground">
+                      {t("integrationsMailFrom")}
                     </span>
-                  ) : null}
-                </span>
-                <input
-                  type="password"
-                  className={adminFieldClass}
-                  value={mailgunApiKey}
-                  onChange={(event) => setMailgunApiKey(event.target.value)}
-                  placeholder={t("integrationsMailgunApiKeyPlaceholder")}
-                  autoComplete="off"
-                />
-              </label>
-
-              <label className="grid gap-1.5">
-                <span className="text-[13px] font-semibold text-foreground">
-                  {t("integrationsMailgunRegion")}
-                </span>
-                <select
-                  className={adminFieldClass}
-                  value={mailgunApiBase}
-                  onChange={(event) => setMailgunApiBase(event.target.value)}
-                >
-                  <option value="https://api.mailgun.net">{t("integrationsMailgunRegionUs")}</option>
-                  <option value="https://api.eu.mailgun.net">
-                    {t("integrationsMailgunRegionEu")}
-                  </option>
-                </select>
-              </label>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-1.5">
-                  <span className="text-[13px] font-semibold text-foreground">
-                    {t("integrationsMailFrom")}
-                  </span>
-                  <input
-                    className={adminFieldClass}
-                    value={mailFrom}
-                    onChange={(event) => setMailFrom(event.target.value)}
-                    placeholder="kontakt@censio.dk"
-                  />
-                </label>
-                <label className="grid gap-1.5">
-                  <span className="text-[13px] font-semibold text-foreground">
-                    {t("integrationsMailFromName")}
-                  </span>
-                  <input
-                    className={adminFieldClass}
-                    value={mailFromName}
-                    onChange={(event) => setMailFromName(event.target.value)}
-                    placeholder="Censio"
-                  />
-                </label>
+                    <input
+                      className={adminFieldClass}
+                      value={mailFrom}
+                      onChange={(event) => setMailFrom(event.target.value)}
+                      placeholder="kontakt@censio.dk"
+                    />
+                  </label>
+                  <label className="grid gap-1.5">
+                    <span className="text-[13px] font-semibold text-foreground">
+                      {t("integrationsMailFromName")}
+                    </span>
+                    <input
+                      className={adminFieldClass}
+                      value={mailFromName}
+                      onChange={(event) => setMailFromName(event.target.value)}
+                      placeholder="Censio"
+                    />
+                  </label>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
           </form>
 
           <OnboardingNotifyRecipientsPanel
@@ -474,137 +454,140 @@ export function AdminIntegrationsPanel() {
           />
 
           <form className="grid gap-6" onSubmit={handleSave}>
-          <section className={cn(adminSectionCardClass, "overflow-hidden")}>
-            <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
-              <span className={adminIconBoxClass("blue")}>
-                <LinkIcon className="size-[18px]" />
-              </span>
-              <div>
-                <h2 className="text-base font-semibold text-foreground">
-                  {t("integrationsLinksTitle")}
-                </h2>
-                <p className="mt-0.5 text-[13px] text-muted-foreground">
-                  {t("integrationsLinksDescription")}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 px-5 py-4">
-              <label className="grid gap-1.5">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                  {t("integrationsSiteUrl")}
-                  <SourceBadge source={settings?.source.siteUrl ?? "default"} />
+            <section className={cn(adminSectionCardClass, "overflow-hidden")}>
+              <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
+                <span className={adminIconBoxClass("blue")}>
+                  <LinkIcon className="size-[18px]" />
                 </span>
-                <input
-                  className={adminFieldClass}
-                  value={siteUrl}
-                  onChange={(event) => setSiteUrl(event.target.value)}
-                  placeholder="https://crm.censio.dk"
-                />
-              </label>
-
-              <label className="grid gap-1.5">
-                <span className="text-[13px] font-semibold text-foreground">
-                  {t("integrationsAuthCallbackPath")}
-                </span>
-                <input
-                  className={adminFieldClass}
-                  value={authCallbackPath}
-                  onChange={(event) => setAuthCallbackPath(event.target.value)}
-                  placeholder="/auth/callback"
-                />
-              </label>
-
-              <label className="grid gap-1.5">
-                <span className="text-[13px] font-semibold text-foreground">
-                  {t("integrationsContactFormUrl")}
-                </span>
-                <input
-                  className={adminFieldClass}
-                  value={contactFormUrl}
-                  onChange={(event) => setContactFormUrl(event.target.value)}
-                  placeholder="https://censio.dk/kontakt"
-                />
-              </label>
-
-              {settings ? (
-                <div className="grid gap-4 rounded-xl border border-[#e8e0d8] bg-[#faf8f6]/60 p-4">
-                  <ReadonlyLink
-                    label={t("integrationsInviteRedirectUrl")}
-                    value={settings.inviteRedirectUrl}
-                    description={t("integrationsInviteRedirectHint")}
-                  />
-                  <ReadonlyLink
-                    label={t("integrationsLoginUrl")}
-                    value={settings.loginUrl}
-                  />
-                  <ReadonlyLink
-                    label={t("integrationsAuthCallbackUrl")}
-                    value={settings.authCallbackUrl}
-                  />
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    {t("integrationsLinksTitle")}
+                  </h2>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    {t("integrationsLinksDescription")}
+                  </p>
                 </div>
-              ) : null}
-            </div>
-          </section>
-
-          <section className={cn(adminSectionCardClass, "overflow-hidden")}>
-            <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
-              <span className={adminIconBoxClass("violet")}>
-                <PlugZapIcon className="size-[18px]" />
-              </span>
-              <div>
-                <h2 className="text-base font-semibold text-foreground">
-                  {t("integrationsTestTitle")}
-                </h2>
-                <p className="mt-0.5 text-[13px] text-muted-foreground">
-                  {t("integrationsTestDescription")}
-                </p>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-end">
-              <label className="grid min-w-0 flex-1 gap-1.5">
-                <span className="text-[13px] font-semibold text-foreground">
-                  {t("integrationsTestEmail")}
+              <div className="grid gap-4 px-5 py-4">
+                <label className="grid gap-1.5">
+                  <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+                    {t("integrationsSiteUrl")}
+                    <SourceBadge source={settings?.source.siteUrl ?? "default"} />
+                  </span>
+                  <input
+                    className={adminFieldClass}
+                    value={siteUrl}
+                    onChange={(event) => setSiteUrl(event.target.value)}
+                    placeholder="https://crm.censio.dk"
+                  />
+                </label>
+
+                <label className="grid gap-1.5">
+                  <span className="text-[13px] font-semibold text-foreground">
+                    {t("integrationsAuthCallbackPath")}
+                  </span>
+                  <input
+                    className={adminFieldClass}
+                    value={authCallbackPath}
+                    onChange={(event) => setAuthCallbackPath(event.target.value)}
+                    placeholder="/auth/callback"
+                  />
+                </label>
+
+                <label className="grid gap-1.5">
+                  <span className="text-[13px] font-semibold text-foreground">
+                    {t("integrationsContactFormUrl")}
+                  </span>
+                  <input
+                    className={adminFieldClass}
+                    value={contactFormUrl}
+                    onChange={(event) => setContactFormUrl(event.target.value)}
+                    placeholder="https://censio.dk/kontakt"
+                  />
+                </label>
+
+                {settings ? (
+                  <div className="grid gap-4 rounded-xl border border-[#e8e0d8] bg-[#faf8f6]/60 p-4">
+                    <ReadonlyLink
+                      label={t("integrationsInviteRedirectUrl")}
+                      value={settings.inviteRedirectUrl}
+                      description={t("integrationsInviteRedirectHint")}
+                    />
+                    <ReadonlyLink label={t("integrationsLoginUrl")} value={settings.loginUrl} />
+                    <ReadonlyLink
+                      label={t("integrationsAuthCallbackUrl")}
+                      value={settings.authCallbackUrl}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className={cn(adminSectionCardClass, "overflow-hidden")}>
+              <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5">
+                <span className={adminIconBoxClass("violet")}>
+                  <PlugZapIcon className="size-[18px]" />
                 </span>
-                <input
-                  type="email"
-                  className={adminFieldClass}
-                  value={testEmail}
-                  onChange={(event) => setTestEmail(event.target.value)}
-                  placeholder="kontakt@censio.dk"
-                />
-              </label>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 shrink-0 gap-2"
-                disabled={testing || !testEmail.trim()}
-                onClick={() => {
-                  void handleTestEmail()
-                }}
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    {t("integrationsTestTitle")}
+                  </h2>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    {t("integrationsTestDescription")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-end">
+                <label className="grid min-w-0 flex-1 gap-1.5">
+                  <span className="text-[13px] font-semibold text-foreground">
+                    {t("integrationsTestEmail")}
+                  </span>
+                  <input
+                    type="email"
+                    className={adminFieldClass}
+                    value={testEmail}
+                    onChange={(event) => setTestEmail(event.target.value)}
+                    placeholder="kontakt@censio.dk"
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 shrink-0 gap-2"
+                  disabled={testing || !testEmail.trim()}
+                  onClick={() => {
+                    void handleTestEmail()
+                  }}
+                >
+                  <SendIcon className="size-4" aria-hidden="true" />
+                  {testing ? t("sending") : t("integrationsSendTest")}
+                </Button>
+              </div>
+            </section>
+
+            {error ? (
+              <p
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+                role="alert"
               >
-                <SendIcon className="size-4" aria-hidden="true" />
-                {testing ? t("sending") : t("integrationsSendTest")}
-              </Button>
-            </div>
-          </section>
+                {error}
+              </p>
+            ) : null}
+            {notice ? (
+              <p
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800"
+                role="status"
+              >
+                {notice}
+              </p>
+            ) : null}
 
-          {error ? (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
-              {notice}
-            </p>
-          ) : null}
-
-          <Button type="submit" className="h-11 w-full gap-2 sm:w-fit" disabled={saving}>
-            <SaveIcon className="size-4" aria-hidden="true" />
-            {saving ? t("saving") : t("integrationsSave")}
-          </Button>
+            <Button type="submit" className="h-11 w-full gap-2 sm:w-fit" disabled={saving}>
+              <SaveIcon className="size-4" aria-hidden="true" />
+              {saving ? t("saving") : t("integrationsSave")}
+            </Button>
           </form>
         </div>
       )}

@@ -1,12 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 
-import {
-  listPickerOrganizations,
-  type PickerOrganization,
-} from "@/lib/admin/client-picker"
+import { listPickerOrganizations, type PickerOrganization } from "@/lib/admin/client-picker"
 import type { HubClient } from "@/lib/admin/hub-clients"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type UseAdminOrganizationListResult = {
   pickerOrganizations: PickerOrganization[]
@@ -40,14 +38,11 @@ export function useAdminOrganizationList(): UseAdminOrganizationListResult {
     }
   }, [])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void reload()
   }, [reload])
 
-  const pickerOrganizations = useMemo(
-    () => listPickerOrganizations(clients),
-    [clients]
-  )
+  const pickerOrganizations = useMemo(() => listPickerOrganizations(clients), [clients])
 
   return { pickerOrganizations, loading, error, reload }
 }

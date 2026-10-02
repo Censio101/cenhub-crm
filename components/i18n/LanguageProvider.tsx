@@ -6,11 +6,11 @@ import {
   useContext,
   useLayoutEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react"
 
-import { isLocale, translate, type MessageKey } from "@/lib/i18n"
+import { translate, type MessageKey } from "@/lib/i18n"
 import { readStoredLocale, writeStoredLocale } from "@/lib/i18n/stored-locale"
 import { LOCALE_STORAGE_KEY, type Locale } from "@/lib/i18n/types"
 
@@ -21,6 +21,18 @@ type LanguageContextValue = {
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
+
+const localeListeners = new Set<() => void>()
+
+function subscribeToLocale(listener: () => void) {
+  localeListeners.add(listener)
+  // `storage` fires when another tab changes the stored locale.
+  window.addEventListener("storage", listener)
+  return () => {
+    localeListeners.delete(listener)
+    window.removeEventListener("storage", listener)
+  }
+}
 
 function LanguageHtmlSync({
   locale,
@@ -50,28 +62,18 @@ export function LanguageProvider({
   storageKey = LOCALE_STORAGE_KEY,
   restoreDocumentLangOnUnmount = false,
 }: LanguageProviderProps) {
-  // Match SSR first paint (da), then hydrate stored/profile locale in layout effect.
-  const [locale, setLocaleState] = useState<Locale>("da")
-
-  useLayoutEffect(() => {
-    setLocaleState(readStoredLocale(storageKey))
-  }, [storageKey])
-
-  useLayoutEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== storageKey) return
-      if (event.newValue && isLocale(event.newValue)) {
-        setLocaleState(event.newValue)
-      }
-    }
-    window.addEventListener("storage", onStorage)
-    return () => window.removeEventListener("storage", onStorage)
-  }, [storageKey])
+  // The server and the first client render use "da" (matches SSR); the stored/profile locale
+  // is read right after hydration. Changes in this tab and in other tabs both notify us.
+  const locale = useSyncExternalStore(
+    subscribeToLocale,
+    () => readStoredLocale(storageKey),
+    (): Locale => "da"
+  )
 
   const setLocale = useCallback(
     (next: Locale) => {
-      setLocaleState(next)
       writeStoredLocale(storageKey, next)
+      for (const listener of localeListeners) listener()
     },
     [storageKey]
   )

@@ -10,8 +10,13 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
-import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { LeadDateTimeCell } from "@/components/leads/LeadDateTimeCell"
+import { AddLeadDialog } from "@/components/leads/AddLeadDialog"
+import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
+import { useLeadSelectOptions } from "@/components/leads/useLeadSelectOptions"
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useLeads } from "@/hooks/useLeads"
@@ -42,14 +47,14 @@ import {
 } from "@/components/ui/table"
 import { isLeadFieldLocked } from "@/lib/db/lead-mapper"
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
-import { SERVICES, isServiceId } from "@/lib/performance/services"
+import { isServiceId, resolveServiceLabel } from "@/lib/performance/services"
+import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
+import { leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
+import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import {
-  LEAD_SEGMENTS,
   LEAD_STATUSES,
   computeLeadPipelineStats,
-  emptyLead,
   filterDashboardLeads,
-  formatLeadMonth,
   formatLeadServices,
   getLeadServiceIds,
   getLeadStatusCellClass,
@@ -58,7 +63,6 @@ import {
   getWonLeadRowClass,
   isLeadSegmentId,
   isLeadStatusId,
-  leadMonthKey,
   sortLeadsByDate,
   type Lead,
   type LeadPipelineStats,
@@ -98,9 +102,7 @@ function CurrencyInput({
   return (
     <input
       inputMode="numeric"
-      value={
-        focused ? draft : value == null ? "" : formatCurrencyDKK(value)
-      }
+      value={focused ? draft : value == null ? "" : formatCurrencyDKK(value)}
       placeholder="–"
       aria-label={label}
       disabled={disabled}
@@ -108,9 +110,7 @@ function CurrencyInput({
         cellInputClass,
         "text-right tabular-nums",
         disabled && "cursor-not-allowed opacity-60",
-        emphasizePositive && value != null && value > 0
-          ? "text-success-foreground"
-          : ""
+        emphasizePositive && value != null && value > 0 ? "text-success-foreground" : ""
       )}
       onFocus={() => {
         setDraft(value == null ? "" : String(value))
@@ -168,22 +168,99 @@ function CellSelect<T extends string>({
           {options.find((option) => option.id === value)?.label}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent
-        align="start"
-        alignItemWithTrigger={false}
-        className="z-[80]"
-      >
+      <SelectContent align="start" alignItemWithTrigger={false} className="z-[80]">
         {options.map((option) => (
-          <SelectItem
-            key={option.id}
-            value={option.id}
-            className={optionClassName?.(option.id)}
-          >
+          <SelectItem key={option.id} value={option.id} className={optionClassName?.(option.id)}>
             {option.label}
           </SelectItem>
         ))}
       </SelectContent>
     </Select>
+  )
+}
+
+/** Single-select custom column: popover picker (no inline text field). */
+function LeadSheetSelectCell({
+  value,
+  options,
+  label,
+  placeholder,
+  onChange,
+  disabled,
+}: {
+  value: string
+  options: ReadonlyArray<{ id: string; label: string }>
+  label: string
+  placeholder: string
+  onChange: (value: string) => void
+  disabled?: boolean
+}) {
+  const { t } = useLanguage()
+  const [open, setOpen] = useState(false)
+  const display =
+    options.find((option) => option.id === value)?.label ??
+    (value ? value : null)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        aria-label={label}
+        disabled={disabled}
+        className={cn(
+          "flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border-0 bg-transparent px-1.5 text-left text-sm outline-none hover:bg-white focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-ring",
+          disabled && "cursor-not-allowed opacity-60"
+        )}
+      >
+        <span className={cn("truncate", !display && "text-muted-foreground")}>
+          {display ?? placeholder}
+        </span>
+        <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
+      </PopoverTrigger>
+      <PopoverContent align="start" alignOffset={0} className="z-[80] w-56 gap-0 p-0">
+        <PopoverHeader className="border-b border-border px-3 py-2.5">
+          <PopoverTitle className="text-sm font-semibold">{label}</PopoverTitle>
+          <PopoverDescription className="text-xs">{t("leadSheetSelectPopupHint")}</PopoverDescription>
+        </PopoverHeader>
+        <ul className="max-h-56 overflow-y-auto p-1" role="listbox" aria-label={label}>
+          {options.length === 0 ? (
+            <li className="px-2 py-2 text-sm text-muted-foreground">{t("leadSheetSelectEmpty")}</li>
+          ) : (
+            options.map((option) => {
+              const selected = option.id === value
+              return (
+                <li key={option.id} role="presentation">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent",
+                      selected && "bg-primary/10 font-medium text-primary"
+                    )}
+                    onClick={() => {
+                      onChange(option.id)
+                      setOpen(false)
+                    }}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                        selected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background"
+                      )}
+                    >
+                      {selected ? <CheckIcon className="size-3" /> : null}
+                    </span>
+                    <span className="min-w-0 truncate">{option.label}</span>
+                  </button>
+                </li>
+              )
+            })
+          )}
+        </ul>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -198,20 +275,19 @@ function ServiceMultiSelect({
   label: string
   disabled?: boolean
 }) {
+  const { t } = useLanguage()
   const { enabledServices } = useCompanyServices()
   const options = useMemo(() => {
     const enabledIds = new Set(enabledServices.map((service) => service.id))
     const extras = value
       .filter((id) => !enabledIds.has(id))
-      .map((id) => SERVICES.find((service) => service.id === id) ?? { id, label: id })
+      .map((id) => ({ id, label: resolveServiceLabel(id, enabledServices) }))
     return [...enabledServices, ...extras]
   }, [enabledServices, value])
   const summary = formatLeadServices({ serviceIds: value }, enabledServices)
 
   function toggle(id: string) {
-    const next = value.includes(id)
-      ? value.filter((item) => item !== id)
-      : [...value, id]
+    const next = value.includes(id) ? value.filter((item) => item !== id) : [...value, id]
     onChange(options.map((service) => service.id).filter((item) => next.includes(item)))
   }
 
@@ -230,15 +306,9 @@ function ServiceMultiSelect({
         </span>
         <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
       </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        alignOffset={0}
-        className="z-[80] w-56 gap-0.5 p-1"
-      >
+      <PopoverContent align="start" alignOffset={0} className="z-[80] w-56 gap-0.5 p-1">
         {options.length === 0 ? (
-          <p className="px-2 py-1.5 text-sm text-muted-foreground">
-            Ingen ydelser at vælge. Tilføj en under Indstillinger.
-          </p>
+          <p className="px-2 py-1.5 text-sm text-muted-foreground">{t("leadSheetNoServices")}</p>
         ) : (
           options.map((service) => {
             const checked = value.includes(service.id)
@@ -271,13 +341,8 @@ function ServiceMultiSelect({
   )
 }
 
-function DeleteLeadButton({
-  leadName,
-  onDelete,
-}: {
-  leadName: string
-  onDelete: () => void
-}) {
+function DeleteLeadButton({ leadName, onDelete }: { leadName: string; onDelete: () => void }) {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
 
   return (
@@ -287,7 +352,7 @@ function DeleteLeadButton({
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Slet lead"
+            aria-label={t("leadSheetDeleteLeadConfirm")}
             className="text-muted-foreground hover:text-danger-foreground"
           />
         }
@@ -296,16 +361,12 @@ function DeleteLeadButton({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 gap-3 bg-[#f7f7f5] p-3">
         <PopoverHeader>
-          <PopoverTitle>Slet lead?</PopoverTitle>
-          <PopoverDescription>
-            {leadName
-              ? `${leadName} fjernes fra listen. Det kan ikke fortrydes.`
-              : "Leadet fjernes fra listen. Det kan ikke fortrydes."}
-          </PopoverDescription>
+          <PopoverTitle>{t("leadSheetDeleteLead")}</PopoverTitle>
+          <PopoverDescription>{leadName || t("leadSheetDeleteLead")}</PopoverDescription>
         </PopoverHeader>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Annuller
+            {t("leadSheetCancel")}
           </Button>
           <Button
             variant="destructive"
@@ -315,7 +376,7 @@ function DeleteLeadButton({
               onDelete()
             }}
           >
-            Slet
+            {t("leadSheetDeleteLeadConfirm")}
           </Button>
         </div>
       </PopoverContent>
@@ -324,6 +385,7 @@ function DeleteLeadButton({
 }
 
 function LeadPipelineFooter({ stats }: { stats: LeadPipelineStats }) {
+  const { t } = useLanguage()
   return (
     <div
       aria-live="polite"
@@ -331,42 +393,32 @@ function LeadPipelineFooter({ stats }: { stats: LeadPipelineStats }) {
     >
       <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
         <FooterStat
-          label="Tabt"
+          label={t("leadSheetPipelineLost")}
           value={formatCurrencyDKK(stats.lostValue)}
           tone="danger"
         />
         <FooterStat
-          label="Pipeline"
+          label={t("leadSheetPipelineOpen")}
           value={formatCurrencyDKK(stats.pipelineValue)}
           tone="open"
         />
         <FooterStat
-          label="Lukkede"
+          label={t("leadSheetPipelineWon")}
           value={formatCurrencyDKK(stats.wonValue)}
           tone="success"
         />
         <FooterStat
-          label="Lukkerate"
-          value={
-            stats.closeRate == null ? "–" : formatPercentage(stats.closeRate)
-          }
+          label={t("leadSheetPipelineCloseRate")}
+          value={stats.closeRate == null ? "–" : formatPercentage(stats.closeRate)}
         />
         <FooterStat
-          label="Gns. salg"
-          value={
-            stats.averageWonSales == null
-              ? "–"
-              : formatCurrencyDKK(stats.averageWonSales)
-          }
+          label={t("leadSheetPipelineAvgSale")}
+          value={stats.averageWonSales == null ? "–" : formatCurrencyDKK(stats.averageWonSales)}
           tone="success"
         />
         <FooterStat
-          label="Gns. bundlinje"
-          value={
-            stats.averageWonProfit == null
-              ? "–"
-              : formatCurrencyDKK(stats.averageWonProfit)
-          }
+          label={t("leadSheetPipelineAvgProfit")}
+          value={stats.averageWonProfit == null ? "–" : formatCurrencyDKK(stats.averageWonProfit)}
           tone="success"
         />
       </dl>
@@ -401,6 +453,7 @@ function FooterStat({
 }
 
 function LeadsTable({
+  columns,
   leads,
   emptyText,
   dateSort,
@@ -408,6 +461,7 @@ function LeadsTable({
   onUpdate,
   onDelete,
 }: {
+  columns: LeadSheetTemplateColumn[]
   leads: Lead[]
   emptyText: string
   dateSort: "asc" | "desc"
@@ -415,6 +469,315 @@ function LeadsTable({
   onUpdate: (id: string, patch: Partial<Lead>) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useLanguage()
+  const { statuses, segments } = useLeadSelectOptions()
+  const colSpan = columns.length + 1
+
+  function headerLabel(col: LeadSheetTemplateColumn) {
+    return columnDisplayLabel(col, t)
+  }
+
+  function renderColumnCell(lead: Lead, col: LeadSheetTemplateColumn, colIndex: number) {
+    const lockedInputClass = (field: Parameters<typeof isLeadFieldLocked>[1]) =>
+      cn(cellInputClass, isLeadFieldLocked(lead, field) && "cursor-not-allowed opacity-60")
+
+    // Sticky first two columns follow template order (not always date + name).
+    const stickyFirst =
+      colIndex === 0
+        ? "sticky left-0 z-[1] w-36 min-w-36 px-2"
+        : colIndex === 1
+          ? "sticky left-36 z-[1] min-w-44 border-r border-border px-2"
+          : "px-2"
+
+    const stickyBg = cn(
+      stickyFirst,
+      getWonLeadCellClass(lead.status) || (colIndex <= 1 ? "bg-card" : "")
+    )
+
+    if (col.kind === "custom") {
+      const key = col.customField.fieldKey
+      const value = lead.customFields?.[key]
+      const patchCustom = (next: unknown) =>
+        onUpdate(lead.id, { customFields: { ...lead.customFields, [key]: next } })
+
+      if (col.customField.fieldType === "image") {
+        return (
+          <TableCell key={col.id} className="min-w-40 px-2">
+            <LeadImageFieldCell
+              leadId={lead.id}
+              fieldKey={key}
+              value={value}
+              onChange={(next) => patchCustom(next)}
+            />
+          </TableCell>
+        )
+      }
+
+      if (col.customField.fieldType === "textarea") {
+        return (
+          <TableCell key={col.id} className="min-w-48 px-2">
+            <textarea
+              value={typeof value === "string" ? value : ""}
+              rows={2}
+              className={cn(cellInputClass, "min-h-8 resize-y py-1")}
+              onChange={(e) => patchCustom(e.target.value)}
+            />
+          </TableCell>
+        )
+      }
+
+      if (col.customField.fieldType === "number") {
+        return (
+          <TableCell key={col.id} className="min-w-28 px-2">
+            <input
+              type="number"
+              value={typeof value === "number" ? value : ""}
+              className={cellInputClass}
+              onChange={(e) => patchCustom(e.target.value === "" ? null : Number(e.target.value))}
+            />
+          </TableCell>
+        )
+      }
+
+      if (col.customField.fieldType === "select") {
+        const options = col.customField.config.options ?? []
+        const current = typeof value === "string" ? value : ""
+        // A value whose option was removed from the column stays visible, marked "removed".
+        const cellOptions = options.map((o) => ({ id: o, label: o }))
+        if (current && !options.includes(current)) {
+          cellOptions.push({ id: current, label: `${current} (${t("leadSheetSelectRemoved")})` })
+        }
+        return (
+          <TableCell key={col.id} className="px-1">
+            <LeadSheetSelectCell
+              value={current}
+              label={col.customField.label}
+              placeholder={t("leadSheetSelectPlaceholder")}
+              options={cellOptions}
+              onChange={(v) => patchCustom(v)}
+            />
+          </TableCell>
+        )
+      }
+
+      const inputType =
+        col.customField.fieldType === "date"
+          ? "date"
+          : col.customField.fieldType === "time"
+            ? "time"
+            : "text"
+
+      return (
+        <TableCell key={col.id} className="min-w-36 px-2">
+          <input
+            type={inputType}
+            value={typeof value === "string" ? value : ""}
+            className={cellInputClass}
+            onChange={(e) => patchCustom(e.target.value)}
+          />
+        </TableCell>
+      )
+    }
+
+    switch (col.builtinKey) {
+      case "date":
+        return (
+          <TableCell key={col.id} className={stickyBg}>
+            <LeadDateTimeCell
+              date={lead.date}
+              time={lead.time}
+              ariaLabel={t("leadSheetColDate")}
+              disabled={isLeadFieldLocked(lead, "date")}
+              className={cn(lockedInputClass("date"), "min-w-[9.5rem]")}
+              onCommit={({ date, time }) => onUpdate(lead.id, { date, time })}
+            />
+          </TableCell>
+        )
+      case "fullName":
+        return (
+          <TableCell key={col.id} className={stickyBg}>
+            <div className="flex items-center gap-1.5">
+              <input
+                value={lead.fullName}
+                aria-label={t("leadSheetColFullName")}
+                disabled={isLeadFieldLocked(lead, "fullName")}
+                className={lockedInputClass("fullName")}
+                onChange={(event) => onUpdate(lead.id, { fullName: event.target.value })}
+              />
+              {lead.source === "meta" ? (
+                <span className="shrink-0 rounded-full bg-[#1877F2]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1877F2]">
+                  Meta
+                </span>
+              ) : null}
+            </div>
+          </TableCell>
+        )
+      case "email":
+        return (
+          <TableCell key={col.id} className="min-w-52 px-2">
+            <input
+              type="email"
+              value={lead.email}
+              disabled={isLeadFieldLocked(lead, "email")}
+              className={lockedInputClass("email")}
+              onChange={(event) => onUpdate(lead.id, { email: event.target.value })}
+            />
+          </TableCell>
+        )
+      case "phone":
+        return (
+          <TableCell key={col.id} className="min-w-36 px-2">
+            <input
+              value={lead.phone}
+              disabled={isLeadFieldLocked(lead, "phone")}
+              className={lockedInputClass("phone")}
+              onChange={(event) => onUpdate(lead.id, { phone: event.target.value })}
+            />
+          </TableCell>
+        )
+      case "segment":
+        return (
+          <TableCell key={col.id} className="px-1">
+            <CellSelect
+              value={lead.segment}
+              label={t("leadSheetColSegment")}
+              placeholder={t("leadSheetSelectPlaceholder")}
+              className="min-w-24"
+              disabled={isLeadFieldLocked(lead, "segment")}
+              options={segments}
+              onChange={(segment) =>
+                onUpdate(lead.id, {
+                  segment: isLeadSegmentId(segment) ? segment : "",
+                  companyName: segment === "b2c" ? "" : lead.companyName,
+                })
+              }
+            />
+          </TableCell>
+        )
+      case "companyName":
+        return (
+          <TableCell key={col.id} className="min-w-44 px-2">
+            <input
+              value={lead.companyName}
+              disabled={lead.segment !== "b2b" || isLeadFieldLocked(lead, "companyName")}
+              className={cn(
+                lockedInputClass("companyName"),
+                lead.segment !== "b2b" && "text-muted-foreground"
+              )}
+              onChange={(event) => onUpdate(lead.id, { companyName: event.target.value })}
+            />
+          </TableCell>
+        )
+      case "address":
+        return (
+          <TableCell key={col.id} className="min-w-44 px-2">
+            <input
+              value={lead.address}
+              disabled={isLeadFieldLocked(lead, "address")}
+              className={lockedInputClass("address")}
+              onChange={(event) => onUpdate(lead.id, { address: event.target.value })}
+            />
+          </TableCell>
+        )
+      case "zipCode":
+        return (
+          <TableCell key={col.id} className="min-w-24 px-2">
+            <input
+              value={lead.zipCode}
+              disabled={isLeadFieldLocked(lead, "zipCode")}
+              className={lockedInputClass("zipCode")}
+              onChange={(event) => onUpdate(lead.id, { zipCode: event.target.value })}
+            />
+          </TableCell>
+        )
+      case "city":
+        return (
+          <TableCell key={col.id} className="min-w-32 px-2">
+            <input
+              value={lead.city}
+              disabled={isLeadFieldLocked(lead, "city")}
+              className={lockedInputClass("city")}
+              onChange={(event) => onUpdate(lead.id, { city: event.target.value })}
+            />
+          </TableCell>
+        )
+      case "serviceIds":
+        return (
+          <TableCell key={col.id} className="px-1">
+            <ServiceMultiSelect
+              value={getLeadServiceIds(lead)}
+              label={t("leadSheetColServiceIds")}
+              onChange={(serviceIds) => {
+                const first = serviceIds[0] ?? ""
+                onUpdate(lead.id, {
+                  serviceIds,
+                  service: isServiceId(first) ? first : "",
+                })
+              }}
+            />
+          </TableCell>
+        )
+      case "metaAdId":
+        return (
+          <TableCell key={col.id} className="min-w-48 px-2">
+            <input
+              value={lead.metaAdId}
+              disabled={isLeadFieldLocked(lead, "metaAdId")}
+              className={cn(lockedInputClass("metaAdId"), "font-mono text-[0.8125rem]")}
+              onChange={(event) => onUpdate(lead.id, { metaAdId: event.target.value.trim() })}
+            />
+          </TableCell>
+        )
+      case "status":
+        return (
+          <TableCell
+            key={col.id}
+            data-lead-status-cell=""
+            className={cn("min-w-[13.5rem] p-0", getLeadStatusCellClass(lead.status))}
+          >
+            <div className="flex h-12 items-stretch">
+              <CellSelect
+                value={lead.status}
+                label={t("leadSheetColStatus")}
+                placeholder={t("leadSheetColStatus")}
+                options={statuses}
+                className="h-full min-h-0 w-full rounded-none border-0 bg-transparent px-3 text-[0.9375rem] font-semibold text-current shadow-none hover:bg-transparent focus:bg-transparent focus-visible:border-transparent focus-visible:ring-0 data-[size=sm]:h-full data-[size=sm]:rounded-none dark:bg-transparent dark:hover:bg-transparent [&_svg]:hidden"
+                optionClassName={getLeadStatusClass}
+                onChange={(status) =>
+                  onUpdate(lead.id, {
+                    status: isLeadStatusId(status) ? status : lead.status,
+                  })
+                }
+              />
+            </div>
+          </TableCell>
+        )
+      case "salesPrice":
+        return (
+          <TableCell key={col.id} className="min-w-32 px-2">
+            <CurrencyInput
+              value={lead.salesPrice}
+              label={t("leadSheetColSalesPrice")}
+              onChange={(salesPrice) => onUpdate(lead.id, { salesPrice })}
+            />
+          </TableCell>
+        )
+      case "profit":
+        return (
+          <TableCell key={col.id} className="min-w-32 px-2">
+            <CurrencyInput
+              value={lead.profit}
+              label={t("leadSheetColProfit")}
+              emphasizePositive
+              onChange={(profit) => onUpdate(lead.id, { profit })}
+            />
+          </TableCell>
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <Table
       containerClassName="overflow-visible"
@@ -422,55 +785,47 @@ function LeadsTable({
     >
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          {[
-            "Dato",
-            "Fulde navn",
-            "E-mail",
-            "Telefon",
-            "Privat/Erhverv",
-            "Virksomhed",
-            "Adresse",
-            "Postnr.",
-            "By",
-            "Service",
-            "Meta kunde annonce ID",
-            "Status",
-            "Salgspris",
-            "Bundlinje",
-          ].map((label, index) => (
-            <TableHead
-              key={label}
-              className={cn(
-                leadHeaderCellClass,
-                index === 0 && "sticky left-0 z-[3] w-36 min-w-36",
-                index === 1 && "sticky left-36 z-[3] min-w-44"
-              )}
-            >
-              {index === 0 ? (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-white hover:text-white/80"
-                  aria-label={
-                    dateSort === "desc"
-                      ? "Sortér ældste først"
-                      : "Sortér nyeste først"
-                  }
-                  onClick={onToggleDateSort}
-                >
-                  {label}
-                  {dateSort === "desc" ? (
-                    <ArrowDownIcon className="size-3.5" />
-                  ) : (
-                    <ArrowUpIcon className="size-3.5" />
-                  )}
-                </button>
-              ) : (
-                label
-              )}
-            </TableHead>
-          ))}
-          <TableHead className={cn(leadHeaderCellClass, "sticky right-0 z-[3] w-11 min-w-11 border-r-0 border-l px-1 text-center")}>
-            <span className="sr-only">Slet</span>
+          {columns.map((col, index) => {
+            const label = headerLabel(col)
+            const isDateCol = col.kind === "builtin" && col.builtinKey === "date"
+            return (
+              <TableHead
+                key={col.id}
+                className={cn(
+                  leadHeaderCellClass,
+                  index === 0 && "sticky left-0 z-[3] w-36 min-w-36",
+                  index === 1 && "sticky left-36 z-[3] min-w-44"
+                )}
+              >
+                {isDateCol ? (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-white hover:text-white/80"
+                    aria-label={
+                      dateSort === "desc" ? t("leadSheetSortOldest") : t("leadSheetSortNewest")
+                    }
+                    onClick={onToggleDateSort}
+                  >
+                    {label}
+                    {dateSort === "desc" ? (
+                      <ArrowDownIcon className="size-3.5" />
+                    ) : (
+                      <ArrowUpIcon className="size-3.5" />
+                    )}
+                  </button>
+                ) : (
+                  label
+                )}
+              </TableHead>
+            )
+          })}
+          <TableHead
+            className={cn(
+              leadHeaderCellClass,
+              "sticky right-0 z-[3] w-11 min-w-11 border-r-0 border-l px-1 text-center"
+            )}
+          >
+            <span className="sr-only">{t("leadSheetDeleteLead")}</span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -478,229 +833,16 @@ function LeadsTable({
         {leads.length === 0 ? (
           <TableRow className="hover:bg-transparent">
             <TableCell
-              colSpan={15}
+              colSpan={colSpan}
               className="px-4 py-10 text-center text-sm text-muted-foreground"
             >
               {emptyText}
             </TableCell>
           </TableRow>
         ) : (
-          leads.map((lead) => {
-            const lockedInputClass = (field: Parameters<typeof isLeadFieldLocked>[1]) =>
-              cn(
-                cellInputClass,
-                isLeadFieldLocked(lead, field) && "cursor-not-allowed opacity-60"
-              )
-
-            return (
+          leads.map((lead) => (
             <TableRow key={lead.id} className={getWonLeadRowClass(lead.status)}>
-              <TableCell
-                className={cn(
-                  "sticky left-0 z-[1] w-36 min-w-36 px-2",
-                  getWonLeadCellClass(lead.status) || "bg-card"
-                )}
-              >
-                <input
-                  type="date"
-                  value={lead.date}
-                  aria-label="Dato"
-                  disabled={isLeadFieldLocked(lead, "date")}
-                  className={cn(
-                    lockedInputClass("date"),
-                    "[&::-webkit-calendar-picker-indicator]:opacity-40"
-                  )}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { date: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell
-                className={cn(
-                  "sticky left-36 z-[1] min-w-44 border-r border-border px-2",
-                  getWonLeadCellClass(lead.status) || "bg-card"
-                )}
-              >
-                <div className="flex items-center gap-1.5">
-                  <input
-                    value={lead.fullName}
-                    placeholder="Navn"
-                    aria-label="Fulde navn"
-                    disabled={isLeadFieldLocked(lead, "fullName")}
-                    className={lockedInputClass("fullName")}
-                    onChange={(event) =>
-                      onUpdate(lead.id, { fullName: event.target.value })
-                    }
-                  />
-                  {lead.source === "meta" ? (
-                    <span className="shrink-0 rounded-full bg-[#1877F2]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1877F2]">
-                      Meta
-                    </span>
-                  ) : null}
-                </div>
-              </TableCell>
-              <TableCell className="min-w-52 px-2">
-                <input
-                  type="email"
-                  value={lead.email}
-                  placeholder="mail@…"
-                  aria-label="E-mail"
-                  disabled={isLeadFieldLocked(lead, "email")}
-                  className={lockedInputClass("email")}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { email: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="min-w-36 px-2">
-                <input
-                  value={lead.phone}
-                  placeholder="00 00 00 00"
-                  aria-label="Telefon"
-                  disabled={isLeadFieldLocked(lead, "phone")}
-                  className={lockedInputClass("phone")}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { phone: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="px-1">
-                <CellSelect
-                  value={lead.segment}
-                  label="Privat/Erhverv"
-                  placeholder="Vælg"
-                  className="min-w-24"
-                  disabled={isLeadFieldLocked(lead, "segment")}
-                  options={LEAD_SEGMENTS}
-                  onChange={(segment) =>
-                    onUpdate(lead.id, {
-                      segment: isLeadSegmentId(segment) ? segment : "",
-                      companyName: segment === "b2c" ? "" : lead.companyName,
-                    })
-                  }
-                />
-              </TableCell>
-              <TableCell className="min-w-44 px-2">
-                <input
-                  value={lead.companyName}
-                  placeholder={lead.segment === "b2b" ? "Virksomhed" : "–"}
-                  aria-label="Virksomhed"
-                  disabled={
-                    lead.segment !== "b2b" || isLeadFieldLocked(lead, "companyName")
-                  }
-                  className={cn(
-                    lockedInputClass("companyName"),
-                    lead.segment !== "b2b" && "text-muted-foreground"
-                  )}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { companyName: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="min-w-44 px-2">
-                <input
-                  value={lead.address}
-                  placeholder="Adresse"
-                  aria-label="Adresse"
-                  disabled={isLeadFieldLocked(lead, "address")}
-                  className={lockedInputClass("address")}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { address: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="min-w-24 px-2">
-                <input
-                  value={lead.zipCode}
-                  placeholder="0000"
-                  aria-label="Postnummer"
-                  disabled={isLeadFieldLocked(lead, "zipCode")}
-                  className={lockedInputClass("zipCode")}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { zipCode: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="min-w-32 px-2">
-                <input
-                  value={lead.city}
-                  placeholder="By"
-                  aria-label="By"
-                  disabled={isLeadFieldLocked(lead, "city")}
-                  className={lockedInputClass("city")}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { city: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="px-1">
-                <ServiceMultiSelect
-                  value={getLeadServiceIds(lead)}
-                  label="Service"
-                  disabled={false}
-                  onChange={(serviceIds) => {
-                    const first = serviceIds[0] ?? ""
-                    onUpdate(lead.id, {
-                      serviceIds,
-                      service: isServiceId(first) ? first : "",
-                    })
-                  }}
-                />
-              </TableCell>
-              <TableCell className="min-w-48 px-2">
-                <input
-                  value={lead.metaAdId}
-                  placeholder="Fx. 1202187654321098"
-                  aria-label="Meta kunde annonce ID"
-                  inputMode="numeric"
-                  spellCheck={false}
-                  disabled={isLeadFieldLocked(lead, "metaAdId")}
-                  className={cn(
-                    lockedInputClass("metaAdId"),
-                    "font-mono text-[0.8125rem]"
-                  )}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { metaAdId: event.target.value.trim() })
-                  }
-                />
-              </TableCell>
-              <TableCell
-                data-lead-status-cell=""
-                className={cn(
-                  "min-w-[13.5rem] p-0",
-                  getLeadStatusCellClass(lead.status)
-                )}
-              >
-                <div className="flex h-12 items-stretch">
-                  <CellSelect
-                    value={lead.status}
-                    label="Status"
-                    placeholder="Status"
-                    options={LEAD_STATUSES}
-                    className="h-full min-h-0 w-full rounded-none border-0 bg-transparent px-3 text-[0.9375rem] font-semibold text-current shadow-none hover:bg-transparent focus:bg-transparent focus-visible:border-transparent focus-visible:ring-0 data-[size=sm]:h-full data-[size=sm]:rounded-none dark:bg-transparent dark:hover:bg-transparent [&_svg]:hidden"
-                    optionClassName={getLeadStatusClass}
-                    onChange={(status) =>
-                      onUpdate(lead.id, {
-                        status: isLeadStatusId(status) ? status : lead.status,
-                      })
-                    }
-                  />
-                </div>
-              </TableCell>
-              <TableCell className="min-w-32 px-2">
-                <CurrencyInput
-                  value={lead.salesPrice}
-                  label="Salgspris"
-                  onChange={(salesPrice) => onUpdate(lead.id, { salesPrice })}
-                />
-              </TableCell>
-              <TableCell className="min-w-32 px-2">
-                <CurrencyInput
-                  value={lead.profit}
-                  label="Bundlinje"
-                  emphasizePositive
-                  onChange={(profit) => onUpdate(lead.id, { profit })}
-                />
-              </TableCell>
+              {columns.map((col, colIndex) => renderColumnCell(lead, col, colIndex))}
               <TableCell
                 className={cn(
                   "sticky right-0 z-[1] w-11 min-w-11 border-l border-border bg-card px-1",
@@ -713,8 +855,7 @@ function LeadsTable({
                 />
               </TableCell>
             </TableRow>
-            )
-          })
+          ))
         )}
       </TableBody>
     </Table>
@@ -723,6 +864,7 @@ function LeadsTable({
 
 export function LeadsBoard() {
   useCompanyServices()
+  const { t } = useLanguage()
   const {
     view,
     onPresetChange,
@@ -734,6 +876,7 @@ export function LeadsBoard() {
   } = useDashboardViewState("/leads")
   const {
     leads,
+    leadSheet,
     error,
     needsClientSelection,
     dataSource,
@@ -754,10 +897,7 @@ export function LeadsBoard() {
     return sortLeadsByDate(next, dateSort)
   }, [dateSort, leads, statusFilter, view])
 
-  const pipelineStats = useMemo(
-    () => computeLeadPipelineStats(filtered),
-    [filtered]
-  )
+  const pipelineStats = useMemo(() => computeLeadPipelineStats(filtered), [filtered])
 
   if (needsClientSelection) {
     return <SelectClientEmptyState />
@@ -768,21 +908,17 @@ export function LeadsBoard() {
       <header className="flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            Leads
+            {t("navLeads")}
           </p>
           <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-[1.75rem]">
-            Leadliste
+            {t("leadSheetPageTitle")}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Følg nye henvendelser fra første kontakt til vundet kunde
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("leadSheetPageIntro")}</p>
           {error ? (
-            <p className="mt-2 text-sm text-amber-700">{error}</p>
+            <p className="mt-2 text-sm text-amber-700">{t(error)}</p>
           ) : null}
           {dataSource === "supabase" ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Gemmes i database
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("leadSheetSavedInDb")}</p>
           ) : null}
         </div>
         <div className="flex flex-col items-stretch gap-4 sm:items-end">
@@ -804,63 +940,55 @@ export function LeadsBoard() {
             showComparison={false}
           />
           <div className="flex flex-wrap items-center justify-end gap-4">
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => {
-              if (
-                value === "all" ||
-                (typeof value === "string" && isLeadStatusId(value))
-              ) {
-                setStatusFilter(value as LeadStatusId | "all")
-              }
-            }}
-          >
-            <SelectTrigger
-              className={cn(
-                "dashboard-chip min-w-52 px-4",
-                statusFilter !== "all" && getLeadStatusClass(statusFilter)
-              )}
-              aria-label="Filtrer på status"
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                if (value === "all" || (typeof value === "string" && isLeadStatusId(value))) {
+                  setStatusFilter(value as LeadStatusId | "all")
+                }
+              }}
             >
-              <SelectValue>
-                {statusFilter === "all"
-                  ? "Alle statusser"
-                  : LEAD_STATUSES.find((item) => item.id === statusFilter)
-                      ?.label}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              align="end"
-              alignItemWithTrigger={false}
-              className="dashboard-filter-menu lead-status-filter-menu"
-            >
-              <SelectItem
-                value="all"
-                className="hover:bg-[#3f3a36] hover:text-white hover:**:text-white focus:bg-[#3f3a36] focus:text-white focus:**:text-white data-highlighted:bg-[#3f3a36] data-highlighted:text-white data-highlighted:**:text-white"
+              <SelectTrigger
+                className={cn(
+                  "dashboard-chip min-w-52 px-4",
+                  statusFilter !== "all" && getLeadStatusClass(statusFilter)
+                )}
+                aria-label={t("leadSheetFilterStatusAria")}
               >
-                Alle statusser
-              </SelectItem>
-              {LEAD_STATUSES.map((item) => (
+                <SelectValue>
+                  {statusFilter === "all"
+                    ? t("leadSheetFilterAllStatuses")
+                    : t(leadStatusLabelKey(statusFilter))}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                alignItemWithTrigger={false}
+                className="dashboard-filter-menu lead-status-filter-menu"
+              >
                 <SelectItem
-                  key={item.id}
-                  value={item.id}
-                  className={getLeadStatusClass(item.id)}
+                  value="all"
+                  className="hover:bg-[#3f3a36] hover:text-white hover:**:text-white focus:bg-[#3f3a36] focus:text-white focus:**:text-white data-highlighted:bg-[#3f3a36] data-highlighted:text-white data-highlighted:**:text-white"
                 >
-                  {item.label}
+                  {t("leadSheetFilterAllStatuses")}
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={() => {
-              void createLead(
-                emptyLead(`lead-${Date.now()}`, view.range.end)
-              )
-            }}
-          >
-            <PlusIcon />
-            Tilføj lead
-          </Button>
+                {LEAD_STATUSES.map((item) => (
+                  <SelectItem key={item.id} value={item.id} className={getLeadStatusClass(item.id)}>
+                    {t(leadStatusLabelKey(item.id))}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AddLeadDialog
+              columns={leadSheet.columns}
+              onCreate={(lead) => createLead(lead)}
+              trigger={
+                <Button>
+                  <PlusIcon />
+                  {t("leadSheetAddLead")}
+                </Button>
+              }
+            />
           </div>
         </div>
       </header>
@@ -870,12 +998,11 @@ export function LeadsBoard() {
       <section className="dashboard-card flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto">
           <LeadsTable
+            columns={leadSheet.columns}
             leads={filtered}
             dateSort={dateSort}
-            onToggleDateSort={() =>
-              setDateSort((current) => (current === "desc" ? "asc" : "desc"))
-            }
-            emptyText="Ingen leads matcher filtrene."
+            onToggleDateSort={() => setDateSort((current) => (current === "desc" ? "asc" : "desc"))}
+            emptyText={t("leadSheetEmptyFiltered")}
             onUpdate={updateLead}
             onDelete={(id) => {
               void deleteLead(id)

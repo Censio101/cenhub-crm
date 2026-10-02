@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { getSessionContext } from "@/lib/auth/session-context"
+import { resolveOrganizationLogoUrl } from "@/lib/organization-logo"
 import { isLocale } from "@/lib/i18n"
 import type { Locale } from "@/lib/i18n/types"
 
@@ -25,6 +26,7 @@ export async function GET() {
           slug: ctx.organization.slug,
           name: ctx.organization.name,
           demoMode: ctx.organization.demo_mode,
+          logoUrl: resolveOrganizationLogoUrl(ctx.organization.logo_url),
         }
       : null,
     isDemoFallback: ctx.isDemoFallback,

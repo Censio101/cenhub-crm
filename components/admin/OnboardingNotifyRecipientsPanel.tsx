@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from "react"
+import { FormEvent, useState } from "react"
 import { AtSignIcon, BellIcon, PlusIcon, Trash2Icon } from "lucide-react"
 
 import {
@@ -14,6 +14,7 @@ import { FormNoticeStack } from "@/components/ui/form-notice"
 import { adminFormNoticeDefaults } from "@/lib/admin/form-notice-defaults"
 import { cn } from "cn"
 import { isValidNotifyEmail, parseNotifyEmailList } from "@/lib/onboarding/notify-emails"
+import { useKeyedState } from "@/lib/react/use-keyed-state"
 
 type Props = {
   initialEmails: string[]
@@ -27,18 +28,14 @@ export function OnboardingNotifyRecipientsPanel({
   onEmailsChange,
 }: Props) {
   const { t } = useLanguage()
-  const [savedEmails, setSavedEmails] = useState(initialEmails)
-  const [draftEmail, setDraftEmail] = useState("")
-  const [showDraft, setShowDraft] = useState(initialEmails.length === 0)
+  // All three follow the loaded list and start over whenever it changes.
+  const listKey = initialEmails.join("\n")
+  const [savedEmails, setSavedEmails] = useKeyedState(initialEmails, listKey)
+  const [draftEmail, setDraftEmail] = useKeyedState("", listKey)
+  const [showDraft, setShowDraft] = useKeyedState(initialEmails.length === 0, listKey)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-
-  useEffect(() => {
-    setSavedEmails(initialEmails)
-    setShowDraft(initialEmails.length === 0)
-    setDraftEmail("")
-  }, [initialEmails.join("\n")])
 
   async function persistEmails(
     nextEmails: string[],
@@ -184,7 +181,9 @@ export function OnboardingNotifyRecipientsPanel({
                   ? t("integrationsOnboardingNotifyAddAnother")
                   : t("integrationsOnboardingNotifyEmails")}
               </span>
-              <p className="text-[12px] text-muted-foreground">{t("integrationsOnboardingNotifyHint")}</p>
+              <p className="text-[12px] text-muted-foreground">
+                {t("integrationsOnboardingNotifyHint")}
+              </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input
                   type="email"

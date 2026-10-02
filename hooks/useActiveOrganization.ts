@@ -1,16 +1,18 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 
 import { clearClientCaches, emitClientOrgChanged } from "@/lib/data/client-cache"
 import type { UserRole } from "@/lib/db/types"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 export type ActiveOrganization = {
   id: string
   slug: string
   name: string
   demoMode: boolean
+  logoUrl: string | null
 }
 
 type ActiveOrganizationState = {
@@ -68,27 +70,30 @@ export function useActiveOrganization(): ActiveOrganizationState {
     }
   }, [configured, isAuthenticated])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     if (authLoading) return
     void reload()
   }, [authLoading, reload])
 
-  const setActiveOrganization = useCallback(async (slug: string | null) => {
-    clearClientCaches()
+  const setActiveOrganization = useCallback(
+    async (slug: string | null) => {
+      clearClientCaches()
 
-    const response = await fetch("/api/admin/active-organization", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ slug }),
-    })
+      const response = await fetch("/api/admin/active-organization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ slug }),
+      })
 
-    if (!response.ok) return false
+      if (!response.ok) return false
 
-    await reload()
-    emitClientOrgChanged()
-    return true
-  }, [reload])
+      await reload()
+      emitClientOrgChanged()
+      return true
+    },
+    [reload]
+  )
 
   const needsClientSelection = role === "censio_admin" && !organization
 

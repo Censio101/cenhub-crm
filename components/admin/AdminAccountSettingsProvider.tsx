@@ -8,13 +8,16 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react"
 
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { subscribeToStorage } from "@/lib/react/storage-store"
 import {
   clearLegacyAdminAccountSettings,
-  DEFAULT_ADMIN_ACCOUNT_SETTINGS,
+  parseAdminAccountSettings,
   readAdminAccountSettings,
+  readAdminAccountSettingsRaw,
   writeAdminAccountSettings,
   type AdminAccountSettings,
 } from "@/lib/admin/admin-account-settings"
@@ -25,8 +28,7 @@ type AdminAccountSettingsContextValue = {
   syncing: boolean
 }
 
-const AdminAccountSettingsContext =
-  createContext<AdminAccountSettingsContextValue | null>(null)
+const AdminAccountSettingsContext = createContext<AdminAccountSettingsContextValue | null>(null)
 
 async function fetchAdminProfileFromServer(): Promise<{
   avatarUrl: string | null
@@ -47,16 +49,16 @@ async function fetchAdminProfileFromServer(): Promise<{
   }
 }
 
-export function AdminAccountSettingsProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export function AdminAccountSettingsProvider({ children }: { children: React.ReactNode }) {
   const { configured, user, isAuthenticated, loading: authLoading } = useSupabaseSession()
   const userId = user?.id ?? null
-  const [settings, setSettings] = useState<AdminAccountSettings>(
-    DEFAULT_ADMIN_ACCOUNT_SETTINGS
+  // Stored per user in localStorage; the server and first client render use the defaults.
+  const raw = useSyncExternalStore(
+    subscribeToStorage,
+    () => readAdminAccountSettingsRaw(userId),
+    () => null
   )
+  const settings = useMemo(() => parseAdminAccountSettings(raw), [raw])
   const [syncing, setSyncing] = useState(false)
   const syncedUserIdRef = useRef<string | null>(null)
 
@@ -65,17 +67,8 @@ export function AdminAccountSettingsProvider({
   }, [])
 
   useEffect(() => {
-    if (!userId) {
-      setSettings(DEFAULT_ADMIN_ACCOUNT_SETTINGS)
-      syncedUserIdRef.current = null
-      return
-    }
-
-    setSettings(readAdminAccountSettings(userId))
-  }, [userId])
-
-  useEffect(() => {
     if (!configured || authLoading || !isAuthenticated || !userId) {
+      if (!userId) syncedUserIdRef.current = null
       return
     }
 
@@ -98,7 +91,6 @@ export function AdminAccountSettingsProvider({
         }
 
         writeAdminAccountSettings(userId, next)
-        setSettings(next)
       })
       .finally(() => {
         if (active) setSyncing(false)
@@ -113,11 +105,7 @@ export function AdminAccountSettingsProvider({
     (patch: Partial<AdminAccountSettings>) => {
       if (!userId) return
 
-      setSettings((current) => {
-        const next = { ...current, ...patch }
-        writeAdminAccountSettings(userId, next)
-        return next
-      })
+      writeAdminAccountSettings(userId, { ...readAdminAccountSettings(userId), ...patch })
     },
     [userId]
   )
@@ -137,9 +125,7 @@ export function AdminAccountSettingsProvider({
 export function useAdminAccountSettings() {
   const context = useContext(AdminAccountSettingsContext)
   if (!context) {
-    throw new Error(
-      "useAdminAccountSettings must be used inside AdminAccountSettingsProvider"
-    )
+    throw new Error("useAdminAccountSettings must be used inside AdminAccountSettingsProvider")
   }
   return context
 }

@@ -4,10 +4,7 @@ import {
   organizationErrorResponse,
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
-import {
-  listCustomersForOrganization,
-  listMockCustomers,
-} from "@/lib/db/customers-repository"
+import { listCustomersForOrganization } from "@/lib/db/customers-repository"
 import { usesDatabaseLeads } from "@/lib/db/leads-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -15,7 +12,7 @@ import { createClient } from "@/lib/supabase/server"
 export async function GET() {
   try {
     if (!usesDatabaseLeads()) {
-      return NextResponse.json({ customers: listMockCustomers(), source: "mock" })
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 })
     }
 
     const ctx = await requireOrganizationContext()

@@ -165,7 +165,7 @@ export async function enablePartnerMetaAccount(
     organization = await createOrganization(supabase, {
       name: input.accountName.trim(),
       slug: input.slug,
-      demoMode: true,
+      demoMode: false,
     })
   }
 

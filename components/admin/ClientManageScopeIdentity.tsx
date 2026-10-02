@@ -21,14 +21,16 @@ export function ClientManageScopeIdentity({
   return (
     <div className="flex min-w-0 items-center gap-2 sm:gap-3">
       <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-xs font-semibold text-white"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-sm font-semibold text-white"
         aria-hidden="true"
       >
         {clientInitialsFromName(displayName)}
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-        <p className="font-mono text-xs text-muted-foreground">/{slug}</p>
+        <p className="truncate text-base font-semibold leading-tight text-foreground">
+          {displayName}
+        </p>
+        <p className="truncate font-mono text-xs text-muted-foreground">/{slug}</p>
       </div>
     </div>
   )

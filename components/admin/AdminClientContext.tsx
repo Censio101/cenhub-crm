@@ -15,12 +15,14 @@ import type { MetaConfig } from "@/components/admin/AdminMetaConfigForm"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import type { ProfileRow } from "@/lib/db/types"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 export type AdminClientOrganization = {
   id: string
   slug: string
   name: string
   demo_mode: boolean
+  logo_url: string | null
   leadCount: number
   userCount: number
   metaEnabled: boolean
@@ -38,13 +40,7 @@ type AdminClientContextValue = {
 
 const AdminClientContext = createContext<AdminClientContextValue | null>(null)
 
-export function AdminClientProvider({
-  slug,
-  children,
-}: {
-  slug: string
-  children: ReactNode
-}) {
+export function AdminClientProvider({ slug, children }: { slug: string; children: ReactNode }) {
   const { t } = useLanguage()
   const { setActiveOrganization } = useActiveOrganization()
   const syncedSlugRef = useRef<string | null>(null)
@@ -54,51 +50,53 @@ export function AdminClientProvider({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const reload = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) {
-      setLoading(true)
-      setError(null)
-    }
-    try {
-      const response = await fetch(
-        `/api/admin/organizations/${slug}/manage-bootstrap`,
-        { cache: "no-store" }
-      )
-
-      if (!response.ok) throw new Error(t("clientNotFound"))
-
-      const data = (await response.json()) as {
-        organization: AdminClientOrganization
-        users: ProfileRow[]
-        metaConfig: MetaConfig | null
-      }
-
-      setOrganization(data.organization)
-      setUsers(data.users ?? [])
-      setMetaConfig(
-        data.metaConfig
-          ? {
-              metaAdAccountId: data.metaConfig.metaAdAccountId ?? "",
-              metaPageId: data.metaConfig.metaPageId ?? "",
-              metaPixelId: data.metaConfig.metaPixelId ?? "",
-              enabled: Boolean(data.metaConfig.enabled),
-              metaSyncStatus: data.metaConfig.metaSyncStatus ?? "disabled",
-              metaSyncError: data.metaConfig.metaSyncError ?? null,
-              metaLastSyncedAt: data.metaConfig.metaLastSyncedAt ?? null,
-            }
-          : null
-      )
-    } catch (loadError) {
-      setOrganization(null)
-      setError(loadError instanceof Error ? loadError.message : t("errorLoadClient"))
-    } finally {
+  const reload = useCallback(
+    async (options?: { silent?: boolean }) => {
       if (!options?.silent) {
-        setLoading(false)
+        setLoading(true)
+        setError(null)
       }
-    }
-  }, [slug, t])
+      try {
+        const response = await fetch(`/api/admin/organizations/${slug}/manage-bootstrap`, {
+          cache: "no-store",
+        })
 
-  useEffect(() => {
+        if (!response.ok) throw new Error(t("clientNotFound"))
+
+        const data = (await response.json()) as {
+          organization: AdminClientOrganization
+          users: ProfileRow[]
+          metaConfig: MetaConfig | null
+        }
+
+        setOrganization(data.organization)
+        setUsers(data.users ?? [])
+        setMetaConfig(
+          data.metaConfig
+            ? {
+                metaAdAccountId: data.metaConfig.metaAdAccountId ?? "",
+                metaPageId: data.metaConfig.metaPageId ?? "",
+                metaPixelId: data.metaConfig.metaPixelId ?? "",
+                enabled: Boolean(data.metaConfig.enabled),
+                metaSyncStatus: data.metaConfig.metaSyncStatus ?? "disabled",
+                metaSyncError: data.metaConfig.metaSyncError ?? null,
+                metaLastSyncedAt: data.metaConfig.metaLastSyncedAt ?? null,
+              }
+            : null
+        )
+      } catch (loadError) {
+        setOrganization(null)
+        setError(loadError instanceof Error ? loadError.message : t("errorLoadClient"))
+      } finally {
+        if (!options?.silent) {
+          setLoading(false)
+        }
+      }
+    },
+    [slug, t]
+  )
+
+  useAsyncEffect(() => {
     void reload()
   }, [reload])
 
@@ -122,9 +120,7 @@ export function AdminClientProvider({
     [slug, organization, users, metaConfig, loading, error, reload]
   )
 
-  return (
-    <AdminClientContext.Provider value={value}>{children}</AdminClientContext.Provider>
-  )
+  return <AdminClientContext.Provider value={value}>{children}</AdminClientContext.Provider>
 }
 
 export function useOptionalAdminClient() {

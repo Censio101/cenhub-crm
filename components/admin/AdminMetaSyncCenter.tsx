@@ -1,14 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  MoreHorizontalIcon,
-  RefreshCwIcon,
-} from "lucide-react"
+import { useCallback, useMemo, useRef, useState } from "react"
+import { ChevronDownIcon, ChevronRightIcon, MoreHorizontalIcon, RefreshCwIcon } from "lucide-react"
 
+import { AdminCardSkeleton } from "@/components/admin/AdminListSkeleton"
 import {
   adminFieldClass,
   adminOutlineButtonClass,
@@ -25,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { MessageKey } from "@/lib/i18n"
 import { outfit } from "@/lib/fonts/app-fonts"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 import { cn } from "cn"
 
 type SyncFilter = "all" | "live" | "stale" | "needs-first-sync" | "error"
@@ -120,48 +117,7 @@ function MetaSyncCenterSkeleton() {
           </div>
         ))}
       </div>
-      <div className={cn(adminSectionCardClass, "overflow-hidden")}>
-        <div className="flex flex-col gap-3 border-b border-[#e8e0d8] px-5 py-4 sm:flex-row sm:items-center sm:px-6">
-          <div className="h-10 max-w-md flex-1 animate-pulse rounded-xl bg-muted" />
-          <div className="flex flex-wrap gap-2">
-            {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="h-8 w-16 animate-pulse rounded-full bg-muted" />
-            ))}
-          </div>
-          <div className="flex gap-2 sm:ml-auto">
-            <div className="h-10 w-28 animate-pulse rounded-[10px] bg-muted" />
-            <div className="h-10 w-24 animate-pulse rounded-[10px] bg-muted" />
-          </div>
-        </div>
-        <div className="divide-y divide-[#e8e0d8]">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div
-              key={index}
-              className="flex flex-wrap items-center gap-3 px-5 py-3.5 sm:px-6"
-            >
-              <div className="min-w-[140px] flex-1 space-y-2">
-                <div className="h-4 w-36 animate-pulse rounded-md bg-muted" />
-                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-              </div>
-              <div className="h-6 w-14 animate-pulse rounded-full bg-muted" />
-              <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-              <div className="ml-auto flex gap-2">
-                <div className="h-8 w-20 animate-pulse rounded-md bg-muted" />
-                <div className="size-8 animate-pulse rounded-md bg-muted" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className={cn(adminSectionCardClass, "px-5 py-4 sm:px-6")}>
-        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-        <div className="mt-3 space-y-2">
-          {Array.from({ length: 2 }, (_, index) => (
-            <div key={index} className="h-11 animate-pulse rounded-xl bg-muted" />
-          ))}
-        </div>
-      </div>
+      <AdminCardSkeleton rows={6} />
     </div>
   )
 }
@@ -201,8 +157,15 @@ export function AdminMetaSyncCenter() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const dataRef = useRef<OverviewPayload | null>(null)
 
-  useAutoDismiss(notice, useCallback(() => setNotice(null), []))
-  useAutoDismiss(error, useCallback(() => setError(null), []), 8000)
+  useAutoDismiss(
+    notice,
+    useCallback(() => setNotice(null), [])
+  )
+  useAutoDismiss(
+    error,
+    useCallback(() => setError(null), []),
+    8000
+  )
 
   const load = useCallback(async () => {
     setError(null)
@@ -225,7 +188,7 @@ export function AdminMetaSyncCenter() {
     }
   }, [t])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void load()
   }, [load])
 
@@ -361,25 +324,27 @@ export function AdminMetaSyncCenter() {
   }
 
   return (
-    <div
-      className={cn("admin-ui admin-meta-sync mx-auto flex w-full max-w-6xl flex-col gap-6")}
-    >
+    <div className={cn("admin-ui admin-meta-sync mx-auto flex w-full max-w-6xl flex-col gap-6")}>
       <header className={outfit.className}>
-        <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-          {t("brand")}
-        </p>
+        <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">{t("brand")}</p>
         <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
           {t("metaSyncTitle")}
         </h1>
       </header>
 
       {error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+        <p
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          role="alert"
+        >
           {error}
         </p>
       ) : null}
       {notice ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
+        <p
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          role="status"
+        >
           {notice}
         </p>
       ) : null}
@@ -477,7 +442,9 @@ export function AdminMetaSyncCenter() {
                     <th className="px-3 py-3 align-middle">{t("metaSyncColStatus")}</th>
                     <th className="px-3 py-3 align-middle">{t("metaSyncColLastSynced")}</th>
                     <th className="px-3 py-3 align-middle">{t("metaSyncColLastRun")}</th>
-                    <th className="px-5 py-3 text-right align-middle">{t("metaSyncSyncFromMeta")}</th>
+                    <th className="px-5 py-3 text-right align-middle">
+                      {t("metaSyncSyncFromMeta")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -539,9 +506,7 @@ export function AdminMetaSyncCenter() {
                           <td
                             className="px-3 py-3 align-middle capitalize"
                             title={
-                              client.lastRun
-                                ? formatAbsolute(client.lastRun.startedAt)
-                                : undefined
+                              client.lastRun ? formatAbsolute(client.lastRun.startedAt) : undefined
                             }
                           >
                             {client.lastRun
@@ -681,10 +646,7 @@ export function AdminMetaSyncCenter() {
                           {batchRunsLoading ? (
                             <ul className="grid gap-1.5" aria-busy="true">
                               {Array.from({ length: 2 }, (_, index) => (
-                                <li
-                                  key={index}
-                                  className="h-8 animate-pulse rounded-md bg-muted"
-                                />
+                                <li key={index} className="h-8 animate-pulse rounded-md bg-muted" />
                               ))}
                             </ul>
                           ) : batchRuns.length === 0 ? (
@@ -715,7 +677,12 @@ export function AdminMetaSyncCenter() {
           </div>
         </>
       ) : !loading && data === null && !error ? (
-        <div className={cn(adminSectionCardClass, "px-5 py-10 text-center text-sm text-muted-foreground")}>
+        <div
+          className={cn(
+            adminSectionCardClass,
+            "px-5 py-10 text-center text-sm text-muted-foreground"
+          )}
+        >
           <p>{t("metaSyncNoClients")}</p>
           <Button type="button" variant="outline" className="mt-4" onClick={() => void load()}>
             {t("refresh")}
@@ -736,7 +703,12 @@ export function AdminMetaSyncCenter() {
           >
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-base font-semibold">{t("metaSyncRunHistory")}</h3>
-              <Button type="button" variant="outline" size="sm" onClick={() => setHistorySlug(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setHistorySlug(null)}
+              >
                 {t("onboardingCloseDetail")}
               </Button>
             </div>
@@ -751,7 +723,10 @@ export function AdminMetaSyncCenter() {
                 <li className="text-muted-foreground">—</li>
               ) : (
                 historyRuns.map((run, index) => (
-                  <li key={`${run.started_at}-${index}`} className="rounded-lg bg-[#faf8f6] px-3 py-2">
+                  <li
+                    key={`${run.started_at}-${index}`}
+                    className="rounded-lg bg-[#faf8f6] px-3 py-2"
+                  >
                     <p className="font-medium capitalize">{run.status}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {formatAbsolute(run.started_at)}

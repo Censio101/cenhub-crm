@@ -1,5 +1,9 @@
-import { AdminClientDemoPanel } from "@/components/admin/AdminClientDemoPanel"
+import { redirect } from "next/navigation"
 
-export default function AdminClientDemoSettingsPage() {
-  return <AdminClientDemoPanel />
+type Props = { params: Promise<{ slug: string }> }
+
+/** Demo settings removed — send old bookmarks to client overview. */
+export default async function AdminClientDemoRedirect({ params }: Props) {
+  const { slug } = await params
+  redirect(`/admin/clients/${slug}`)
 }

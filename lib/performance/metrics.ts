@@ -58,6 +58,19 @@ export const METRICS: MetricDefinition[] = [
     compute: computeProfit,
   },
   {
+    id: "roas",
+    label: "ROAS",
+    explanation: "Omsætning / annonceforbrug",
+    description: "Return on ad spend. Omsætning divideret med annonceforbrug i perioden.",
+    format: "roas",
+    positiveDirection: "up",
+    showInKpiGrid: true,
+    showInChart: false,
+    showInTable: false,
+    nullHint: "Intet annonceforbrug i perioden",
+    compute: (totals) => safeDivide(totals.revenue, totals.adSpend),
+  },
+  {
     id: "cac",
     label: "CAC",
     explanation: "Pris pr. lukket kunde",
@@ -170,6 +183,7 @@ export function isMetricId(value: string): value is MetricId {
 export const KPI_CARD_ORDER = [
   "revenue",
   "profit",
+  "roas",
   "ltv",
   "customers",
   "leads",

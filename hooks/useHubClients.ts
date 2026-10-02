@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 
 import type { HubClient } from "@/lib/admin/hub-clients"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type UseHubClientsResult = {
   clients: HubClient[]
@@ -36,7 +37,7 @@ export function useHubClients(): UseHubClientsResult {
     }
   }, [])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void reload()
   }, [reload])
 

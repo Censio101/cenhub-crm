@@ -7,9 +7,11 @@ import {
 import {
   createLead,
   listLeadsForOrganization,
-  listMockLeads,
   usesDatabaseLeads,
 } from "@/lib/db/leads-repository"
+import { resolveClientDashboardSheet } from "@/lib/db/lead-sheet-repository"
+import { stripHiddenCustomFields } from "@/lib/lead-sheet/client-visibility"
+import { sanitizeNewLeadCustomFields } from "@/lib/lead-sheet/apply-custom-fields-patch"
 import type { Lead } from "@/lib/leads"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -17,7 +19,7 @@ import { createClient } from "@/lib/supabase/server"
 export async function GET() {
   try {
     if (!usesDatabaseLeads()) {
-      return NextResponse.json({ leads: listMockLeads(), source: "mock" })
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 })
     }
 
     const ctx = await requireOrganizationContext()
@@ -27,7 +29,12 @@ export async function GET() {
         ? createAdminClient()
         : await createClient()
 
-    const leads = await listLeadsForOrganization(supabase, ctx.organization.id)
+    const [allLeads, { hiddenCustomKeys }] = await Promise.all([
+      listLeadsForOrganization(supabase, ctx.organization.id),
+      resolveClientDashboardSheet(supabase, ctx.organization.id),
+    ])
+    // Values of hidden custom columns never leave the server.
+    const leads = allLeads.map((lead) => stripHiddenCustomFields(lead, hiddenCustomKeys))
 
     return NextResponse.json({
       leads,
@@ -53,10 +60,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { lead: Lead }
 
     if (!usesDatabaseLeads()) {
-      return NextResponse.json({
-        lead: body.lead,
-        source: "mock",
-      })
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 })
     }
 
     const ctx = await requireOrganizationContext()
@@ -66,8 +70,24 @@ export async function POST(request: Request) {
         ? createAdminClient()
         : await createClient()
 
-    const lead = await createLead(supabase, ctx.organization.id, body.lead)
-    return NextResponse.json({ lead, source: "supabase" })
+    // Validate against what the client can see: hidden required columns must not block them.
+    const { visible: leadSheet, hiddenCustomKeys } = await resolveClientDashboardSheet(
+      supabase,
+      ctx.organization.id
+    )
+    const normalized = sanitizeNewLeadCustomFields(body.lead.customFields, leadSheet)
+    if (normalized.error) {
+      return NextResponse.json({ error: normalized.error }, { status: 400 })
+    }
+
+    const lead = await createLead(supabase, ctx.organization.id, {
+      ...body.lead,
+      customFields: normalized.customFields,
+    })
+    return NextResponse.json({
+      lead: stripHiddenCustomFields(lead, hiddenCustomKeys),
+      source: "supabase",
+    })
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)
     if (orgResponse.status !== 500) return orgResponse

@@ -25,10 +25,11 @@ export async function GET(_request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
-    const [users, authUsersById] = await Promise.all([
-      listProfilesForOrganization(admin, organization.id),
-      listAuthUsersById(admin),
-    ])
+    const users = await listProfilesForOrganization(admin, organization.id)
+    const authUsersById = await getAuthUsersByIds(
+      admin,
+      users.map((user) => user.id)
+    )
 
     return NextResponse.json({
       users: users.map((user) => ({

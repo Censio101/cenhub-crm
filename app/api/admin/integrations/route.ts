@@ -11,8 +11,11 @@ import { validateNotifyEmailList } from "@/lib/onboarding/notify-emails"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 function toPublicResponse(settings: WorkspaceIntegrationsPublic) {
-  const { mailgunApiKey: _apiKey, ...rest } = settings
-  return rest
+  // The API key is write-only: it is never sent back to the browser.
+  const publicSettings: Omit<WorkspaceIntegrationsPublic, "mailgunApiKey"> &
+    Partial<Pick<WorkspaceIntegrationsPublic, "mailgunApiKey">> = { ...settings }
+  delete publicSettings.mailgunApiKey
+  return publicSettings
 }
 
 export async function GET() {

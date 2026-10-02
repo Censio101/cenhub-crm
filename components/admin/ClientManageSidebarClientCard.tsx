@@ -19,9 +19,7 @@ export function ClientManageSidebarClientCard({ routeSlug }: { routeSlug: string
   const isTransitioning = isPending
 
   const displaySlug = organization?.slug ?? routeSlug
-  const displayName = organization
-    ? formatClientDisplayName(organization.name)
-    : routeSlug
+  const displayName = organization ? formatClientDisplayName(organization.name) : routeSlug
 
   const href = adminClientSettingsBasePath(routeSlug)
   const shellClass = cn(

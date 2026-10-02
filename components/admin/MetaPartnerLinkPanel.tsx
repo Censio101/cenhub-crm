@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { MoreHorizontalIcon } from "lucide-react"
 
 import { MetaLinkedAccountPill } from "@/components/admin/MetaLinkedAccountPill"
@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "cn"
+import { useKeyedState } from "@/lib/react/use-keyed-state"
 
 export type LinkedMetaDisplay = {
   metaAdAccountId: string
@@ -54,15 +55,10 @@ export function MetaPartnerLinkPanel({
   const { t } = useLanguage()
   const [linking, setLinking] = useState(false)
   const [unlinking, setUnlinking] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useKeyedState(false, linkedAccount?.metaAdAccountId)
 
   const isLinked = Boolean(linkedAccount?.metaAdAccountId?.trim())
-  const showPicker =
-    mode === "pending" ? !draftSelection : !isLinked || isEditing
-
-  useEffect(() => {
-    setIsEditing(false)
-  }, [linkedAccount?.metaAdAccountId])
+  const showPicker = mode === "pending" ? !draftSelection : !isLinked || isEditing
 
   async function handleLink() {
     if (!organizationSlug || !draftSelection) return
@@ -88,9 +84,7 @@ export function MetaPartnerLinkPanel({
       onDraftSelectionChange(null)
       onLinked?.()
     } catch (linkError) {
-      onLinkError?.(
-        linkError instanceof Error ? linkError.message : t("onboardingMetaLinkError")
-      )
+      onLinkError?.(linkError instanceof Error ? linkError.message : t("onboardingMetaLinkError"))
     } finally {
       setLinking(false)
     }
@@ -127,7 +121,9 @@ export function MetaPartnerLinkPanel({
     <div className="grid gap-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-[13px] font-semibold text-foreground">{t("onboardingMetaLinkTitle")}</p>
+          <p className="text-[13px] font-semibold text-foreground">
+            {t("onboardingMetaLinkTitle")}
+          </p>
           <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
             {mode === "pending"
               ? t("onboardingMetaLinkOptional")

@@ -72,10 +72,11 @@ export function ClientPickerPage() {
     [pickerOrganizations, query]
   )
 
+  const activeSlug = activeOrg?.slug
   const activePickerOrg = useMemo(() => {
-    if (!activeOrg?.slug) return null
-    return pickerOrganizations.find((org) => org.slug === activeOrg.slug) ?? null
-  }, [activeOrg?.slug, pickerOrganizations])
+    if (!activeSlug) return null
+    return pickerOrganizations.find((org) => org.slug === activeSlug) ?? null
+  }, [activeSlug, pickerOrganizations])
 
   const activeDisplayName = activePickerOrg
     ? formatClientDisplayName(activePickerOrg.name)
@@ -186,17 +187,19 @@ export function ClientPickerPage() {
           </>
         ) : visible.length === 0 ? (
           <p className="px-6 py-16 text-center text-sm text-muted-foreground">
-            {pickerOrganizations.length === 0
-              ? t("clientPickerEmptyList")
-              : t("noMatchingClients")}
+            {pickerOrganizations.length === 0 ? t("clientPickerEmptyList") : t("noMatchingClients")}
           </p>
         ) : (
           <Table containerClassName="rounded-b-2xl">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="pl-5 sm:pl-6">{t("clientPickerColumnClient")}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t("clientPickerColumnSlug")}</TableHead>
-                <TableHead className="hidden md:table-cell">{t("clientPickerColumnStatus")}</TableHead>
+                <TableHead className="hidden sm:table-cell">
+                  {t("clientPickerColumnSlug")}
+                </TableHead>
+                <TableHead className="hidden md:table-cell">
+                  {t("clientPickerColumnStatus")}
+                </TableHead>
                 <TableHead className="w-[1%] whitespace-nowrap pr-5 text-right sm:pr-6">
                   {t("clientPickerColumnAction")}
                 </TableHead>
@@ -240,7 +243,9 @@ export function ClientPickerPage() {
                           <span
                             className={cn(
                               "flex min-w-0 items-center gap-1.5 font-medium",
-                              isActiveDashboard ? "font-semibold text-foreground" : "text-foreground"
+                              isActiveDashboard
+                                ? "font-semibold text-foreground"
+                                : "text-foreground"
                             )}
                             title={displayName}
                           >
@@ -302,7 +307,9 @@ export function ClientPickerPage() {
                           ) : (
                             <>
                               <span className="lg:hidden">{t("clientPickerOpenShort")}</span>
-                              <span className="hidden lg:inline">{t("openClientDashboardCta")}</span>
+                              <span className="hidden lg:inline">
+                                {t("openClientDashboardCta")}
+                              </span>
                             </>
                           )}
                         </Button>

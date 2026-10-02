@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { inviteOrCreateUser } from "@/lib/db/admin-users"
-import { seedDemoOrganizationData } from "@/lib/db/demo-organization-seed"
 import {
   createOrganization,
   resolveAvailableOrganizationSlug,
@@ -15,8 +14,6 @@ import type { OnboardingApplicationRow, OrganizationRow } from "@/lib/db/types"
 
 export type ProvisionClientOptions = {
   slugOverride?: string
-  demoMode?: boolean
-  seedDemo?: boolean
   approvedByUserId: string
 }
 
@@ -24,7 +21,6 @@ export type ProvisionClientResult = {
   organization: OrganizationRow
   application: OnboardingApplicationRow
   inviteSent: boolean
-  demoSeed?: Awaited<ReturnType<typeof seedDemoOrganizationData>>
 }
 
 async function contactEmailAlreadyLinkedToClientOrg(
@@ -82,12 +78,10 @@ export async function provisionClientFromApplication(
     options.slugOverride
   )
 
-  const demoMode = options.demoMode ?? false
-
   let organization = await createOrganization(admin, {
     name: application.company_name,
     slug,
-    demoMode,
+    demoMode: false,
   })
 
   organization = await updateOrganizationBySlug(admin, organization.slug, {
@@ -101,11 +95,6 @@ export async function provisionClientFromApplication(
     primary_contact_phone: application.contact_phone,
     website_url: application.website_url,
   })
-
-  let demoSeed: ProvisionClientResult["demoSeed"]
-  if (options.seedDemo || demoMode) {
-    demoSeed = await seedDemoOrganizationData(admin, organization.id)
-  }
 
   await inviteOrCreateUser(admin, {
     email: application.contact_email,
@@ -127,6 +116,5 @@ export async function provisionClientFromApplication(
     organization,
     application: updatedApplication,
     inviteSent: true,
-    demoSeed,
   }
 }

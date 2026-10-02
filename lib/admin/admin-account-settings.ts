@@ -1,3 +1,5 @@
+import { notifyStorageChange, readStorageRaw } from "@/lib/react/storage-store"
+
 export const LEGACY_ADMIN_ACCOUNT_SETTINGS_KEY = "censio-admin-account-settings"
 
 export type AdminAccountSettings = {
@@ -19,16 +21,10 @@ export function clearLegacyAdminAccountSettings() {
   window.localStorage.removeItem(LEGACY_ADMIN_ACCOUNT_SETTINGS_KEY)
 }
 
-export function readAdminAccountSettings(
-  userId?: string | null
-): AdminAccountSettings {
-  if (typeof window === "undefined" || !userId) {
-    return DEFAULT_ADMIN_ACCOUNT_SETTINGS
-  }
-
+/** Pure: turns the stored JSON (or nothing) into settings, filling defaults. */
+export function parseAdminAccountSettings(raw: string | null): AdminAccountSettings {
+  if (!raw) return DEFAULT_ADMIN_ACCOUNT_SETTINGS
   try {
-    const raw = window.localStorage.getItem(getAdminAccountSettingsStorageKey(userId))
-    if (!raw) return DEFAULT_ADMIN_ACCOUNT_SETTINGS
     const parsed = JSON.parse(raw) as Partial<AdminAccountSettings>
     return {
       displayName:
@@ -45,8 +41,28 @@ export function readAdminAccountSettings(
   }
 }
 
+/** Raw stored value for a user; used as the `useSyncExternalStore` snapshot. */
+export function readAdminAccountSettingsRaw(userId?: string | null): string | null {
+  if (!userId) return null
+  return readStorageRaw(getAdminAccountSettingsStorageKey(userId))
+}
+
+export function readAdminAccountSettings(
+  userId?: string | null
+): AdminAccountSettings {
+  return parseAdminAccountSettings(readAdminAccountSettingsRaw(userId))
+}
+
 export function writeAdminAccountSettings(userId: string, settings: AdminAccountSettings) {
   if (typeof window === "undefined") return
+  try {
+    writeAdminAccountSettingsUnnotified(userId, settings)
+  } finally {
+    notifyStorageChange()
+  }
+}
+
+function writeAdminAccountSettingsUnnotified(userId: string, settings: AdminAccountSettings) {
 
   try {
     window.localStorage.setItem(

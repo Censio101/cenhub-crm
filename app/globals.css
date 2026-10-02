@@ -134,6 +134,34 @@
   border-radius: 15px;
 }
 
+/**
+ * Skeleton shimmer: a soft moving highlight instead of a flat opacity pulse.
+ * A flat `animate-pulse` block on a filled background reads as a heavy,
+ * flashing solid rectangle — this sweeps a lighter band across a warm,
+ * low-contrast base so loading states feel light instead of "boxy".
+ */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+@utility skeleton-shimmer {
+  border-radius: var(--radius-md);
+  background-color: var(--muted);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, white 55%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
 @utility dashboard-chip {
   @apply h-9 rounded-lg border border-border bg-white text-foreground shadow-none;
 }

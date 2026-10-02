@@ -1,11 +1,7 @@
 import { cookies } from "next/headers"
 
 import { ACTIVE_ORG_COOKIE } from "@/lib/auth/active-organization"
-import {
-  allowUnauthenticatedDemoAccess,
-  getDemoOrgSlug,
-  isSupabaseConfigured,
-} from "@/lib/supabase/config"
+import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
@@ -106,26 +102,6 @@ export async function getSessionContext(): Promise<SessionContext> {
         isDemoFallback: false,
         isAdminViewingClient: false,
       }
-    }
-  }
-
-  if (allowUnauthenticatedDemoAccess()) {
-    const admin = createAdminClient()
-    const { data: organization } = await admin
-      .from("organizations")
-      .select("*")
-      .eq("slug", getDemoOrgSlug())
-      .maybeSingle()
-
-    return {
-      userId: null,
-      role: "client_admin",
-      organization: organization ?? null,
-      email: null,
-      fullName: null,
-      profile: null,
-      isDemoFallback: true,
-      isAdminViewingClient: false,
     }
   }
 

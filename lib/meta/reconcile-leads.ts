@@ -1,8 +1,5 @@
 import { getMetaConfigRow, listMetaSyncableOrganizations } from "@/lib/db/meta-config-repository"
-import { fetchMetaLeadsForOrganization } from "@/lib/meta/fetch-leads"
-import { ingestMetaLead } from "@/lib/meta/ingest-lead"
-import { decryptSecret } from "@/lib/meta/crypto"
-import { resolveMetaAccessToken } from "@/lib/meta/token"
+import { importMetaInstantLeads } from "@/lib/meta/meta-instant-forms-service"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 export async function reconcileOrganizationLeads(
@@ -21,30 +18,25 @@ export async function reconcileOrganizationLeads(
     }
   }
 
-  const resolved = resolveMetaAccessToken({
-    metaSystemUserToken: row.meta_system_user_token_encrypted
-      ? decryptSecret(row.meta_system_user_token_encrypted)
-      : "",
-    metaPageAccessToken: row.meta_page_access_token_encrypted
-      ? decryptSecret(row.meta_page_access_token_encrypted)
-      : "",
-  })
-  if (!resolved.token) {
-    return {
-      organizationId,
-      skipped: true,
-      reason: resolved.reason ?? "Missing Meta token.",
-      imported: 0,
-      scanned: 0,
-    }
-  }
-
-  let leads
   try {
-    leads = await fetchMetaLeadsForOrganization(row, {
-      withFields: true,
+    const result = await importMetaInstantLeads(supabase, organizationId, {
       daysBack: options.daysBack ?? 30,
     })
+    if (result.skipped) {
+      return {
+        organizationId,
+        skipped: true,
+        reason: result.reason ?? "No enabled forms.",
+        imported: 0,
+        scanned: 0,
+      }
+    }
+    return {
+      organizationId,
+      skipped: false,
+      scanned: result.scanned,
+      imported: result.imported,
+    }
   } catch (error) {
     const reason =
       error instanceof Error ? error.message : "Meta lead sync failed."
@@ -55,19 +47,6 @@ export async function reconcileOrganizationLeads(
       imported: 0,
       scanned: 0,
     }
-  }
-
-  let imported = 0
-  for (const lead of leads) {
-    const result = await ingestMetaLead(supabase, organizationId, lead)
-    if (result.created) imported += 1
-  }
-
-  return {
-    organizationId,
-    skipped: false,
-    scanned: leads.length,
-    imported,
   }
 }
 

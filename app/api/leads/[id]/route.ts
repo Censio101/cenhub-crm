@@ -5,12 +5,11 @@ import {
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
-import {
-  deleteLeadById,
-  listMockLeads,
-  updateLeadById,
-  usesDatabaseLeads,
-} from "@/lib/db/leads-repository"
+import { deleteLeadById, updateLeadById, usesDatabaseLeads } from "@/lib/db/leads-repository"
+import { resolveClientDashboardSheet } from "@/lib/db/lead-sheet-repository"
+import { stripHiddenCustomFields } from "@/lib/lead-sheet/client-visibility"
+import { applyCustomFieldsToPatch } from "@/lib/lead-sheet/apply-custom-fields-patch"
+import type { LeadRow } from "@/lib/db/types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
@@ -24,10 +23,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const patch = (await request.json()) as LeadPatch
 
     if (!usesDatabaseLeads()) {
-      return NextResponse.json({
-        lead: listMockLeads().find((lead) => lead.id === id) ?? null,
-        source: "mock",
-      })
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 })
     }
 
     const session = await requireOrganizationContext()
@@ -37,14 +33,40 @@ export async function PATCH(request: Request, context: RouteContext) {
         ? createAdminClient()
         : await createClient()
 
+    // Edits are checked against the visible columns: a client cannot change a hidden field.
+    const { visible: leadSheet, hiddenCustomKeys } = await resolveClientDashboardSheet(
+      supabase,
+      session.organization.id
+    )
+
+    let safePatch = patch
+    if (patch.customFields !== undefined) {
+      const { data: row } = await supabase
+        .from("leads")
+        .select("custom_fields")
+        .eq("id", id)
+        .eq("organization_id", session.organization.id)
+        .maybeSingle()
+
+      const existing = (row as Pick<LeadRow, "custom_fields"> | null)?.custom_fields ?? {}
+      const applied = applyCustomFieldsToPatch(patch, existing, leadSheet)
+      if (applied.error) {
+        return NextResponse.json({ error: applied.error }, { status: 400 })
+      }
+      safePatch = applied.patch
+    }
+
     const lead = await updateLeadById(
       supabase,
       session.organization.id,
       id,
-      patch
+      safePatch
     )
 
-    return NextResponse.json({ lead, source: "supabase" })
+    return NextResponse.json({
+      lead: stripHiddenCustomFields(lead, hiddenCustomKeys),
+      source: "supabase",
+    })
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)
     if (orgResponse.status !== 500) return orgResponse
@@ -58,7 +80,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const { id } = await context.params
 
     if (!usesDatabaseLeads()) {
-      return NextResponse.json({ ok: true, source: "mock" })
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 })
     }
 
     const session = await requireOrganizationContext()

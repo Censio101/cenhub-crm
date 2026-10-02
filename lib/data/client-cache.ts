@@ -1,10 +1,12 @@
 import type { Customer } from "@/lib/customers"
 import type { Lead } from "@/lib/leads"
+import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 
 type LeadsCacheEntry = {
   leads: Lead[]
   source: "mock" | "supabase"
   organizationSlug?: string | null
+  leadSheet?: ResolvedLeadSheetConfig | null
 }
 
 type CustomersCacheEntry = {
@@ -24,6 +26,10 @@ let customersCache: CustomersCacheEntry | null = null
 let adSpendCache: AdSpendCacheEntry | null = null
 
 export function getLeadsCache(): LeadsCacheEntry | null {
+  if (leadsCache?.source === "mock") {
+    leadsCache = null
+    return null
+  }
   return leadsCache
 }
 
@@ -43,10 +49,18 @@ export function setAdSpendCache(
 }
 
 export function hasLeadsCache(): boolean {
+  if (leadsCache?.source === "mock") {
+    leadsCache = null
+    return false
+  }
   return leadsCache !== null
 }
 
 export function getCustomersCache(): CustomersCacheEntry | null {
+  if (customersCache?.source === "mock") {
+    customersCache = null
+    return null
+  }
   return customersCache
 }
 
@@ -55,6 +69,10 @@ export function setCustomersCache(entry: CustomersCacheEntry) {
 }
 
 export function hasCustomersCache(): boolean {
+  if (customersCache?.source === "mock") {
+    customersCache = null
+    return false
+  }
   return customersCache !== null
 }
 

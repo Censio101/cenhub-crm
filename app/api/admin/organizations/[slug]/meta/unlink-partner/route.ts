@@ -16,6 +16,8 @@ export async function POST(_request: Request, context: RouteContext) {
     const { slug } = await context.params
     const admin = createAdminClient()
     const result = await unlinkPartnerAdAccountFromOrganization(admin, slug)
+    // The partner list marks accounts as linked/free; drop the cached copy.
+    clearPartnerAdAccountsCache()
     return NextResponse.json({ ok: true, ...result })
   } catch (error) {
     if (error instanceof Error) {

@@ -8,7 +8,13 @@ export function AdminWorkspaceShell({ children }: { children: React.ReactNode })
   return (
     <div className={cn("flex min-h-full flex-1 flex-col md:flex-row", poppins.className)}>
       <AdminSidebar />
-      <div className="min-h-full min-w-0 flex-1 overflow-x-clip px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+      {/* Extra top inset on very wide screens only — lines up with the sidebar nav, not vertical centering. */}
+      <div
+        className={cn(
+          "min-h-full min-w-0 flex-1 overflow-x-clip px-4 py-6 sm:px-6 lg:px-8 xl:px-10",
+          "2xl:pt-[4.75rem] 2xl:pb-8"
+        )}
+      >
         {children}
       </div>
     </div>

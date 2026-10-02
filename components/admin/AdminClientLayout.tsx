@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation"
 import { type ReactNode, useState } from "react"
 import {
   ExternalLinkIcon,
-  FlaskConicalIcon,
   MegaphoneIcon,
   UserPlusIcon,
   UsersIcon,
@@ -74,7 +73,14 @@ function OverviewSectionsSkeleton() {
   )
 }
 
-function AdminClientLayoutSkeleton({ isOverview }: { isOverview: boolean }) {
+function AdminClientLayoutSkeleton({
+  isOverview,
+  isMetaInstantForms,
+}: {
+  isOverview: boolean
+  isMetaInstantForms: boolean
+}) {
+  const contentShellClass = isMetaInstantForms ? heroWidthClass : contentWidthClass
   return (
     <div className="flex w-full flex-col gap-5" aria-busy="true" aria-live="polite">
       {isOverview ? (
@@ -99,7 +105,7 @@ function AdminClientLayoutSkeleton({ isOverview }: { isOverview: boolean }) {
       {isOverview ? (
         <OverviewSectionsSkeleton />
       ) : (
-        <div className={cn(contentWidthClass, "h-80 animate-pulse rounded-2xl bg-muted/80")} />
+        <div className={cn(contentShellClass, "h-80 animate-pulse rounded-2xl bg-muted/80")} />
       )}
     </div>
   )
@@ -112,7 +118,12 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
   const { slug, organization, error, loading } = useAdminClient()
   const { isReady, isSwitching, showSwitchingUI, switchingSlug } = useAdminClientPending()
   const [openingDashboard, setOpeningDashboard] = useState(false)
-  const isOverview = adminClientSection(pathname) === "overview"
+  const section = adminClientSection(pathname)
+  const isOverview = section === "overview"
+  const isMetaInstantForms = section === "meta-instant-forms"
+  const isLeadSheet = section === "lead-sheet"
+  const isIndustries = section === "industries"
+  const isFunnels = section === "funnels"
 
   if (!organization && !loading && !isSwitching) {
     return (
@@ -130,7 +141,10 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
             ? t("switchingClient", { name: switchingSlug })
             : t("loadingClient")}
         </p>
-        <AdminClientLayoutSkeleton isOverview={isOverview} />
+        <AdminClientLayoutSkeleton
+          isOverview={isOverview}
+          isMetaInstantForms={isMetaInstantForms}
+        />
       </div>
     )
   }
@@ -153,7 +167,9 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                   {displayName}
                 </h1>
-                <p className="mt-1 font-mono text-sm text-muted-foreground">/{organization!.slug}</p>
+                <p className="mt-1 font-mono text-sm text-muted-foreground">
+                  /{organization!.slug}
+                </p>
               </div>
             </div>
             <Button
@@ -181,13 +197,7 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
             </p>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard
-              icon={<FlaskConicalIcon className="size-[18px]" />}
-              label={t("clientStatDemo")}
-              value={organization!.demo_mode ? t("demoActive") : t("liveData")}
-              tone={organization!.demo_mode ? "warning" : "success"}
-            />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard
               icon={<MegaphoneIcon className="size-[18px]" />}
               label={t("clientStatMeta")}
@@ -211,7 +221,17 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
       ) : null}
 
       <div
-        className={isOverview ? cn(contentWidthClass, "max-w-4xl") : contentWidthClass}
+        className={
+          isOverview
+            ? cn(contentWidthClass, "max-w-4xl")
+            : isMetaInstantForms
+              ? heroWidthClass
+              : isLeadSheet || isFunnels || section === "import"
+                ? heroWidthClass
+                : isIndustries || section === "services"
+                  ? cn(contentWidthClass, "max-w-4xl")
+                  : contentWidthClass
+        }
       >
         {children}
       </div>

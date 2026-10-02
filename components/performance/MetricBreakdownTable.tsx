@@ -1,4 +1,8 @@
+"use client"
+
 import { cn } from "cn"
+
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 
 import {
   Table,
@@ -9,11 +13,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  DANISH_MONTHS_SHORT,
   formatCurrencyDKK,
   formatInteger,
+  formatMonthLabel,
   formatPercentage,
 } from "@/lib/performance/format"
+import { localizeMetric } from "@/lib/performance/metric-i18n"
 import type {
   MetricDefinition,
   PerformanceBucket,
@@ -59,11 +64,13 @@ export function MetricBreakdownTable({
   totalTotals?: PeriodTotals
   showTotal?: boolean
 }) {
+  const { locale, t } = useLanguage()
+  const localizedMetrics = metrics.map((metric) => localizeMetric(metric, t))
   const columns = monthBuckets.map((bucket) => {
     const date = new Date(`${bucket.start}T00:00:00`)
     return {
       key: monthKey(bucket),
-      label: DANISH_MONTHS_SHORT[date.getMonth()],
+      label: formatMonthLabel(date, locale),
       bucket,
     }
   })
@@ -75,7 +82,7 @@ export function MetricBreakdownTable({
           <TableHead
             className={cn(headerCellClass, nameHeaderClass, "text-left")}
           >
-            Nøgletal
+            {t("dashboardMetricColumn")}
           </TableHead>
           {columns.map((column) => (
             <TableHead
@@ -89,13 +96,13 @@ export function MetricBreakdownTable({
             <TableHead
               className={cn(headerCellClass, totalHeaderClass, "text-right")}
             >
-              Total
+              {t("dashboardTotalColumn")}
             </TableHead>
           ) : null}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {metrics.map((metric) => (
+        {localizedMetrics.map((metric) => (
           <TableRow key={metric.id} className="hover:bg-transparent">
             <TableCell className={cn(nameCellClass, "py-3")}>
               {metric.label}

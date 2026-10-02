@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 
-import {
-  adminErrorResponse,
-  requireCensioAdmin,
-} from "@/lib/auth/require-censio-admin"
+import { adminErrorResponse, requireCensioAdmin } from "@/lib/auth/require-censio-admin"
+import { serializeFunnel } from "@/lib/db/funnel-dto"
 import {
   deleteLeadFunnel,
   generateWebhookSecret,
@@ -12,25 +10,12 @@ import {
 } from "@/lib/db/lead-funnels-repository"
 import type { LeadFunnelPlatform } from "@/lib/db/types"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
+import { validateFunnelFieldMapping } from "@/lib/leads/funnel-mapping"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type RouteContext = {
   params: Promise<{ slug: string; funnelId: string }>
-}
-
-function serializeFunnel(row: NonNullable<Awaited<ReturnType<typeof getLeadFunnelById>>>) {
-  return {
-    id: row.id,
-    name: row.name,
-    slug: row.slug,
-    platform: row.platform,
-    enabled: row.enabled,
-    fieldMapping: row.field_mapping ?? {},
-    webhookSecret: row.webhook_secret,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
@@ -44,6 +29,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       fieldMapping?: FieldMapping
       enabled?: boolean
       regenerateSecret?: boolean
+      dataFormat?: "ours" | "own"
     }
 
     const admin = createAdminClient()
@@ -57,13 +43,26 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Funnel not found" }, { status: 404 })
     }
 
+    let fieldMapping: FieldMapping | undefined
+    if (body.dataFormat !== undefined && body.dataFormat !== "ours" && body.dataFormat !== "own") {
+      return NextResponse.json({ error: "Unknown data format" }, { status: 400 })
+    }
+    if (body.fieldMapping !== undefined) {
+      const validation = validateFunnelFieldMapping(body.fieldMapping)
+      if (!validation.ok) {
+        return NextResponse.json({ error: validation.error }, { status: 400 })
+      }
+      fieldMapping = validation.mapping
+    }
+
     const funnel = await updateLeadFunnel(admin, funnelId, organization.id, {
       name: body.name,
       slug: body.slug,
       platform: body.platform,
-      fieldMapping: body.fieldMapping,
+      fieldMapping,
       enabled: body.enabled,
       webhookSecret: body.regenerateSecret ? generateWebhookSecret() : undefined,
+      dataFormat: body.dataFormat,
     })
 
     return NextResponse.json({ funnel: serializeFunnel(funnel) })

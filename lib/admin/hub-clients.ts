@@ -6,6 +6,7 @@ import {
   listOrganizationsWithStats,
   type OrganizationSummary,
 } from "@/lib/db/organizations-repository"
+import { countMetaFormsNeedingRemapByOrganization } from "@/lib/db/meta-lead-forms-repository"
 import { fetchPartnerAdAccounts } from "@/lib/meta/ad-accounts"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
@@ -13,6 +14,14 @@ import type { OrganizationRow } from "@/lib/db/types"
 
 function normalizeAdAccountId(value: string): string {
   return String(value || "").trim().replace(/^act_/i, "")
+}
+
+/** Which lead sheet a client uses, for the client directory. */
+export type HubClientLeadSheet = {
+  name: string
+  isSystemDefault: boolean
+  /** True for a sheet that belongs to this client only. */
+  isClientOwned: boolean
 }
 
 export type HubClient = {
@@ -31,6 +40,12 @@ export type HubClient = {
   status: MetaClientStatus | "needs-setup"
   metaAdAccountId: string
   currency: string | null
+  /** Only filled by the picker list. */
+  leadSheet?: HubClientLeadSheet | null
+  /** The client's lead sheet changed while webhooks existed and is still to be reviewed. */
+  webhookStale?: boolean
+  /** Mapped Meta forms saved before the lead sheet last changed. */
+  metaRemapCount?: number
 }
 
 export function isHubTestAccount(name: string): boolean {
@@ -42,11 +57,9 @@ type HubClientFilterInput = Pick<
   "metaEnabled" | "inApp" | "demo_mode" | "partnerOnly"
 >
 
-/** Aktiveret: Meta is enabled, or an in-app demo client. */
+/** Aktiveret: Meta is enabled for this client. */
 export function hubClientInEnabledTab(client: HubClientFilterInput): boolean {
-  if (client.metaEnabled) return true
-  if (client.inApp && !client.partnerOnly && client.demo_mode) return true
-  return false
+  return client.metaEnabled
 }
 
 /** Skal sættes op: unlinked BM accounts and in-app clients without Meta enabled. */
@@ -95,8 +108,26 @@ export async function listInAppClientsForPicker(supabase: SupabaseClient): Promi
 
   if (error) throw error
 
+  const { data: templateRows, error: templateError } = await supabase
+    .from("lead_sheet_templates")
+    .select("id, name, is_system_default, organization_id")
+  if (templateError) throw templateError
+
+  const templates = (templateRows ?? []) as Array<{
+    id: string
+    name: string
+    is_system_default: boolean
+    organization_id: string | null
+  }>
+  const templateById = new Map(templates.map((tpl) => [tpl.id, tpl]))
+  const defaultTemplate = templates.find((tpl) => tpl.is_system_default) ?? null
+
   const orgById = new Map(
     ((organizations ?? []) as OrganizationRow[]).map((org) => [org.id, org])
+  )
+  const remapCounts = await countMetaFormsNeedingRemapByOrganization(
+    supabase,
+    (organizations ?? []) as OrganizationRow[]
   )
 
   const clients: HubClient[] = []
@@ -119,6 +150,21 @@ export async function listInAppClientsForPicker(supabase: SupabaseClient): Promi
       status: meta.status,
       metaAdAccountId: meta.metaAdAccountId,
       currency: null,
+      leadSheet: (() => {
+        // A client without an explicit template uses the system default.
+        const tpl =
+          (org.lead_sheet_template_id ? templateById.get(org.lead_sheet_template_id) : null) ??
+          defaultTemplate
+        return tpl
+          ? {
+              name: tpl.name,
+              isSystemDefault: tpl.is_system_default,
+              isClientOwned: tpl.organization_id === org.id,
+            }
+          : null
+      })(),
+      webhookStale: Boolean(org.webhook_payload_stale_since),
+      metaRemapCount: remapCounts.get(org.id) ?? 0,
     })
   }
 

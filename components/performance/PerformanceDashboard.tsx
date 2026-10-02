@@ -72,7 +72,7 @@ export function PerformanceDashboard() {
     view.comparisonEnabled && view.comparisonRange && data?.comparison
       ? view.comparisonMode === "custom"
         ? t("dashboardChartBefore")
-        : comparisonSeriesLabel(view.comparisonRange)
+        : comparisonSeriesLabel(view.comparisonRange, t("dashboardChartComparison"))
       : null
 
   if (needsClientSelection) {
@@ -112,7 +112,7 @@ export function PerformanceDashboard() {
 
       {error ? (
         <p className="text-xs text-muted-foreground" role="status">
-          {error}
+          {t(error)}
         </p>
       ) : null}
 

@@ -1,6 +1,6 @@
 export type UserRole = "censio_admin" | "client_admin" | "client_user"
 
-export type LeadSource = "demo" | "meta" | "website" | "landing" | "manual"
+export type LeadSource = "demo" | "meta" | "website" | "landing" | "manual" | "import"
 
 export type OrganizationRow = {
   id: string
@@ -8,6 +8,11 @@ export type OrganizationRow = {
   name: string
   logo_url: string | null
   demo_mode: boolean
+  lead_sheet_template_id?: string | null
+  /** Set when the lead sheet changed while webhooks existed; cleared once reviewed. */
+  webhook_payload_stale_since?: string | null
+  /** When this client's lead sheet last changed; Meta form mappings older than this need review. */
+  lead_sheet_changed_at?: string | null
   cvr?: string | null
   address?: string | null
   zip_code?: string | null
@@ -73,6 +78,14 @@ export type LeadFunnelRow = {
   webhook_secret: string
   field_mapping: Record<string, string>
   enabled: boolean
+  /** Field names the sender uses: `ours` ignores any saved mapping, `own` applies it. */
+  data_format: "ours" | "own"
+  /** Set while the webhook waits for one request to use as a sample (no lead is created). */
+  sample_listening_until: string | null
+  sample_payload: Record<string, unknown> | null
+  sample_received_at: string | null
+  /** Why the last request could not be used as a sample. */
+  sample_error: string | null
   created_at: string
   updated_at: string
 }
@@ -82,6 +95,7 @@ export type LeadRow = {
   organization_id: string
   legacy_id: string | null
   lead_date: string
+  lead_time: string | null
   full_name: string
   email: string
   phone: string
@@ -94,11 +108,16 @@ export type LeadRow = {
   service_legacy: string
   platform: string
   meta_ad_id: string
+  meta_form_id: string | null
+  meta_extra: Record<string, string>
   status: string
   sales_price: number | null
   profit: number | null
   source: LeadSource
   locked_fields: string[]
+  custom_fields: Record<string, unknown>
+  /** The import that created this lead, if any (used to undo an import). */
+  import_id: string | null
   created_at: string
   updated_at: string
 }

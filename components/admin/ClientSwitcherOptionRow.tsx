@@ -40,16 +40,10 @@ export function ClientSwitcherOptionRow({
         )}
       >
         {isSwitching ? (
-          <Loader2Icon
-            className="size-4 shrink-0 animate-spin text-primary"
-            aria-hidden="true"
-          />
+          <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" aria-hidden="true" />
         ) : (
           <CheckIcon
-            className={cn(
-              "size-4 shrink-0 text-primary",
-              isActive ? "opacity-100" : "opacity-0"
-            )}
+            className={cn("size-4 shrink-0 text-primary", isActive ? "opacity-100" : "opacity-0")}
             aria-hidden="true"
           />
         )}

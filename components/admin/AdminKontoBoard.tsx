@@ -7,19 +7,11 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
-import {
-  createClient,
-  isBrowserSupabaseConfigured,
-} from "@/lib/supabase/client"
+import { createClient, isBrowserSupabaseConfigured } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSyncedState } from "@/lib/react/use-keyed-state"
 
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
@@ -34,7 +26,10 @@ export function AdminKontoBoard() {
   const { settings, updateSettings } = useAdminAccountSettings()
   const { user, configured } = useSupabaseSession()
   const [authProfile, setAuthProfile] = useState<AuthProfile>({ email: null, fullName: null })
-  const [displayName, setDisplayName] = useState(settings.displayName)
+  // Follows the saved name, or the sign-in profile name when none is saved yet.
+  const [displayName, setDisplayName] = useSyncedState(
+    settings.displayName || authProfile.fullName || ""
+  )
   const [nameSaved, setNameSaved] = useState(false)
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -70,9 +65,7 @@ export function AdminKontoBoard() {
       setPhotoMessage(dataUrl ? t("profilePhotoSaved") : t("profilePhotoRemoved"))
     } catch (saveError) {
       updateSettings({ profileImage: previousImage })
-      setPhotoError(
-        saveError instanceof Error ? saveError.message : t("profilePhotoSaveError")
-      )
+      setPhotoError(saveError instanceof Error ? saveError.message : t("profilePhotoSaveError"))
     } finally {
       setPhotoSaving(false)
     }
@@ -99,23 +92,11 @@ export function AdminKontoBoard() {
     }
   }, [user?.email])
 
-  useEffect(() => {
-    if (settings.displayName) {
-      setDisplayName(settings.displayName)
-      return
-    }
-    if (authProfile.fullName) {
-      setDisplayName(authProfile.fullName)
-    }
-  }, [settings.displayName, authProfile.fullName])
-
   const loginEmail = authProfile.email ?? user?.email ?? ""
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-        {t("brand")}
-      </p>
+      <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">{t("brand")}</p>
       <h1 className="mt-1 text-2xl font-medium tracking-tight text-foreground sm:text-[1.75rem]">
         {t("adminAccountTitle")}
       </h1>
@@ -204,9 +185,7 @@ export function AdminKontoBoard() {
           </CardHeader>
           <CardContent>
             <label className="grid gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">
-                {t("emailLabel")}
-              </span>
+              <span className="text-xs font-medium text-muted-foreground">{t("emailLabel")}</span>
               <input
                 type="email"
                 readOnly

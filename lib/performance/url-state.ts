@@ -11,7 +11,6 @@ import type { CustomerSegmentId } from "./customer-segments"
 import { isFunnelId } from "./funnels"
 import type { FunnelId } from "./funnels"
 import { isMetricId } from "./metrics"
-import { isServiceId } from "./services"
 import type { ServiceId } from "./services"
 import type {
   ComparisonMode,
@@ -19,6 +18,9 @@ import type {
   DateRange,
   MetricId,
 } from "./types"
+
+/** Service slugs are lower-case words with hyphens (see the services table check). */
+const SERVICE_SLUG_RE = /^[a-z0-9-]{2,64}$/
 
 export type DashboardViewState = {
   preset: DatePreset
@@ -76,7 +78,7 @@ export function parseDashboardParams(
 
   const serviceParam = params.get("service")
   const service: ServiceId | null =
-    serviceParam && isServiceId(serviceParam) ? serviceParam : null
+    serviceParam && SERVICE_SLUG_RE.test(serviceParam) ? serviceParam : null
 
   const funnelParam = params.get("funnel")
   const funnel: FunnelId | null =

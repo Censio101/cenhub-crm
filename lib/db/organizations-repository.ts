@@ -133,7 +133,7 @@ export async function createOrganization(
     .insert({
       name: input.name.trim(),
       slug,
-      demo_mode: input.demoMode ?? true,
+      demo_mode: input.demoMode ?? false,
     })
     .select("*")
     .single()
@@ -147,6 +147,7 @@ export type OrganizationDetailsPatch = Partial<
     OrganizationRow,
     | "name"
     | "demo_mode"
+    | "logo_url"
     | "cvr"
     | "address"
     | "zip_code"
@@ -210,6 +211,22 @@ export async function updateOrganizationBySlug(
     .from("organizations")
     .update(patch)
     .eq("slug", slug)
+    .select("*")
+    .single()
+
+  if (error) throw error
+  return data as OrganizationRow
+}
+
+export async function updateOrganizationById(
+  supabase: SupabaseClient,
+  id: string,
+  patch: OrganizationDetailsPatch
+): Promise<OrganizationRow> {
+  const { data, error } = await supabase
+    .from("organizations")
+    .update(patch)
+    .eq("id", id)
     .select("*")
     .single()
 

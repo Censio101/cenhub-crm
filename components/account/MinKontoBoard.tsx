@@ -6,13 +6,10 @@ import { ProfilePhotoField } from "@/components/account/ProfilePhotoField"
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { cn } from "cn"
+import { useSyncedState } from "@/lib/react/use-keyed-state"
 
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
@@ -20,29 +17,39 @@ const fieldClass =
 export function MinKontoBoard() {
   const { t } = useLanguage()
   const { settings, updateSettings } = useAccountSettings()
-  const [displayName, setDisplayName] = useState(settings.displayName)
+  const { configured, isAuthenticated, user } = useSupabaseSession()
+  const useAuthEmail = configured && isAuthenticated
+  const [loginEmail, setLoginEmail] = useState("")
+  const [displayName, setDisplayName] = useSyncedState(settings.displayName)
   const [nameSaved, setNameSaved] = useState(false)
-  const [email, setEmail] = useState(settings.email)
+  const [email, setEmail] = useSyncedState(settings.email)
   const [emailSaved, setEmailSaved] = useState(false)
+
+  useEffect(() => {
+    if (!useAuthEmail) return
+    let cancelled = false
+    void fetch("/api/auth/me", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled) return
+        setLoginEmail(String(data?.email ?? user?.email ?? ""))
+      })
+      .catch(() => {
+        if (!cancelled) setLoginEmail(user?.email ?? "")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [useAuthEmail, user?.email])
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setDisplayName(settings.displayName)
-  }, [settings.displayName])
-
-  useEffect(() => {
-    setEmail(settings.email)
-  }, [settings.email])
-
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-        {t("brand")}
-      </p>
+      <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">{t("brand")}</p>
       <h1 className="mt-1 text-2xl font-medium tracking-tight text-foreground sm:text-[1.75rem]">
         {t("minAccount")}
       </h1>
@@ -106,40 +113,54 @@ export function MinKontoBoard() {
 
         <Card className="dashboard-card">
           <CardHeader>
-            <CardTitle>{t("changeEmailTitle")}</CardTitle>
-            <CardDescription>{t("changeEmailDescription")}</CardDescription>
+            <CardTitle>
+              {useAuthEmail ? t("workspaceLoginEmailTitle") : t("changeEmailTitle")}
+            </CardTitle>
+            <CardDescription>
+              {useAuthEmail ? t("workspaceLoginEmailDescription") : t("changeEmailDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form
-              className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
-              onSubmit={(event) => {
-                event.preventDefault()
-                const next = email.trim().toLowerCase()
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) return
-                updateSettings({ email: next })
-                setEmailSaved(true)
-              }}
-            >
+            {useAuthEmail ? (
               <label className="grid gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {t("emailLabel")}
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">{t("emailLabel")}</span>
                 <input
                   type="email"
-                  required
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value)
-                    setEmailSaved(false)
-                  }}
-                  className={fieldClass}
+                  readOnly
+                  value={loginEmail}
+                  className={cn(fieldClass, "bg-[#faf8f6] text-foreground")}
                 />
               </label>
-              <Button type="submit" className="h-11 rounded-[5px] px-4">
-                {t("saveEmail")}
-              </Button>
-            </form>
-            {emailSaved ? (
+            ) : (
+              <form
+                className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const next = email.trim().toLowerCase()
+                  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) return
+                  updateSettings({ email: next })
+                  setEmailSaved(true)
+                }}
+              >
+                <label className="grid gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">{t("emailLabel")}</span>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value)
+                      setEmailSaved(false)
+                    }}
+                    className={fieldClass}
+                  />
+                </label>
+                <Button type="submit" className="h-11 rounded-[5px] px-4">
+                  {t("saveEmail")}
+                </Button>
+              </form>
+            )}
+            {!useAuthEmail && emailSaved ? (
               <p className="mt-3 text-sm text-success-foreground">{t("emailUpdated")}</p>
             ) : null}
           </CardContent>

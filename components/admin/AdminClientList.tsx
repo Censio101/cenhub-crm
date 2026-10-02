@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
+import { FormEvent, useCallback, useMemo, useState } from "react"
 import {
   ExternalLinkIcon,
   LayoutGridIcon,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { AdminHubToolbar } from "@/components/admin/AdminHubToolbar"
+import { MetaBrandIcon } from "@/components/admin/MetaBrandIcon"
 import {
   clientInitialsFromName,
   formatClientDisplayName,
@@ -30,6 +31,8 @@ import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { outfit, poppins } from "@/lib/fonts/app-fonts"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
+import { useLocalStorageValue } from "@/lib/react/use-local-storage-state"
 
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
@@ -43,6 +46,10 @@ const FILTER_LABELS: Record<ClientFilter, MessageKey> = {
   enabled: "filterEnabled",
   "needs-setup": "filterNeedsSetup",
   all: "filterAll",
+}
+
+function parseStoredView(raw: string | null): ClientView {
+  return raw === "list" ? "list" : "cards"
 }
 
 const VIEW_STORAGE_KEY = "admin-clients-view"
@@ -110,7 +117,6 @@ export function AdminClientList() {
   const [clients, setClients] = useState<HubClient[]>([])
   const [partnerFetchError, setPartnerFetchError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const dismissNotice = useCallback(() => setNotice(null), [])
@@ -119,7 +125,11 @@ export function AdminClientList() {
 
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<ClientFilter>("enabled")
-  const [view, setView] = useState<ClientView>("cards")
+  const [view, setStoredView] = useLocalStorageValue<ClientView>(VIEW_STORAGE_KEY, parseStoredView)
+  const setView = useCallback(
+    (next: ClientView) => setStoredView(next, (value) => value),
+    [setStoredView]
+  )
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [creating, setCreating] = useState(false)
@@ -129,18 +139,8 @@ export function AdminClientList() {
   const [syncingAll, setSyncingAll] = useState(false)
   const [enablingPartnerId, setEnablingPartnerId] = useState<string | null>(null)
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored === "cards" || stored === "list") setView(stored)
-  }, [])
-
-  useEffect(() => {
-    window.localStorage.setItem(VIEW_STORAGE_KEY, view)
-  }, [view])
-
   async function loadClients(silent = false) {
-    if (silent) setRefreshing(true)
-    else setLoading(true)
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const response = await fetch("/api/admin/organizations", { cache: "no-store" })
@@ -156,13 +156,11 @@ export function AdminClientList() {
       setError(t("errorLoadClients"))
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
   }
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void loadClients()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const visible = useMemo(() => {
@@ -177,11 +175,7 @@ export function AdminClientList() {
               : hubClientInNeedsSetupTab(client)
         if (!matchesFilter) return false
         if (!needle) return true
-        const haystack = [
-          client.name,
-          client.slug ?? "",
-          client.metaAdAccountId,
-        ]
+        const haystack = [client.name, client.slug ?? "", client.metaAdAccountId]
           .join(" ")
           .toLowerCase()
         return haystack.includes(needle)
@@ -207,7 +201,6 @@ export function AdminClientList() {
         body: JSON.stringify({
           name,
           slug: slug.trim() || undefined,
-          demoMode: true,
         }),
       })
       const data = (await response.json()) as {
@@ -254,9 +247,7 @@ export function AdminClientList() {
         router.push(adminClientSettingsBasePath(data.organization.slug))
       }
     } catch (enableError) {
-      setError(
-        enableError instanceof Error ? enableError.message : t("errorEnableMetaClient")
-      )
+      setError(enableError instanceof Error ? enableError.message : t("errorEnableMetaClient"))
     } finally {
       setEnablingPartnerId(null)
     }
@@ -267,15 +258,12 @@ export function AdminClientList() {
     setError(null)
     setNotice(null)
     try {
-      const response = await fetch(
-        `/api/admin/organizations/${organizationSlug}/meta/sync`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ scope: "all" }),
-        }
-      )
+      const response = await fetch(`/api/admin/organizations/${organizationSlug}/meta/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ scope: "all" }),
+      })
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("syncFailed"))
       await loadClients(true)
@@ -294,9 +282,7 @@ export function AdminClientList() {
     setNotice(null)
 
     setClients((current) =>
-      current.map((row) =>
-        row.key === client.key ? { ...row, metaEnabled: enabled } : row
-      )
+      current.map((row) => (row.key === client.key ? { ...row, metaEnabled: enabled } : row))
     )
 
     try {
@@ -312,13 +298,9 @@ export function AdminClientList() {
       if (enabled) setNotice(t("metaSetupSaved"))
     } catch (toggleError) {
       setClients((current) =>
-        current.map((row) =>
-          row.key === client.key ? { ...row, metaEnabled: !enabled } : row
-        )
+        current.map((row) => (row.key === client.key ? { ...row, metaEnabled: !enabled } : row))
       )
-      setError(
-        toggleError instanceof Error ? toggleError.message : t("errorUpdateMetaStatus")
-      )
+      setError(toggleError instanceof Error ? toggleError.message : t("errorUpdateMetaStatus"))
     } finally {
       setTogglingSlug(null)
     }
@@ -351,8 +333,8 @@ export function AdminClientList() {
   function openDashboard(client: HubClient) {
     if (!client.slug) return
     setOpeningSlug(client.slug)
-    void openClientDashboard(client.slug, setActiveOrganization, { newTab: true }).finally(
-      () => setOpeningSlug(null)
+    void openClientDashboard(client.slug, setActiveOrganization, { newTab: true }).finally(() =>
+      setOpeningSlug(null)
     )
   }
 
@@ -369,9 +351,7 @@ export function AdminClientList() {
     const isLive = client.metaLive
     const isPartnerOnly = client.partnerOnly
     const busy =
-      togglingSlug === client.slug ||
-      syncingSlug === client.slug ||
-      openingSlug === client.slug
+      togglingSlug === client.slug || syncingSlug === client.slug || openingSlug === client.slug
 
     return (
       <article
@@ -393,9 +373,7 @@ export function AdminClientList() {
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg leading-tight font-semibold">{displayName}</h2>
             <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-              {isPartnerOnly
-                ? formatAdAccountId(client.metaAdAccountId)
-                : `/${client.slug}`}
+              {isPartnerOnly ? formatAdAccountId(client.metaAdAccountId) : `/${client.slug}`}
             </p>
           </div>
           {!isPartnerOnly ? (
@@ -449,9 +427,7 @@ export function AdminClientList() {
                 void handlePartnerEnable(client)
               }}
             >
-              {enablingPartnerId === client.metaAdAccountId
-                ? t("activating")
-                : t("enableClient")}
+              {enablingPartnerId === client.metaAdAccountId ? t("activating") : t("enableClient")}
             </button>
           ) : (
             <>
@@ -496,9 +472,7 @@ export function AdminClientList() {
     const isLive = client.metaLive
     const status = hubStatusMeta(client, t)
     const busy =
-      togglingSlug === client.slug ||
-      syncingSlug === client.slug ||
-      openingSlug === client.slug
+      togglingSlug === client.slug || syncingSlug === client.slug || openingSlug === client.slug
 
     return (
       <li
@@ -531,9 +505,7 @@ export function AdminClientList() {
                 void handlePartnerEnable(client)
               }}
             >
-              {enablingPartnerId === client.metaAdAccountId
-                ? t("activating")
-                : t("enableClient")}
+              {enablingPartnerId === client.metaAdAccountId ? t("activating") : t("enableClient")}
             </button>
           ) : (
             <>
@@ -586,15 +558,16 @@ export function AdminClientList() {
   }
 
   return (
-    <div className={cn("admin-hub", poppins.className, "mx-auto flex w-full max-w-6xl flex-col gap-6")}>
-      <header className={outfit.className}>
-        <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-          {t("brand")}
-        </p>
-        <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
-          {t("clientsTitle")}
+    <div
+      className={cn("admin-hub", poppins.className, "mx-auto flex w-full max-w-6xl flex-col gap-6")}
+    >
+      <header className={cn(outfit.className, "flex items-center gap-3")}>
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#1877F2]/25 bg-white text-[#1877F2] shadow-sm">
+          <MetaBrandIcon className="size-6" />
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+          {t("navClients")}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("clientsDescription")}</p>
       </header>
 
       <AdminHubToolbar
@@ -617,7 +590,10 @@ export function AdminClientList() {
             >
               <button
                 type="button"
-                className={cn("meta-hub-filter meta-hub-filter--icon", view === "cards" && "is-active")}
+                className={cn(
+                  "meta-hub-filter meta-hub-filter--icon",
+                  view === "cards" && "is-active"
+                )}
                 aria-pressed={view === "cards"}
                 aria-label={t("viewCards")}
                 title={t("viewCards")}
@@ -627,7 +603,10 @@ export function AdminClientList() {
               </button>
               <button
                 type="button"
-                className={cn("meta-hub-filter meta-hub-filter--icon", view === "list" && "is-active")}
+                className={cn(
+                  "meta-hub-filter meta-hub-filter--icon",
+                  view === "list" && "is-active"
+                )}
                 aria-pressed={view === "list"}
                 aria-label={t("viewList")}
                 title={t("viewList")}
@@ -695,7 +674,10 @@ export function AdminClientList() {
           ) : (
             <div className="space-y-0">
               {Array.from({ length: 5 }, (_, index) => (
-                <div key={index} className="h-14 animate-pulse border-b border-[#e8e0d8] bg-muted/30" />
+                <div
+                  key={index}
+                  className="h-14 animate-pulse border-b border-[#e8e0d8] bg-muted/30"
+                />
               ))}
             </div>
           )}
@@ -720,9 +702,7 @@ export function AdminClientList() {
       >
         <div className="sm:col-span-3">
           <h2 className="text-base font-medium">{t("createClientTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("createClientDescription")}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("createClientDescription")}</p>
         </div>
         <label className="grid gap-1.5 text-sm">
           <span className="font-medium">{t("companyName")}</span>

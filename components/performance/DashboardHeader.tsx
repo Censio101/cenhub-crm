@@ -1,12 +1,12 @@
 "use client"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import { CURRENT_COMPANY } from "@/lib/company"
 import { formatDateRangeLabel } from "@/lib/performance/format"
-import { getCustomerSegmentLabel } from "@/lib/performance/customer-segments"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
-import { getFunnelLabel } from "@/lib/performance/funnels"
+import { FUNNEL_MESSAGE_KEYS } from "@/lib/performance/funnel-i18n"
 import type { FunnelId } from "@/lib/performance/funnels"
 import { getServiceLabel } from "@/lib/performance/services"
 import type { ServiceId } from "@/lib/performance/services"
@@ -52,10 +52,15 @@ export function DashboardHeader({
   onSegmentChange: (segment: CustomerSegmentId | null) => void
 }) {
   const { settings } = useAccountSettings()
+  const { locale, t } = useLanguage()
   const scope = [
     service ? getServiceLabel(service) : null,
-    funnel ? getFunnelLabel(funnel) : null,
-    segment ? getCustomerSegmentLabel(segment) : null,
+    funnel ? t(FUNNEL_MESSAGE_KEYS[funnel]) : null,
+    segment
+      ? segment === "b2b"
+        ? t("filterSegmentB2b")
+        : t("filterSegmentB2c")
+      : null,
   ]
     .filter(Boolean)
     .join(" · ")
@@ -64,7 +69,7 @@ export function DashboardHeader({
     <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
       <div className="max-w-2xl">
         <h1 className="text-3xl font-medium tracking-tight text-[var(--text-primary)] sm:text-4xl">
-          Velkommen, {CURRENT_COMPANY.name}
+          {t("dashboardWelcome", { name: CURRENT_COMPANY.name })}
         </h1>
         {settings.hvidbjergPartner ? (
           <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
@@ -75,11 +80,13 @@ export function DashboardHeader({
               alt=""
               className="h-4 w-auto shrink-0"
             />
-            <span>Certificeret marketing program</span>
+            <span>{t("overviewCertifiedProgram")}</span>
           </p>
         ) : null}
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Viser data for {formatDateRangeLabel(range.start, range.end)}
+          {t("dashboardShowingData", {
+            dateRange: formatDateRangeLabel(range.start, range.end, locale),
+          })}
           {scope ? ` · ${scope}` : ""}
         </p>
       </div>

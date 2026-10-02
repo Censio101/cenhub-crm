@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import {
   Loader2Icon,
   MailIcon,
@@ -14,12 +14,10 @@ import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { adminIconBoxClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
-import {
-  adminInitials,
-  formatAdminDisplayName,
-} from "@/lib/admin/format-admin-display-name"
+import { adminInitials, formatAdminDisplayName } from "@/lib/admin/format-admin-display-name"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type CensioAdmin = {
   id: string
@@ -30,13 +28,7 @@ type CensioAdmin = {
   accessStatus: "active" | "pending"
 }
 
-function AdminAvatar({
-  image,
-  initials,
-}: {
-  image: string | null
-  initials: string
-}) {
+function AdminAvatar({ image, initials }: { image: string | null; initials: string }) {
   if (image) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -222,7 +214,7 @@ export function AdminAdminsPanel() {
     }
   }
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void loadAdmins()
   }, [])
 
@@ -243,9 +235,7 @@ export function AdminAdminsPanel() {
       setActionNotice(t("adminRemoved", { email: label }))
       void loadAdmins({ silent: true })
     } catch (removeError) {
-      setActionError(
-        removeError instanceof Error ? removeError.message : t("adminRemoveError")
-      )
+      setActionError(removeError instanceof Error ? removeError.message : t("adminRemoveError"))
     } finally {
       setBusyAction(null)
     }
@@ -263,9 +253,7 @@ export function AdminAdminsPanel() {
 
       setActionNotice(t("adminResent", { email: admin.email ?? "" }))
     } catch (resendError) {
-      setActionError(
-        resendError instanceof Error ? resendError.message : t("adminResendError")
-      )
+      setActionError(resendError instanceof Error ? resendError.message : t("adminResendError"))
     } finally {
       setBusyAction(null)
     }
@@ -279,9 +267,7 @@ export function AdminAdminsPanel() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <header>
-        <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-          {t("brand")}
-        </p>
+        <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">{t("brand")}</p>
         <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">
           {t("inviteAdminPageTitle")}
         </h1>
@@ -301,7 +287,9 @@ export function AdminAdminsPanel() {
             <span className={adminIconBoxClass("brand")} aria-hidden="true">
               <UsersIcon className="size-[18px]" />
             </span>
-            <h2 className="text-base font-semibold text-foreground">{t("censioAdminsListTitle")}</h2>
+            <h2 className="text-base font-semibold text-foreground">
+              {t("censioAdminsListTitle")}
+            </h2>
           </div>
           {!loading && !error && admins.length > 0 ? (
             <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-muted-foreground ring-1 ring-[#e8e0d8]">
@@ -312,24 +300,36 @@ export function AdminAdminsPanel() {
 
         <div className="bg-[#faf8f6]/30 px-4 py-4 sm:px-5">
           {actionError ? (
-            <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800" role="alert">
+            <p
+              className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+              role="alert"
+            >
               {actionError}
             </p>
           ) : null}
           {actionNotice ? (
-            <p className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
+            <p
+              className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800"
+              role="status"
+            >
               {actionNotice}
             </p>
           ) : null}
           {loading ? (
             <AdminListSkeleton />
           ) : error ? (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800" role="alert">
+            <p
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800"
+              role="alert"
+            >
               {error}
             </p>
           ) : admins.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[#d3c3b2] bg-white px-6 py-10 text-center">
-              <ShieldCheckIcon className="mx-auto size-8 text-muted-foreground/50" aria-hidden="true" />
+              <ShieldCheckIcon
+                className="mx-auto size-8 text-muted-foreground/50"
+                aria-hidden="true"
+              />
               <p className="mt-3 text-sm text-muted-foreground">{t("noAdminsYet")}</p>
             </div>
           ) : (
@@ -341,12 +341,8 @@ export function AdminAdminsPanel() {
                   isCurrentUser={admin.id === currentUserId}
                   onRemove={handleRemoveAdmin}
                   onResend={handleResendInvite}
-                  isRemoving={
-                    busyAction?.id === admin.id && busyAction.action === "remove"
-                  }
-                  isResending={
-                    busyAction?.id === admin.id && busyAction.action === "resend"
-                  }
+                  isRemoving={busyAction?.id === admin.id && busyAction.action === "remove"}
+                  isResending={busyAction?.id === admin.id && busyAction.action === "resend"}
                   disabled={busyAction?.id === admin.id}
                 />
               ))}

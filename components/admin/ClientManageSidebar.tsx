@@ -5,9 +5,13 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   CircleDotIcon,
-  FlaskConicalIcon,
+  FileInputIcon,
+  FileUpIcon,
+  WrenchIcon,
   FunnelIcon,
   LayoutGridIcon,
+  SheetIcon,
+  TagsIcon,
   UsersIcon,
 } from "lucide-react"
 
@@ -31,13 +35,7 @@ type NavItem = {
   active: boolean
 }
 
-function ManageNavLink({
-  item,
-  dimmed,
-}: {
-  item: NavItem
-  dimmed: boolean
-}) {
+function ManageNavLink({ item, dimmed }: { item: NavItem; dimmed: boolean }) {
   const { t } = useLanguage()
   const Icon = item.icon
   return (
@@ -73,17 +71,20 @@ export function ClientManageSidebar() {
     switchingSlug !== null ||
     Boolean(
       clientContext?.loading &&
-        (clientContext.organization === null ||
-          clientContext.organization.slug !== slug)
+      (clientContext.organization === null || clientContext.organization.slug !== slug)
     )
 
   useEffect(() => {
     if (!slug) return
     router.prefetch(adminClientSettingsBasePath(slug))
     router.prefetch(adminClientSettingsSectionPath(slug, "meta"))
-    router.prefetch(adminClientSettingsSectionPath(slug, "demo"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "meta-instant-forms"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "industries"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "lead-sheet"))
     router.prefetch(adminClientSettingsSectionPath(slug, "users"))
     router.prefetch(adminClientSettingsSectionPath(slug, "funnels"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "import"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "services"))
   }, [router, slug])
 
   if (!slug) return null
@@ -102,10 +103,28 @@ export function ClientManageSidebar() {
       active: section === "meta",
     },
     {
-      href: adminClientSettingsSectionPath(slug, "demo"),
-      labelKey: "clientNavDemo",
-      icon: FlaskConicalIcon,
-      active: section === "demo",
+      href: adminClientSettingsSectionPath(slug, "meta-instant-forms"),
+      labelKey: "clientNavMetaInstantForms",
+      icon: FileInputIcon,
+      active: section === "meta-instant-forms",
+    },
+    {
+      href: adminClientSettingsSectionPath(slug, "industries"),
+      labelKey: "clientNavIndustries",
+      icon: TagsIcon,
+      active: section === "industries",
+    },
+    {
+      href: adminClientSettingsSectionPath(slug, "services"),
+      labelKey: "clientNavServices",
+      icon: WrenchIcon,
+      active: section === "services",
+    },
+    {
+      href: adminClientSettingsSectionPath(slug, "lead-sheet"),
+      labelKey: "clientNavLeadSheet",
+      icon: SheetIcon,
+      active: section === "lead-sheet",
     },
     {
       href: adminClientSettingsSectionPath(slug, "users"),
@@ -118,6 +137,12 @@ export function ClientManageSidebar() {
       labelKey: "clientNavFunnels",
       icon: FunnelIcon,
       active: section === "funnels",
+    },
+    {
+      href: adminClientSettingsSectionPath(slug, "import"),
+      labelKey: "clientNavImport",
+      icon: FileUpIcon,
+      active: section === "import",
     },
   ]
 

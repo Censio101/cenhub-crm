@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 
 import type { UserRole } from "@/lib/db/types"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { useKeyedState } from "@/lib/react/use-keyed-state"
 
 type UserProfile = {
   userId: string | null
@@ -11,47 +12,39 @@ type UserProfile = {
   loading: boolean
 }
 
+type Fetched = { resolved: boolean; role: UserRole | null; userId: string | null }
+
+const NOT_FETCHED: Fetched = { resolved: false, role: null, userId: null }
+
 export function useUserProfile(): UserProfile {
   const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
-  const [role, setRole] = useState<UserRole | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(configured)
+  // The fetched profile belongs to one signed-in state; it resets on sign-in and sign-out.
+  const [fetched, setFetched] = useKeyedState<Fetched>(NOT_FETCHED, isAuthenticated)
 
   useEffect(() => {
-    if (!configured) {
-      setLoading(false)
-      return
-    }
-
-    if (authLoading) return
-
-    if (!isAuthenticated) {
-      setRole(null)
-      setUserId(null)
-      setLoading(false)
-      return
-    }
+    if (!configured || authLoading || !isAuthenticated) return
 
     let active = true
     void fetch("/api/auth/me", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (!active) return
-        setUserId(data?.userId ?? null)
-        setRole(data?.role ?? null)
-        setLoading(false)
+        setFetched({ resolved: true, userId: data?.userId ?? null, role: data?.role ?? null })
       })
       .catch(() => {
         if (!active) return
-        setRole(null)
-        setUserId(null)
-        setLoading(false)
+        setFetched({ resolved: true, userId: null, role: null })
       })
 
     return () => {
       active = false
     }
-  }, [configured, isAuthenticated, authLoading])
+  }, [configured, isAuthenticated, authLoading, setFetched])
 
-  return { userId, role, loading: loading || authLoading }
+  const fetching = configured && isAuthenticated && !fetched.resolved
+  return {
+    userId: isAuthenticated ? fetched.userId : null,
+    role: isAuthenticated ? fetched.role : null,
+    loading: fetching || authLoading,
+  }
 }

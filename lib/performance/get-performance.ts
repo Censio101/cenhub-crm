@@ -1,9 +1,9 @@
 import { endOfWeek, endOfYear, startOfWeek, startOfYear } from "date-fns"
 
+import type { Locale } from "@/lib/i18n/types"
 import type { Lead } from "@/lib/leads"
 
 import { buildChartPoints } from "./compare"
-import { demoAdSpendByMonth } from "./demo-ad-spend"
 import { inferGranularity, periodLabel, toIsoDate } from "./date-ranges"
 import {
   buildDailyBucketsFromLeads,
@@ -122,9 +122,9 @@ export type PerformanceInput = {
 }
 
 function resolveDailyBuckets(input?: PerformanceInput): PerformanceBucket[] {
-  if (input?.leads) {
-    const adSpendByMonth = input.adSpendByMonth ?? demoAdSpendByMonth()
-    return buildDailyBucketsFromLeads(input.leads, adSpendByMonth)
+  if (input !== undefined) {
+    const adSpendByMonth = input.adSpendByMonth ?? {}
+    return buildDailyBucketsFromLeads(input.leads ?? [], adSpendByMonth)
   }
   return getDailyMockData()
 }
@@ -250,13 +250,15 @@ export function getPerformanceDashboard(
 
 export function getChartSeries(
   data: PerformanceDashboardData,
-  metricId: MetricId
+  metricId: MetricId,
+  locale: Locale = "da"
 ) {
   const points = buildChartPoints(
     metricId,
     data.current.buckets,
     data.comparison?.buckets ?? null,
-    data.granularity
+    data.granularity,
+    locale
   )
 
   if (metricId !== "revenue") return points
@@ -265,7 +267,8 @@ export function getChartSeries(
     "adSpend",
     data.current.buckets,
     null,
-    data.granularity
+    data.granularity,
+    locale
   )
 
   return points.map((point, index) => ({

@@ -36,5 +36,7 @@ export function b2bShare(service: ServiceId, month: number): number {
       return 0.24 + seasonal * 0.6
     case "badevaerelse":
       return 0.14 + seasonal * 0.4
+    default:
+      return 0.3 + seasonal * 0.5
   }
 }

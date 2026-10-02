@@ -128,7 +128,6 @@ export async function upsertMetaConfig(
     input.metaAdAccountId ?? existing?.meta_ad_account_id ?? ""
   const metaPageId = input.metaPageId ?? existing?.meta_page_id ?? ""
   const hasAdAccount = Boolean(metaAdAccountId.trim())
-  const hasPageId = Boolean(metaPageId.trim())
 
   let metaSyncStatus = existing?.meta_sync_status ?? "disabled"
   if (!enabled) {

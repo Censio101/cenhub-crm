@@ -5,10 +5,6 @@ import {
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
 import {
-  clearDemoOrganizationData,
-  seedDemoOrganizationData,
-} from "@/lib/db/demo-organization-seed"
-import {
   getOrganizationWithStatsBySlug,
   updateOrganizationBySlug,
 } from "@/lib/db/organizations-repository"
@@ -39,7 +35,6 @@ export async function PATCH(request: Request, context: RouteContext) {
     const { slug } = await context.params
     const body = (await request.json()) as {
       name?: string
-      demoMode?: boolean
     }
 
     const admin = createAdminClient()
@@ -50,18 +45,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const organization = await updateOrganizationBySlug(admin, slug, {
       ...(body.name !== undefined ? { name: body.name.trim() } : {}),
-      ...(body.demoMode !== undefined ? { demo_mode: body.demoMode } : {}),
     })
 
-    let demoSeed: Awaited<ReturnType<typeof seedDemoOrganizationData>> | null = null
-
-    if (body.demoMode === true && organization) {
-      demoSeed = await seedDemoOrganizationData(admin, organization.id)
-    } else if (body.demoMode === false && existing.demo_mode) {
-      await clearDemoOrganizationData(admin, existing.id)
-    }
-
-    return NextResponse.json({ organization, demoSeed })
+    return NextResponse.json({ organization })
   } catch (error) {
     return adminErrorResponse(error)
   }

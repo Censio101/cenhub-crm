@@ -7,6 +7,7 @@ const RESERVED_ADMIN_SEGMENTS = new Set([
   "integrations",
   "onboarding",
   "clients",
+  "services",
 ])
 
 /** Internal/demo clients hidden from the admin header client switcher. */
@@ -16,7 +17,16 @@ export function isVisibleInClientSwitcher(slug: string): boolean {
   return !HIDDEN_CLIENT_SWITCHER_SLUGS.has(slug)
 }
 
-export type AdminClientSection = "overview" | "meta" | "demo" | "users" | "funnels"
+export type AdminClientSection =
+  | "overview"
+  | "meta"
+  | "meta-instant-forms"
+  | "industries"
+  | "lead-sheet"
+  | "users"
+  | "funnels"
+  | "import"
+  | "services"
 
 export function parseAdminClientSlug(pathname: string): string | null {
   const canonical = pathname.match(/^\/admin\/clients\/([^/]+)(?:\/|$)/)
@@ -38,9 +48,6 @@ function sectionSuffix(pathname: string, slug: string): AdminClientSection | nul
   if (pathname === canonicalBase || pathname === `${canonicalBase}/`) {
     return "overview"
   }
-  if (pathname.startsWith(`${canonicalBase}/demo`) || pathname.startsWith(`${legacyBase}/demo`)) {
-    return "demo"
-  }
   if (pathname.startsWith(`${canonicalBase}/users`) || pathname.startsWith(`${legacyBase}/users`)) {
     return "users"
   }
@@ -49,6 +56,36 @@ function sectionSuffix(pathname: string, slug: string): AdminClientSection | nul
     pathname.startsWith(`${legacyBase}/funnels`)
   ) {
     return "funnels"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/services`) ||
+    pathname.startsWith(`${legacyBase}/services`)
+  ) {
+    return "services"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/import`) ||
+    pathname.startsWith(`${legacyBase}/import`)
+  ) {
+    return "import"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/meta-instant-forms`) ||
+    pathname.startsWith(`${legacyBase}/meta-instant-forms`)
+  ) {
+    return "meta-instant-forms"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/lead-sheet`) ||
+    pathname.startsWith(`${legacyBase}/lead-sheet`)
+  ) {
+    return "lead-sheet"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/industries`) ||
+    pathname.startsWith(`${legacyBase}/industries`)
+  ) {
+    return "industries"
   }
   if (pathname.startsWith(`${canonicalBase}/meta`) || pathname.startsWith(`${legacyBase}/meta`)) {
     return "meta"

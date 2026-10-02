@@ -47,11 +47,14 @@ export function LoginForm() {
     }
   }, [isAuthenticated, loading, router])
 
-  useEffect(() => {
-    const callbackError = searchParams.get("error")
-    const successMessage = searchParams.get("message")
-    const hasQueryNotice = Boolean(callbackError || successMessage)
-
+  // Notices arrive as `?error=` / `?message=` after auth redirects. Each one is shown once
+  // (adjusted while rendering), then the query is removed from the address bar.
+  const callbackError = searchParams.get("error")
+  const successMessage = searchParams.get("message")
+  const queryNoticeKey = `${callbackError ?? ""}|${successMessage ?? ""}`
+  const [shownNoticeKey, setShownNoticeKey] = useState("|")
+  if (queryNoticeKey !== "|" && queryNoticeKey !== shownNoticeKey) {
+    setShownNoticeKey(queryNoticeKey)
     if (successMessage === "account_ready") {
       setMessage(t("loginAccountReady"))
       setError(null)
@@ -64,11 +67,13 @@ export function LoginForm() {
     } else if (callbackError === "invite_session") {
       setError(t("loginInviteSessionError"))
     }
+  }
 
-    if (hasQueryNotice) {
+  useEffect(() => {
+    if (callbackError || successMessage) {
       router.replace("/login", { scroll: false })
     }
-  }, [router, searchParams, t])
+  }, [router, callbackError, successMessage])
 
   async function handlePasswordLogin(event: FormEvent) {
     event.preventDefault()

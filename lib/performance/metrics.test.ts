@@ -33,6 +33,14 @@ describe("metric calculations", () => {
     expect(getMetric("cpl").compute(baseTotals())).toBe(500)
   })
 
+  it("computes ROAS as revenue divided by ad spend", () => {
+    expect(getMetric("roas").compute(baseTotals())).toBe(4)
+  })
+
+  it("returns null for ROAS when there is no ad spend", () => {
+    expect(getMetric("roas").compute(baseTotals({ adSpend: 0 }))).toBeNull()
+  })
+
   it("computes close rate as customers / leads * 100", () => {
     expect(getMetric("closeRate").compute(baseTotals())).toBe(25)
   })

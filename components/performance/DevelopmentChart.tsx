@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts"
 
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { ChartTooltip } from "@/components/performance/ChartTooltip"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -22,9 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { META_ADS_BLUE, META_ADS_SPEND_LABEL } from "@/lib/performance/funnels"
+import { META_ADS_BLUE } from "@/lib/performance/funnels"
 import { formatAxisValue } from "@/lib/performance/format"
 import { getChartSeries } from "@/lib/performance/get-performance"
+import { localizeMetric } from "@/lib/performance/metric-i18n"
 import { chartMetrics, getMetric } from "@/lib/performance/metrics"
 import type { MetricId, PerformanceDashboardData } from "@/lib/performance/types"
 import { cn } from "cn"
@@ -51,9 +53,10 @@ export function DevelopmentChart({
   comparisonLabel: string | null
   onMetricChange: (metricId: MetricId) => void
 }) {
-  const metric = getMetric(metricId)
-  const points = getChartSeries(data, metricId)
-  const metrics = chartMetrics()
+  const { locale, t } = useLanguage()
+  const metric = localizeMetric(getMetric(metricId), t)
+  const points = getChartSeries(data, metricId, locale)
+  const metrics = chartMetrics().map((item) => localizeMetric(item, t))
   const showSpend = metricId === "revenue"
   const revenueLabel = showSpend ? metric.label : currentLabel
   const showLegend = Boolean(comparisonLabel) || showSpend
@@ -65,10 +68,10 @@ export function DevelopmentChart({
       <CardHeader className="flex flex-col gap-4 px-6 pt-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-medium tracking-tight text-[var(--text-primary)]">
-            Udvikling
+            {t("dashboardChartTitle")}
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Se hvordan jeres resultater udvikler sig over tid
+            {t("dashboardChartSubtitle")}
           </p>
         </div>
 
@@ -100,7 +103,7 @@ export function DevelopmentChart({
             if (typeof value === "string") onMetricChange(value as MetricId)
           }}
         >
-          <SelectTrigger className="dashboard-chip md:hidden" aria-label="Vælg nøgletal">
+          <SelectTrigger className="dashboard-chip md:hidden" aria-label={t("dashboardChartPickMetric")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="dashboard-filter-menu">
@@ -169,7 +172,7 @@ export function DevelopmentChart({
                     metricId={metricId}
                     currentLabel={revenueLabel}
                     comparisonLabel={comparisonLabel}
-                    spendLabel={showSpend ? META_ADS_SPEND_LABEL : null}
+                    spendLabel={showSpend ? t("dashboardMetaAdsSpend") : null}
                   />
                 )}
               />
@@ -200,7 +203,7 @@ export function DevelopmentChart({
                 <Line
                   type="monotone"
                   dataKey="spend"
-                  name={META_ADS_SPEND_LABEL}
+                  name={t("dashboardMetaAdsSpend")}
                   stroke={META_ADS_BLUE}
                   strokeWidth={2}
                   dot={false}

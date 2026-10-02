@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback } from "react"
 import { AlertCircleIcon, CheckCircle2Icon, TriangleAlertIcon, XIcon } from "lucide-react"
 
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
@@ -86,7 +86,12 @@ export function FormNoticeStack({
   if (!hasAny) return null
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div
+      className={cn(
+        "pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2",
+        className
+      )}
+    >
       {progress ? (
         <FormNotice
           message={progress}
@@ -144,18 +149,12 @@ export function FormNotice({
 }: FormNoticeProps) {
   const dismiss = useCallback(() => onDismiss(), [onDismiss])
   const styles = toneStyles[tone]
-  const [progressKey, setProgressKey] = useState(0)
-
-  useEffect(() => {
-    setProgressKey((value) => value + 1)
-  }, [message])
-
   useAutoDismiss(autoDismissMs > 0 ? message : null, dismiss, autoDismissMs)
 
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border animate-in fade-in-0 slide-in-from-top-1 duration-200",
+        "pointer-events-auto relative overflow-hidden rounded-xl border shadow-lg animate-in fade-in-0 slide-in-from-bottom-2 duration-200",
         styles.box,
         className
       )}
@@ -163,11 +162,13 @@ export function FormNotice({
     >
       <div
         className={cn(
-          "flex items-start gap-2.5 pr-1",
-          size === "sm" ? "px-3 py-2.5 text-[12px] leading-snug" : "px-4 py-3 text-sm leading-normal"
+          "flex items-center gap-2.5 pr-1",
+          size === "sm"
+            ? "px-3 py-2.5 text-[12px] leading-snug"
+            : "px-4 py-3 text-sm leading-normal"
         )}
       >
-        <span className="mt-0.5">
+        <span className="flex items-center">
           <ToneIcon tone={tone} />
         </span>
         <p className="min-w-0 flex-1 font-medium">{message}</p>
@@ -175,10 +176,7 @@ export function FormNotice({
           <button
             type="button"
             onClick={dismiss}
-            className={cn(
-              "shrink-0 rounded-md p-1 transition-colors",
-              styles.dismiss
-            )}
+            className={cn("shrink-0 rounded-md p-1 transition-colors", styles.dismiss)}
             aria-label={dismissLabel}
           >
             <XIcon className="size-3.5" aria-hidden="true" />
@@ -186,13 +184,13 @@ export function FormNotice({
         ) : null}
       </div>
       {autoDismissMs > 0 ? (
-        <div
-          className="h-0.5 w-full bg-black/[0.04]"
-          aria-hidden="true"
-        >
+        <div className="h-0.5 w-full bg-black/[0.04]" aria-hidden="true">
           <div
-            key={progressKey}
-            className={cn("h-full w-full origin-left [animation-name:form-notice-progress] [animation-timing-function:linear] [animation-fill-mode:forwards]", styles.progress)}
+            key={message}
+            className={cn(
+              "h-full w-full origin-left [animation-name:form-notice-progress] [animation-timing-function:linear] [animation-fill-mode:forwards]",
+              styles.progress
+            )}
             style={{ animationDuration: `${autoDismissMs}ms` }}
           />
         </div>

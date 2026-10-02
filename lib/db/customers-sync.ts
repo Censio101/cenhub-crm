@@ -9,6 +9,27 @@ function mapLeadSourceToCustomerSource(platform: string): string {
   return "other"
 }
 
+/** The customer row that belongs to a won lead. */
+export function customerPayloadFromLead(lead: LeadRow) {
+  return {
+    organization_id: lead.organization_id,
+    lead_id: lead.id,
+    closed_date: lead.lead_date,
+    full_name: lead.full_name,
+    email: lead.email,
+    phone: lead.phone,
+    segment: lead.segment === "b2b" ? "b2b" : "b2c",
+    company_name: lead.company_name,
+    address: lead.address,
+    zip_code: lead.zip_code,
+    city: lead.city,
+    service_ids: lead.service_ids,
+    sales_price: lead.sales_price ?? 0,
+    profit: lead.profit ?? 0,
+    source: mapLeadSourceToCustomerSource(lead.platform),
+  }
+}
+
 export async function syncCustomerForWonLead(
   supabase: SupabaseClient,
   lead: LeadRow
@@ -18,27 +39,7 @@ export async function syncCustomerForWonLead(
     return
   }
 
-  const segment = lead.segment === "b2b" ? "b2b" : "b2c"
-  const salesPrice = lead.sales_price ?? 0
-  const profit = lead.profit ?? 0
-
-  const payload = {
-    organization_id: lead.organization_id,
-    lead_id: lead.id,
-    closed_date: lead.lead_date,
-    full_name: lead.full_name,
-    email: lead.email,
-    phone: lead.phone,
-    segment,
-    company_name: lead.company_name,
-    address: lead.address,
-    zip_code: lead.zip_code,
-    city: lead.city,
-    service_ids: lead.service_ids,
-    sales_price: salesPrice,
-    profit,
-    source: mapLeadSourceToCustomerSource(lead.platform),
-  }
+  const payload = customerPayloadFromLead(lead)
 
   const { data: existing } = await supabase
     .from("customers")

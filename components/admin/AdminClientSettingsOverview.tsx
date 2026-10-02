@@ -5,11 +5,15 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   CircleDotIcon,
-  FlaskConicalIcon,
+  FileUpIcon,
+  WrenchIcon,
   FunnelIcon,
+  SheetIcon,
+  TagsIcon,
   UsersIcon,
 } from "lucide-react"
 
+import { AdminClientBrandingPanel } from "@/components/admin/AdminClientBrandingPanel"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -18,7 +22,8 @@ import type { MessageKey } from "@/lib/i18n"
 import { cn } from "cn"
 
 const SECTIONS: {
-  section: "meta" | "demo" | "users" | "funnels"
+  section:
+    "meta" | "users" | "funnels" | "import" | "services" | "industries" | "lead-sheet"
   labelKey: MessageKey
   descKey: MessageKey
   icon: typeof CircleDotIcon
@@ -30,10 +35,22 @@ const SECTIONS: {
     icon: CircleDotIcon,
   },
   {
-    section: "demo",
-    labelKey: "clientNavDemo",
-    descKey: "clientSettingsOverviewDemoDesc",
-    icon: FlaskConicalIcon,
+    section: "industries",
+    labelKey: "clientNavIndustries",
+    descKey: "clientSettingsOverviewIndustriesDesc",
+    icon: TagsIcon,
+  },
+  {
+    section: "services",
+    labelKey: "clientNavServices",
+    descKey: "clientSettingsOverviewServicesDesc",
+    icon: WrenchIcon,
+  },
+  {
+    section: "lead-sheet",
+    labelKey: "clientNavLeadSheet",
+    descKey: "clientSettingsOverviewLeadSheetDesc",
+    icon: SheetIcon,
   },
   {
     section: "users",
@@ -46,6 +63,12 @@ const SECTIONS: {
     labelKey: "clientNavFunnels",
     descKey: "clientSettingsOverviewFunnelsDesc",
     icon: FunnelIcon,
+  },
+  {
+    section: "import",
+    labelKey: "clientNavImport",
+    descKey: "clientSettingsOverviewImportDesc",
+    icon: FileUpIcon,
   },
 ]
 
@@ -61,7 +84,9 @@ export function AdminClientSettingsOverview() {
   }, [router, slug])
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <>
+      <AdminClientBrandingPanel />
+      <div className="grid gap-3 sm:grid-cols-2">
       {SECTIONS.map(({ section, labelKey, descKey, icon: Icon }) => (
         <Link
           key={section}
@@ -81,6 +106,7 @@ export function AdminClientSettingsOverview() {
           </div>
         </Link>
       ))}
-    </div>
+      </div>
+    </>
   )
 }

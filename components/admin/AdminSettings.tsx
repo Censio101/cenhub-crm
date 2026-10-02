@@ -1,37 +1,28 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { persistAdminPreferredLocale } from "@/components/i18n/LocaleSync"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { Button } from "@/components/ui/button"
 import { LOCALES, type Locale } from "@/lib/i18n/types"
 import { cn } from "cn"
+import { useSyncedState } from "@/lib/react/use-keyed-state"
 
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
 
 export function AdminSettings() {
   const { locale, setLocale, t } = useLanguage()
-  const [draftLocale, setDraftLocale] = useState<Locale>(locale)
+  const [draftLocale, setDraftLocale] = useSyncedState<Locale>(locale)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const dismissNotice = useCallback(() => setNotice(null), [])
 
   useAutoDismiss(notice, dismissNotice)
-
-  useEffect(() => {
-    setDraftLocale(locale)
-  }, [locale])
 
   const hasUnsavedChanges = draftLocale !== locale
 

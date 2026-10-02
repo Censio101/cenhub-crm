@@ -6,7 +6,7 @@ import {
   type LeadStatusId,
 } from "@/lib/leads"
 import { isFunnelId, type FunnelId } from "./funnels"
-import { isServiceId, type ServiceId } from "./services"
+import type { ServiceId } from "./services"
 import { monthKeyFromDate } from "./demo-ad-spend"
 import { toIsoDate } from "./date-ranges"
 import type { PerformanceBucket } from "./types"
@@ -64,8 +64,7 @@ function resolveLeadFunnel(lead: Lead): FunnelId | "" {
 }
 
 function resolveLeadServices(lead: Lead): ServiceId[] {
-  const ids = getLeadServiceIds(lead).filter(isServiceId)
-  return ids.length > 0 ? ids : []
+  return getLeadServiceIds(lead)
 }
 
 function addLeadContribution(

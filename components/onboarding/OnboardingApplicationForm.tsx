@@ -81,7 +81,6 @@ export function OnboardingApplicationForm({
   const [values, setValues] = useState<OnboardingFormValues>(() => defaultValues())
   const [slugOverride, setSlugOverride] = useState("")
   const [autoApprove, setAutoApprove] = useState(mode === "admin")
-  const [seedDemo, setSeedDemo] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [validationActive, setValidationActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -208,8 +207,6 @@ export function OnboardingApplicationForm({
               ...payload,
               autoApprove,
               slugOverride: slugOverride.trim() || undefined,
-              seedDemo,
-              demoMode: seedDemo,
             }
           : payload
 
@@ -608,14 +605,6 @@ export function OnboardingApplicationForm({
               onChange={(event) => setAutoApprove(event.target.checked)}
             />
             {t("onboardingAutoApprove")}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={seedDemo}
-              onChange={(event) => setSeedDemo(event.target.checked)}
-            />
-            {t("onboardingSeedDemo")}
           </label>
           <label className="grid gap-1.5">
             <span className="text-sm font-medium">{t("onboardingFieldNotes")}</span>

@@ -69,13 +69,8 @@ export async function POST(request: Request) {
 
     const slugOverride =
       typeof body.slugOverride === "string" ? body.slugOverride.trim() : undefined
-    const seedDemo = Boolean(body.seedDemo)
-    const demoMode = Boolean(body.demoMode)
-
     const result = await provisionClientFromApplication(admin, application.id, {
       slugOverride,
-      seedDemo,
-      demoMode,
       approvedByUserId: ctx.userId,
     })
 
@@ -94,7 +89,6 @@ export async function POST(request: Request) {
         application: result.application,
         organization: result.organization,
         inviteSent: result.inviteSent,
-        demoSeed: result.demoSeed ?? null,
         meta,
       },
       { status: 201 }

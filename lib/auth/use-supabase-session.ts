@@ -11,13 +11,11 @@ import {
 export function useSupabaseSession() {
   const configured = isBrowserSupabaseConfigured()
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(configured)
+  // Set once the first answer (or auth event) arrived; only meaningful when configured.
+  const [resolved, setResolved] = useState(false)
 
   useEffect(() => {
-    if (!configured) {
-      setLoading(false)
-      return
-    }
+    if (!configured) return
 
     const supabase = createClient()
     let active = true
@@ -25,7 +23,7 @@ export function useSupabaseSession() {
     void supabase.auth.getUser().then(({ data }) => {
       if (active) {
         setUser(data.user)
-        setLoading(false)
+        setResolved(true)
       }
     })
 
@@ -33,7 +31,7 @@ export function useSupabaseSession() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      setLoading(false)
+      setResolved(true)
     })
 
     return () => {
@@ -42,5 +40,5 @@ export function useSupabaseSession() {
     }
   }, [configured])
 
-  return { configured, user, loading, isAuthenticated: Boolean(user) }
+  return { configured, user, loading: configured && !resolved, isAuthenticated: Boolean(user) }
 }

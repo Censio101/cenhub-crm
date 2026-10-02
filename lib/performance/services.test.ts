@@ -103,6 +103,7 @@ describe("service filter", () => {
     const kpiOrder = [
       "revenue",
       "profit",
+      "roas",
       "ltv",
       "customers",
       "leads",
@@ -112,10 +113,13 @@ describe("service filter", () => {
       "closeRate",
     ]
     expect(kpiMetrics().map((metric) => metric.id)).toEqual(kpiOrder)
-    expect(chartMetrics().map((metric) => metric.id)).toEqual(kpiOrder)
+    expect(chartMetrics().map((metric) => metric.id)).toEqual(
+      kpiOrder.filter((id) => id !== "roas")
+    )
     expect(kpiMetrics().map((metric) => metric.label)).toEqual([
       "Omsætning",
       "Bundlinje POAS",
+      "ROAS",
       "LTV",
       "Lukkede kunder",
       "Leads",

@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { da, enUS } from "date-fns/locale"
 import { endOfDay, startOfDay } from "date-fns"
 import type { DateRange as DayPickerRange } from "react-day-picker"
 import { Building2Icon, CalendarIcon, ChevronDownIcon, FunnelIcon, WrenchIcon } from "lucide-react"
 import { cn } from "cn"
 
-import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -20,11 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
   SelectContent,
@@ -38,27 +34,16 @@ import {
   DATE_PRESET_MESSAGE_KEYS,
 } from "@/lib/performance/date-preset-i18n"
 import { formatDateRangeLabel } from "@/lib/performance/format"
-import {
-  CUSTOMER_SEGMENTS,
-  getCustomerSegmentLabel,
-} from "@/lib/performance/customer-segments"
+import { CUSTOMER_SEGMENTS } from "@/lib/performance/customer-segments"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
 import { FUNNELS } from "@/lib/performance/funnels"
 import type { FunnelId } from "@/lib/performance/funnels"
 import { FUNNEL_MESSAGE_KEYS } from "@/lib/performance/funnel-i18n"
 import { getServiceLabel, isServiceId } from "@/lib/performance/services"
 import type { ServiceId } from "@/lib/performance/services"
-import type {
-  ComparisonMode,
-  DatePreset,
-  DateRange,
-} from "@/lib/performance/types"
+import type { ComparisonMode, DatePreset, DateRange } from "@/lib/performance/types"
 
-const COMPARISON_MODES: ComparisonMode[] = [
-  "previous_period",
-  "previous_year",
-  "custom",
-]
+const COMPARISON_MODES: ComparisonMode[] = ["previous_period", "previous_year", "custom"]
 
 function normalizePickerRange(from: Date, to: Date): DateRange {
   return { start: startOfDay(from), end: endOfDay(to) }
@@ -105,24 +90,19 @@ export function DateRangeControls({
   const calendarLocale = locale === "da" ? da : enUS
   const [draft, setDraft] = useState<DayPickerRange | undefined>()
   const [customOpen, setCustomOpen] = useState(false)
-  const [comparisonDraft, setComparisonDraft] = useState<
-    DayPickerRange | undefined
-  >()
-  const { enabledServiceIds, enabledServices } = useCompanyServices()
+  const [comparisonDraft, setComparisonDraft] = useState<DayPickerRange | undefined>()
+  const { enabledServiceIds, enabledServices, loaded: servicesLoaded } = useCompanyServices()
 
   useEffect(() => {
-    if (service && !enabledServiceIds.includes(service)) {
+    // Wait for the client's services to load, or a shared link's service filter would be dropped.
+    if (servicesLoaded && service && !enabledServiceIds.includes(service)) {
       onServiceChange(null)
     }
-  }, [enabledServiceIds, onServiceChange, service])
+  }, [enabledServiceIds, onServiceChange, service, servicesLoaded])
 
-  const selectedPresetLabel = t(
-    DATE_PRESET_MESSAGE_KEYS[preset] ?? "datePresetFallback"
-  )
+  const selectedPresetLabel = t(DATE_PRESET_MESSAGE_KEYS[preset] ?? "datePresetFallback")
 
-  const funnelTriggerLabel = funnel
-    ? t(FUNNEL_MESSAGE_KEYS[funnel])
-    : t("filterFunnelAll")
+  const funnelTriggerLabel = funnel ? t(FUNNEL_MESSAGE_KEYS[funnel]) : t("filterFunnelAll")
 
   return (
     <div className="flex flex-col items-stretch gap-3 sm:items-end">
@@ -139,29 +119,22 @@ export function DateRangeControls({
                 }
               >
                 <CalendarIcon className="size-4 text-muted-foreground" />
-                <span className="truncate">
-                  {formatDateRangeLabel(range.start, range.end)}
-                </span>
+                <span className="truncate">{formatDateRangeLabel(range.start, range.end, locale)}</span>
                 <ChevronDownIcon className="size-4 text-muted-foreground" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="dashboard-filter-menu min-w-56">
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>{t("filterPeriod")}</DropdownMenuLabel>
-                  {DATE_PRESETS.filter((item) => item.id !== "custom").map(
-                    (item) => (
-                      <DropdownMenuItem
-                        key={item.id}
-                        onClick={() => onPresetChange(item.id)}
-                      >
-                        {t(DATE_PRESET_MESSAGE_KEYS[item.id])}
-                        {preset === item.id ? (
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {t("filterSelected")}
-                          </span>
-                        ) : null}
-                      </DropdownMenuItem>
-                    )
-                  )}
+                  {DATE_PRESETS.filter((item) => item.id !== "custom").map((item) => (
+                    <DropdownMenuItem key={item.id} onClick={() => onPresetChange(item.id)}>
+                      {t(DATE_PRESET_MESSAGE_KEYS[item.id])}
+                      {preset === item.id ? (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          {t("filterSelected")}
+                        </span>
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -206,19 +179,27 @@ export function DateRangeControls({
             onServiceChange(value as ServiceId)
           }}
         >
-          <SelectTrigger className="dashboard-chip min-w-44 px-4" aria-label={t("filterServiceAria")}>
+          <SelectTrigger
+            className="dashboard-chip min-w-44 px-4"
+            aria-label={t("filterServiceAria")}
+          >
             <WrenchIcon className="size-4 text-muted-foreground" />
-            <SelectValue>{getServiceLabel(service)}</SelectValue>
+            <SelectValue>
+              {service
+                ? (enabledServices.find((item) => item.id === service)?.label ??
+                  getServiceLabel(service))
+                : t("filterAllServices")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent align="end" alignItemWithTrigger={false} className="dashboard-filter-menu">
             <SelectItem value="all">{t("filterAllServices")}</SelectItem>
             {enabledServices
               .filter((item) => isServiceId(item.id))
               .map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.label}
-              </SelectItem>
-            ))}
+                <SelectItem key={item.id} value={item.id}>
+                  {item.label}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
 
@@ -232,7 +213,10 @@ export function DateRangeControls({
             onFunnelChange(value as FunnelId)
           }}
         >
-          <SelectTrigger className="dashboard-chip min-w-52 px-4" aria-label={t("filterFunnelAria")}>
+          <SelectTrigger
+            className="dashboard-chip min-w-52 px-4"
+            aria-label={t("filterFunnelAria")}
+          >
             <FunnelIcon className="size-4 text-muted-foreground" />
             <SelectValue>{funnelTriggerLabel}</SelectValue>
           </SelectTrigger>
@@ -256,15 +240,24 @@ export function DateRangeControls({
             onSegmentChange(value as CustomerSegmentId)
           }}
         >
-          <SelectTrigger className="dashboard-chip min-w-40 px-4" aria-label={t("filterSegmentAria")}>
+          <SelectTrigger
+            className="dashboard-chip min-w-40 px-4"
+            aria-label={t("filterSegmentAria")}
+          >
             <Building2Icon className="size-4 text-muted-foreground" />
-            <SelectValue>{getCustomerSegmentLabel(segment)}</SelectValue>
+            <SelectValue>
+              {segment === "b2b"
+                ? t("filterSegmentB2b")
+                : segment === "b2c"
+                  ? t("filterSegmentB2c")
+                  : t("filterSegmentAll")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent align="end" alignItemWithTrigger={false} className="dashboard-filter-menu">
             <SelectItem value="all">{t("filterSegmentAll")}</SelectItem>
             {CUSTOMER_SEGMENTS.map((item) => (
               <SelectItem key={item.id} value={item.id}>
-                {item.label}
+                {item.id === "b2b" ? t("filterSegmentB2b") : t("filterSegmentB2c")}
               </SelectItem>
             ))}
           </SelectContent>
@@ -273,11 +266,7 @@ export function DateRangeControls({
         {showComparison ? (
           <Button
             variant={comparisonEnabled ? "default" : "outline"}
-            className={
-              comparisonEnabled
-                ? "h-11 rounded-[5px] px-4"
-                : "dashboard-chip px-4"
-            }
+            className={comparisonEnabled ? "h-11 rounded-[5px] px-4" : "dashboard-chip px-4"}
             aria-pressed={comparisonEnabled}
             onClick={() =>
               onComparisonChange({
@@ -330,12 +319,10 @@ export function DateRangeControls({
             comparisonMode === "custom" ? (
               <Popover>
                 <PopoverTrigger
-                  render={
-                    <Button variant="ghost" size="sm" className="text-muted-foreground" />
-                  }
+                  render={<Button variant="ghost" size="sm" className="text-muted-foreground" />}
                 >
                   {t("filterVersus")}{" "}
-                  {formatDateRangeLabel(comparisonRange.start, comparisonRange.end)}
+                  {formatDateRangeLabel(comparisonRange.start, comparisonRange.end, locale)}
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-2" align="end">
                   <Calendar
@@ -351,10 +338,7 @@ export function DateRangeControls({
                     onSelect={(next) => {
                       setComparisonDraft(next)
                       if (next?.from && next.to) {
-                        onCustomRange(
-                          normalizePickerRange(next.from, next.to),
-                          "comparison"
-                        )
+                        onCustomRange(normalizePickerRange(next.from, next.to), "comparison")
                       }
                     }}
                   />
@@ -363,7 +347,7 @@ export function DateRangeControls({
             ) : (
               <p className={cn("self-center text-xs text-muted-foreground")}>
                 {t("filterVersus")}{" "}
-                {formatDateRangeLabel(comparisonRange.start, comparisonRange.end)}
+                {formatDateRangeLabel(comparisonRange.start, comparisonRange.end, locale)}
               </p>
             )
           ) : (

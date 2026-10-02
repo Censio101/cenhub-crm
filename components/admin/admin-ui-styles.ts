@@ -6,6 +6,10 @@ export const adminSectionCardClass =
 export const adminFieldClass =
   "h-11 w-full rounded-xl border border-[#d3c3b2] bg-white px-3 text-[15px] outline-none placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15"
 
+/** Select trigger sized and rounded like `adminFieldClass` inputs (overrides the base trigger sizing). */
+export const adminSelectTriggerClass =
+  "w-full! min-w-0 rounded-xl! py-0 pr-3 pl-3 text-[15px] data-[size=default]:h-11 border-[#d3c3b2] bg-white focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
+
 /** Outline buttons on warm admin backgrounds — avoids muted hover blending into the page. */
 export const adminOutlineButtonClass =
   "border-[#d3c3b2] bg-white text-foreground shadow-[0_1px_2px_rgba(26,18,8,0.05)] transition-colors hover:border-primary/45 hover:bg-white hover:text-primary hover:shadow-[0_2px_6px_rgba(228,102,12,0.12)]"

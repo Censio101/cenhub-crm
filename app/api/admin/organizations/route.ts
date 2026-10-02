@@ -5,7 +5,6 @@ import {
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
 import { listHubClients } from "@/lib/admin/hub-clients"
-import { seedDemoOrganizationData } from "@/lib/db/demo-organization-seed"
 import { createOrganization } from "@/lib/db/organizations-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -26,7 +25,6 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       name?: string
       slug?: string
-      demoMode?: boolean
     }
 
     if (!body.name?.trim()) {
@@ -37,15 +35,10 @@ export async function POST(request: Request) {
     const organization = await createOrganization(admin, {
       name: body.name,
       slug: body.slug,
-      demoMode: body.demoMode,
+      demoMode: false,
     })
 
-    let demoSeed = null
-    if (organization.demo_mode) {
-      demoSeed = await seedDemoOrganizationData(admin, organization.id)
-    }
-
-    return NextResponse.json({ organization, demoSeed }, { status: 201 })
+    return NextResponse.json({ organization }, { status: 201 })
   } catch (error) {
     if (error instanceof Error && error.message.includes("slug")) {
       return NextResponse.json({ error: error.message }, { status: 400 })

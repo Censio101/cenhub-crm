@@ -1,18 +1,19 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSyncedState } from "@/lib/react/use-keyed-state"
 
 export function InviteAcceptForm() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const emailParam = searchParams.get("email")?.trim().toLowerCase() ?? ""
-  const [email, setEmail] = useState(emailParam)
+  const [email, setEmail] = useSyncedState(emailParam)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -22,10 +23,6 @@ export function InviteAcceptForm() {
 
   useAutoDismiss(error, dismissError, 8000)
   useAutoDismiss(notice, dismissNotice)
-
-  useEffect(() => {
-    if (emailParam) setEmail(emailParam)
-  }, [emailParam])
 
   async function handleAccept() {
     const nextEmail = email.trim().toLowerCase()

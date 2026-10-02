@@ -7,6 +7,7 @@ import { adminFieldClass } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { cn } from "cn"
 import type { PartnerAdAccountPickerRow } from "@/lib/meta/partner-ad-accounts-for-picker"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 export type MetaPartnerAccountSelection = {
   metaAdAccountId: string
@@ -50,10 +51,9 @@ export function MetaPartnerAccountPicker({
       if (debouncedQuery) params.set("q", debouncedQuery)
       if (organizationSlug) params.set("forSlug", organizationSlug)
       if (suggestName) params.set("suggestName", suggestName)
-      const response = await fetch(
-        `/api/admin/meta/partner-ad-accounts?${params.toString()}`,
-        { cache: "no-store" }
-      )
+      const response = await fetch(`/api/admin/meta/partner-ad-accounts?${params.toString()}`, {
+        cache: "no-store",
+      })
       if (!response.ok) throw new Error(t("onboardingMetaPartnerFetchError"))
       const data = (await response.json()) as {
         accounts: PartnerAdAccountPickerRow[]
@@ -73,7 +73,7 @@ export function MetaPartnerAccountPicker({
     }
   }, [debouncedQuery, organizationSlug, suggestName, t])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void load()
   }, [load])
 
@@ -89,9 +89,7 @@ export function MetaPartnerAccountPicker({
       )
     }
     if (fetchError && accounts.length === 0) {
-      return (
-        <p className="px-3 py-4 text-[13px] leading-snug text-red-800">{fetchError}</p>
-      )
+      return <p className="px-3 py-4 text-[13px] leading-snug text-red-800">{fetchError}</p>
     }
     if (accounts.length === 0) {
       return (
@@ -102,8 +100,7 @@ export function MetaPartnerAccountPicker({
     }
     return accounts.map((account) => {
       const isSelected = selectedId === account.metaAdAccountId
-      const isDisabled =
-        disabled || account.linkStatus === "linked_other"
+      const isDisabled = disabled || account.linkStatus === "linked_other"
       return (
         <button
           key={account.metaAdAccountId}
@@ -123,9 +120,7 @@ export function MetaPartnerAccountPicker({
           )}
         >
           <span className="flex flex-wrap items-center gap-2">
-            <span className="text-[14px] font-medium text-foreground">
-              {account.accountName}
-            </span>
+            <span className="text-[14px] font-medium text-foreground">{account.accountName}</span>
             {account.suggested ? (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                 {t("onboardingMetaSuggested")}

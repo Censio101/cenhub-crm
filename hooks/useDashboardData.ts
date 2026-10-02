@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
+import type { MessageKey } from "@/lib/i18n"
 import {
   CLIENT_ORG_CHANGED_EVENT,
   getAdSpendCache,
@@ -11,30 +12,16 @@ import {
   setAdSpendCache,
   setLeadsCache,
 } from "@/lib/data/client-cache"
-import { demoAdSpendByMonth } from "@/lib/performance/demo-ad-spend"
-import { MOCK_LEADS, type Lead } from "@/lib/leads"
+import type { Lead } from "@/lib/leads"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type DashboardDataState = {
   leads: Lead[]
   adSpendByMonth: Record<string, number>
   loading: boolean
-  error: string | null
+  error: MessageKey | null
   needsClientSelection: boolean
   source: "mock" | "supabase"
-}
-
-async function shouldUseMockFallback(): Promise<boolean> {
-  try {
-    const response = await fetch("/api/auth/me", { cache: "no-store" })
-    if (!response.ok) return false
-    const data = (await response.json()) as {
-      isDemoFallback?: boolean
-      userId?: string | null
-    }
-    return Boolean(data.isDemoFallback && !data.userId)
-  } catch {
-    return false
-  }
 }
 
 export function useDashboardData(): DashboardDataState {
@@ -42,13 +29,13 @@ export function useDashboardData(): DashboardDataState {
   const cachedAdSpend = getAdSpendCache()
   const [leads, setLeads] = useState<Lead[]>(() => cachedLeads?.leads ?? [])
   const [adSpendByMonth, setAdSpendByMonth] = useState<Record<string, number>>(
-    () => cachedAdSpend ?? demoAdSpendByMonth()
+    () => cachedAdSpend ?? {}
   )
   const [loading, setLoading] = useState(() => !hasLeadsCache())
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<MessageKey | null>(null)
   const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [source, setSource] = useState<"mock" | "supabase">(
-    () => cachedLeads?.source ?? "mock"
+    () => cachedLeads?.source ?? "supabase"
   )
 
   const load = useCallback(async () => {
@@ -77,25 +64,13 @@ export function useDashboardData(): DashboardDataState {
           setAdSpendByMonth({})
           setSource("supabase")
           setNeedsClientSelection(true)
-          setError(
-            leadsPayload.message ?? "Vælg en klient for at se deres dashboard."
-          )
+          setError("leadsSelectClient")
           setLeadsCache({ leads: [], source: "supabase" })
           setAdSpendCache({})
           return
         }
 
-        if (await shouldUseMockFallback()) {
-          setLeads(MOCK_LEADS)
-          setAdSpendByMonth(demoAdSpendByMonth())
-          setSource("mock")
-          setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
-          setAdSpendCache(demoAdSpendByMonth())
-          setError("Viser demo-data — database ikke tilgængelig")
-          return
-        }
-
-        throw new Error(leadsPayload.message ?? "Kunne ikke hente leads")
+        throw new Error("leadsLoadError")
       }
 
       let nextAdSpend: Record<string, number> = {}
@@ -106,8 +81,7 @@ export function useDashboardData(): DashboardDataState {
         nextAdSpend = adSpendPayload.adSpendByMonth ?? {}
       }
 
-      const nextSource =
-        leadsPayload.source === "supabase" ? "supabase" : "mock"
+      const nextSource = leadsPayload.source === "supabase" ? "supabase" : "mock"
 
       setLeads(leadsPayload.leads)
       setAdSpendByMonth(nextAdSpend)
@@ -120,27 +94,16 @@ export function useDashboardData(): DashboardDataState {
       setAdSpendCache(nextAdSpend, leadsPayload.organization?.slug ?? null)
     } catch (loadError) {
       console.error(loadError)
-      if (await shouldUseMockFallback()) {
-        setLeads(MOCK_LEADS)
-        setAdSpendByMonth(demoAdSpendByMonth())
-        setSource("mock")
-        setLeadsCache({ leads: MOCK_LEADS, source: "mock" })
-        setAdSpendCache(demoAdSpendByMonth())
-        setError("Viser demo-data — database ikke tilgængelig")
-      } else {
-        setLeads([])
-        setAdSpendByMonth({})
-        setSource("supabase")
-        setError(
-          loadError instanceof Error ? loadError.message : "Kunne ikke hente data"
-        )
-      }
+      setLeads([])
+      setAdSpendByMonth({})
+      setSource("supabase")
+      setError("leadsLoadError")
     } finally {
       if (showLoading) setLoading(false)
     }
   }, [])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void load()
   }, [load])
 

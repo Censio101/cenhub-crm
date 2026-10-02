@@ -3,9 +3,11 @@
 import { useCallback } from "react"
 
 import {
+  persistAccountPreferredLocale,
   persistAdminPreferredLocale,
 } from "@/components/i18n/LocaleSync"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { LOCALES, type Locale } from "@/lib/i18n/types"
 import { cn } from "cn"
 
@@ -16,15 +18,18 @@ const SHORT_LABEL: Record<Locale, string> = {
 
 export function DashboardLocaleSwitcher({ className }: { className?: string }) {
   const { locale, setLocale, t } = useLanguage()
+  const { role } = useActiveOrganization()
 
   const handleChange = useCallback(
     (next: Locale) => {
       void (async () => {
-        const ok = await persistAdminPreferredLocale(next)
+        const persist =
+          role === "censio_admin" ? persistAdminPreferredLocale : persistAccountPreferredLocale
+        const ok = await persist(next)
         if (ok) setLocale(next)
       })()
     },
-    [setLocale]
+    [role, setLocale]
   )
 
   return (

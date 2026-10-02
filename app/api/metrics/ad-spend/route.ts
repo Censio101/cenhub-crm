@@ -4,10 +4,7 @@ import {
   organizationErrorResponse,
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
-import {
-  listAdSpendByMonth,
-  listDemoAdSpendByMonth,
-} from "@/lib/db/ad-metrics-repository"
+import { listAdSpendByMonth } from "@/lib/db/ad-metrics-repository"
 import { usesDatabaseLeads } from "@/lib/db/leads-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -16,17 +13,15 @@ export async function GET() {
   try {
     if (!usesDatabaseLeads()) {
       return NextResponse.json({
-        adSpendByMonth: listDemoAdSpendByMonth(),
-        source: "demo",
+        adSpendByMonth: {},
+        source: "pending",
       })
     }
 
     const ctx = await requireOrganizationContext()
 
     const supabase =
-      ctx.isDemoFallback && !ctx.userId
-        ? createAdminClient()
-        : await createClient()
+      ctx.isDemoFallback && !ctx.userId ? createAdminClient() : await createClient()
 
     const { adSpendByMonth, source } = await listAdSpendByMonth(
       supabase,

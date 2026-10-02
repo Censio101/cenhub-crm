@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { useCallback, useState, type ReactNode } from "react"
 import { CheckIcon, ChevronLeftIcon, ExternalLinkIcon, Undo2Icon } from "lucide-react"
 
 import {
@@ -23,6 +23,7 @@ import type { OnboardingApplicationRow } from "@/lib/db/types"
 import { outfit } from "@/lib/fonts/app-fonts"
 import { displayOnboardingPhone } from "@/lib/onboarding/phone"
 import { cn } from "cn"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type LinkedOrganization = {
   id: string
@@ -32,7 +33,24 @@ type LinkedOrganization = {
 
 function ReviewSkeleton() {
   return (
-    <div className={cn(adminSectionCardClass, "h-48 animate-pulse bg-[#faf8f6]/80")} />
+    <div className="space-y-4" aria-busy="true">
+      <div className={cn(adminSectionCardClass, "space-y-3 p-4 sm:p-5")}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="skeleton-shimmer h-5 w-40 rounded-md" />
+          <div className="skeleton-shimmer h-6 w-24 rounded-full" />
+        </div>
+        <div className="skeleton-shimmer h-3 w-full max-w-sm rounded-md" />
+        <div className="skeleton-shimmer h-3 w-2/3 max-w-xs rounded-md" />
+      </div>
+      <div className={cn(adminSectionCardClass, "space-y-3 p-4 sm:p-5")}>
+        <div className="skeleton-shimmer h-11 w-full rounded-xl" />
+        <div className="skeleton-shimmer h-11 w-full rounded-xl" />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <div className="skeleton-shimmer h-10 w-32 rounded-md" />
+        <div className="skeleton-shimmer h-10 w-32 rounded-md" />
+      </div>
+    </div>
   )
 }
 
@@ -43,7 +61,6 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
   const [loading, setLoading] = useState(true)
   const [missing, setMissing] = useState(false)
   const [slugOverride, setSlugOverride] = useState("")
-  const [seedDemo, setSeedDemo] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [busyAction, setBusyAction] = useState<"approve" | "reject" | "revert" | null>(null)
   const busy = busyAction !== null
@@ -100,7 +117,7 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
     }
   }, [applicationId, t])
 
-  useEffect(() => {
+  useAsyncEffect(() => {
     void load()
   }, [load])
 
@@ -110,20 +127,15 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
     setError(null)
     setNotice(null)
     try {
-      const response = await fetch(
-        `/api/admin/onboarding/applications/${application.id}/approve`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slugOverride: slugOverride.trim() || undefined,
-            seedDemo,
-            demoMode: seedDemo,
-            metaAdAccountId: pendingMetaSelection?.metaAdAccountId,
-            metaAccountName: pendingMetaSelection?.accountName,
-          }),
-        }
-      )
+      const response = await fetch(`/api/admin/onboarding/applications/${application.id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slugOverride: slugOverride.trim() || undefined,
+          metaAdAccountId: pendingMetaSelection?.metaAdAccountId,
+          metaAccountName: pendingMetaSelection?.accountName,
+        }),
+      })
       const data = (await response.json()) as {
         error?: string
         organization?: LinkedOrganization
@@ -138,9 +150,7 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
       setPendingMetaSelection(null)
       await load()
     } catch (approveError) {
-      setError(
-        approveError instanceof Error ? approveError.message : t("onboardingApproveError")
-      )
+      setError(approveError instanceof Error ? approveError.message : t("onboardingApproveError"))
     } finally {
       setBusyAction(null)
     }
@@ -152,14 +162,11 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
     setError(null)
     setNotice(null)
     try {
-      const response = await fetch(
-        `/api/admin/onboarding/applications/${application.id}/reject`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason: rejectReason }),
-        }
-      )
+      const response = await fetch(`/api/admin/onboarding/applications/${application.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason }),
+      })
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("onboardingRejectError"))
       setNotice(t("onboardingRejectedNotice"))
@@ -178,10 +185,9 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
     setError(null)
     setNotice(null)
     try {
-      const response = await fetch(
-        `/api/admin/onboarding/applications/${application.id}/reopen`,
-        { method: "POST" }
-      )
+      const response = await fetch(`/api/admin/onboarding/applications/${application.id}/reopen`, {
+        method: "POST",
+      })
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("onboardingRevertRejectionError"))
       setNotice(t("onboardingRevertRejectionNotice"))
@@ -204,15 +210,12 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
           ? t("onboardingSubmitting")
           : null
 
-  const linkedMetaDisplay: LinkedMetaDisplay =
-    applicationMeta?.metaAdAccountId?.trim()
-      ? {
-          metaAdAccountId: applicationMeta.metaAdAccountId,
-          accountName:
-            applicationMeta.partnerAccountName?.trim() ||
-            applicationMeta.metaAdAccountId,
-        }
-      : null
+  const linkedMetaDisplay: LinkedMetaDisplay = applicationMeta?.metaAdAccountId?.trim()
+    ? {
+        metaAdAccountId: applicationMeta.metaAdAccountId,
+        accountName: applicationMeta.partnerAccountName?.trim() || applicationMeta.metaAdAccountId,
+      }
+    : null
 
   return (
     <div className={cn("admin-ui mx-auto grid w-full max-w-[44rem] gap-5", outfit.className)}>
@@ -262,11 +265,17 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
             <ApplicantSection title={t("onboardingSectionCompany")}>
               <DetailRow label={t("onboardingFieldCompanyName")} value={application.company_name} />
               <DetailRow label={t("onboardingFieldCvr")} value={application.cvr ?? "—"} />
-              <DetailRow label={t("onboardingFieldWebsite")} value={application.website_url ?? "—"} />
+              <DetailRow
+                label={t("onboardingFieldWebsite")}
+                value={application.website_url ?? "—"}
+              />
             </ApplicantSection>
 
             <ApplicantSection title={t("onboardingSectionContact")}>
-              <DetailRow label={t("onboardingFieldFullName")} value={application.contact_full_name} />
+              <DetailRow
+                label={t("onboardingFieldFullName")}
+                value={application.contact_full_name}
+              />
               <DetailRow label={t("onboardingFieldEmail")} value={application.contact_email} />
               <DetailRow
                 label={t("onboardingFieldPhone")}
@@ -284,7 +293,11 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
 
             {application.notes ? (
               <ApplicantSection title={t("onboardingFieldNotes")}>
-                <DetailRow label={t("onboardingFieldNotes")} value={application.notes} className="sm:col-span-2" />
+                <DetailRow
+                  label={t("onboardingFieldNotes")}
+                  value={application.notes}
+                  className="sm:col-span-2"
+                />
               </ApplicantSection>
             ) : null}
             {application.rejection_reason ? (
@@ -362,14 +375,6 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
                     onChange={(event) => setSlugOverride(event.target.value)}
                   />
                 </label>
-                <label className="flex items-center gap-2 text-[14px]">
-                  <input
-                    type="checkbox"
-                    checked={seedDemo}
-                    onChange={(event) => setSeedDemo(event.target.checked)}
-                  />
-                  {t("onboardingSeedDemo")}
-                </label>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button
                     type="button"
@@ -417,13 +422,7 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
   )
 }
 
-function ApplicantSection({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}) {
+function ApplicantSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="border-t border-[#e8e0d8] px-5 py-4">
       <h2 className="mb-3 text-[15px] font-semibold text-foreground">{title}</h2>

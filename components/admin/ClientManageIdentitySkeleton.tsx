@@ -12,11 +12,13 @@ export function ClientManageIdentitySkeleton({
   className,
 }: ClientManageIdentitySkeletonProps) {
   return (
-    <div
-      className={cn("flex min-w-0 flex-1 items-center gap-2.5", className)}
-      aria-hidden="true"
-    >
-      <div className="size-8 shrink-0 animate-pulse rounded-md bg-muted" />
+    <div className={cn("flex min-w-0 flex-1 items-center gap-2.5", className)} aria-hidden="true">
+      <div
+        className={cn(
+          "shrink-0 animate-pulse bg-muted",
+          variant === "scope" ? "size-10 rounded-xl" : "size-8 rounded-md"
+        )}
+      />
       <div className="min-w-0 flex-1 space-y-1.5">
         <div
           className={cn(
@@ -39,13 +41,9 @@ export function AdminClientScopeBarSkeleton() {
       aria-busy="true"
       aria-live="polite"
     >
-      <div className="flex min-w-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-          <div className="h-6 w-16 animate-pulse rounded-full bg-muted" />
-          <ClientManageIdentitySkeleton variant="scope" className="flex-none" />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <div className="h-4 w-24 animate-pulse rounded-md bg-muted" />
+      <div className="flex min-w-0 flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <ClientManageIdentitySkeleton variant="scope" className="flex-none" />
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           <div className="h-9 w-28 animate-pulse rounded-full bg-muted" />
           <div className="h-9 w-32 animate-pulse rounded-[10px] bg-muted" />
         </div>

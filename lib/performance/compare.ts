@@ -1,3 +1,6 @@
+import { translate } from "@/lib/i18n"
+import type { Locale } from "@/lib/i18n/types"
+
 import { formatMonthLabel } from "./format"
 import { getMetric } from "./metrics"
 import { toIsoDate } from "./date-ranges"
@@ -24,7 +27,8 @@ export function buildChartPoints(
   metricId: MetricId,
   currentBuckets: PerformanceBucket[],
   comparisonBuckets: PerformanceBucket[] | null,
-  granularity: Granularity
+  granularity: Granularity,
+  locale: Locale = "da"
 ): ChartPoint[] {
   const metric = getMetric(metricId)
   const aligned = alignByOffset(currentBuckets, comparisonBuckets ?? [])
@@ -33,9 +37,9 @@ export function buildChartPoints(
     const current = pair.current
     const comparison = pair.comparison
     const label = current
-      ? pointLabel(current, granularity)
+      ? pointLabel(current, granularity, locale)
       : comparison
-        ? pointLabel(comparison, granularity)
+        ? pointLabel(comparison, granularity, locale)
         : String(index + 1)
 
     return {
@@ -47,15 +51,24 @@ export function buildChartPoints(
   })
 }
 
-function pointLabel(bucket: PerformanceBucket, granularity: Granularity): string {
+function pointLabel(
+  bucket: PerformanceBucket,
+  granularity: Granularity,
+  locale: Locale
+): string {
   const date = new Date(`${bucket.start}T00:00:00`)
-  if (granularity === "month") return formatMonthLabel(date)
-  if (granularity === "week") return `Uge ${Math.ceil(date.getDate() / 7)}`
-  return `${date.getDate()}. ${formatMonthLabel(date).toLowerCase()}`
+  if (granularity === "month") return formatMonthLabel(date, locale)
+  if (granularity === "week") {
+    return translate(locale, "dashboardChartWeek", { n: Math.ceil(date.getDate() / 7) })
+  }
+  return `${date.getDate()}. ${formatMonthLabel(date, locale).toLowerCase()}`
 }
 
-export function comparisonSeriesLabel(range: DateRange | null): string {
-  if (!range) return "Sammenligning"
+export function comparisonSeriesLabel(
+  range: DateRange | null,
+  emptyLabel = "Sammenligning"
+): string {
+  if (!range) return emptyLabel
   const startYear = range.start.getFullYear()
   const endYear = range.end.getFullYear()
   if (startYear === endYear) return String(startYear)

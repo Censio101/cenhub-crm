@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useCallback, useEffect, useState, type ReactNode } from "react"
+import { FormEvent, useCallback, useState, type ReactNode } from "react"
 import {
   AppWindowIcon,
   CircleDotIcon,
@@ -22,6 +22,8 @@ import {
   adminSectionCardClass,
 } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useAsyncEffect } from "@/lib/react/use-async-effect"
+import { useKeyedState } from "@/lib/react/use-keyed-state"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
@@ -47,7 +49,7 @@ const emptyMetaConfig: MetaConfig = {
 }
 
 function toMetaConfig(
-  config: Partial<MetaConfig> & { organizationId?: string } | null | undefined
+  config: (Partial<MetaConfig> & { organizationId?: string }) | null | undefined
 ): MetaConfig {
   if (!config) return emptyMetaConfig
   return {
@@ -140,15 +142,16 @@ export function AdminMetaConfigForm({
   onSaved?: () => void
 }) {
   const { t, locale } = useLanguage()
-  const [config, setConfig] = useState<MetaConfig>(() => toMetaConfig(initialConfig))
-  const [loading, setLoading] = useState(initialConfig === undefined)
+  // Follows the `initialConfig` prop; otherwise it is fetched below.
+  const [config, setConfig] = useKeyedState<MetaConfig>(toMetaConfig(initialConfig), initialConfig)
+  const [fetchedFor, setFetchedFor] = useState<string | null>(null)
+  const loading = initialConfig === undefined && fetchedFor !== slug
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [partnerSelection, setPartnerSelection] = useState<MetaPartnerAccountSelection>(null)
-  const [linkedPartnerName, setLinkedPartnerName] = useState<string | null>(null)
 
   const dismissMessage = useCallback(() => setMessage(null), [])
   const dismissError = useCallback(() => setError(null), [])
@@ -174,16 +177,14 @@ export function AdminMetaConfigForm({
     return next
   }
 
-  useEffect(() => {
-    if (initialConfig !== undefined) {
-      setConfig(toMetaConfig(initialConfig))
-      setLoading(false)
-      return
-    }
-
-    void loadConfig().finally(() => setLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, initialConfig])
+  useAsyncEffect(
+    async (signal) => {
+      if (initialConfig !== undefined) return
+      await loadConfig().catch(() => null)
+      if (!signal.cancelled) setFetchedFor(slug)
+    },
+    [slug, initialConfig]
+  )
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -304,10 +305,7 @@ export function AdminMetaConfigForm({
   const linkedMetaDisplay: LinkedMetaDisplay = config.metaAdAccountId.trim()
     ? {
         metaAdAccountId: config.metaAdAccountId,
-        accountName:
-          linkedPartnerName?.trim() ||
-          organizationName?.trim() ||
-          config.metaAdAccountId,
+        accountName: organizationName?.trim() || config.metaAdAccountId,
       }
     : null
 
@@ -417,12 +415,18 @@ export function AdminMetaConfigForm({
             ) : null}
 
             {error ? (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800" role="alert">
+              <p
+                className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-800"
+                role="alert"
+              >
                 {error}
               </p>
             ) : null}
             {message ? (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-800" role="status">
+              <p
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[13px] text-emerald-800"
+                role="status"
+              >
                 {message}
               </p>
             ) : null}

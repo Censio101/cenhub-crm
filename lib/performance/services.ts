@@ -6,17 +6,26 @@ export const SERVICES = [
   { id: "badevaerelse", label: "Badeværelse" },
 ] as const
 
-export type ServiceId = (typeof SERVICES)[number]["id"]
+export type PresetServiceId = (typeof SERVICES)[number]["id"]
 
-export const ALL_SERVICE_IDS: ServiceId[] = SERVICES.map((service) => service.id)
+/** Any service slug. The services a client offers live in the database, not in this file. */
+export type ServiceId = string
+
+export const ALL_SERVICE_IDS: PresetServiceId[] = SERVICES.map((service) => service.id)
 
 export type NamedService = {
   id: string
   label: string
 }
 
-export function isServiceId(value: string): value is ServiceId {
+export function isServiceId(value: string): value is PresetServiceId {
   return SERVICES.some((service) => service.id === value)
+}
+
+/** "tag-renovering" -> "Tag renovering" for services that are no longer in the client's list. */
+function humanizeServiceSlug(slug: string): string {
+  const words = slug.replace(/-+/g, " ").trim()
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : slug
 }
 
 export function resolveServiceLabel(
@@ -24,9 +33,9 @@ export function resolveServiceLabel(
   extras: readonly NamedService[] = []
 ): string {
   return (
-    SERVICES.find((service) => service.id === id)?.label ??
     extras.find((service) => service.id === id)?.label ??
-    id
+    SERVICES.find((service) => service.id === id)?.label ??
+    humanizeServiceSlug(id)
   )
 }
 
@@ -49,5 +58,8 @@ export function serviceShare(id: ServiceId, month: number, year: number): number
       return (year >= 2026 ? 0.18 : 0.13) + 0.04 * season
     case "badevaerelse":
       return 0.12 + 0.04 * Math.cos((month + 1) * 0.8)
+    default:
+      // Services created by an admin have no demo curve; use a flat share.
+      return 0.12
   }
 }

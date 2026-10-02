@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState, useTransition } from "react"
+import { useCallback, useTransition } from "react"
 
 import {
   applyComparisonChange,
@@ -14,6 +14,7 @@ import {
   parseDashboardParams,
   type DashboardViewState,
 } from "@/lib/performance/url-state"
+import { useKeyedState } from "@/lib/react/use-keyed-state"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
 import type { FunnelId } from "@/lib/performance/funnels"
 import type { ServiceId } from "@/lib/performance/services"
@@ -22,12 +23,12 @@ export function useDashboardViewState(basePath: string) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
-  const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
-
-  useEffect(() => {
-    setView(parseDashboardParams(new URLSearchParams(queryKey)))
-  }, [queryKey])
+  // The view follows the URL; `replaceState` also sets it right away for instant feedback.
+  const [view, setView] = useKeyedState(
+    parseDashboardParams(new URLSearchParams(queryKey)),
+    queryKey
+  )
 
   const replaceState = useCallback(
     (next: DashboardViewState) => {
@@ -38,7 +39,7 @@ export function useDashboardViewState(basePath: string) {
         router.replace(path, { scroll: false })
       })
     },
-    [basePath, router]
+    [basePath, router, setView]
   )
 
   const onPresetChange = useCallback(
@@ -53,11 +54,8 @@ export function useDashboardViewState(basePath: string) {
   )
 
   const onComparisonChange = useCallback(
-    (next: {
-      enabled: boolean
-      mode: ComparisonMode
-      customRange?: DateRange | null
-    }) => replaceState(applyComparisonChange(view, next)),
+    (next: { enabled: boolean; mode: ComparisonMode; customRange?: DateRange | null }) =>
+      replaceState(applyComparisonChange(view, next)),
     [replaceState, view]
   )
 

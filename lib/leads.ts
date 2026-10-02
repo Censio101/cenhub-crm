@@ -38,11 +38,13 @@ export const LEAD_STATUSES = [
 
 export type LeadStatusId = (typeof LEAD_STATUSES)[number]["id"]
 
-export type LeadSource = "demo" | "meta" | "website" | "landing" | "manual"
+export type LeadSource = "demo" | "meta" | "website" | "landing" | "manual" | "import"
 
 export type Lead = {
   id: string
   date: string
+  /** `HH:mm` when the lead has a time; shown after the date as text. */
+  time?: string | null
   fullName: string
   email: string
   phone: string
@@ -57,11 +59,14 @@ export type Lead = {
   platform: LeadPlatformId | ""
   /** Meta Lead Ads / Instant Form ad id used to match incoming Meta leads. */
   metaAdId: string
+  metaFormId?: string
+  metaExtra?: Record<string, string>
   status: LeadStatusId
   salesPrice: number | null
   profit: number | null
   source?: LeadSource
   lockedFields?: string[]
+  customFields?: Record<string, unknown>
 }
 
 export function getLeadServiceIds(lead: {
@@ -364,7 +369,8 @@ export function sortLeadsByDate(
   direction: "asc" | "desc"
 ): Lead[] {
   return [...leads].sort((left, right) => {
-    const cmp = left.date.localeCompare(right.date)
+    const cmp =
+      left.date.localeCompare(right.date) || (left.time ?? "").localeCompare(right.time ?? "")
     if (cmp !== 0) return direction === "asc" ? cmp : -cmp
     return direction === "asc"
       ? left.id.localeCompare(right.id)
@@ -391,6 +397,7 @@ export function emptyLead(id: string, date = new Date()): Lead {
     status: "new_waiting_call",
     salesPrice: null,
     profit: null,
+    customFields: {},
   }
 }
 

@@ -1,40 +1,42 @@
+"use client"
+
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import type { LeadPipelineStats } from "@/lib/leads"
 import { cn } from "cn"
 
-function danishCount(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`
-}
-
 export function LeadPipelineBar({
   stats,
-  description = "Fordeling af tabt, åbne leads og lukkede kunder",
+  description,
 }: {
   stats: LeadPipelineStats
   description?: string
 }) {
+  const { t } = useLanguage()
+  const resolvedDescription = description ?? t("leadSheetPipelineBarDesc")
+
   const segments = [
     {
       id: "lost",
-      label: "Tabt",
+      label: t("leadSheetPipelineLostLabel"),
       value: stats.lostValue,
-      count: danishCount(stats.lostCount, "mistet lead", "mistede leads"),
+      count: `${stats.lostCount}`,
       bar: "bg-[#c45c4a]",
       swatch: "bg-[#c45c4a]",
     },
     {
       id: "open",
-      label: "Åbne leads",
+      label: t("leadSheetPipelineOpenLabel"),
       value: stats.pipelineValue,
-      count: danishCount(stats.openCount, "åbent lead", "åbne leads"),
+      count: `${stats.openCount}`,
       bar: "bg-[#5b7fb8]",
       swatch: "bg-[#5b7fb8]",
     },
     {
       id: "won",
-      label: "Lukkede kunder",
+      label: t("leadSheetPipelineWonLabel"),
       value: stats.wonValue,
-      count: danishCount(stats.wonCount, "vundet kunde", "vundne kunder"),
+      count: `${stats.wonCount}`,
       bar: "bg-[#5a9a78]",
       swatch: "bg-[#5a9a78]",
     },
@@ -46,22 +48,20 @@ export function LeadPipelineBar({
   }
 
   return (
-    <section className="dashboard-card gap-0 px-6 py-5" aria-label="Pipeline">
+    <section className="dashboard-card gap-0 px-6 py-5" aria-label={t("leadSheetPipelineOpen")}>
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-lg font-medium tracking-tight text-[var(--text-primary)]">
-            Pipeline
+            {t("leadSheetPipelineOpen")}
           </h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {description}
-          </p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">{resolvedDescription}</p>
         </div>
       </div>
 
       <div
         className="mt-5 flex h-2 overflow-hidden rounded-full bg-[#efe8e1]"
         role="img"
-        aria-label={`Pipeline: tabt ${formatCurrencyDKK(stats.lostValue)} (${formatPercentage(shareOfTotal(stats.lostValue))}), åbne leads ${formatCurrencyDKK(stats.pipelineValue)} (${formatPercentage(shareOfTotal(stats.pipelineValue))}), lukkede kunder ${formatCurrencyDKK(stats.wonValue)} (${formatPercentage(shareOfTotal(stats.wonValue))})`}
+        aria-label={resolvedDescription}
       >
         {segments.map((segment) => {
           const share = shareOfTotal(segment.value)
@@ -80,10 +80,7 @@ export function LeadPipelineBar({
         {segments.map((segment) => (
           <li key={segment.id} className="min-w-0">
             <p className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
-              <span
-                className={cn("size-2 shrink-0 rounded-full", segment.swatch)}
-                aria-hidden
-              />
+              <span className={cn("size-2 shrink-0 rounded-full", segment.swatch)} aria-hidden />
               {segment.label}
             </p>
             <p className="mt-1.5 text-xl font-semibold tabular-nums text-[var(--text-primary)]">

@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card"
-import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import { useCompanyServices } from "@/hooks/useCompanyServices"
 import type { Lead } from "@/lib/leads"
 import {
   getChannelInsights,
@@ -7,7 +7,7 @@ import {
 } from "@/lib/performance/insights"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
 import type { FunnelId } from "@/lib/performance/funnels"
-import { isServiceId, type ServiceId } from "@/lib/performance/services"
+import type { ServiceId } from "@/lib/performance/services"
 import type { DateRange } from "@/lib/performance/types"
 
 export function MarketingCompare({
@@ -41,9 +41,7 @@ export function MarketingCompare({
       funnel,
       segment,
     },
-    enabledServices.filter((service): service is { id: ServiceId; label: string } =>
-      isServiceId(service.id)
-    ),
+    enabledServices,
     performanceInput
   )
 

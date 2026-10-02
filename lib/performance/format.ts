@@ -1,5 +1,7 @@
-import { da } from "date-fns/locale"
+import { da, enUS } from "date-fns/locale"
 import { format } from "date-fns"
+
+import type { Locale } from "@/lib/i18n/types"
 
 const EMPTY = "–"
 
@@ -59,9 +61,14 @@ export function formatSignedPercentage(value: number | null | undefined): string
   return `${sign}${formatPercentage(value)}`
 }
 
-export function formatDateRangeLabel(start: Date, end: Date): string {
-  const startLabel = format(start, "d. MMM yyyy", { locale: da })
-  const endLabel = format(end, "d. MMM yyyy", { locale: da })
+function dateFnsLocale(locale: Locale) {
+  return locale === "en" ? enUS : da
+}
+
+export function formatDateRangeLabel(start: Date, end: Date, locale: Locale = "da"): string {
+  const dateLocale = dateFnsLocale(locale)
+  const startLabel = format(start, "d. MMM yyyy", { locale: dateLocale })
+  const endLabel = format(end, "d. MMM yyyy", { locale: dateLocale })
   return `${startLabel} – ${endLabel}`
 }
 
@@ -80,8 +87,24 @@ export const DANISH_MONTHS_SHORT = [
   "Dec",
 ] as const
 
-export function formatMonthLabel(date: Date): string {
-  return DANISH_MONTHS_SHORT[date.getMonth()]
+const ENGLISH_MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const
+
+export function formatMonthLabel(date: Date, locale: Locale = "da"): string {
+  const months = locale === "en" ? ENGLISH_MONTHS_SHORT : DANISH_MONTHS_SHORT
+  return months[date.getMonth()]
 }
 
 export function formatAxisValue(

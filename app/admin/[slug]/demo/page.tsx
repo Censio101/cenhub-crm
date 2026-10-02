@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 
-import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
+import { adminClientSettingsBasePath } from "@/lib/admin/admin-routes"
 
 type PageProps = {
   params: Promise<{ slug: string }>
@@ -8,5 +8,5 @@ type PageProps = {
 
 export default async function AdminClientLegacyDemoPage({ params }: PageProps) {
   const { slug } = await params
-  redirect(adminClientSettingsSectionPath(slug, "demo"))
+  redirect(adminClientSettingsBasePath(slug))
 }
