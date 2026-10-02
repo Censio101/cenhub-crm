@@ -12,28 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  formatCurrencyDKK,
-  formatInteger,
-  formatMonthLabel,
-  formatPercentage,
-} from "@/lib/performance/format"
+import { formatMetricValue, formatMonthLabel } from "@/lib/performance/format"
 import { localizeMetric } from "@/lib/performance/metric-i18n"
 import type {
   MetricDefinition,
   PerformanceBucket,
   PeriodTotals,
 } from "@/lib/performance/types"
-
-function formatCell(
-  format: "currency" | "percent" | "integer",
-  value: number | null
-): string {
-  if (value == null) return "–"
-  if (format === "currency") return formatCurrencyDKK(value)
-  if (format === "percent") return formatPercentage(value)
-  return formatInteger(value)
-}
 
 function monthKey(bucket: PerformanceBucket): string {
   const date = new Date(`${bucket.start}T00:00:00`)
@@ -122,7 +107,7 @@ export function MetricBreakdownTable({
                     valueCellClass
                   )}
                 >
-                  {formatCell(metric.format, value)}
+                  {formatMetricValue(metric.format, value)}
                 </TableCell>
               )
             })}
@@ -134,7 +119,7 @@ export function MetricBreakdownTable({
                   valueCellClass
                 )}
               >
-                {formatCell(metric.format, metric.compute(totalTotals))}
+                {formatMetricValue(metric.format, metric.compute(totalTotals))}
               </TableCell>
             ) : null}
           </TableRow>

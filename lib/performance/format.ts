@@ -2,6 +2,7 @@ import { da, enUS } from "date-fns/locale"
 import { format } from "date-fns"
 
 import type { Locale } from "@/lib/i18n/types"
+import type { MetricFormat } from "@/lib/performance/types"
 
 const EMPTY = "–"
 
@@ -107,16 +108,34 @@ export function formatMonthLabel(date: Date, locale: Locale = "da"): string {
   return months[date.getMonth()]
 }
 
-export function formatAxisValue(
-  value: number,
-  formatKind: "currency" | "percent" | "integer"
+export function formatMetricValue(
+  formatKind: MetricFormat,
+  value: number | null | undefined
 ): string {
+  if (value == null || !Number.isFinite(value)) return EMPTY
+  switch (formatKind) {
+    case "currency":
+      return formatCurrencyDKK(value)
+    case "percent":
+      return formatPercentage(value)
+    case "roas":
+      return formatRoasMultiplier(value)
+    case "integer":
+    default:
+      return formatInteger(value)
+  }
+}
+
+export function formatAxisValue(value: number, formatKind: MetricFormat): string {
   if (!Number.isFinite(value)) return EMPTY
   if (formatKind === "currency") {
     return `${formatCompactNumber(value)}\u00a0kr.`
   }
   if (formatKind === "percent") {
     return `${Math.round(value)}\u00a0%`
+  }
+  if (formatKind === "roas") {
+    return formatRoasMultiplier(value)
   }
   return formatInteger(value)
 }
