@@ -30,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CURRENT_COMPANY } from "@/lib/company"
 import {
   getEmployeeRoleLabel,
   type EmployeeRole,
@@ -355,7 +354,7 @@ export function SettingsBoard() {
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Profil, logo, ydelser, login og adgang for{" "}
-        {CURRENT_COMPANY.name}.
+        {settings.companyName}.
       </p>
 
       <div className="mt-8 grid gap-5">
@@ -367,6 +366,18 @@ export function SettingsBoard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 sm:grid-cols-2">
+            <label className="grid gap-1.5 sm:col-span-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                Virksomhedsnavn
+              </span>
+              <input
+                value={settings.companyName}
+                onChange={(event) =>
+                  updateSettings({ companyName: event.target.value })
+                }
+                className={fieldClass}
+              />
+            </label>
             <ImageUpload
               label="Profilbillede"
               description="Bruges ved jeres navn øverst til højre."
@@ -456,11 +467,26 @@ export function SettingsBoard() {
                   setPasswordError("Skriv din nuværende kode.")
                   return
                 }
-                setPasswordError(null)
-                setCurrentPassword("")
-                setNewPassword("")
-                setConfirmPassword("")
-                setPasswordMessage("Koden er opdateret.")
+                void (async () => {
+                  const response = await fetch("/api/auth/password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      currentPassword,
+                      newPassword,
+                    }),
+                  })
+                  const payload = (await response.json()) as { error?: string }
+                  if (!response.ok && response.status !== 401) {
+                    setPasswordError(payload.error || "Koden kunne ikke opdateres.")
+                    return
+                  }
+                  setPasswordError(null)
+                  setCurrentPassword("")
+                  setNewPassword("")
+                  setConfirmPassword("")
+                  setPasswordMessage("Koden er opdateret.")
+                })()
               }}
             >
               <label className="grid gap-1.5">

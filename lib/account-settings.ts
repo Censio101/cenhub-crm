@@ -19,6 +19,7 @@ export type EmployeeAccess = {
 }
 
 export type AccountSettings = {
+  companyName: string
   profileImage: string
   logo: string
   email: string
@@ -29,6 +30,7 @@ export type AccountSettings = {
 }
 
 export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = {
+  companyName: CURRENT_COMPANY.name,
   profileImage: CURRENT_COMPANY.image,
   logo: CURRENT_COMPANY.logo,
   email: "kontakt@nordkystens-tomrer.dk",
@@ -93,7 +95,7 @@ export function addEnabledServiceId(
     return [...current]
   }
   return ALL_SERVICE_IDS.filter((item) => item === id || current.includes(item)).concat(
-    current.filter((item) => !isServiceId(item))
+    current.filter((item) => !isServiceId(item)) as typeof ALL_SERVICE_IDS[number][]
   )
 }
 
@@ -162,6 +164,7 @@ export function readAccountSettings(): AccountSettings {
     const parsed = JSON.parse(raw) as Partial<AccountSettings>
     const customServices = parseCustomServices(parsed.customServices)
     return {
+      companyName: parsed.companyName || DEFAULT_ACCOUNT_SETTINGS.companyName,
       profileImage: parsed.profileImage || DEFAULT_ACCOUNT_SETTINGS.profileImage,
       logo: parsed.logo || DEFAULT_ACCOUNT_SETTINGS.logo,
       email: parsed.email || DEFAULT_ACCOUNT_SETTINGS.email,

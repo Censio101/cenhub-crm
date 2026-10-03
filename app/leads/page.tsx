@@ -1,5 +1,5 @@
-import { LeadsBoard } from "@/components/leads/LeadsBoard"
+import { redirect } from "next/navigation"
 
-export default function LeadsPage() {
-  return <LeadsBoard />
+export default function RemovedPage() {
+  redirect("/admin")
 }

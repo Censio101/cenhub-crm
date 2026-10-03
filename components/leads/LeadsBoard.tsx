@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -8,11 +8,15 @@ import {
   CheckIcon,
   WrenchIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react"
 
-import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import {
+  useAccountSettings,
+  useCompanyServices,
+} from "@/components/account/AccountSettingsProvider"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,9 +45,12 @@ import {
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import { SERVICES, isServiceId } from "@/lib/performance/services"
 import {
+  LEAD_CHANNELS,
   LEAD_SEGMENTS,
+  LEAD_SOURCES,
   LEAD_STATUSES,
   MOCK_LEADS,
+  syntheticDanishPhone,
   computeLeadPipelineStats,
   emptyLead,
   formatLeadMonth,
@@ -51,9 +58,9 @@ import {
   getLeadServiceIds,
   getLeadStatusCellClass,
   getLeadStatusClass,
-  getWonLeadCellClass,
-  getWonLeadRowClass,
+  isLeadChannelId,
   isLeadSegmentId,
+  isLeadSourceId,
   isLeadStatusId,
   leadMonthKey,
   sortLeadsByDate,
@@ -184,10 +191,12 @@ function ServiceMultiSelect({
   value,
   onChange,
   label,
+  compact = false,
 }: {
   value: string[]
   onChange: (value: string[]) => void
   label: string
+  compact?: boolean
 }) {
   const { enabledServices } = useCompanyServices()
   const options = useMemo(() => {
@@ -210,11 +219,16 @@ function ServiceMultiSelect({
     <Popover>
       <PopoverTrigger
         aria-label={label}
-        className="flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border-0 bg-transparent px-1.5 text-left text-sm outline-none hover:bg-white focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-ring"
+        className={cn(
+          "flex h-8 items-center justify-between gap-1 rounded-md border-0 bg-transparent px-1.5 text-left text-sm outline-none hover:bg-white focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-ring",
+          compact ? "w-7 min-w-7 px-0" : "w-full min-w-[10.5rem]"
+        )}
       >
-        <span className={cn("truncate", !summary && "text-muted-foreground")}>
-          {summary || "Service"}
-        </span>
+        {compact ? null : (
+          <span className={cn("truncate", !summary && "text-muted-foreground")}>
+            {summary || "Service"}
+          </span>
+        )}
         <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent
@@ -387,13 +401,36 @@ function FooterStat({
   )
 }
 
-function LeadsTable({
+function sourcePillClass(id: string) {
+  if (id === "facebook") return "bg-[#1877F2] text-white"
+  if (id === "referral") return "bg-[#6d4aff] text-white"
+  if (id === "organic") return "bg-[#8a6239] text-white"
+  return "bg-muted text-muted-foreground"
+}
+
+function formatCreated(date: string) {
+  const [year, month, day] = date.split("-")
+  if (!year || !month || !day) return date
+  return `${Number(day)}.${Number(month)}.${year.slice(2)}`
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return ""
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+}
+
+function LeadListTable({
   leads,
   emptyText,
   dateSort,
   onToggleDateSort,
   onUpdate,
   onDelete,
+  onAdd,
 }: {
   leads: Lead[]
   emptyText: string
@@ -401,143 +438,264 @@ function LeadsTable({
   onToggleDateSort: () => void
   onUpdate: (id: string, patch: Partial<Lead>) => void
   onDelete: (id: string) => void
+  onAdd: () => void
 }) {
+  const [openId, setOpenId] = useState<string | null>(null)
+  const columns = 11
+
   return (
-    <Table
-      containerClassName="overflow-visible"
-      className="min-w-[96rem] border-separate border-spacing-0"
-    >
+    <Table className="min-w-[72rem] border-separate border-spacing-0">
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          {[
-            "Dato",
-            "Fulde navn",
-            "E-mail",
-            "Telefon",
-            "Privat/Erhverv",
-            "Virksomhed",
-            "Adresse",
-            "Postnr.",
-            "By",
-            "Service",
-            "Meta kunde annonce ID",
-            "Status",
-            "Salgspris",
-            "Bundlinje",
-          ].map((label, index) => (
-            <TableHead
-              key={label}
-              className={cn(
-                leadHeaderCellClass,
-                index === 0 && "sticky left-0 z-[3] w-36 min-w-36",
-                index === 1 && "sticky left-36 z-[3] min-w-44"
-              )}
+          <TableHead className={cn(leadHeaderCellClass, "min-w-52")}>Navn</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "min-w-36")}>Annoncenavn</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "min-w-40")}>Status</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "w-28")}>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-white hover:text-white/80"
+              aria-label={dateSort === "desc" ? "Sortér ældste først" : "Sortér nyeste først"}
+              onClick={onToggleDateSort}
             >
-              {index === 0 ? (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-white hover:text-white/80"
-                  aria-label={
-                    dateSort === "desc"
-                      ? "Sortér ældste først"
-                      : "Sortér nyeste først"
-                  }
-                  onClick={onToggleDateSort}
-                >
-                  {label}
-                  {dateSort === "desc" ? (
-                    <ArrowDownIcon className="size-3.5" />
-                  ) : (
-                    <ArrowUpIcon className="size-3.5" />
-                  )}
-                </button>
+              Oprettet
+              {dateSort === "desc" ? (
+                <ArrowDownIcon className="size-3.5" />
               ) : (
-                label
+                <ArrowUpIcon className="size-3.5" />
               )}
-            </TableHead>
-          ))}
-          <TableHead className={cn(leadHeaderCellClass, "sticky right-0 z-[3] w-11 min-w-11 border-r-0 border-l px-1 text-center")}>
-            <span className="sr-only">Slet</span>
+            </button>
+          </TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "min-w-32")}>Kilde</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "w-28")}>Platform</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "min-w-48")}>E-mail</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "w-28")}>Ansvarlig</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "min-w-44")}>Service</TableHead>
+          <TableHead className={cn(leadHeaderCellClass, "w-16 border-r-0 text-center")}>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-white hover:text-white/80"
+              onClick={onAdd}
+            >
+              <PlusIcon className="size-3.5" />
+              Tilføj
+            </button>
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {leads.length === 0 ? (
           <TableRow className="hover:bg-transparent">
-            <TableCell
-              colSpan={15}
-              className="px-4 py-10 text-center text-sm text-muted-foreground"
-            >
+            <TableCell colSpan={columns} className="px-4 py-10 text-center text-sm text-muted-foreground">
               {emptyText}
             </TableCell>
           </TableRow>
         ) : (
-          leads.map((lead) => (
-            <TableRow key={lead.id} className={getWonLeadRowClass(lead.status)}>
-              <TableCell
-                className={cn(
-                  "sticky left-0 z-[1] w-36 min-w-36 px-2",
-                  getWonLeadCellClass(lead.status) || "bg-card"
-                )}
+          leads.map((lead) => {
+            const open = openId === lead.id
+            const services = getLeadServiceIds(lead)
+            return (
+              <LeadListRows
+                key={lead.id}
+                lead={lead}
+                open={open}
+                services={services}
+                columns={columns}
+                onToggle={() => setOpenId(open ? null : lead.id)}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+              />
+            )
+          })
+        )}
+      </TableBody>
+    </Table>
+  )
+}
+
+function LeadListRows({
+  lead,
+  open,
+  services,
+  columns,
+  onToggle,
+  onUpdate,
+  onDelete,
+}: {
+  lead: Lead
+  open: boolean
+  services: string[]
+  columns: number
+  onToggle: () => void
+  onUpdate: (id: string, patch: Partial<Lead>) => void
+  onDelete: (id: string) => void
+}) {
+  const { enabledServices } = useCompanyServices()
+  const visible = services.slice(0, 2)
+  const extra = services.length - visible.length
+
+  return (
+    <>
+      <TableRow className="hover:bg-transparent">
+        <TableCell className="px-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-label={open ? "Luk detaljer" : "Åbn detaljer"}
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+              onClick={onToggle}
+            >
+              <ChevronRightIcon className={cn("size-4 transition-transform", open && "rotate-90")} />
+            </button>
+            <input
+              value={lead.fullName}
+              placeholder="Navn"
+              aria-label="Navn"
+              className={cellInputClass}
+              onChange={(event) => onUpdate(lead.id, { fullName: event.target.value })}
+            />
+          </div>
+        </TableCell>
+        <TableCell className="px-2">
+          <input
+            value={lead.adName}
+            placeholder="–"
+            aria-label="Annoncenavn"
+            className={cellInputClass}
+            onChange={(event) => onUpdate(lead.id, { adName: event.target.value })}
+          />
+        </TableCell>
+        <TableCell className="px-2">
+          <CellSelect
+            value={lead.status}
+            label="Status"
+            placeholder="Status"
+            options={LEAD_STATUSES}
+            className={cn(
+              "h-7 min-w-0 rounded-md px-2 text-xs font-semibold",
+              getLeadStatusCellClass(lead.status)
+            )}
+            optionClassName={getLeadStatusClass}
+            onChange={(status) =>
+              onUpdate(lead.id, {
+                status: isLeadStatusId(status) ? status : lead.status,
+              })
+            }
+          />
+        </TableCell>
+        <TableCell className="px-2">
+          <input
+            type="date"
+            value={lead.date}
+            aria-label={`Oprettet ${formatCreated(lead.date)}`}
+            className={cn(cellInputClass, "w-28 tabular-nums [&::-webkit-calendar-picker-indicator]:opacity-40")}
+            onChange={(event) => onUpdate(lead.id, { date: event.target.value })}
+          />
+        </TableCell>
+        <TableCell className="px-2">
+          <CellSelect
+            value={lead.source}
+            label="Kilde"
+            placeholder="Kilde"
+            options={LEAD_SOURCES}
+            className={cn(
+              "h-7 min-w-0 rounded-md px-2 text-xs font-semibold",
+              sourcePillClass(lead.source)
+            )}
+            onChange={(source) =>
+              onUpdate(lead.id, { source: isLeadSourceId(source) ? source : "" })
+            }
+          />
+        </TableCell>
+        <TableCell className="px-2">
+          <CellSelect
+            value={lead.channel}
+            label="Platform"
+            placeholder="–"
+            options={LEAD_CHANNELS.map((item) => ({ id: item.id, label: item.short }))}
+            className="h-7 min-w-16 rounded-md border border-border bg-white px-2 text-xs"
+            onChange={(channel) =>
+              onUpdate(lead.id, { channel: isLeadChannelId(channel) ? channel : "" })
+            }
+          />
+        </TableCell>
+        <TableCell className="px-2">
+          <input
+            type="email"
+            value={lead.email}
+            placeholder="mail@…"
+            aria-label="E-mail"
+            className={cellInputClass}
+            onChange={(event) => onUpdate(lead.id, { email: event.target.value })}
+          />
+        </TableCell>
+        <TableCell className="px-2">
+          <input
+            value={lead.phone}
+            placeholder="Telefon"
+            aria-label="Telefon"
+            className={cn(cellInputClass, "w-32 tabular-nums")}
+            onChange={(event) => onUpdate(lead.id, { phone: event.target.value })}
+          />
+        </TableCell>
+        <TableCell className="px-2">
+          <span
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#3f3a36] text-[0.65rem] font-semibold text-white"
+            title={lead.assignee || "Ansvarlig"}
+          >
+            {initials(lead.assignee) || "–"}
+          </span>
+        </TableCell>
+        <TableCell className="px-2">
+          <div className="flex items-center gap-1">
+            {visible.map((id) => (
+              <span
+                key={id}
+                className="rounded-md bg-[#e7eef8] px-2 py-0.5 text-xs font-medium text-[#1d4e89]"
               >
+                {enabledServices.find((item) => item.id === id)?.label ??
+                  SERVICES.find((item) => item.id === id)?.label ??
+                  id}
+              </span>
+            ))}
+            {extra > 0 ? (
+              <span className="text-xs font-medium text-muted-foreground">+{extra}</span>
+            ) : null}
+            <ServiceMultiSelect
+              value={services}
+              label="Service"
+              compact
+              onChange={(serviceIds) => {
+                const first = serviceIds[0]
+                onUpdate(lead.id, {
+                  serviceIds,
+                  service: first && isServiceId(first) ? first : "",
+                })
+              }}
+            />
+          </div>
+        </TableCell>
+        <TableCell className="px-1 text-center">
+          <DeleteLeadButton leadName={lead.fullName.trim()} onDelete={() => onDelete(lead.id)} />
+        </TableCell>
+      </TableRow>
+      {open ? (
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={columns} className="bg-[#f3f1ec] px-4 py-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <DetailField label="Ansvarlig">
                 <input
-                  type="date"
-                  value={lead.date}
-                  aria-label="Dato"
-                  className={cn(
-                    cellInputClass,
-                    "[&::-webkit-calendar-picker-indicator]:opacity-40"
-                  )}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { date: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell
-                className={cn(
-                  "sticky left-36 z-[1] min-w-44 border-r border-border px-2",
-                  getWonLeadCellClass(lead.status) || "bg-card"
-                )}
-              >
-                <input
-                  value={lead.fullName}
-                  placeholder="Navn"
-                  aria-label="Fulde navn"
+                  value={lead.assignee}
+                  aria-label="Ansvarlig"
                   className={cellInputClass}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { fullName: event.target.value })
-                  }
+                  onChange={(event) => onUpdate(lead.id, { assignee: event.target.value })}
                 />
-              </TableCell>
-              <TableCell className="min-w-52 px-2">
-                <input
-                  type="email"
-                  value={lead.email}
-                  placeholder="mail@…"
-                  aria-label="E-mail"
-                  className={cellInputClass}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { email: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="min-w-36 px-2">
-                <input
-                  value={lead.phone}
-                  placeholder="00 00 00 00"
-                  aria-label="Telefon"
-                  className={cellInputClass}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { phone: event.target.value })
-                  }
-                />
-              </TableCell>
-              <TableCell className="px-1">
+              </DetailField>
+              <DetailField label="Telefon">
                 <CellSelect
                   value={lead.segment}
                   label="Privat/Erhverv"
                   placeholder="Vælg"
-                  className="min-w-24"
                   options={LEAD_SEGMENTS}
                   onChange={(segment) =>
                     onUpdate(lead.id, {
@@ -546,142 +704,96 @@ function LeadsTable({
                     })
                   }
                 />
-              </TableCell>
-              <TableCell className="min-w-44 px-2">
+              </DetailField>
+              <DetailField label="Virksomhed">
                 <input
                   value={lead.companyName}
-                  placeholder={lead.segment === "b2b" ? "Virksomhed" : "–"}
                   aria-label="Virksomhed"
                   disabled={lead.segment !== "b2b"}
-                  className={cn(
-                    cellInputClass,
-                    lead.segment !== "b2b" && "text-muted-foreground"
-                  )}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { companyName: event.target.value })
-                  }
+                  className={cellInputClass}
+                  onChange={(event) => onUpdate(lead.id, { companyName: event.target.value })}
                 />
-              </TableCell>
-              <TableCell className="min-w-44 px-2">
+              </DetailField>
+              <DetailField label="Adresse">
                 <input
                   value={lead.address}
-                  placeholder="Adresse"
                   aria-label="Adresse"
                   className={cellInputClass}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { address: event.target.value })
-                  }
+                  onChange={(event) => onUpdate(lead.id, { address: event.target.value })}
                 />
-              </TableCell>
-              <TableCell className="min-w-24 px-2">
+              </DetailField>
+              <DetailField label="Postnr.">
                 <input
                   value={lead.zipCode}
-                  placeholder="0000"
                   aria-label="Postnummer"
                   className={cellInputClass}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { zipCode: event.target.value })
-                  }
+                  onChange={(event) => onUpdate(lead.id, { zipCode: event.target.value })}
                 />
-              </TableCell>
-              <TableCell className="min-w-32 px-2">
+              </DetailField>
+              <DetailField label="By">
                 <input
                   value={lead.city}
-                  placeholder="By"
                   aria-label="By"
                   className={cellInputClass}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { city: event.target.value })
-                  }
+                  onChange={(event) => onUpdate(lead.id, { city: event.target.value })}
                 />
-              </TableCell>
-              <TableCell className="px-1">
-                <ServiceMultiSelect
-                  value={getLeadServiceIds(lead)}
-                  label="Service"
-                  onChange={(serviceIds) =>
-                    onUpdate(lead.id, {
-                      serviceIds,
-                      service: isServiceId(serviceIds[0] ?? "")
-                        ? serviceIds[0]
-                        : "",
-                    })
-                  }
-                />
-              </TableCell>
-              <TableCell className="min-w-48 px-2">
+              </DetailField>
+              <DetailField label="Meta kunde annonce ID">
                 <input
                   value={lead.metaAdId}
-                  placeholder="Fx. 1202187654321098"
                   aria-label="Meta kunde annonce ID"
-                  inputMode="numeric"
-                  spellCheck={false}
                   className={cn(cellInputClass, "font-mono text-[0.8125rem]")}
-                  onChange={(event) =>
-                    onUpdate(lead.id, { metaAdId: event.target.value.trim() })
-                  }
+                  onChange={(event) => onUpdate(lead.id, { metaAdId: event.target.value.trim() })}
                 />
-              </TableCell>
-              <TableCell
-                data-lead-status-cell=""
-                className={cn(
-                  "min-w-[13.5rem] p-0",
-                  getLeadStatusCellClass(lead.status)
-                )}
-              >
-                <div className="flex h-12 items-stretch">
-                  <CellSelect
-                    value={lead.status}
-                    label="Status"
-                    placeholder="Status"
-                    options={LEAD_STATUSES}
-                    className="h-full min-h-0 w-full rounded-none border-0 bg-transparent px-3 text-[0.9375rem] font-semibold text-current shadow-none hover:bg-transparent focus:bg-transparent focus-visible:border-transparent focus-visible:ring-0 data-[size=sm]:h-full data-[size=sm]:rounded-none dark:bg-transparent dark:hover:bg-transparent [&_svg]:hidden"
-                    optionClassName={getLeadStatusClass}
-                    onChange={(status) =>
-                      onUpdate(lead.id, {
-                        status: isLeadStatusId(status) ? status : lead.status,
-                      })
-                    }
-                  />
-                </div>
-              </TableCell>
-              <TableCell className="min-w-32 px-2">
+              </DetailField>
+              <DetailField label="Salgspris">
                 <CurrencyInput
                   value={lead.salesPrice}
                   label="Salgspris"
                   onChange={(salesPrice) => onUpdate(lead.id, { salesPrice })}
                 />
-              </TableCell>
-              <TableCell className="min-w-32 px-2">
+              </DetailField>
+              <DetailField label="Bundlinje">
                 <CurrencyInput
                   value={lead.profit}
                   label="Bundlinje"
                   emphasizePositive
                   onChange={(profit) => onUpdate(lead.id, { profit })}
                 />
-              </TableCell>
-              <TableCell
-                className={cn(
-                  "sticky right-0 z-[1] w-11 min-w-11 border-l border-border bg-card px-1",
-                  getWonLeadCellClass(lead.status)
-                )}
-              >
-                <DeleteLeadButton
-                  leadName={lead.fullName.trim()}
-                  onDelete={() => onDelete(lead.id)}
-                />
-              </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
+              </DetailField>
+            </div>
+          </TableCell>
+        </TableRow>
+      ) : null}
+    </>
+  )
+}
+
+function DetailField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+      {label}
+      {children}
+    </label>
   )
 }
 
 export function LeadsBoard() {
   const { enabledServices } = useCompanyServices()
-  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS)
+  const { useDemoData, workspaceReady } = useAccountSettings()
+  const [leads, setLeads] = useState<Lead[]>([])
+
+  useEffect(() => {
+    if (!workspaceReady) return
+    setLeads(
+      useDemoData
+        ? MOCK_LEADS.map((lead) => ({
+            ...lead,
+            phone: lead.phone.trim() || syntheticDanishPhone(lead.id),
+          }))
+        : []
+    )
+  }, [useDemoData, workspaceReady])
   const [statusFilter, setStatusFilter] = useState<LeadStatusId | "all">("all")
   const [serviceFilter, setServiceFilter] = useState<string | "all">("all")
   const [monthFilter, setMonthFilter] = useState<string>("all")
@@ -875,7 +987,7 @@ export function LeadsBoard() {
 
       <section className="dashboard-card flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto">
-          <LeadsTable
+          <LeadListTable
             leads={filtered}
             dateSort={dateSort}
             onToggleDateSort={() =>
@@ -888,6 +1000,17 @@ export function LeadsBoard() {
             }
             onUpdate={updateLead}
             onDelete={deleteLead}
+            onAdd={() =>
+              setLeads((current) => [
+                emptyLead(
+                  `lead-${Date.now()}`,
+                  monthFilter === "all"
+                    ? new Date()
+                    : new Date(`${monthFilter}-01T00:00:00`)
+                ),
+                ...current,
+              ])
+            }
           />
         </div>
         <LeadPipelineFooter stats={pipelineStats} />

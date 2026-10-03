@@ -40,9 +40,9 @@ const valueCellClass = "tabular-nums text-[var(--text-primary)]"
 const headerCellClass =
   "h-11 border-b border-r border-white/15 bg-[#3f3a36] px-2 py-0 font-medium text-white"
 const nameHeaderClass =
-  "sticky left-0 z-30 w-40 min-w-40 bg-[#3f3a36] px-3 font-medium tracking-tight text-white"
+  "sticky left-0 z-30 w-28 min-w-28 bg-[#3f3a36] px-2 font-medium tracking-tight text-white sm:w-40 sm:min-w-40 sm:px-3"
 const nameCellClass =
-  "sticky left-0 z-20 w-40 min-w-40 border-b border-r border-[var(--table-grid)] bg-[var(--card-solid)] px-3 font-semibold tracking-tight text-[var(--text-primary)]"
+  "sticky left-0 z-20 w-28 min-w-28 border-b border-r border-[var(--table-grid)] bg-[var(--card-solid)] px-2 font-semibold tracking-tight text-[var(--text-primary)] sm:w-40 sm:min-w-40 sm:px-3"
 const totalColumnBg =
   "metric-breakdown-total bg-[color-mix(in_srgb,var(--positive)_12%,#ffffff)]"
 const totalHeaderClass = "border-l border-white/15 px-2.5"

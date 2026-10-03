@@ -14,10 +14,9 @@ import { EconomyInsights } from "@/components/overview/EconomyInsights"
 import { LeadFlowCard } from "@/components/overview/LeadFlowCard"
 import { MarketingCompare } from "@/components/overview/MarketingCompare"
 import { ValueStory } from "@/components/overview/ValueStory"
-import { CURRENT_COMPANY } from "@/lib/company"
+import { getEmptyPerformanceDashboard, getPerformanceDashboard } from "@/lib/performance/get-performance"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import { previousPeriod, previousYear, resolvePreset } from "@/lib/performance/date-ranges"
-import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 import {
   dashboardStateToParams,
   parseDashboardParams,
@@ -34,7 +33,7 @@ export function OverviewBoard() {
   const [pending, startTransition] = useTransition()
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
-  const { settings } = useAccountSettings()
+  const { settings, useDemoData } = useAccountSettings()
 
   useEffect(() => {
     setView(parseDashboardParams(new URLSearchParams(queryKey)))
@@ -42,17 +41,20 @@ export function OverviewBoard() {
 
   const data = useMemo(() => {
     try {
-      return getPerformanceDashboard({
+      const query = {
         range: view.range,
         comparison: view.comparisonEnabled ? view.comparisonRange : null,
         service: view.service,
         funnel: view.funnel,
         segment: view.segment,
-      })
+      }
+      return useDemoData
+        ? getPerformanceDashboard(query)
+        : getEmptyPerformanceDashboard(query)
     } catch {
       return null
     }
-  }, [view])
+  }, [useDemoData, view])
 
   function replaceState(next: typeof view) {
     setView(next)
@@ -85,7 +87,7 @@ export function OverviewBoard() {
             </p>
           ) : null}
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Hvad Censio og annoncerne har givet {CURRENT_COMPANY.name} ·{" "}
+            Hvad Censio og annoncerne har givet {settings.companyName} ·{" "}
             {formatDateRangeLabel(view.range.start, view.range.end)}
           </p>
         </div>
@@ -152,7 +154,18 @@ export function OverviewBoard() {
       {data.status === "partial" ? <PartialDataNotice /> : null}
 
       {data.status === "empty" ? (
-        <DashboardEmptyState />
+        <DashboardEmptyState
+          title={
+            useDemoData
+              ? "Ingen leads i den valgte periode"
+              : "Jeres CRM er klar"
+          }
+          text={
+            useDemoData
+              ? "Prøv en anden periode, service, funnel eller Privat/Erhverv, eller vent til de første leads kommer ind."
+              : "Overblikket fyldes, når de første leads og kunder er i systemet."
+          }
+        />
       ) : (
         <>
           <ValueStory

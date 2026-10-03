@@ -38,7 +38,7 @@ export function DiscordCommunity() {
           <CardTitle className="mt-1 text-lg">#support</CardTitle>
           <CardDescription>
             Censios support- og communitykanal for håndværkere. Stil spørgsmål
-            om leads, kunder og jeres CRM — teamet svarer her.
+            om leads, kunder og jeres CRM, teamet svarer her.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">

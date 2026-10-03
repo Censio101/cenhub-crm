@@ -2,7 +2,6 @@
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
-import { CURRENT_COMPANY } from "@/lib/company"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import { getCustomerSegmentLabel } from "@/lib/performance/customer-segments"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
@@ -64,11 +63,11 @@ export function DashboardHeader({
     <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
       <div className="max-w-2xl">
         <h1 className="text-3xl font-medium tracking-tight text-[var(--text-primary)] sm:text-4xl">
-          Velkommen, {CURRENT_COMPANY.name}
+          Velkommen, {settings.companyName}
         </h1>
         {settings.hvidbjergPartner ? (
           <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
-            {/* Local Hvidbjerg mark — dark-on-transparent, readable on the cream page. */}
+            {/* Local Hvidbjerg mark, dark-on-transparent, readable on the cream page. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/hvidbjerg-vinduet-logo.png"

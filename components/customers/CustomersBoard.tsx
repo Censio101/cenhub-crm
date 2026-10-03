@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -38,7 +38,10 @@ import {
 } from "@/lib/customers"
 import { LEAD_SEGMENTS, formatLeadMonth, type LeadSegmentId } from "@/lib/leads"
 import { formatCurrencyDKK } from "@/lib/performance/format"
-import { useCompanyServices } from "@/components/account/AccountSettingsProvider"
+import {
+  useAccountSettings,
+  useCompanyServices,
+} from "@/components/account/AccountSettingsProvider"
 import { cn } from "cn"
 
 function danishCount(count: number, one: string, many: string) {
@@ -53,6 +56,13 @@ function formatClosedDate(value: string): string {
 
 export function CustomersBoard() {
   const { enabledServices } = useCompanyServices()
+  const { settings, useDemoData, workspaceReady } = useAccountSettings()
+  const [customers, setCustomers] = useState<Customer[]>([])
+
+  useEffect(() => {
+    if (!workspaceReady) return
+    setCustomers(useDemoData ? MOCK_CUSTOMERS : [])
+  }, [useDemoData, workspaceReady])
   const [segmentFilter, setSegmentFilter] = useState<LeadSegmentId | "all">(
     "all"
   )
@@ -65,10 +75,10 @@ export function CustomersBoard() {
 
   const months = useMemo(() => {
     const keys = new Set(
-      MOCK_CUSTOMERS.map((customer) => customerMonthKey(customer.closedDate))
+      customers.map((customer) => customerMonthKey(customer.closedDate))
     )
     return [...keys].sort((left, right) => right.localeCompare(left))
-  }, [])
+  }, [customers])
 
   const activeServiceFilter =
     serviceFilter !== "all" &&
@@ -77,7 +87,7 @@ export function CustomersBoard() {
       : "all"
 
   const filtered = useMemo(() => {
-    const next = MOCK_CUSTOMERS.filter((customer) => {
+    const next = customers.filter((customer) => {
       const matchesSegment =
         segmentFilter === "all" || customer.segment === segmentFilter
       const matchesService =
@@ -91,7 +101,14 @@ export function CustomersBoard() {
       return matchesSegment && matchesService && matchesSource && matchesMonth
     })
     return sortCustomersByDate(next, dateSort)
-  }, [activeServiceFilter, dateSort, monthFilter, segmentFilter, sourceFilter])
+  }, [
+    activeServiceFilter,
+    customers,
+    dateSort,
+    monthFilter,
+    segmentFilter,
+    sourceFilter,
+  ])
 
   const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
 
@@ -106,7 +123,7 @@ export function CustomersBoard() {
             Kundeliste
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Vundne sager hos Nordkystens Tømrer — Helsingør og Nordsjælland
+            Vundne sager hos {settings.companyName}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
@@ -267,6 +284,7 @@ export function CustomersBoard() {
           <CustomersTable
             customers={filtered}
             dateSort={dateSort}
+            enabledServices={enabledServices}
             onToggleDateSort={() =>
               setDateSort((current) => (current === "desc" ? "asc" : "desc"))
             }
@@ -304,10 +322,12 @@ function OverviewStat({
 function CustomersTable({
   customers,
   dateSort,
+  enabledServices,
   onToggleDateSort,
 }: {
   customers: Customer[]
   dateSort: "asc" | "desc"
+  enabledServices: { id: string; label: string }[]
   onToggleDateSort: () => void
 }) {
   return (

@@ -20,6 +20,21 @@ export const LEAD_PLATFORMS = [
 
 export type LeadPlatformId = (typeof LEAD_PLATFORMS)[number]["id"]
 
+export const LEAD_SOURCES = [
+  { id: "organic", label: "Organisk" },
+  { id: "facebook", label: "Facebook" },
+  { id: "referral", label: "Henvisning" },
+] as const
+
+export type LeadSourceId = (typeof LEAD_SOURCES)[number]["id"]
+
+export const LEAD_CHANNELS = [
+  { id: "facebook", label: "Facebook", short: "fa" },
+  { id: "instagram", label: "Instagram", short: "ig" },
+] as const
+
+export type LeadChannelId = (typeof LEAD_CHANNELS)[number]["id"]
+
 export const LEAD_STATUSES = [
   { id: "not_qualified", label: "Ikke kvalificeret" },
   { id: "lost", label: "Mistet lead" },
@@ -53,6 +68,12 @@ export type Lead = {
   /** @deprecated Prefer `serviceIds`. Kept so older single-service values still display. */
   service?: ServiceId | ""
   platform: LeadPlatformId | ""
+  /** Kilde i leadlisten: Organisk, Facebook eller Henvisning. */
+  source: LeadSourceId | ""
+  /** Facebook og Instagram holdes adskilt. Tom, når leadet ikke kommer fra et socialt opslag. */
+  channel: LeadChannelId | ""
+  adName: string
+  assignee: string
   /** Meta Lead Ads / Instant Form ad id used to match incoming Meta leads. */
   metaAdId: string
   status: LeadStatusId
@@ -95,6 +116,14 @@ export function isLeadSegmentId(value: string): value is LeadSegmentId {
 
 export function isLeadPlatformId(value: string): value is LeadPlatformId {
   return LEAD_PLATFORMS.some((item) => item.id === value)
+}
+
+export function isLeadSourceId(value: string): value is LeadSourceId {
+  return LEAD_SOURCES.some((item) => item.id === value)
+}
+
+export function isLeadChannelId(value: string): value is LeadChannelId {
+  return LEAD_CHANNELS.some((item) => item.id === value)
 }
 
 export function isLeadStatusId(value: string): value is LeadStatusId {
@@ -383,6 +412,10 @@ export function emptyLead(id: string, date = new Date()): Lead {
     city: "",
     serviceIds: [],
     platform: "",
+    source: "",
+    channel: "",
+    adName: "",
+    assignee: "",
     metaAdId: "",
     status: "new_waiting_call",
     salesPrice: null,
@@ -396,12 +429,41 @@ const META_AD_IDS = [
   "1202175566778899",
 ] as const
 
+const LEAD_ASSIGNEES = ["Maja Holm", "Jonas Berg", "Sofie Kruse"] as const
+const LEAD_AD_NAMES = [
+  "A+ Hook 3",
+  "Butik Season",
+  "Sommer tag",
+  "Vinter renovering",
+] as const
+
 function withMetaAdId<T extends { id: string; platform: LeadPlatformId | "" }>(
   lead: T
-): T & { metaAdId: string } {
-  if (lead.platform !== "meta") return { ...lead, metaAdId: "" }
+): T & {
+  metaAdId: string
+  source: LeadSourceId
+  channel: LeadChannelId | ""
+  adName: string
+  assignee: string
+} {
   const index = Math.max(0, Number(lead.id.replace(/\D/g, "")) - 1)
-  return { ...lead, metaAdId: META_AD_IDS[index % META_AD_IDS.length] }
+  const source: LeadSourceId =
+    lead.platform === "meta"
+      ? "facebook"
+      : lead.platform === "landing"
+        ? "referral"
+        : "organic"
+  const channel: LeadChannelId | "" =
+    lead.platform === "meta" ? (index % 2 === 0 ? "facebook" : "instagram") : ""
+  return {
+    ...lead,
+    source,
+    channel,
+    adName: channel ? LEAD_AD_NAMES[index % LEAD_AD_NAMES.length] : "",
+    assignee: LEAD_ASSIGNEES[index % LEAD_ASSIGNEES.length],
+    metaAdId:
+      lead.platform === "meta" ? META_AD_IDS[index % META_AD_IDS.length] : "",
+  }
 }
 
 const MOCK_LEAD_SEED = [
@@ -849,4 +911,19 @@ const MOCK_LEAD_SEED = [
   },
 ]
 
-export const MOCK_LEADS: Lead[] = MOCK_LEAD_SEED.map(withMetaAdId)
+export function syntheticDanishPhone(id: string) {
+  const index = Math.max(0, Number(id.replace(/\D/g, "")) || 1)
+  const suffix = String(10000000 + ((index * 7919) % 90000000)).slice(0, 8)
+  return `${suffix.slice(0, 2)} ${suffix.slice(2, 4)} ${suffix.slice(4, 6)} ${suffix.slice(6, 8)}`
+}
+
+export const MOCK_LEADS: Lead[] = MOCK_LEAD_SEED.map((lead) => {
+  const next = withMetaAdId({
+    ...lead,
+    platform: isLeadPlatformId(lead.platform) ? lead.platform : "",
+  })
+  return {
+    ...next,
+    phone: next.phone.trim() || syntheticDanishPhone(next.id),
+  } as Lead
+})

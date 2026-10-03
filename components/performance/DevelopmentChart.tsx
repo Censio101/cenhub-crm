@@ -29,7 +29,7 @@ import { chartMetrics, getMetric } from "@/lib/performance/metrics"
 import type { MetricId, PerformanceDashboardData } from "@/lib/performance/types"
 import { cn } from "cn"
 
-/** Light positive green — readable on the pale chart surface. */
+/** Light positive green, readable on the pale chart surface. */
 const POSITIVE_SERIES_GREEN = "#4ade80"
 /** Soft green wash under the series. */
 const POSITIVE_SERIES_FILL = "#46C7A0"

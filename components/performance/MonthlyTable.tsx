@@ -7,7 +7,7 @@ export function MonthlyTable({ data }: { data: PerformanceDashboardData }) {
   const last = data.year.cumulativeBuckets.at(-1)
 
   return (
-    <Card className="dashboard-card dashboard-monthly-card gap-0 py-0">
+    <Card className="dashboard-card dashboard-monthly-card min-w-0 max-w-full gap-0 overflow-hidden py-0">
       <CardHeader className="rounded-none px-6 py-5">
         <h2 className="text-lg font-medium tracking-tight text-[var(--text-primary)]">
           Månedsopdeling

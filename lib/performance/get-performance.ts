@@ -162,6 +162,31 @@ function isPartial(range: DateRange): boolean {
   return range.start < firstData || range.end > lastData
 }
 
+export function getEmptyPerformanceDashboard(
+  query: DashboardQuery
+): PerformanceDashboardData {
+  const granularity = inferGranularity(query.range)
+  const emptyPeriod: PeriodResult = {
+    buckets: [],
+    monthlyBuckets: [],
+    totals: emptyTotals(),
+    label: periodLabel(query.range),
+  }
+  const year = query.range.end.getFullYear()
+
+  return {
+    current: emptyPeriod,
+    comparison: null,
+    year: {
+      year,
+      monthlyBuckets: [],
+      cumulativeBuckets: [],
+    },
+    status: "empty",
+    granularity,
+  }
+}
+
 export function getPerformanceDashboard(
   query: DashboardQuery
 ): PerformanceDashboardData {

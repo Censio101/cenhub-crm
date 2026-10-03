@@ -16,8 +16,8 @@ describe("lead date helpers", () => {
   it("sorts leads newest or oldest first", () => {
     const newest = sortLeadsByDate(MOCK_LEADS, "desc")
     const oldest = sortLeadsByDate(MOCK_LEADS, "asc")
-    expect(newest[0]?.date >= newest.at(-1)?.date).toBe(true)
-    expect(oldest[0]?.date <= oldest.at(-1)?.date).toBe(true)
+    expect(newest[0]!.date >= newest.at(-1)!.date).toBe(true)
+    expect(oldest[0]!.date <= oldest.at(-1)!.date).toBe(true)
     expect(newest[0]?.id).toBe(oldest.at(-1)?.id)
   })
 
@@ -25,6 +25,12 @@ describe("lead date helpers", () => {
     const months = new Set(MOCK_LEADS.map((lead) => lead.date.slice(0, 7)))
     expect(MOCK_LEADS.length).toBeGreaterThanOrEqual(20)
     expect(months.size).toBeGreaterThanOrEqual(8)
+  })
+
+  it("gives every lead a phone number", () => {
+    expect(MOCK_LEADS.every((lead) => /^\d{2} \d{2} \d{2} \d{2}$/.test(lead.phone))).toBe(
+      true
+    )
   })
 })
 

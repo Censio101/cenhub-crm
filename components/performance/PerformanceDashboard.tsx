@@ -20,7 +20,8 @@ import {
 } from "@/lib/leads"
 import { currentSeriesLabel, comparisonSeriesLabel } from "@/lib/performance/compare"
 import { previousPeriod, previousYear, resolvePreset } from "@/lib/performance/date-ranges"
-import { getPerformanceDashboard } from "@/lib/performance/get-performance"
+import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { getEmptyPerformanceDashboard, getPerformanceDashboard } from "@/lib/performance/get-performance"
 import {
   dashboardStateToParams,
   parseDashboardParams,
@@ -35,6 +36,7 @@ import type {
 export function PerformanceDashboard() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { useDemoData } = useAccountSettings()
   const [pending, startTransition] = useTransition()
   const [view, setView] = useState(() => parseDashboardParams(searchParams))
   const queryKey = searchParams.toString()
@@ -45,29 +47,32 @@ export function PerformanceDashboard() {
 
   const data = useMemo(() => {
     try {
-      return getPerformanceDashboard({
+      const query = {
         range: view.range,
         comparison: view.comparisonEnabled ? view.comparisonRange : null,
         service: view.service,
         funnel: view.funnel,
         segment: view.segment,
-      })
+      }
+      return useDemoData
+        ? getPerformanceDashboard(query)
+        : getEmptyPerformanceDashboard(query)
     } catch {
       return null
     }
-  }, [view])
+  }, [useDemoData, view])
 
   const pipelineStats = useMemo(
     () =>
       computeLeadPipelineStats(
-        filterDashboardLeads(MOCK_LEADS, {
+        filterDashboardLeads(useDemoData ? MOCK_LEADS : [], {
           range: view.range,
           service: view.service,
           funnel: view.funnel,
           segment: view.segment,
         })
       ),
-    [view]
+    [useDemoData, view]
   )
 
   function replaceState(next: typeof view) {
@@ -95,7 +100,7 @@ export function PerformanceDashboard() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-8">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 sm:gap-8">
       <DashboardHeader
         preset={view.preset}
         range={view.range}
@@ -161,7 +166,18 @@ export function PerformanceDashboard() {
       {data.status === "empty" ? (
         <>
           <KpiGrid data={data} />
-          <DashboardEmptyState />
+          <DashboardEmptyState
+            title={
+              useDemoData
+                ? "Ingen leads i den valgte periode"
+                : "Jeres CRM er klar"
+            }
+            text={
+              useDemoData
+                ? "Prøv en anden periode, service, funnel eller Privat/Erhverv, eller vent til de første leads kommer ind."
+                : "Data vises, når de første leads kommer ind."
+            }
+          />
         </>
       ) : (
         <>

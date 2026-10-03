@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 
-import { SettingsBoard } from "@/components/account/SettingsBoard"
+import { UserSettingsBoard } from "@/components/account/UserSettingsBoard"
 
 export const metadata: Metadata = {
-  title: "Indstillinger – Censio",
+  title: "Indstillinger – Censio Internal",
 }
 
 export default function IndstillingerPage() {
-  return <SettingsBoard />
+  return <UserSettingsBoard />
 }

@@ -30,13 +30,17 @@ export function DashboardSkeleton() {
   )
 }
 
-export function DashboardEmptyState() {
+export function DashboardEmptyState({
+  title = "Ingen leads i den valgte periode",
+  text = "Prøv en anden periode, service, funnel eller Privat/Erhverv, eller vent til de første leads kommer ind.",
+}: {
+  title?: string
+  text?: string
+}) {
   return (
     <Card className="dashboard-card px-5 py-8 text-center">
-      <p className="text-sm font-medium text-[var(--text-primary)]">Ingen leads i den valgte periode</p>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        Prøv en anden periode, service, funnel eller Privat/Erhverv, eller vent til de første leads kommer ind.
-      </p>
+      <p className="text-sm font-medium text-[var(--text-primary)]">{title}</p>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p>
     </Card>
   )
 }

@@ -1,5 +1,5 @@
-import { CustomersBoard } from "@/components/customers/CustomersBoard"
+import { redirect } from "next/navigation"
 
-export default function KunderPage() {
-  return <CustomersBoard />
+export default function RemovedPage() {
+  redirect("/admin")
 }
