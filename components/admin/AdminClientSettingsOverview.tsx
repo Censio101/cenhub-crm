@@ -13,7 +13,7 @@ import {
   UsersIcon,
 } from "lucide-react"
 
-import { AdminClientBrandingPanel } from "@/components/admin/AdminClientBrandingPanel"
+import { AdminClientCompanySummaryCard } from "@/components/admin/AdminClientCompanySummaryCard"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -85,7 +85,7 @@ export function AdminClientSettingsOverview() {
 
   return (
     <>
-      <AdminClientBrandingPanel />
+      <AdminClientCompanySummaryCard />
       <div className="grid gap-3 sm:grid-cols-2">
       {SECTIONS.map(({ section, labelKey, descKey, icon: Icon }) => (
         <Link

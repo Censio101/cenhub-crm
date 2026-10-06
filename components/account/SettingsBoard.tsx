@@ -5,7 +5,8 @@ import { ImageIcon, UserRoundIcon } from "lucide-react"
 
 import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { OrganizationLogoUpload } from "@/components/organization/OrganizationLogoUpload"
+import { OrganizationCompanyProfileSection } from "@/components/organization/OrganizationCompanyProfileSection"
+import { OrganizationProfileIncompleteBanner } from "@/components/organization/OrganizationProfileIncompleteBanner"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { Button } from "@/components/ui/button"
@@ -120,8 +121,7 @@ export function SettingsBoard() {
   const { t } = useLanguage()
   const { settings, updateSettings, addEmployee } = useAccountSettings()
   const { configured, isAuthenticated, user } = useSupabaseSession()
-  const { organization, role, reload: reloadOrg, loading: orgLoading } = useActiveOrganization()
-  const canEditOrgLogo = role === "client_admin" || role === "censio_admin"
+  const { organization, loading: orgLoading } = useActiveOrganization()
   const orgDisplayName = organization?.name ?? CURRENT_COMPANY.name
   const useAuthEmail = configured && isAuthenticated
   const [loginEmail, setLoginEmail] = useState("")
@@ -166,12 +166,16 @@ export function SettingsBoard() {
       </p>
 
       <div className="mt-8 grid gap-5">
+        {organization && organization.profileComplete === false ? (
+          <OrganizationProfileIncompleteBanner variant="client" />
+        ) : null}
+        {organization && !orgLoading ? <OrganizationCompanyProfileSection /> : null}
         <Card className="dashboard-card">
           <CardHeader>
-            <CardTitle>Profil og logo</CardTitle>
-            <CardDescription>Sådan vises I i topmenuen og på jeres dashboard.</CardDescription>
+            <CardTitle>Profilbillede</CardTitle>
+            <CardDescription>Bruges ved jeres navn øverst til højre. Klientlogo findes under virksomhedsoplysninger.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 sm:grid-cols-2">
+          <CardContent>
             <ImageUpload
               label="Profilbillede"
               description="Bruges ved jeres navn øverst til højre."
@@ -179,29 +183,17 @@ export function SettingsBoard() {
               rounded="full"
               onChange={(profileImage) => updateSettings({ profileImage })}
             />
-            {organization && !orgLoading ? (
-              <OrganizationLogoUpload
-                logoUrl={organization.logoUrl}
-                canEdit={canEditOrgLogo}
-                uploadUrl="/api/organization/logo"
-                label="Logo"
-                description="Vises ved siden af Censio-logoet i topmenuen."
-                changeLabel="Skift logo"
-                removeLabel="Fjern logo"
-                uploadingLabel="Uploader…"
-                onLogoChange={() => {
-                  void reloadOrg()
-                }}
-              />
-            ) : (
-              <ImageUpload
-                label="Logo"
-                description="Vises ved siden af Censio-logoet (demo uden organisation)."
-                value={settings.logo}
-                rounded="lg"
-                onChange={(logo) => updateSettings({ logo })}
-              />
-            )}
+            {!organization && !orgLoading ? (
+              <div className="mt-6 border-t border-border pt-6">
+                <ImageUpload
+                  label="Logo"
+                  description="Vises ved siden af Censio-logoet (demo uden organisation)."
+                  value={settings.logo}
+                  rounded="lg"
+                  onChange={(logo) => updateSettings({ logo })}
+                />
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

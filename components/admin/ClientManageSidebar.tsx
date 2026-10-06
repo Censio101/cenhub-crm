@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
+  Building2Icon,
   CircleDotIcon,
   FileInputIcon,
   FileUpIcon,
@@ -77,6 +78,7 @@ export function ClientManageSidebar() {
   useEffect(() => {
     if (!slug) return
     router.prefetch(adminClientSettingsBasePath(slug))
+    router.prefetch(adminClientSettingsSectionPath(slug, "company"))
     router.prefetch(adminClientSettingsSectionPath(slug, "meta"))
     router.prefetch(adminClientSettingsSectionPath(slug, "meta-instant-forms"))
     router.prefetch(adminClientSettingsSectionPath(slug, "industries"))
@@ -95,6 +97,12 @@ export function ClientManageSidebar() {
       labelKey: "clientNavOverview",
       icon: LayoutGridIcon,
       active: section === "overview",
+    },
+    {
+      href: adminClientSettingsSectionPath(slug, "company"),
+      labelKey: "clientNavCompany",
+      icon: Building2Icon,
+      active: section === "company",
     },
     {
       href: adminClientSettingsSectionPath(slug, "meta"),

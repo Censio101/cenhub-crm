@@ -17,7 +17,10 @@ import {
   clientInitialsFromName,
   formatClientDisplayName,
 } from "@/lib/admin/format-client-display-name"
-import { adminClientSettingsBasePath } from "@/lib/admin/admin-routes"
+import {
+  adminClientSettingsBasePath,
+  adminClientSettingsSectionPath,
+} from "@/lib/admin/admin-routes"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import {
   hubClientInEnabledTab,
@@ -244,7 +247,8 @@ export function AdminClientList() {
 
       await loadClients(true)
       if (data.organization?.slug) {
-        router.push(adminClientSettingsBasePath(data.organization.slug))
+        setNotice(t("clientProfileEnabledMissingNotice"))
+        router.push(adminClientSettingsSectionPath(data.organization.slug, "company"))
       }
     } catch (enableError) {
       setError(enableError instanceof Error ? enableError.message : t("errorEnableMetaClient"))

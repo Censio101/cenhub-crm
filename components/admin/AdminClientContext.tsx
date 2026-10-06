@@ -23,6 +23,15 @@ export type AdminClientOrganization = {
   name: string
   demo_mode: boolean
   logo_url: string | null
+  cvr: string | null
+  address: string | null
+  zip_code: string | null
+  city: string | null
+  country: string | null
+  primary_contact_name: string | null
+  primary_contact_email: string | null
+  primary_contact_phone: string | null
+  website_url: string | null
   leadCount: number
   userCount: number
   metaEnabled: boolean

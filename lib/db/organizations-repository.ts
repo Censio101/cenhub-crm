@@ -146,6 +146,7 @@ export type OrganizationDetailsPatch = Partial<
   Pick<
     OrganizationRow,
     | "name"
+    | "slug"
     | "demo_mode"
     | "logo_url"
     | "cvr"

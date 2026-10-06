@@ -13,6 +13,7 @@ export type ActiveOrganization = {
   name: string
   demoMode: boolean
   logoUrl: string | null
+  profileComplete: boolean
 }
 
 type ActiveOrganizationState = {
@@ -63,7 +64,15 @@ export function useActiveOrganization(): ActiveOrganizationState {
       }
 
       setRole(data.role ?? null)
-      setOrganization(data.organization ?? null)
+      const org = data.organization ?? null
+      setOrganization(
+        org
+          ? {
+              ...org,
+              profileComplete: org.profileComplete ?? true,
+            }
+          : null
+      )
       setIsAdminViewingClient(Boolean(data.isAdminViewingClient))
     } finally {
       setLoading(false)

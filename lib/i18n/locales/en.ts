@@ -1115,7 +1115,31 @@ export const en: Messages = {
   clientDirectoryWebhookReview: "Review mappings",
   clientDirectoryWebhookReviewTitle:
     "The lead sheet changed — review this client's webhook and Facebook form mappings",
+  adminAlertProfileIncomplete: "Company details missing",
   adminAlertWebhookPayloadStale: "Lead sheet changed — review webhook payload",
+  clientNavCompany: "Company",
+  clientProfileAdminDescription:
+    "Logo, company, and contact — same fields as onboarding, whether the client came from signup, admin, or the Meta hub.",
+  clientProfileWorkspaceTitle: "Company details",
+  clientProfileWorkspaceDescription: "Your company and contact information in Censio.",
+  clientProfileSave: "Save details",
+  clientProfileSaving: "Saving…",
+  clientProfileSaved: "Details saved.",
+  clientProfileSaveError: "Could not save details.",
+  clientProfileSlugLabel: "Client slug (URL)",
+  clientProfileSlugHint: "Admin only. Used in /admin/clients/… and internally.",
+  clientProfileContactEmailHint:
+    "Contact email is the company contact — not necessarily the same as a user login email.",
+  clientProfileIncompleteTitle: "Company details missing",
+  clientProfileIncompleteDescription:
+    "Add company and contact details so CRM data is consistent for this client.",
+  clientProfileIncompleteAdminCta: "Open company details",
+  clientProfileIncompleteClientCta: "Complete details",
+  clientProfileSummaryComplete: "Details are complete.",
+  clientProfileSummaryIncomplete: "Required fields are missing.",
+  clientProfileSummaryEdit: "Edit",
+  clientProfileEnabledMissingNotice:
+    "Client enabled. Add company details below.",
   webhookReviewCalloutTitle: "Webhook payload changed",
   webhookReviewCalloutBody:
     "This client already has webhooks. Review the Funnels page and update the tools that send data, so they match the new sheet.",

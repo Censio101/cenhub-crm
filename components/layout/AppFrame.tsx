@@ -6,6 +6,7 @@ import { LocaleSync } from "@/components/i18n/LocaleSync"
 import { AuthHashErrorHandler } from "@/components/auth/AuthHashErrorHandler"
 import { ClientContextBar } from "@/components/admin/ClientContextBar"
 import { AppTopbar } from "@/components/layout/AppTopbar"
+import { OrganizationProfileIncompleteBanner } from "@/components/organization/OrganizationProfileIncompleteBanner"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import {
   isAdminPath,
@@ -27,6 +28,13 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     role === "censio_admin" &&
     organization !== null &&
     isClientDashboardPath(pathname)
+  const showProfileIncompleteBanner =
+    !orgLoading &&
+    !guestShell &&
+    !isAdminRoute &&
+    organization !== null &&
+    organization.profileComplete === false &&
+    isClientDashboardPath(pathname)
 
   return (
     <div
@@ -45,6 +53,14 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       {!isAdminRoute ? <LocaleSync /> : null}
       <AppTopbar />
       {showClientContextBar ? <ClientContextBar /> : null}
+      {showProfileIncompleteBanner ? (
+        <div className="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8 xl:px-10">
+          <OrganizationProfileIncompleteBanner
+            variant={role === "censio_admin" ? "admin" : "client"}
+            organizationSlug={organization?.slug}
+          />
+        </div>
+      ) : null}
       <main
         className={cn(
           "flex min-w-0 flex-1 flex-col",

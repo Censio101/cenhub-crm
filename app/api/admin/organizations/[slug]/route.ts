@@ -6,8 +6,16 @@ import {
 } from "@/lib/auth/require-censio-admin"
 import {
   getOrganizationWithStatsBySlug,
+  isOrganizationSlugTaken,
+  normalizeOrgSlug,
   updateOrganizationBySlug,
 } from "@/lib/db/organizations-repository"
+import {
+  isOrganizationProfileComplete,
+  organizationProfileFromRow,
+  parseOrganizationProfilePartialBody,
+} from "@/lib/organization-profile"
+import { onboardingErrorMessage } from "@/lib/onboarding/api-errors"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type RouteContext = { params: Promise<{ slug: string }> }
@@ -33,9 +41,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     await requireCensioAdmin()
     const { slug } = await context.params
-    const body = (await request.json()) as {
-      name?: string
-    }
+    const body = await request.json()
 
     const admin = createAdminClient()
     const existing = await getOrganizationWithStatsBySlug(admin, slug)
@@ -43,11 +49,35 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
-    const organization = await updateOrganizationBySlug(admin, slug, {
-      ...(body.name !== undefined ? { name: body.name.trim() } : {}),
-    })
+    const parsed = parseOrganizationProfilePartialBody(body)
+    if (!parsed.ok) {
+      return NextResponse.json(
+        { error: parsed.error, message: onboardingErrorMessage(parsed.error) },
+        { status: 400 }
+      )
+    }
 
-    return NextResponse.json({ organization })
+    let targetSlug = slug
+    const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
+    if (typeof record.slug === "string" && record.slug.trim()) {
+      const nextSlug = normalizeOrgSlug(record.slug.trim())
+      if (nextSlug !== slug) {
+        if (await isOrganizationSlugTaken(admin, nextSlug)) {
+          return NextResponse.json({ error: "slug_taken" }, { status: 409 })
+        }
+        targetSlug = nextSlug
+        parsed.patch.slug = nextSlug
+      }
+    }
+
+    const organization = await updateOrganizationBySlug(admin, slug, parsed.patch)
+
+    return NextResponse.json({
+      organization,
+      profile: organizationProfileFromRow(organization),
+      profileComplete: isOrganizationProfileComplete(organization),
+      slug: targetSlug,
+    })
   } catch (error) {
     return adminErrorResponse(error)
   }

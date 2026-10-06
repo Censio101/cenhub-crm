@@ -19,6 +19,7 @@ export function isVisibleInClientSwitcher(slug: string): boolean {
 
 export type AdminClientSection =
   | "overview"
+  | "company"
   | "meta"
   | "meta-instant-forms"
   | "industries"
@@ -62,6 +63,12 @@ function sectionSuffix(pathname: string, slug: string): AdminClientSection | nul
     pathname.startsWith(`${legacyBase}/services`)
   ) {
     return "services"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/company`) ||
+    pathname.startsWith(`${legacyBase}/company`)
+  ) {
+    return "company"
   }
   if (
     pathname.startsWith(`${canonicalBase}/import`) ||

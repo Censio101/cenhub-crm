@@ -1117,7 +1117,31 @@ const daMessages = {
   clientDirectoryWebhookReview: "Gennemgå kortlægning",
   clientDirectoryWebhookReviewTitle:
     "Lead-arket er ændret — gennemgå klientens webhook og Facebook-kortlægninger",
+  adminAlertProfileIncomplete: "Virksomhedsoplysninger mangler",
   adminAlertWebhookPayloadStale: "Lead-ark ændret — gennemgå webhook-payload",
+  clientNavCompany: "Virksomhed",
+  clientProfileAdminDescription:
+    "Logo, firma og kontakt — samme felter som ved onboarding, uanset om klienten kom via tilmelding, admin eller Meta-hub.",
+  clientProfileWorkspaceTitle: "Virksomhedsoplysninger",
+  clientProfileWorkspaceDescription: "Jeres firma og kontaktoplysninger i Censio.",
+  clientProfileSave: "Gem oplysninger",
+  clientProfileSaving: "Gemmer…",
+  clientProfileSaved: "Oplysningerne er gemt.",
+  clientProfileSaveError: "Kunne ikke gemme oplysningerne.",
+  clientProfileSlugLabel: "Klient-slug (URL)",
+  clientProfileSlugHint: "Kun admin. Bruges i /admin/clients/… og internt.",
+  clientProfileContactEmailHint:
+    "Kontakt-e-mail er virksomhedens kontakt — ikke det samme som login-e-mail medmindre I vælger det.",
+  clientProfileIncompleteTitle: "Virksomhedsoplysninger mangler",
+  clientProfileIncompleteDescription:
+    "Udfyld firma- og kontaktoplysninger, så CRM og onboarding er ens for denne klient.",
+  clientProfileIncompleteAdminCta: "Gå til virksomhedsoplysninger",
+  clientProfileIncompleteClientCta: "Udfyld oplysninger",
+  clientProfileSummaryComplete: "Oplysninger er udfyldt.",
+  clientProfileSummaryIncomplete: "Mangler obligatoriske felter.",
+  clientProfileSummaryEdit: "Rediger",
+  clientProfileEnabledMissingNotice:
+    "Klienten er aktiveret. Udfyld virksomhedsoplysninger herunder.",
   webhookReviewCalloutTitle: "Webhook-payload er ændret",
   webhookReviewCalloutBody:
     "Denne klient har allerede webhooks. Gennemgå siden Funnels, og opdater de værktøjer, der sender data, så de passer til det nye ark.",

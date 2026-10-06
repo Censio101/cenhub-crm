@@ -19,7 +19,9 @@ import {
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import { adminClientSection } from "@/lib/admin/admin-routes"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { OrganizationProfileIncompleteBanner } from "@/components/organization/OrganizationProfileIncompleteBanner"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { isOrganizationProfileComplete } from "@/lib/organization-profile"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 
@@ -220,6 +222,12 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
         </div>
       ) : null}
 
+      {!isOrganizationProfileComplete(organization!) && section !== "company" ? (
+        <div className={heroWidthClass}>
+          <OrganizationProfileIncompleteBanner variant="admin" organizationSlug={slug} />
+        </div>
+      ) : null}
+
       <div
         className={
           isOverview
@@ -228,7 +236,7 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
               ? heroWidthClass
               : isLeadSheet || isFunnels || section === "import"
                 ? heroWidthClass
-                : isIndustries || section === "services"
+                : isIndustries || section === "services" || section === "company"
                   ? cn(contentWidthClass, "max-w-4xl")
                   : contentWidthClass
         }
