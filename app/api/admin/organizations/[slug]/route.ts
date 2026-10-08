@@ -4,6 +4,7 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
+import { deleteOrganizationBySlug } from "@/lib/db/delete-organization"
 import {
   getOrganizationWithStatsBySlug,
   isOrganizationSlugTaken,
@@ -79,6 +80,21 @@ export async function PATCH(request: Request, context: RouteContext) {
       slug: targetSlug,
     })
   } catch (error) {
+    return adminErrorResponse(error)
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  try {
+    await requireCensioAdmin()
+    const { slug } = await context.params
+    const admin = createAdminClient()
+    const result = await deleteOrganizationBySlug(admin, slug)
+    return NextResponse.json({ ok: true, organization: result })
+  } catch (error) {
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
     return adminErrorResponse(error)
   }
 }

@@ -235,7 +235,3 @@ create policy meta_sync_runs_admin_write on public.meta_sync_runs for all using 
 insert into public.organizations (slug, name, demo_mode)
 values ('nordkystens-tomrer', 'Nordkystens Tømrer', true)
 on conflict (slug) do nothing;
-
-insert into public.organizations (slug, name, demo_mode)
-values ('demo-meta-client', 'Demo Meta Client', true)
-on conflict (slug) do nothing;

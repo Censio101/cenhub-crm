@@ -18,6 +18,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Apply to the linked remote project: `npm run db:migrate` (`supabase db push --linked`).
 - After adding migrations, run this command in the agent session unless the user says not to.
 
+## Outbound email
+
+- All **transactional / product emails** (invites, onboarding confirmations, admin notifications, tests from Integrations) must go through **Mailgun** via `sendMailWithIntegrations()` in `lib/email/mailgun.ts`.
+- Load workspace mail settings with `loadWorkspaceIntegrations()` (or `getEmailSettings()`); respect `settings.mailConfigured` — skip or warn when Mailgun is not set up, same as existing send helpers.
+- Add new mail in `lib/email/` (HTML + text), call `sendMailWithIntegrations`; do not introduce Resend, Nodemailer, Supabase-only custom SMTP, or raw `fetch` to other providers unless the user explicitly changes this policy.
+
 ## Admin API performance
 
 - Every route under `app/api/admin/**` must call `requireCensioAdmin()`. Middleware does **not** gate `/api/*` (auth once per handler via `getCachedSessionContext`).

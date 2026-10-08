@@ -6,6 +6,7 @@ import { useEffect } from "react"
 import {
   CircleDotIcon,
   FileUpIcon,
+  Settings2Icon,
   WrenchIcon,
   FunnelIcon,
   SheetIcon,
@@ -23,7 +24,14 @@ import { cn } from "cn"
 
 const SECTIONS: {
   section:
-    "meta" | "users" | "funnels" | "import" | "services" | "industries" | "lead-sheet"
+    | "meta"
+    | "users"
+    | "funnels"
+    | "import"
+    | "services"
+    | "industries"
+    | "lead-sheet"
+    | "settings"
   labelKey: MessageKey
   descKey: MessageKey
   icon: typeof CircleDotIcon
@@ -69,6 +77,12 @@ const SECTIONS: {
     labelKey: "clientNavImport",
     descKey: "clientSettingsOverviewImportDesc",
     icon: FileUpIcon,
+  },
+  {
+    section: "settings",
+    labelKey: "clientNavSettings",
+    descKey: "clientSettingsOverviewSettingsDesc",
+    icon: Settings2Icon,
   },
 ]
 

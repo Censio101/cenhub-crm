@@ -32,7 +32,7 @@ function AdminClientScopeBarContent() {
   const { switchingSlug, beginSwitch, endSwitch } = useAdminClientSwitch()
   const [openingDashboard, setOpeningDashboard] = useState(false)
 
-  const { slug, organization, isColdLoad, isPending, showSwitchingUI, contentReady } =
+  const { slug, organization, isColdLoad, showSwitchingUI, contentReady } =
     useAdminClientPending()
 
   const listState = useMemo(
@@ -94,24 +94,17 @@ function AdminClientScopeBarContent() {
     <div
       className={cn(
         "admin-ui relative mb-6 w-full min-w-0 overflow-hidden rounded-xl border border-[#d3c3b2] bg-[#faf8f6]",
-        showSwitchingUI && "border-primary/35 ring-2 ring-primary/15",
+        showSwitchingUI && "border-primary/30",
         outfit.className
       )}
       data-admin-scope="client"
-      aria-busy={isPending || undefined}
+      aria-busy={showSwitchingUI || undefined}
     >
-      {showSwitchingUI ? (
-        <div
-          className="pointer-events-none absolute inset-0 z-10 bg-[#faf8f6]/50"
-          aria-hidden="true"
-        />
-      ) : null}
       <div className="relative flex min-w-0 flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 lg:flex-1">
           <ClientManageScopeIdentity
             displayName={scopeDisplayName}
-            slug={scopeSlug}
-            isTransitioning={isPending}
+            isTransitioning={isColdLoad}
           />
         </div>
 

@@ -14,6 +14,15 @@ import {
   MetaPartnerLinkPanel,
   type LinkedMetaDisplay,
 } from "@/components/admin/MetaPartnerLinkPanel"
+import {
+  INITIAL_PORTAL_ACCESS_DRAFT,
+  isPortalAccessDraftValid,
+  PortalAccessFields,
+  PortalLoginDetails,
+  portalAccessFromDraft,
+  type PortalAccessDraft,
+  type PortalLogin,
+} from "@/components/admin/PortalAccessFields"
 import { OnboardingStatusBadge } from "@/components/admin/onboarding-status-badge"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
@@ -60,7 +69,6 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
   const [organization, setOrganization] = useState<LinkedOrganization | null>(null)
   const [loading, setLoading] = useState(true)
   const [missing, setMissing] = useState(false)
-  const [slugOverride, setSlugOverride] = useState("")
   const [rejectReason, setRejectReason] = useState("")
   const [busyAction, setBusyAction] = useState<"approve" | "reject" | "revert" | null>(null)
   const busy = busyAction !== null
@@ -78,77 +86,122 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
   const [pendingMetaSelection, setPendingMetaSelection] =
     useState<MetaPartnerAccountSelection>(null)
   const [linkedMetaDraft, setLinkedMetaDraft] = useState<MetaPartnerAccountSelection>(null)
+  const [access, setAccess] = useState<PortalAccessDraft>(INITIAL_PORTAL_ACCESS_DRAFT)
+  const [createdLogin, setCreatedLogin] = useState<PortalLogin | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    setMissing(false)
-    try {
-      const response = await fetch(`/api/admin/onboarding/applications/${applicationId}`, {
-        cache: "no-store",
-      })
-      if (response.status === 404) {
-        setMissing(true)
-        setApplication(null)
-        setOrganization(null)
-        return
-      }
-      if (!response.ok) throw new Error(t("onboardingLoadError"))
-      const data = (await response.json()) as {
-        application: OnboardingApplicationRow
-        organization: LinkedOrganization | null
-        meta: {
-          metaAdAccountId: string
-          partnerAccountName: string
-          metaPageId: string
-          enabled: boolean
-          needsSetup: boolean
-          metaSyncStatus: string
-          metaSyncError: string | null
-        } | null
-      }
+  const applyDetailPayload = useCallback(
+    (data: {
+      application: OnboardingApplicationRow
+      organization: LinkedOrganization | null
+      meta: {
+        metaAdAccountId: string
+        partnerAccountName: string
+        metaPageId: string
+        enabled: boolean
+        needsSetup: boolean
+        metaSyncStatus: string
+        metaSyncError: string | null
+      } | null
+    }) => {
       setApplication(data.application)
       setOrganization(data.organization)
       setApplicationMeta(data.meta)
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t("onboardingLoadError"))
-    } finally {
-      setLoading(false)
-    }
-  }, [applicationId, t])
+    },
+    []
+  )
+
+  const load = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false
+      if (!silent) {
+        setLoading(true)
+        setError(null)
+        setMissing(false)
+      }
+      try {
+        const response = await fetch(`/api/admin/onboarding/applications/${applicationId}`, {
+          cache: "no-store",
+        })
+        if (response.status === 404) {
+          if (!silent) {
+            setMissing(true)
+            setApplication(null)
+            setOrganization(null)
+          }
+          return
+        }
+        if (!response.ok) throw new Error(t("onboardingLoadError"))
+        const data = (await response.json()) as {
+          application: OnboardingApplicationRow
+          organization: LinkedOrganization | null
+          meta: {
+            metaAdAccountId: string
+            partnerAccountName: string
+            metaPageId: string
+            enabled: boolean
+            needsSetup: boolean
+            metaSyncStatus: string
+            metaSyncError: string | null
+          } | null
+        }
+        applyDetailPayload(data)
+      } catch (loadError) {
+        if (!silent) {
+          setError(loadError instanceof Error ? loadError.message : t("onboardingLoadError"))
+        }
+      } finally {
+        if (!silent) setLoading(false)
+      }
+    },
+    [applicationId, applyDetailPayload, t]
+  )
 
   useAsyncEffect(() => {
     void load()
   }, [load])
 
   async function handleApprove() {
-    if (!application) return
+    if (!application || !isPortalAccessDraftValid(access)) return
     setBusyAction("approve")
     setError(null)
     setNotice(null)
+    setCreatedLogin(null)
     try {
       const response = await fetch(`/api/admin/onboarding/applications/${application.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slugOverride: slugOverride.trim() || undefined,
           metaAdAccountId: pendingMetaSelection?.metaAdAccountId,
           metaAccountName: pendingMetaSelection?.accountName,
+          access: portalAccessFromDraft(access),
         }),
       })
       const data = (await response.json()) as {
         error?: string
+        application?: OnboardingApplicationRow
         organization?: LinkedOrganization
+        accessMethod?: "email" | "password" | null
         meta?: { linked: boolean; error?: string } | { linked: true } | null
       }
       if (!response.ok) throw new Error(data.error ?? t("onboardingApproveError"))
+      if (data.application) setApplication(data.application)
       if (data.organization) setOrganization(data.organization)
-      setNotice(t("onboardingApprovedNotice", { slug: data.organization?.slug ?? "" }))
+      const slug = data.organization?.slug ?? ""
+      if (data.accessMethod === "password") {
+        setCreatedLogin({
+          email: application.contact_email,
+          password: access.password,
+          clientSlug: slug || undefined,
+        })
+        setNotice(t("onboardingApprovedPasswordNotice", { slug }))
+      } else {
+        setNotice(t("onboardingApprovedNotice", { slug }))
+      }
       if (data.meta && "linked" in data.meta && data.meta.linked === false && data.meta.error) {
         setError(`${t("onboardingMetaApproveLinkFailed")} ${data.meta.error}`)
       }
       setPendingMetaSelection(null)
-      await load()
+      await load({ silent: true })
     } catch (approveError) {
       setError(approveError instanceof Error ? approveError.message : t("onboardingApproveError"))
     } finally {
@@ -167,11 +220,19 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: rejectReason }),
       })
-      const data = (await response.json()) as { error?: string }
+      const data = (await response.json()) as {
+        error?: string
+        application?: OnboardingApplicationRow
+      }
       if (!response.ok) throw new Error(data.error ?? t("onboardingRejectError"))
+      if (data.application) {
+        setApplication(data.application)
+        setOrganization(null)
+        setApplicationMeta(null)
+        setCreatedLogin(null)
+      }
       setNotice(t("onboardingRejectedNotice"))
       setRejectReason("")
-      await load()
     } catch (rejectError) {
       setError(rejectError instanceof Error ? rejectError.message : t("onboardingRejectError"))
     } finally {
@@ -188,10 +249,17 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
       const response = await fetch(`/api/admin/onboarding/applications/${application.id}/reopen`, {
         method: "POST",
       })
-      const data = (await response.json()) as { error?: string }
+      const data = (await response.json()) as {
+        error?: string
+        application?: OnboardingApplicationRow
+      }
       if (!response.ok) throw new Error(data.error ?? t("onboardingRevertRejectionError"))
+      if (data.application) {
+        setApplication(data.application)
+        setOrganization(null)
+        setApplicationMeta(null)
+      }
       setNotice(t("onboardingRevertRejectionNotice"))
-      await load()
     } catch (revertError) {
       setError(
         revertError instanceof Error ? revertError.message : t("onboardingRevertRejectionError")
@@ -312,6 +380,12 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
 
             {organization ? (
               <div className="grid gap-4 border-t border-[#e8e0d8] px-5 py-4">
+                {createdLogin ? (
+                  <PortalLoginDetails
+                    login={createdLogin}
+                    onDone={() => setCreatedLogin(null)}
+                  />
+                ) : null}
                 <MetaPartnerLinkPanel
                   mode="linked"
                   organizationSlug={organization.slug}
@@ -321,7 +395,7 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
                   onDraftSelectionChange={setLinkedMetaDraft}
                   disabled={busy}
                   onLinked={() => {
-                    void load()
+                    void load({ silent: true })
                   }}
                   onLinkSuccess={(message) => {
                     setNotice(message)
@@ -356,7 +430,7 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
                 </Button>
               </div>
             ) : application.status === "pending" ? (
-              <div className="grid gap-3 border-t border-[#e8e0d8] px-5 py-4">
+              <div className="grid gap-4 border-t border-[#e8e0d8] px-5 py-4">
                 <MetaPartnerLinkPanel
                   mode="pending"
                   suggestName={application.company_name}
@@ -365,20 +439,17 @@ export function AdminOnboardingReview({ applicationId }: { applicationId: string
                   onDraftSelectionChange={setPendingMetaSelection}
                   disabled={busy}
                 />
-                <label className="grid gap-1.5">
-                  <span className="text-[13px] font-semibold text-foreground/85">
-                    {t("onboardingFieldSlugOverride")}
-                  </span>
-                  <input
-                    className={adminFieldClass}
-                    value={slugOverride}
-                    onChange={(event) => setSlugOverride(event.target.value)}
-                  />
-                </label>
+                <PortalAccessFields
+                  value={access}
+                  onChange={setAccess}
+                  loginEmail={application.contact_email}
+                  disabled={busy}
+                  idPrefix="onboarding-approve"
+                />
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || !isPortalAccessDraftValid(access)}
                     onClick={() => {
                       void handleApprove()
                     }}

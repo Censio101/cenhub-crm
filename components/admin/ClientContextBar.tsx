@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChevronDownIcon, Loader2Icon, SearchIcon, Settings2Icon } from "lucide-react"
 
 import { ClientSwitcherOptionRow } from "@/components/admin/ClientSwitcherOptionRow"
@@ -21,9 +20,8 @@ import { cn } from "cn"
 import { useKeyedState } from "@/lib/react/use-keyed-state"
 
 export function ClientContextBar() {
-  const router = useRouter()
   const { t } = useLanguage()
-  const { organization, role, loading, setActiveOrganization } = useActiveOrganization()
+  const { organization, role, setActiveOrganization } = useActiveOrganization()
   const { pickerOrganizations, loading: listLoading } = useAdminOrganizationList()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useKeyedState("", open)
@@ -38,10 +36,12 @@ export function ClientContextBar() {
 
   const isSearching = query.trim().length > 0
 
-  // The switch is done once the active client is the one we switched to (adjusted while rendering).
-  if (switchingSlug && organization && organization.slug === switchingSlug) {
-    setSwitchingSlug(null)
-  }
+  useEffect(() => {
+    if (!switchingSlug || !organization) return
+    if (organization.slug === switchingSlug) {
+      setSwitchingSlug(null)
+    }
+  }, [switchingSlug, organization])
 
   const switchingClient = useMemo(() => {
     if (!switchingSlug) return null
@@ -54,7 +54,7 @@ export function ClientContextBar() {
       ? `/${switchingSlug}`
       : ""
 
-  if (loading || role !== "censio_admin" || !organization) return null
+  if (role !== "censio_admin" || !organization) return null
 
   async function handleSelect(nextSlug: string) {
     if (nextSlug === organization?.slug || switchingSlug) return
@@ -63,7 +63,6 @@ export function ClientContextBar() {
       const success = await setActiveOrganization(nextSlug)
       if (success) {
         setOpen(false)
-        router.refresh()
       } else {
         setSwitchingSlug(null)
       }
@@ -77,7 +76,8 @@ export function ClientContextBar() {
       className={cn(
         "admin-ui w-full min-w-0 overflow-x-clip",
         outfit.className,
-        "border-b border-[#d3c3b2] bg-[#faf8f6]"
+        "border-b border-[#d3c3b2] bg-[#faf8f6]",
+        "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-2 motion-safe:duration-300"
       )}
     >
       <div className="flex min-w-0 flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 lg:px-8 xl:px-10">
@@ -86,11 +86,11 @@ export function ClientContextBar() {
           className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-[#d3c3b2] bg-white px-3 py-1.5 text-sm font-medium text-black shadow-sm transition-colors hover:border-[#c4b5a6] hover:bg-[#faf8f6]"
         >
           <Settings2Icon className="size-4 shrink-0 text-black" aria-hidden="true" />
-          {t("clientSettingsContextLink")}
+          {t("clientContextConfigureClient", { name: displayName })}
         </Link>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
           <span className="shrink-0 text-sm font-medium text-muted-foreground">
-            {t("viewingClient")}
+            {t("adminSessionIdentity", { name: displayName })}
           </span>
           <Popover
             open={open}
@@ -111,19 +111,18 @@ export function ClientContextBar() {
                 switchingSlug && "border-primary/40 ring-2 ring-primary/15"
               )}
             >
-              {switchingSlug ? (
-                <Loader2Icon
-                  className="size-7 shrink-0 animate-spin text-primary p-1.5"
-                  aria-hidden="true"
-                />
-              ) : (
-                <span
-                  className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-xs font-semibold tracking-wide text-white"
-                  aria-hidden="true"
-                >
-                  {clientInitialsFromName(displayName)}
-                </span>
-              )}
+              <span className="relative flex size-7 shrink-0 items-center justify-center rounded-md bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-xs font-semibold tracking-wide text-white">
+                {clientInitialsFromName(
+                  switchingSlug && switchingDisplayName
+                    ? switchingDisplayName
+                    : displayName
+                )}
+                {switchingSlug ? (
+                  <span className="absolute -right-0.5 -bottom-0.5 flex size-3.5 items-center justify-center rounded-full bg-[#faf8f6] ring-1 ring-[#d3c3b2]">
+                    <Loader2Icon className="size-2.5 animate-spin text-primary" aria-hidden="true" />
+                  </span>
+                ) : null}
+              </span>
               <span className="truncate">
                 {switchingSlug
                   ? t("switchingClient", { name: switchingDisplayName ?? switchingSlug })
@@ -193,19 +192,17 @@ export function ClientContextBar() {
                 )}
               </ul>
               {!listLoading && listState.hiddenCount > 0 ? (
-                <div className="space-y-2 border-t border-border px-3 py-3">
+                <div className="border-t border-border px-3 py-3">
                   <p className="text-xs leading-relaxed text-muted-foreground">
                     {listState.mode === "preview"
                       ? t("clientSwitcherMoreCount", { count: listState.hiddenCount })
                       : t("clientSwitcherSearchLimit", { count: listState.hiddenCount })}
                   </p>
-                  <Link
-                    href="/klienter"
-                    onClick={() => setOpen(false)}
-                    className="block text-xs font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    {t("clientSwitcherFullList")}
-                  </Link>
+                  {listState.mode === "preview" ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t("clientSwitcherSearchHint")}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </PopoverContent>

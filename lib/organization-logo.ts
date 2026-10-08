@@ -11,6 +11,22 @@ const ALLOWED_LOGO_MIME = new Set([
   "image/svg+xml",
 ])
 
+export const ORGANIZATION_LOGO_BACKGROUNDS = ["transparent", "white", "dark"] as const
+
+export type OrganizationLogoBackground = (typeof ORGANIZATION_LOGO_BACKGROUNDS)[number]
+
+export function isOrganizationLogoBackground(value: unknown): value is OrganizationLogoBackground {
+  return (
+    typeof value === "string" &&
+    (ORGANIZATION_LOGO_BACKGROUNDS as readonly string[]).includes(value)
+  )
+}
+
+/** Unknown / missing values fall back to a white backdrop (safe for dark logos on dark headers). */
+export function parseOrganizationLogoBackground(value: unknown): OrganizationLogoBackground {
+  return isOrganizationLogoBackground(value) ? value : "white"
+}
+
 export function isAllowedOrganizationLogoMime(type: string): boolean {
   return ALLOWED_LOGO_MIME.has(type)
 }

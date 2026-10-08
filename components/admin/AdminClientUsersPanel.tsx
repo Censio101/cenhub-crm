@@ -1,14 +1,32 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Loader2Icon, MailIcon, RotateCwIcon, Trash2Icon, UsersIcon } from "lucide-react"
+import {
+  KeyRoundIcon,
+  Loader2Icon,
+  MailIcon,
+  RotateCwIcon,
+  Trash2Icon,
+  UsersIcon,
+} from "lucide-react"
 
 import { AdminInviteUserForm } from "@/components/admin/AdminInviteUserForm"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
-import { adminIconBoxClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
+import {
+  PortalLoginDetails,
+  PortalPasswordInput,
+  type PortalLogin,
+} from "@/components/admin/PortalAccessFields"
+import {
+  adminIconBoxClass,
+  adminOutlineButtonClass,
+  adminSectionCardClass,
+} from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
+import { generatePortalPassword } from "@/lib/auth/generate-password"
+import { isPortalPasswordValid } from "@/lib/auth/portal-access"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 import { useKeyedState } from "@/lib/react/use-keyed-state"
@@ -21,20 +39,77 @@ type ClientUser = {
   accessStatus?: "active" | "pending"
 }
 
+function SetPasswordForm({
+  saving,
+  onCancel,
+  onSave,
+}: {
+  saving: boolean
+  onCancel: () => void
+  onSave: (password: string) => void
+}) {
+  const { t } = useLanguage()
+  const [password, setPassword] = useState(() => generatePortalPassword())
+
+  return (
+    <form
+      className="grid gap-3 border-t border-[#e8e0d8] pt-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (isPortalPasswordValid(password)) onSave(password)
+      }}
+    >
+      <PortalPasswordInput value={password} onChange={setPassword} disabled={saving} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          className="h-9 gap-1.5 px-3.5 text-[13px]"
+          disabled={saving || !isPortalPasswordValid(password)}
+          aria-busy={saving}
+        >
+          {saving ? (
+            <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <KeyRoundIcon className="size-3.5" aria-hidden="true" />
+          )}
+          {t("clientUserSetPasswordSave")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn("h-9 px-3.5 text-[13px]", adminOutlineButtonClass)}
+          disabled={saving}
+          onClick={onCancel}
+        >
+          {t("clientUserSetPasswordCancel")}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 function ClientUserRow({
   user,
   disabled,
   isRemoving,
   isResending,
+  isSettingPassword,
+  passwordOpen,
   onRemove,
   onResend,
+  onTogglePassword,
+  onSavePassword,
 }: {
   user: ClientUser
   disabled?: boolean
   isRemoving?: boolean
   isResending?: boolean
+  isSettingPassword?: boolean
+  passwordOpen: boolean
   onRemove: (user: ClientUser) => void
   onResend: (user: ClientUser) => void
+  onTogglePassword: (user: ClientUser | null) => void
+  onSavePassword: (user: ClientUser, password: string) => void
 }) {
   const { t } = useLanguage()
   const label = user.email ?? user.full_name ?? user.id
@@ -45,64 +120,89 @@ function ClientUserRow({
   return (
     <li
       className={cn(
-        "flex items-center gap-3 rounded-xl border border-[#e8e0d8] bg-white px-3.5 py-2.5",
+        "grid gap-3 rounded-xl border border-[#e8e0d8] bg-white px-3.5 py-2.5",
         rowBusy && "opacity-70"
       )}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-[14px] font-medium text-foreground">{label}</p>
-          {isPending ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
-              {t("adminInvitePending")}
-            </span>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-[14px] font-medium text-foreground">{label}</p>
+            {isPending ? (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                {t("adminInvitePending")}
+              </span>
+            ) : null}
+          </div>
+          {user.full_name && user.email ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <MailIcon className="size-3 shrink-0 opacity-70" aria-hidden="true" />
+              <span className="truncate">{user.email}</span>
+            </p>
           ) : null}
         </div>
-        {user.full_name && user.email ? (
-          <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted-foreground">
-            <MailIcon className="size-3 shrink-0 opacity-70" aria-hidden="true" />
-            <span className="truncate">{user.email}</span>
-          </p>
-        ) : null}
-      </div>
 
-      <span className="hidden shrink-0 rounded-full bg-[#faf8f6] px-2 py-0.5 text-[11px] font-semibold text-muted-foreground uppercase sm:inline-flex">
-        {user.role.replace("_", " ")}
-      </span>
+        <span className="hidden shrink-0 rounded-full bg-[#faf8f6] px-2 py-0.5 text-[11px] font-semibold text-muted-foreground uppercase sm:inline-flex">
+          {user.role === "client_admin"
+            ? t("roleClientAdmin")
+            : user.role === "client_user"
+              ? t("roleClientUser")
+              : user.role.replace("_", " ")}
+        </span>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {isPending ? (
+        <div className="flex shrink-0 items-center gap-2">
+          {isPending ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 gap-1.5 px-3 text-[13px]"
+              disabled={disabled || isResending}
+              aria-busy={isResending}
+              onClick={() => onResend(user)}
+            >
+              <RotateCwIcon
+                className={cn("size-3.5", isResending && "animate-spin")}
+                aria-hidden="true"
+              />
+              <span className="hidden sm:inline">{t("adminResendInvite")}</span>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"
             className="h-9 gap-1.5 px-3 text-[13px]"
-            disabled={disabled || isResending}
-            aria-busy={isResending}
-            onClick={() => onResend(user)}
+            disabled={disabled}
+            aria-expanded={passwordOpen}
+            aria-label={t("clientUserSetPassword")}
+            onClick={() => onTogglePassword(passwordOpen ? null : user)}
           >
-            <RotateCwIcon
-              className={cn("size-3.5", isResending && "animate-spin")}
-              aria-hidden="true"
-            />
-            <span className="hidden sm:inline">{t("adminResendInvite")}</span>
+            <KeyRoundIcon className="size-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("clientUserSetPassword")}</span>
           </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          className="h-9 w-9 shrink-0 px-0 text-red-700 hover:border-red-200 hover:bg-red-50 hover:text-red-800"
-          aria-label={t("clientUserRemove")}
-          aria-busy={isRemoving}
-          disabled={disabled || isRemoving}
-          onClick={() => onRemove(user)}
-        >
-          {isRemoving ? (
-            <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Trash2Icon className="size-4" aria-hidden="true" />
-          )}
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-9 shrink-0 px-0 text-red-700 hover:border-red-200 hover:bg-red-50 hover:text-red-800"
+            aria-label={t("clientUserRemove")}
+            aria-busy={isRemoving}
+            disabled={disabled || isRemoving}
+            onClick={() => onRemove(user)}
+          >
+            {isRemoving ? (
+              <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Trash2Icon className="size-4" aria-hidden="true" />
+            )}
+          </Button>
+        </div>
       </div>
+      {passwordOpen ? (
+        <SetPasswordForm
+          saving={Boolean(isSettingPassword)}
+          onCancel={() => onTogglePassword(null)}
+          onSave={(password) => onSavePassword(user, password)}
+        />
+      ) : null}
     </li>
   )
 }
@@ -114,8 +214,10 @@ export function AdminClientUsersPanel() {
   const [actionNotice, setActionNotice] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<{
     id: string
-    action: "remove" | "resend"
+    action: "remove" | "resend" | "password"
   } | null>(null)
+  const [passwordUserId, setPasswordUserId] = useState<string | null>(null)
+  const [updatedLogin, setUpdatedLogin] = useState<PortalLogin | null>(null)
   // Local edits of the user list; discarded whenever the loaded users change.
   const [displayUsers, setDisplayUsers] = useKeyedState<ClientUser[] | null>(null, users)
 
@@ -177,10 +279,37 @@ export function AdminClientUsersPanel() {
     }
   }
 
+  async function handleSetPassword(user: ClientUser, password: string) {
+    setBusyAction({ id: user.id, action: "password" })
+    setActionError(null)
+    setActionNotice(null)
+    setUpdatedLogin(null)
+
+    try {
+      const response = await fetch(`/api/admin/organizations/${slug}/users/${user.id}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? t("clientUserSetPasswordError"))
+
+      setPasswordUserId(null)
+      setUpdatedLogin({ email: user.email ?? "", password })
+      void reload({ silent: true })
+    } catch (passwordError) {
+      setActionError(
+        passwordError instanceof Error ? passwordError.message : t("clientUserSetPasswordError")
+      )
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
   const clientUsers = displayUsers ?? (users as ClientUser[])
 
   return (
-    <div className="grid gap-5">
+    <div className="mx-auto grid w-full max-w-3xl gap-5">
       <AdminInviteUserForm
         mode="client"
         organizationId={organization.id}
@@ -216,6 +345,13 @@ export function AdminClientUsersPanel() {
               {actionNotice}
             </p>
           ) : null}
+          {updatedLogin ? (
+            <PortalLoginDetails
+              login={updatedLogin}
+              onDone={() => setUpdatedLogin(null)}
+              className="mb-3"
+            />
+          ) : null}
           {clientUsers.length === 0 ? (
             <p className="text-center text-[13px] text-muted-foreground">{t("noUsersYet")}</p>
           ) : (
@@ -227,8 +363,14 @@ export function AdminClientUsersPanel() {
                   disabled={busyAction?.id === user.id}
                   isRemoving={busyAction?.id === user.id && busyAction.action === "remove"}
                   isResending={busyAction?.id === user.id && busyAction.action === "resend"}
+                  isSettingPassword={
+                    busyAction?.id === user.id && busyAction.action === "password"
+                  }
+                  passwordOpen={passwordUserId === user.id}
                   onRemove={handleRemoveUser}
                   onResend={handleResendInvite}
+                  onTogglePassword={(target) => setPasswordUserId(target?.id ?? null)}
+                  onSavePassword={handleSetPassword}
                 />
               ))}
             </ul>

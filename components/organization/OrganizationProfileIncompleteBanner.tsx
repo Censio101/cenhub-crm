@@ -22,7 +22,7 @@ export function OrganizationProfileIncompleteBanner({
   const href =
     variant === "admin" && organizationSlug
       ? adminClientSettingsSectionPath(organizationSlug, "company")
-      : "/indstillinger#company-profile"
+      : "/virksomhed"
 
   return (
     <div

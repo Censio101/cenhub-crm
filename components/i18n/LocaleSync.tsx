@@ -6,10 +6,21 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { isLocale } from "@/lib/i18n"
-import type { Locale } from "@/lib/i18n/types"
+import { writeStoredLocale } from "@/lib/i18n/stored-locale"
+import {
+  ADMIN_LOCALE_STORAGE_KEY,
+  LOCALE_STORAGE_KEY,
+  type Locale,
+} from "@/lib/i18n/types"
+
+/** Keep legacy admin key aligned so older tabs / bookmarks do not fight the main key. */
+export function mirrorLocaleStorageKeys(locale: Locale) {
+  writeStoredLocale(LOCALE_STORAGE_KEY, locale)
+  writeStoredLocale(ADMIN_LOCALE_STORAGE_KEY, locale)
+}
 
 function useProfileLocaleSync() {
-  const { setLocale } = useLanguage()
+  const { locale, setLocale } = useLanguage()
   const { role, loading: orgLoading } = useActiveOrganization()
   const { configured, user, isAuthenticated, loading: authLoading } = useSupabaseSession()
   const syncedRef = useRef<string | null>(null)
@@ -36,24 +47,25 @@ function useProfileLocaleSync() {
           data.preferredLocale && isLocale(data.preferredLocale)
             ? data.preferredLocale
             : "da"
-        setLocale(next)
+
         syncedRef.current = syncKey
+
+        if (next === locale) {
+          mirrorLocaleStorageKeys(next)
+          return
+        }
+
+        mirrorLocaleStorageKeys(next)
+        setLocale(next)
       } catch {
         // keep localStorage fallback
       }
     })()
-  }, [authLoading, configured, isAuthenticated, orgLoading, role, setLocale, user])
-
+  }, [authLoading, configured, isAuthenticated, locale, orgLoading, role, setLocale, user])
 }
 
-/** Client dashboard shell — uses `censio-locale` (root LanguageProvider). */
+/** Sync profile preferred_locale into the app LanguageProvider (all signed-in areas). */
 export function LocaleSync() {
-  useProfileLocaleSync()
-  return null
-}
-
-/** Admin shell — uses `censio-admin-locale` (nested LanguageProvider in admin layout). */
-export function AdminLocaleSync() {
   useProfileLocaleSync()
   return null
 }
@@ -64,6 +76,9 @@ export async function persistAdminPreferredLocale(locale: Locale): Promise<boole
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ preferredLocale: locale }),
   })
+  if (response.ok) {
+    mirrorLocaleStorageKeys(locale)
+  }
   return response.ok
 }
 
@@ -73,5 +88,8 @@ export async function persistAccountPreferredLocale(locale: Locale): Promise<boo
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ preferredLocale: locale }),
   })
+  if (response.ok) {
+    mirrorLocaleStorageKeys(locale)
+  }
   return response.ok
 }

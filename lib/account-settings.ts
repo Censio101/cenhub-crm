@@ -1,4 +1,4 @@
-import { CURRENT_COMPANY } from "@/lib/company"
+import { sanitizeStoredProfileImage } from "@/lib/auth/profile-image-sanitize"
 import { notifyStorageChange, readStorageRaw } from "@/lib/react/storage-store"
 
 export const ACCOUNT_SETTINGS_KEY = "censio-account-settings"
@@ -24,19 +24,11 @@ export type AccountSettings = {
 
 export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = {
   displayName: "",
-  profileImage: CURRENT_COMPANY.image,
-  logo: CURRENT_COMPANY.logo,
-  email: "kontakt@nordkystens-tomrer.dk",
-  employees: [
-    {
-      id: "owner-1",
-      name: "Ejer",
-      email: "kontakt@nordkystens-tomrer.dk",
-      role: "admin",
-      status: "active",
-    },
-  ],
-  hvidbjergPartner: true,
+  profileImage: "",
+  logo: "",
+  email: "",
+  employees: [],
+  hvidbjergPartner: false,
 }
 
 export function parseHvidbjergPartner(value: unknown): boolean {
@@ -53,17 +45,18 @@ export function parseAccountSettings(raw: string | null): AccountSettings {
   try {
     const parsed = JSON.parse(raw) as Partial<AccountSettings>
     return {
-      profileImage: parsed.profileImage || DEFAULT_ACCOUNT_SETTINGS.profileImage,
+      profileImage: sanitizeStoredProfileImage(
+        typeof parsed.profileImage === "string" ? parsed.profileImage : ""
+      ),
       displayName:
         typeof parsed.displayName === "string"
           ? parsed.displayName
           : DEFAULT_ACCOUNT_SETTINGS.displayName,
-      logo: parsed.logo || DEFAULT_ACCOUNT_SETTINGS.logo,
-      email: parsed.email || DEFAULT_ACCOUNT_SETTINGS.email,
-      employees:
-        parsed.employees && parsed.employees.length > 0
-          ? parsed.employees
-          : DEFAULT_ACCOUNT_SETTINGS.employees,
+      logo: sanitizeStoredProfileImage(typeof parsed.logo === "string" ? parsed.logo : ""),
+      email: typeof parsed.email === "string" ? parsed.email : DEFAULT_ACCOUNT_SETTINGS.email,
+      employees: Array.isArray(parsed.employees)
+        ? parsed.employees
+        : DEFAULT_ACCOUNT_SETTINGS.employees,
       hvidbjergPartner: parseHvidbjergPartner(parsed.hvidbjergPartner),
     }
   } catch {

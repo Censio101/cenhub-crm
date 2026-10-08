@@ -1,9 +1,9 @@
 "use client"
 
-import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
-import { CURRENT_COMPANY } from "@/lib/company"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
 import { FUNNEL_MESSAGE_KEYS } from "@/lib/performance/funnel-i18n"
@@ -51,7 +51,7 @@ export function DashboardHeader({
   segment: CustomerSegmentId | null
   onSegmentChange: (segment: CustomerSegmentId | null) => void
 }) {
-  const { settings } = useAccountSettings()
+  const { organization } = useActiveOrganization()
   const { locale, t } = useLanguage()
   const scope = [
     service ? getServiceLabel(service) : null,
@@ -69,20 +69,15 @@ export function DashboardHeader({
     <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
       <div className="max-w-2xl">
         <h1 className="text-3xl font-medium tracking-tight text-[var(--text-primary)] sm:text-4xl">
-          {t("dashboardWelcome", { name: CURRENT_COMPANY.name })}
-        </h1>
-        {settings.hvidbjergPartner ? (
-          <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
-            {/* Local Hvidbjerg mark — dark-on-transparent, readable on the cream page. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/hvidbjerg-vinduet-logo.png"
-              alt=""
-              className="h-4 w-auto shrink-0"
+          {organization ? (
+            t("dashboardWelcome", { name: formatClientDisplayName(organization.name) })
+          ) : (
+            <span
+              className="inline-block h-9 w-64 animate-pulse rounded-md bg-muted"
+              aria-hidden="true"
             />
-            <span>{t("overviewCertifiedProgram")}</span>
-          </p>
-        ) : null}
+          )}
+        </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           {t("dashboardShowingData", {
             dateRange: formatDateRangeLabel(range.start, range.end, locale),

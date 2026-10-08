@@ -44,6 +44,8 @@ export function isClientDashboardPath(pathname: string) {
     pathname.startsWith("/kunder") ||
     pathname.startsWith("/lead-performance") ||
     pathname.startsWith("/indstillinger") ||
+    pathname.startsWith("/virksomhed") ||
+    pathname.startsWith("/konto") ||
     isClientPickerPath(pathname)
   )
 }

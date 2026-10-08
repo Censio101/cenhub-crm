@@ -1,4 +1,4 @@
-/** Title-case client names for display (e.g. "demo meta client" → "Demo Meta Client"). */
+/** Title-case client names for display (e.g. "acme corp" → "Acme Corp"). */
 export function formatClientDisplayName(name: string) {
   return name
     .trim()

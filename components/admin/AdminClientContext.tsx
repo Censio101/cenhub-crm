@@ -105,9 +105,17 @@ export function AdminClientProvider({ slug, children }: { slug: string; children
     [slug, t]
   )
 
+  const loadedSlugRef = useRef<string | null>(null)
+  const reloadRef = useRef(reload)
+  reloadRef.current = reload
+
   useAsyncEffect(() => {
-    void reload()
-  }, [reload])
+    const isClientSwitch =
+      loadedSlugRef.current !== null && loadedSlugRef.current !== slug
+    void reloadRef.current(isClientSwitch ? { silent: true } : undefined).finally(() => {
+      loadedSlugRef.current = slug
+    })
+  }, [slug])
 
   useEffect(() => {
     if (!organization) return

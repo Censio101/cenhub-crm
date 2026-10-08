@@ -149,6 +149,7 @@ export type OrganizationDetailsPatch = Partial<
     | "slug"
     | "demo_mode"
     | "logo_url"
+    | "logo_background"
     | "cvr"
     | "address"
     | "zip_code"

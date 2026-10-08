@@ -1,4 +1,3 @@
-import { isVisibleInClientSwitcher } from "@/lib/admin/admin-routes"
 import type { HubClient } from "@/lib/admin/hub-clients"
 
 export type PickerOrganization = {
@@ -12,7 +11,6 @@ export type PickerOrganization = {
 
 export function hubClientToPickerOrganization(client: HubClient): PickerOrganization | null {
   if (!client.inApp || client.partnerOnly || !client.slug) return null
-  if (!isVisibleInClientSwitcher(client.slug)) return null
 
   return {
     id: client.organizationId ?? client.key,
@@ -110,11 +108,10 @@ export function resolveContextBarClientList(
 export function filterVisibleOrganizationOptions<
   T extends { slug: string; name: string; metaAdAccountId?: string },
 >(options: readonly T[], query: string): T[] {
-  const visible = options.filter((option) => isVisibleInClientSwitcher(option.slug))
   const needle = query.trim().toLowerCase()
-  if (!needle) return [...visible]
+  if (!needle) return [...options]
 
-  return visible.filter((option) =>
+  return options.filter((option) =>
     organizationMatchesPickerQuery(
       {
         name: option.name,

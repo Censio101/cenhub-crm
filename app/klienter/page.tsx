@@ -1,5 +1,6 @@
-import { ClientPickerPage } from "@/components/admin/ClientPickerPage"
+import { redirect } from "next/navigation"
 
+/** Legacy client picker — admins use the header client switcher on the dashboard. */
 export default function KlienterPage() {
-  return <ClientPickerPage />
+  redirect("/")
 }

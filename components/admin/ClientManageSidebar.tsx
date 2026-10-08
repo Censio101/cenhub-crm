@@ -11,12 +11,14 @@ import {
   WrenchIcon,
   FunnelIcon,
   LayoutGridIcon,
+  Settings2Icon,
   SheetIcon,
   TagsIcon,
   UsersIcon,
 } from "lucide-react"
 
 import { useOptionalAdminClient } from "@/components/admin/AdminClientContext"
+import { ClientManageHeaderBand } from "@/components/admin/ClientManageHeaderBand"
 import { ClientManageSidebarClientCard } from "@/components/admin/ClientManageSidebarClientCard"
 import { useOptionalAdminClientSwitch } from "@/components/admin/AdminClientSwitchContext"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -87,6 +89,7 @@ export function ClientManageSidebar() {
     router.prefetch(adminClientSettingsSectionPath(slug, "funnels"))
     router.prefetch(adminClientSettingsSectionPath(slug, "import"))
     router.prefetch(adminClientSettingsSectionPath(slug, "services"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "settings"))
   }, [router, slug])
 
   if (!slug) return null
@@ -152,32 +155,36 @@ export function ClientManageSidebar() {
       icon: FileUpIcon,
       active: section === "import",
     },
+    {
+      href: adminClientSettingsSectionPath(slug, "settings"),
+      labelKey: "clientNavSettings",
+      icon: Settings2Icon,
+      active: section === "settings",
+    },
   ]
 
   return (
     <aside
       className={cn(
-        "flex min-h-full w-full min-w-0 max-w-full shrink-0 flex-col self-stretch overflow-x-clip border-b border-[#e8e0d8] bg-white md:w-56 md:max-w-56 md:border-r md:border-b-0",
+        "flex w-full min-w-0 max-w-full shrink-0 flex-col overflow-hidden border-b border-[#e8e0d8] bg-white md:w-56 md:max-w-56 md:self-start md:sticky md:top-[4.5rem] md:h-[calc(100dvh-4.5rem)] md:max-h-[calc(100dvh-4.5rem)] md:border-r md:border-b-0",
         navDimmed && "opacity-95"
       )}
       aria-busy={navDimmed || undefined}
       aria-label={t("clientSettingsLabel")}
     >
-      <div className="border-b border-[#e8e0d8] px-4 py-3">
-        <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">
-          {t("adminClientScopeBadge")}
-        </p>
+      <ClientManageHeaderBand variant="sidebar" />
+
+      <div className="shrink-0">
+        <ClientManageSidebarClientCard routeSlug={slug} />
       </div>
 
-      <ClientManageSidebarClientCard routeSlug={slug} />
-
-      <nav className="flex flex-1 flex-col gap-1 overflow-x-clip px-3 py-3">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-x-clip overflow-y-auto px-3 py-3">
         {items.map((item) => (
           <ManageNavLink key={item.href} item={item} dimmed={navDimmed} />
         ))}
       </nav>
 
-      <div className="mt-auto grid gap-1 border-t border-[#e8e0d8] px-3 py-3">
+      <div className="mt-auto shrink-0 grid gap-1 border-t border-[#e8e0d8] px-3 py-3">
         <Link
           href="/admin/clients"
           className={cn(

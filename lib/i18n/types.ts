@@ -8,7 +8,7 @@ export const LOCALES: { value: Locale; labelKey: "languageDanish" | "languageEng
 /** Client dashboard and org-user UI */
 export const LOCALE_STORAGE_KEY = "censio-locale"
 
-/** Admin panel only — separate from client dashboard language in localStorage */
+/** Legacy key — kept in sync with {@link LOCALE_STORAGE_KEY} for admins. */
 export const ADMIN_LOCALE_STORAGE_KEY = "censio-admin-locale"
 
 /** Public signup form at /tilmelding only — independent from admin language */

@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 
+import { isPortalPasswordValid, PORTAL_PASSWORD_MIN_LENGTH } from "@/lib/auth/portal-access"
 import { sendUserInviteEmail } from "@/lib/email/send-user-invite"
 import type { ProfileRow, UserRole } from "@/lib/db/types"
 
@@ -205,6 +206,27 @@ export async function resendOrganizationUserInvite(
   })
 }
 
+export async function setOrganizationUserPassword(
+  admin: SupabaseClient,
+  userId: string,
+  organizationId: string,
+  password: string
+): Promise<void> {
+  if (!isPortalPasswordValid(password)) {
+    throw new Error(`Password must be at least ${PORTAL_PASSWORD_MIN_LENGTH} characters`)
+  }
+
+  const profile = await getOrganizationUserProfile(admin, userId, organizationId)
+  if (!profile) {
+    throw new Error("User not found")
+  }
+  if (profile.role === "censio_admin") {
+    throw new Error("Cannot change a Censio admin password from a client workspace")
+  }
+
+  await setAuthUserPassword(admin, userId, password)
+}
+
 async function findUserIdByEmail(
   admin: SupabaseClient,
   email: string
@@ -223,6 +245,39 @@ async function findUserIdByEmail(
   return null
 }
 
+async function setAuthUserPassword(
+  admin: SupabaseClient,
+  userId: string,
+  password: string
+): Promise<void> {
+  const { data, error: getError } = await admin.auth.admin.getUserById(userId)
+  if (getError) throw getError
+
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    password,
+    email_confirm: true,
+    user_metadata: { ...(data.user?.user_metadata ?? {}), password_setup_complete: true },
+  })
+  if (error) throw error
+}
+
+function assertCanAssignProfile(
+  existing: Pick<ProfileRow, "role" | "organization_id"> | null,
+  input: InviteUserInput
+): void {
+  if (!existing) return
+  if (existing.role === "censio_admin" && input.role !== "censio_admin") {
+    throw new Error("This email belongs to a Censio admin")
+  }
+  if (
+    input.role !== "censio_admin" &&
+    existing.organization_id &&
+    existing.organization_id !== input.organizationId
+  ) {
+    throw new Error("This email already has a login for another client")
+  }
+}
+
 export async function inviteOrCreateUser(
   admin: SupabaseClient,
   input: InviteUserInput
@@ -234,7 +289,24 @@ export async function inviteOrCreateUser(
     throw new Error("organizationId is required for client users")
   }
 
+  if (input.method === "password" && !isPortalPasswordValid(input.password ?? "")) {
+    throw new Error(`Password must be at least ${PORTAL_PASSWORD_MIN_LENGTH} characters`)
+  }
+
   let userId = await findUserIdByEmail(admin, email)
+
+  if (userId) {
+    const { data: existingProfile, error } = await admin
+      .from("profiles")
+      .select("role, organization_id")
+      .eq("id", userId)
+      .maybeSingle()
+    if (error) throw error
+    assertCanAssignProfile(
+      existingProfile as Pick<ProfileRow, "role" | "organization_id"> | null,
+      input
+    )
+  }
 
   if (!userId) {
     if (input.method === "email") {
@@ -246,13 +318,11 @@ export async function inviteOrCreateUser(
       })
       userId = inviteResult.userId
     } else {
-      if (!input.password || input.password.length < 8) {
-        throw new Error("Password must be at least 8 characters")
-      }
       const { data, error } = await admin.auth.admin.createUser({
         email,
-        password: input.password,
+        password: input.password!,
         email_confirm: true,
+        user_metadata: { password_setup_complete: true },
       })
       if (error) throw error
       userId = data.user.id
@@ -264,15 +334,9 @@ export async function inviteOrCreateUser(
       fullName: input.fullName,
       organizationName: input.organizationName,
     })
+  } else {
+    await setAuthUserPassword(admin, userId, input.password!)
   }
-
-  const { data: existingProfile, error: existingProfileError } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("id", userId)
-    .maybeSingle()
-
-  if (existingProfileError) throw existingProfileError
 
   const profilePayload = {
     organization_id: input.role === "censio_admin" ? null : input.organizationId,
@@ -282,21 +346,10 @@ export async function inviteOrCreateUser(
     updated_at: new Date().toISOString(),
   }
 
-  if (existingProfile) {
-    const { error: profileError } = await admin
-      .from("profiles")
-      .update(profilePayload)
-      .eq("id", userId)
-
-    if (profileError) throw profileError
-  } else {
-    const { error: profileError } = await admin.from("profiles").insert({
-      id: userId,
-      ...profilePayload,
-    })
-
-    if (profileError) throw profileError
-  }
+  const { error: profileError } = await admin
+    .from("profiles")
+    .upsert({ id: userId, ...profilePayload }, { onConflict: "id" })
+  if (profileError) throw profileError
 
   return { userId, method: input.method }
 }

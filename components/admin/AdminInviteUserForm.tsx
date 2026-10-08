@@ -1,13 +1,21 @@
 "use client"
 
 import { FormEvent, useCallback, useState } from "react"
-import { Building2Icon, MailIcon, SendIcon, ShieldCheckIcon, UserPlusIcon } from "lucide-react"
+import { MailIcon, SendIcon, ShieldCheckIcon, UserPlusIcon } from "lucide-react"
 
 import {
   adminFieldClass,
   adminIconBoxClass,
   adminSectionCardClass,
 } from "@/components/admin/admin-ui-styles"
+import {
+  INITIAL_PORTAL_ACCESS_DRAFT,
+  isPortalAccessDraftValid,
+  PortalAccessFields,
+  PortalLoginDetails,
+  type PortalAccessDraft,
+  type PortalLogin,
+} from "@/components/admin/PortalAccessFields"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
@@ -15,41 +23,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 import type { UserRole } from "@/lib/db/types"
 
-function MethodRow({
-  checked,
-  label,
-  onSelect,
-}: {
-  checked: boolean
-  label: string
-  onSelect: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      onClick={onSelect}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-[14px] font-medium transition-colors",
-        checked
-          ? "border-primary bg-primary/5 text-foreground"
-          : "border-[#d3c3b2] bg-white text-foreground hover:bg-[#faf8f6]"
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
-          checked ? "border-primary" : "border-[#d3c3b2]"
-        )}
-        aria-hidden="true"
-      >
-        {checked ? <span className="size-2 rounded-full bg-primary" /> : null}
-      </span>
-      {label}
-    </button>
-  )
-}
+type ClientRole = Extract<UserRole, "client_admin" | "client_user">
 
 type AdminInviteUserFormProps =
   | {
@@ -68,14 +42,17 @@ type AdminInviteUserFormProps =
 export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
   const { t } = useLanguage()
   const isAdminInvite = props.mode === "admin"
-  const role: UserRole = isAdminInvite ? "censio_admin" : "client_user"
   const clientName =
     props.mode === "client" && props.clientName ? formatClientDisplayName(props.clientName) : null
 
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
-  const [method, setMethod] = useState<"email" | "password">("email")
-  const [password, setPassword] = useState("")
+  const [clientRole, setClientRole] = useState<ClientRole>("client_admin")
+  const [access, setAccess] = useState<PortalAccessDraft>(
+    isAdminInvite ? { method: "email", password: "" } : INITIAL_PORTAL_ACCESS_DRAFT
+  )
+  const [createdLogin, setCreatedLogin] = useState<PortalLogin | null>(null)
+  const [formKey, setFormKey] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -86,22 +63,29 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
   useAutoDismiss(message, dismissMessage)
   useAutoDismiss(error, dismissError, 6000)
 
+  const role: UserRole = isAdminInvite ? "censio_admin" : clientRole
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (!isPortalAccessDraftValid(access)) return
+
     setSubmitting(true)
     setError(null)
     setMessage(null)
+    setCreatedLogin(null)
+
+    const submittedEmail = email.trim().toLowerCase()
 
     try {
       const response = await fetch("/api/admin/users/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
+          email: submittedEmail,
           fullName,
           role,
-          method,
-          password: method === "password" ? password : undefined,
+          method: access.method,
+          password: access.method === "password" ? access.password : undefined,
           organizationId: isAdminInvite ? null : props.organizationId,
         }),
       })
@@ -109,18 +93,23 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("errorInviteUser"))
 
-      setMessage(
-        method === "email"
-          ? isAdminInvite
-            ? t("inviteAdminSent", { email })
-            : t("inviteClientSent", { email, name: clientName ?? "" })
-          : isAdminInvite
-            ? t("adminCreated", { email })
-            : t("clientUserCreated", { email, name: clientName ?? "" })
-      )
+      if (access.method === "email") {
+        setMessage(
+          isAdminInvite
+            ? t("inviteAdminSent", { email: submittedEmail })
+            : t("inviteClientSent", { email: submittedEmail, name: clientName ?? "" })
+        )
+      } else if (isAdminInvite) {
+        setMessage(t("adminCreated", { email: submittedEmail }))
+      } else {
+        setCreatedLogin({ email: submittedEmail, password: access.password })
+      }
+
       setEmail("")
       setFullName("")
-      setPassword("")
+      setClientRole("client_admin")
+      setAccess(isAdminInvite ? { method: "email", password: "" } : INITIAL_PORTAL_ACCESS_DRAFT)
+      setFormKey((current) => current + 1)
       props.onInvited?.()
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : t("errorInviteUser"))
@@ -152,14 +141,12 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
       </div>
 
       <div className="px-5 py-4">
-        {!isAdminInvite ? (
-          <div className="mb-4 flex gap-3 rounded-xl border border-[#d3c3b2] bg-white px-3.5 py-3">
-            <Building2Icon
-              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <p className="text-[13px] text-muted-foreground">{t("inviteClientUserCallout")}</p>
-          </div>
+        {createdLogin ? (
+          <PortalLoginDetails
+            login={createdLogin}
+            onDone={() => setCreatedLogin(null)}
+            className="mb-4"
+          />
         ) : null}
 
         <form className="grid gap-3.5" onSubmit={handleSubmit}>
@@ -186,37 +173,28 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
             />
           </label>
 
-          <fieldset className="grid gap-2">
-            <legend className="mb-0.5 text-[13px] font-semibold text-foreground">
-              {t("method")}
-            </legend>
-            <div className="grid gap-2" role="radiogroup" aria-label={t("method")}>
-              <MethodRow
-                checked={method === "email"}
-                label={t("methodEmailInvite")}
-                onSelect={() => setMethod("email")}
-              />
-              <MethodRow
-                checked={method === "password"}
-                label={t("methodPassword")}
-                onSelect={() => setMethod("password")}
-              />
-            </div>
-          </fieldset>
-
-          {method === "password" ? (
+          {!isAdminInvite ? (
             <label className="grid gap-1.5">
-              <span className="text-[13px] font-semibold text-foreground">{t("password")}</span>
-              <input
-                type="password"
+              <span className="text-[13px] font-semibold text-foreground">{t("role")}</span>
+              <select
                 className={adminFieldClass}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={8}
-                required
-              />
+                value={clientRole}
+                onChange={(event) => setClientRole(event.target.value as ClientRole)}
+              >
+                <option value="client_admin">{t("roleClientAdmin")}</option>
+                <option value="client_user">{t("roleClientUser")}</option>
+              </select>
             </label>
           ) : null}
+
+          <PortalAccessFields
+            key={formKey}
+            value={access}
+            onChange={setAccess}
+            disabled={submitting}
+            idPrefix={isAdminInvite ? "admin-invite" : "client-invite"}
+            title={isAdminInvite ? t("method") : t("portalAccessTitle")}
+          />
 
           {error ? (
             <p
@@ -235,7 +213,11 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
             </p>
           ) : null}
 
-          <Button type="submit" className="h-10 w-full gap-2 sm:w-fit" disabled={submitting}>
+          <Button
+            type="submit"
+            className="h-10 w-full gap-2 sm:w-fit"
+            disabled={submitting || !isPortalAccessDraftValid(access)}
+          >
             {isAdminInvite ? (
               <ShieldCheckIcon className="size-4" aria-hidden="true" />
             ) : (

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FormEvent, useCallback, useEffect, useState } from "react"
+import { Loader2Icon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
@@ -32,8 +33,13 @@ export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [loginProgress, setLoginProgress] = useState<
+    null | "signIn" | "session" | "redirect"
+  >(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const loginBusy = submitting || loginProgress !== null
 
   const dismissMessage = useCallback(() => setMessage(null), [])
   const dismissError = useCallback(() => setError(null), [])
@@ -43,7 +49,12 @@ export function LoginForm() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.replace("/")
+      void fetch("/api/auth/me", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((me: { role?: string | null } | null) => {
+          router.replace("/")
+        })
+        .catch(() => router.replace("/"))
     }
   }, [isAuthenticated, loading, router])
 
@@ -70,42 +81,64 @@ export function LoginForm() {
   }
 
   useEffect(() => {
-    if (callbackError || successMessage) {
-      router.replace("/login", { scroll: false })
-    }
-  }, [router, callbackError, successMessage])
+    if (!callbackError && !successMessage) return
+    window.history.replaceState(null, "", "/login")
+  }, [callbackError, successMessage])
 
   async function handlePasswordLogin(event: FormEvent) {
     event.preventDefault()
-    if (!configured) return
+    if (!configured || loginBusy) return
 
     setSubmitting(true)
+    setLoginProgress("signIn")
     setError(null)
     setMessage(null)
 
     const supabase = createClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
 
-    setSubmitting(false)
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
 
-    if (signInError) {
-      setError(
-        signInError.message.toLowerCase().includes("email logins are disabled")
-          ? t("loginEmailDisabled")
-          : t("loginWrongCredentials")
-      )
-      return
+      if (signInError) {
+        setError(
+          signInError.message.toLowerCase().includes("email logins are disabled")
+            ? t("loginEmailDisabled")
+            : t("loginWrongCredentials")
+        )
+        setSubmitting(false)
+        setLoginProgress(null)
+        return
+      }
+
+      setLoginProgress("session")
+      // Invited users who already chose a password (legacy accounts) may lack this flag in the JWT.
+      await supabase.auth.updateUser({ data: { password_setup_complete: true } })
+      await supabase.auth.refreshSession()
+
+      setLoginProgress("redirect")
+      const meResponse = await fetch("/api/auth/me", { cache: "no-store" })
+      const me = meResponse.ok
+        ? ((await meResponse.json()) as { role?: string | null })
+        : null
+      router.replace("/")
+    } catch {
+      setError(t("loginWrongCredentials"))
+      setSubmitting(false)
+      setLoginProgress(null)
     }
-
-    const meResponse = await fetch("/api/auth/me", { cache: "no-store" })
-    const me = meResponse.ok
-      ? ((await meResponse.json()) as { role?: string | null })
-      : null
-    router.replace(me?.role === "censio_admin" ? "/klienter" : "/")
   }
+
+  const loginProgressMessage =
+    loginProgress === "signIn"
+      ? t("loginSubmitting")
+      : loginProgress === "session"
+        ? t("loginPreparingSession")
+        : loginProgress === "redirect"
+          ? t("loginRedirecting")
+          : null
 
   async function handleMagicLink() {
     if (!configured || !email.trim()) {
@@ -165,7 +198,6 @@ export function LoginForm() {
 
   if (!isBrowserSupabaseConfigured()) {
     return (
-      <div className="mx-auto flex w-full max-w-xl justify-center py-10 sm:py-14">
         <Card className="dashboard-card w-full">
           <CardHeader>
             <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
@@ -180,20 +212,18 @@ export function LoginForm() {
             </Button>
           </CardContent>
         </Card>
-      </div>
     )
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl justify-center py-10 sm:py-14">
-      <Card className="dashboard-card w-full">
+      <Card className="dashboard-card w-full motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-medium sm:text-2xl">{t("loginHeading")}</CardTitle>
           <CardDescription>{t("loginDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-5" onSubmit={handlePasswordLogin}>
-            <label className="grid gap-2 text-sm">
+            <label className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-75 grid gap-2 text-sm">
               <span className="font-medium text-muted-foreground">{t("email")}</span>
               <input
                 type="email"
@@ -203,9 +233,10 @@ export function LoginForm() {
                 onChange={(event) => setEmail(event.target.value)}
                 className={fieldClass}
                 placeholder={t("loginEmailPlaceholder")}
+                disabled={loginBusy || loading}
               />
             </label>
-            <label className="grid gap-2 text-sm">
+            <label className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-150 grid gap-2 text-sm">
               <span className="font-medium text-muted-foreground">{t("password")}</span>
               <input
                 type="password"
@@ -214,6 +245,7 @@ export function LoginForm() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className={fieldClass}
+                disabled={loginBusy || loading}
               />
             </label>
 
@@ -224,14 +256,36 @@ export function LoginForm() {
               <FormNotice message={message} tone="success" onDismiss={dismissMessage} />
             ) : null}
 
-            <Button type="submit" className="h-11 rounded-[5px]" disabled={submitting || loading}>
-              {submitting ? t("loginSubmitting") : t("loginSubmit")}
+            {loginProgressMessage ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-2 rounded-[15px] border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground"
+              >
+                <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" aria-hidden="true" />
+                <span>{loginProgressMessage}</span>
+              </div>
+            ) : null}
+
+            <Button
+              type="submit"
+              className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-200 h-11 rounded-[5px]"
+              disabled={loginBusy || loading}
+            >
+              {loginBusy ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+                  {loginProgressMessage ?? t("loginSubmitting")}
+                </>
+              ) : (
+                t("loginSubmit")
+              )}
             </Button>
             <Button
               type="button"
               variant="outline"
               className="h-10"
-              disabled={submitting || loading}
+              disabled={loginBusy || loading}
               onClick={() => {
                 void handleMagicLink()
               }}
@@ -242,7 +296,7 @@ export function LoginForm() {
               type="button"
               variant="ghost"
               className="h-10 text-muted-foreground"
-              disabled={submitting || loading}
+              disabled={loginBusy || loading}
               onClick={() => {
                 void handleForgotPassword()
               }}
@@ -252,6 +306,5 @@ export function LoginForm() {
           </form>
         </CardContent>
       </Card>
-    </div>
   )
 }

@@ -12,7 +12,6 @@ import {
 import { onboardingErrorMessage } from "@/lib/onboarding/api-errors"
 import { updateOrganizationById } from "@/lib/db/organizations-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createClient } from "@/lib/supabase/server"
 
 function canEditOrganizationProfile(role: string | null): boolean {
   return role === "client_admin" || role === "censio_admin"
@@ -49,13 +48,10 @@ export async function PATCH(request: Request) {
       return validationErrorResponse(parsed.error)
     }
 
-    const supabase =
-      ctx.role === "censio_admin" || ctx.isDemoFallback
-        ? createAdminClient()
-        : await createClient()
-
+    // Role was verified above and the target is the caller's own organization, so write with
+    // the service client: row-level security does not allow client admins to update `organizations`.
     const organization = await updateOrganizationById(
-      supabase,
+      createAdminClient(),
       ctx.organization.id,
       parsed.patch
     )

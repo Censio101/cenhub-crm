@@ -5,13 +5,11 @@ import { clientInitialsFromName } from "@/lib/admin/format-client-display-name"
 
 type ClientManageScopeIdentityProps = {
   displayName: string
-  slug: string
   isTransitioning: boolean
 }
 
 export function ClientManageScopeIdentity({
   displayName,
-  slug,
   isTransitioning,
 }: ClientManageScopeIdentityProps) {
   if (isTransitioning) {
@@ -26,12 +24,9 @@ export function ClientManageScopeIdentity({
       >
         {clientInitialsFromName(displayName)}
       </span>
-      <div className="min-w-0">
-        <p className="truncate text-base font-semibold leading-tight text-foreground">
-          {displayName}
-        </p>
-        <p className="truncate font-mono text-xs text-muted-foreground">/{slug}</p>
-      </div>
+      <p className="min-w-0 truncate text-base font-semibold leading-tight text-foreground">
+        {displayName}
+      </p>
     </div>
   )
 }

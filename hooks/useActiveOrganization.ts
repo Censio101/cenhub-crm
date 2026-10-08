@@ -1,11 +1,8 @@
 "use client"
 
-import { useCallback, useState } from "react"
-
-import { clearClientCaches, emitClientOrgChanged } from "@/lib/data/client-cache"
+import { useSession, type SessionReloadOptions } from "@/components/session/SessionProvider"
 import type { UserRole } from "@/lib/db/types"
-import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
-import { useAsyncEffect } from "@/lib/react/use-async-effect"
+import type { OrganizationLogoBackground } from "@/lib/organization-logo"
 
 export type ActiveOrganization = {
   id: string
@@ -13,6 +10,7 @@ export type ActiveOrganization = {
   name: string
   demoMode: boolean
   logoUrl: string | null
+  logoBackground: OrganizationLogoBackground
   profileComplete: boolean
 }
 
@@ -23,96 +21,20 @@ type ActiveOrganizationState = {
   needsClientSelection: boolean
   loading: boolean
   setActiveOrganization: (slug: string | null) => Promise<boolean>
-  reload: () => Promise<void>
+  reload: (options?: SessionReloadOptions) => Promise<void>
+  patchOrganization: (patch: Partial<ActiveOrganization>) => void
 }
 
 export function useActiveOrganization(): ActiveOrganizationState {
-  const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
-  const [organization, setOrganization] = useState<ActiveOrganization | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
-  const [isAdminViewingClient, setIsAdminViewingClient] = useState(false)
-  const [loading, setLoading] = useState(configured)
-
-  const reload = useCallback(async () => {
-    if (!configured) {
-      setLoading(false)
-      return
-    }
-
-    if (!isAuthenticated) {
-      setOrganization(null)
-      setRole(null)
-      setIsAdminViewingClient(false)
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    try {
-      const response = await fetch("/api/auth/me", { cache: "no-store" })
-      if (!response.ok) {
-        setOrganization(null)
-        setRole(null)
-        setIsAdminViewingClient(false)
-        return
-      }
-
-      const data = (await response.json()) as {
-        role?: UserRole | null
-        organization?: ActiveOrganization | null
-        isAdminViewingClient?: boolean
-      }
-
-      setRole(data.role ?? null)
-      const org = data.organization ?? null
-      setOrganization(
-        org
-          ? {
-              ...org,
-              profileComplete: org.profileComplete ?? true,
-            }
-          : null
-      )
-      setIsAdminViewingClient(Boolean(data.isAdminViewingClient))
-    } finally {
-      setLoading(false)
-    }
-  }, [configured, isAuthenticated])
-
-  useAsyncEffect(() => {
-    if (authLoading) return
-    void reload()
-  }, [authLoading, reload])
-
-  const setActiveOrganization = useCallback(
-    async (slug: string | null) => {
-      clearClientCaches()
-
-      const response = await fetch("/api/admin/active-organization", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ slug }),
-      })
-
-      if (!response.ok) return false
-
-      await reload()
-      emitClientOrgChanged()
-      return true
-    },
-    [reload]
-  )
-
-  const needsClientSelection = role === "censio_admin" && !organization
-
+  const ctx = useSession()
   return {
-    organization,
-    role,
-    isAdminViewingClient,
-    needsClientSelection,
-    loading: loading || authLoading,
-    setActiveOrganization,
-    reload,
+    organization: ctx.organization,
+    role: ctx.role,
+    isAdminViewingClient: ctx.isAdminViewingClient,
+    needsClientSelection: ctx.needsClientSelection,
+    loading: ctx.loading,
+    setActiveOrganization: ctx.setActiveOrganization,
+    reload: ctx.reload,
+    patchOrganization: ctx.patchOrganization,
   }
 }

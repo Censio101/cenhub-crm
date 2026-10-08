@@ -9,6 +9,7 @@ import {
 } from "@/components/auth/MatchingPasswordFields"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { FormNotice } from "@/components/ui/form-notice"
+import { isPasswordSetupComplete } from "@/lib/auth/password-setup"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import {
   createClient,
@@ -20,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 export function SetupPasswordForm() {
   const router = useRouter()
   const { t } = useLanguage()
-  const { configured, isAuthenticated, loading } = useSupabaseSession()
+  const { configured, isAuthenticated, loading, user } = useSupabaseSession()
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -39,6 +40,23 @@ export function SetupPasswordForm() {
       return () => window.clearTimeout(timeout)
     }
   }, [configured, isAuthenticated, loading, router])
+
+  useEffect(() => {
+    if (loading || !configured || !isAuthenticated || !user) return
+
+    void (async () => {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      const freshUser = data.user ?? user
+      if (!isPasswordSetupComplete(freshUser)) return
+
+      const meResponse = await fetch("/api/auth/me", { cache: "no-store" })
+      const me = meResponse.ok
+        ? ((await meResponse.json()) as { role?: string | null })
+        : null
+      router.replace("/")
+    })()
+  }, [configured, isAuthenticated, loading, router, user])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()

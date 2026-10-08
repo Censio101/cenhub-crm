@@ -14,12 +14,15 @@ export const adminSelectTriggerClass =
 export const adminOutlineButtonClass =
   "border-[#d3c3b2] bg-white text-foreground shadow-[0_1px_2px_rgba(26,18,8,0.05)] transition-colors hover:border-primary/45 hover:bg-white hover:text-primary hover:shadow-[0_2px_6px_rgba(228,102,12,0.12)]"
 
-export function adminIconBoxClass(tone: "brand" | "blue" | "violet" | "neutral" = "neutral") {
+export function adminIconBoxClass(
+  tone: "brand" | "blue" | "violet" | "neutral" | "danger" = "neutral"
+) {
   return cn(
     "flex size-9 shrink-0 items-center justify-center rounded-lg",
     tone === "brand" && "bg-[linear-gradient(135deg,#e4660c_0%,#c4530a_100%)] text-white",
     tone === "blue" && "bg-blue-50 text-blue-700",
     tone === "violet" && "bg-violet-50 text-violet-700",
-    tone === "neutral" && "bg-[#faf8f6] text-muted-foreground"
+    tone === "neutral" && "bg-[#faf8f6] text-muted-foreground",
+    tone === "danger" && "bg-red-100/90 text-red-800"
   )
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 
+import { GuestAuthPageFrame } from "@/components/auth/GuestAuthPageFrame"
 import { isBrowserSupabaseConfigured } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {

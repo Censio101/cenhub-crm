@@ -1,89 +1,24 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useState, useSyncExternalStore } from "react"
-import {
-  ChevronDownIcon,
-  GraduationCapIcon,
-  LayoutDashboardIcon,
-  LayoutGridIcon,
-  LogOutIcon,
-  MessageCircleIcon,
-  SettingsIcon,
-  Settings2Icon,
-  UserRoundIcon,
-} from "lucide-react"
+import { useSyncExternalStore } from "react"
 
-import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
+import { AdminProfileMenu } from "@/components/layout/AdminProfileMenu"
+import { ClientProfileMenu } from "@/components/layout/ClientProfileMenu"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
-import { useUserProfile } from "@/lib/auth/use-user-profile"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
-import { CURRENT_COMPANY } from "@/lib/company"
-import { createClient } from "@/lib/supabase/client"
-import { isSignedIn, signOut as mockSignOut, subscribeToSession } from "@/lib/session"
-import { adminClientSettingsBasePath, parseAdminClientSlug } from "@/lib/admin/admin-routes"
-import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
-import { isAdminPath } from "@/lib/layout/app-paths"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { isSignedIn, subscribeToSession } from "@/lib/session"
 
 export function ProfileMenu() {
   const { t } = useLanguage()
-  const pathname = usePathname()
-  const router = useRouter()
-  const { settings } = useAccountSettings()
-  const { settings: adminSettings } = useAdminAccountSettings()
   const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
-  const { role, loading: profileLoading } = useUserProfile()
-  const {
-    organization,
-    role: activeRole,
-    loading: orgLoading,
-    setActiveOrganization,
-  } = useActiveOrganization()
-  const sessionLoading = authLoading || orgLoading || profileLoading
-  const resolvedRole = activeRole ?? role
-  // Mock session (only used when Supabase is not configured); signed in on the server.
+  const { role, loading: orgLoading } = useActiveOrganization()
+  const sessionLoading = authLoading || orgLoading
   const mockSignedIn = useSyncExternalStore(subscribeToSession, isSignedIn, () => true)
-  const [menuOpen, setMenuOpen] = useState(false)
-
   const signedIn = configured ? isAuthenticated : mockSignedIn
   const menuReady = signedIn && !sessionLoading
-  const isAdmin = menuReady
-    ? resolvedRole === "censio_admin"
-    : isAdminPath(pathname)
-  const savedName = (isAdmin ? adminSettings.displayName : settings.displayName)
-    ?.trim() ?? ""
-  const displayName = sessionLoading
-    ? ""
-    : savedName
-      ? savedName
-      : isAdmin
-        ? t("profileMenuAdminFallback")
-        : (organization?.name ?? CURRENT_COMPANY.name)
-  const profileImage = isAdmin
-    ? adminSettings.profileImage.trim() || null
-    : settings.profileImage
-  const adminClientDashboardSlug =
-    menuReady && isAdmin
-      ? (parseAdminClientSlug(pathname) ?? organization?.slug ?? null)
-      : null
-  const adminClientSetupSlug =
-    menuReady && isAdmin
-      ? (organization?.slug ?? parseAdminClientSlug(pathname) ?? null)
-      : null
+
   if (!authLoading && !signedIn) {
     return (
       <Link
@@ -95,189 +30,9 @@ export function ProfileMenu() {
     )
   }
 
-  return (
-    <DropdownMenu
-      open={menuOpen}
-      onOpenChange={(nextOpen) => {
-        if (!menuReady) {
-          setMenuOpen(false)
-          return
-        }
-        setMenuOpen(nextOpen)
-      }}
-    >
-      <DropdownMenuTrigger
-        aria-busy={!menuReady || undefined}
-        aria-label={t("profileMenuAria")}
-        render={
-          <Button
-            variant="ghost"
-            className="h-auto min-w-0 gap-3 rounded-full bg-transparent py-1 pr-1 pl-2.5 text-white hover:bg-primary hover:text-white aria-expanded:bg-primary! aria-expanded:text-white! data-popup-open:bg-primary data-popup-open:text-white focus-visible:border-transparent focus-visible:ring-primary/50 sm:pl-3"
-          />
-        }
-      >
-        <p className="hidden max-w-52 truncate text-right text-base font-medium text-inherit sm:block">
-          {sessionLoading ? (
-            <span className="inline-block h-5 w-24 animate-pulse rounded bg-white/20" aria-hidden="true" />
-          ) : (
-            displayName
-          )}
-        </p>
-        {profileImage ? (
-          profileImage.startsWith("data:") || profileImage.startsWith("blob:") ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={profileImage}
-              alt=""
-              className="size-11 rounded-full object-cover ring-1 ring-white/20"
-            />
-          ) : (
-            <Image
-              src={profileImage}
-              alt=""
-              width={64}
-              height={64}
-              className="size-11 rounded-full object-cover ring-1 ring-white/20"
-              unoptimized
-            />
-          )
-        ) : isAdmin ? (
-          <span className="flex size-11 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
-            <UserRoundIcon className="size-6 text-white/80" aria-hidden="true" />
-          </span>
-        ) : (
-          <Image
-            src={settings.profileImage}
-            alt=""
-            width={64}
-            height={64}
-            className="size-11 rounded-full object-cover ring-1 ring-white/20"
-          />
-        )}
-        <ChevronDownIcon className="mr-1 hidden size-4 shrink-0 text-white/55 sm:block" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="min-w-56 w-56 [&_[data-slot=dropdown-menu-item]]:focus:bg-primary [&_[data-slot=dropdown-menu-item]]:focus:text-white [&_[data-slot=dropdown-menu-item]]:focus:[&_svg]:text-white [&_[data-slot=dropdown-menu-item][data-variant=destructive]]:focus:bg-primary [&_[data-slot=dropdown-menu-item][data-variant=destructive]]:focus:text-white"
-      >
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-foreground">
-            {menuReady ? (
-              displayName
-            ) : (
-              <span className="inline-block h-4 w-28 animate-pulse rounded bg-muted" aria-hidden="true" />
-            )}
-          </DropdownMenuLabel>
-          {!menuReady ? (
-            <DropdownMenuItem disabled className="text-muted-foreground">
-              {t("loading")}
-            </DropdownMenuItem>
-          ) : isAdmin ? (
-            <>
-              {adminClientDashboardSlug ? (
-                <DropdownMenuItem
-                  onClick={() => {
-                    setMenuOpen(false)
-                    void openClientDashboard(adminClientDashboardSlug, setActiveOrganization, {
-                      router,
-                      path: "/",
-                    })
-                  }}
-                >
-                  <LayoutDashboardIcon />
-                  {t("profileMenuClientDashboard")}
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem nativeButton={false} render={<Link href="/klienter" />}>
-                  <LayoutDashboardIcon />
-                  {t("profileMenuClientDashboard")}
-                </DropdownMenuItem>
-              )}
-              {adminClientSetupSlug ? (
-                <DropdownMenuItem
-                  nativeButton={false}
-                  render={
-                    <Link href={adminClientSettingsBasePath(adminClientSetupSlug)} />
-                  }
-                >
-                  <Settings2Icon />
-                  {t("profileMenuClientSetup")}
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem nativeButton={false} render={<Link href="/admin/clients" />}>
-                  <Settings2Icon />
-                  {t("profileMenuClientSetupAll")}
-                </DropdownMenuItem>
-              )}
-              {organization ? (
-                <DropdownMenuItem
-                  nativeButton={false}
-                  render={<Link href="/indstillinger" />}
-                >
-                  <SettingsIcon />
-                  {t("profileMenuWorkspaceSettings")}
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
-                <LayoutGridIcon />
-                {t("profileMenuAdminHub")}
-              </DropdownMenuItem>
-              <DropdownMenuItem nativeButton={false} render={<Link href="/admin/konto" />}>
-                <UserRoundIcon />
-                {t("navMyAccount")}
-              </DropdownMenuItem>
-            </>
-          ) : (
-            <>
-              <DropdownMenuItem
-                nativeButton={false}
-                render={<Link href="/indstillinger" />}
-              >
-                <SettingsIcon />
-                {t("profileMenuSettings")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                nativeButton={false}
-                render={<Link href="/onboarding" />}
-              >
-                <GraduationCapIcon />
-                {t("profileMenuOnboarding")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                nativeButton={false}
-                render={<Link href="/kontakt" />}
-              >
-                <MessageCircleIcon />
-                {t("profileMenuContact")}
-              </DropdownMenuItem>
-              <DropdownMenuItem nativeButton={false} render={<Link href="/konto" />}>
-                <UserRoundIcon />
-                {t("navMyAccount")}
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={!menuReady}
-          onClick={() => {
-            if (!menuReady) return
-            void (async () => {
-              if (configured) {
-                const supabase = createClient()
-                await supabase.auth.signOut()
-              } else {
-                mockSignOut()
-              }
-              router.push("/logget-ud")
-            })()
-          }}
-        >
-          <LogOutIcon />
-          {t("profileMenuSignOut")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+  if (role === "censio_admin") {
+    return <AdminProfileMenu menuReady={menuReady} sessionLoading={sessionLoading} />
+  }
+
+  return <ClientProfileMenu menuReady={menuReady} sessionLoading={sessionLoading} />
 }

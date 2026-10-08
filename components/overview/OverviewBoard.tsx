@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation"
 import { useMemo } from "react"
 
-import { useAccountSettings } from "@/components/account/AccountSettingsProvider"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
@@ -20,7 +19,6 @@ import { LeadFlowCard } from "@/components/overview/LeadFlowCard"
 import { MarketingCompare } from "@/components/overview/MarketingCompare"
 import { ValueStory } from "@/components/overview/ValueStory"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
-import { CURRENT_COMPANY } from "@/lib/company"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 
@@ -37,12 +35,9 @@ export function OverviewBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/overblik")
-  const { settings } = useAccountSettings()
   const { organization, role } = useActiveOrganization()
   const { leads, adSpendByMonth, needsClientSelection } = useDashboardData()
-  const clientName =
-    organization?.name ??
-    (role === "censio_admin" ? "klienten" : CURRENT_COMPANY.name)
+  const clientName = organization?.name ?? (role === "censio_admin" ? "klienten" : null)
 
   const data = useMemo(() => {
     try {
@@ -78,22 +73,18 @@ export function OverviewBoard() {
           <h1 className="text-3xl font-medium tracking-tight text-[var(--text-primary)] sm:text-4xl">
             {t("overviewBoardTitle")}
           </h1>
-          {settings.hvidbjergPartner ? (
-            <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/hvidbjerg-vinduet-logo.png"
-                alt=""
-                className="h-4 w-auto shrink-0"
-              />
-              <span>{t("overviewCertifiedProgram")}</span>
-            </p>
-          ) : null}
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            {t("overviewBoardSubtitle", {
-              clientName: formatClientDisplayName(clientName),
-              dateRange: dateRangeLabel,
-            })}
+            {clientName ? (
+              t("overviewBoardSubtitle", {
+                clientName: formatClientDisplayName(clientName),
+                dateRange: dateRangeLabel,
+              })
+            ) : (
+              <span
+                className="inline-block h-4 w-72 animate-pulse rounded bg-muted"
+                aria-hidden="true"
+              />
+            )}
           </p>
         </div>
         <DateRangeControls

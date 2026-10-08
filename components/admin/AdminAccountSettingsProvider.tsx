@@ -11,6 +11,7 @@ import {
   useSyncExternalStore,
 } from "react"
 
+import { sanitizeStoredProfileImage } from "@/lib/auth/profile-image-sanitize"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { subscribeToStorage } from "@/lib/react/storage-store"
 import {
@@ -67,6 +68,15 @@ export function AdminAccountSettingsProvider({ children }: { children: React.Rea
   }, [])
 
   useEffect(() => {
+    if (!userId) return
+    const cached = readAdminAccountSettings(userId)
+    const cleanedImage = sanitizeStoredProfileImage(cached.profileImage)
+    if (cleanedImage !== cached.profileImage) {
+      writeAdminAccountSettings(userId, { ...cached, profileImage: cleanedImage })
+    }
+  }, [userId])
+
+  useEffect(() => {
     if (!configured || authLoading || !isAuthenticated || !userId) {
       if (!userId) syncedUserIdRef.current = null
       return
@@ -87,7 +97,9 @@ export function AdminAccountSettingsProvider({ children }: { children: React.Rea
         const cached = readAdminAccountSettings(userId)
         const next: AdminAccountSettings = {
           displayName: profile.fullName?.trim() || cached.displayName.trim(),
-          profileImage: profile.avatarUrl?.trim() || "",
+          profileImage:
+            sanitizeStoredProfileImage(profile.avatarUrl) ||
+            sanitizeStoredProfileImage(cached.profileImage),
         }
 
         writeAdminAccountSettings(userId, next)

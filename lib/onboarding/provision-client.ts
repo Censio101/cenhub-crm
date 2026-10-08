@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import type { PortalAccess } from "@/lib/auth/portal-access"
 import { inviteOrCreateUser } from "@/lib/db/admin-users"
 import {
   createOrganization,
@@ -15,15 +16,17 @@ import type { OnboardingApplicationRow, OrganizationRow } from "@/lib/db/types"
 export type ProvisionClientOptions = {
   slugOverride?: string
   approvedByUserId: string
+  access: PortalAccess
 }
 
 export type ProvisionClientResult = {
   organization: OrganizationRow
   application: OnboardingApplicationRow
-  inviteSent: boolean
+  /** Null when the application was already approved and no login was created now. */
+  accessMethod: PortalAccess["method"] | null
 }
 
-async function contactEmailAlreadyLinkedToClientOrg(
+async function contactEmailAlreadyHasLogin(
   admin: SupabaseClient,
   email: string
 ): Promise<boolean> {
@@ -32,8 +35,6 @@ async function contactEmailAlreadyLinkedToClientOrg(
     .from("profiles")
     .select("id")
     .eq("email", normalized)
-    .in("role", ["client_admin", "client_user"])
-    .not("organization_id", "is", null)
     .limit(1)
 
   if (error) throw error
@@ -60,7 +61,7 @@ export async function provisionClientFromApplication(
       return {
         organization: org as OrganizationRow,
         application,
-        inviteSent: false,
+        accessMethod: null,
       }
     }
   }
@@ -68,8 +69,8 @@ export async function provisionClientFromApplication(
     throw new Error("Application cannot be approved in its current state")
   }
 
-  if (await contactEmailAlreadyLinkedToClientOrg(admin, application.contact_email)) {
-    throw new Error("Contact email is already linked to a client account")
+  if (await contactEmailAlreadyHasLogin(admin, application.contact_email)) {
+    throw new Error("Contact email already has a login (another client or a Censio admin)")
   }
 
   const slug = await resolveAvailableOrganizationSlug(
@@ -101,7 +102,8 @@ export async function provisionClientFromApplication(
     role: "client_admin",
     organizationId: organization.id,
     organizationName: organization.name,
-    method: "email",
+    method: options.access.method,
+    password: options.access.method === "password" ? options.access.password : undefined,
     fullName: application.contact_full_name,
   })
 
@@ -115,6 +117,6 @@ export async function provisionClientFromApplication(
   return {
     organization,
     application: updatedApplication,
-    inviteSent: true,
+    accessMethod: options.access.method,
   }
 }

@@ -10,13 +10,6 @@ const RESERVED_ADMIN_SEGMENTS = new Set([
   "services",
 ])
 
-/** Internal/demo clients hidden from the admin header client switcher. */
-const HIDDEN_CLIENT_SWITCHER_SLUGS = new Set(["demo-meta-client"])
-
-export function isVisibleInClientSwitcher(slug: string): boolean {
-  return !HIDDEN_CLIENT_SWITCHER_SLUGS.has(slug)
-}
-
 export type AdminClientSection =
   | "overview"
   | "company"
@@ -28,6 +21,7 @@ export type AdminClientSection =
   | "funnels"
   | "import"
   | "services"
+  | "settings"
 
 export function parseAdminClientSlug(pathname: string): string | null {
   const canonical = pathname.match(/^\/admin\/clients\/([^/]+)(?:\/|$)/)
@@ -96,6 +90,12 @@ function sectionSuffix(pathname: string, slug: string): AdminClientSection | nul
   }
   if (pathname.startsWith(`${canonicalBase}/meta`) || pathname.startsWith(`${legacyBase}/meta`)) {
     return "meta"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/settings`) ||
+    pathname.startsWith(`${legacyBase}/settings`)
+  ) {
+    return "settings"
   }
   if (pathname === legacyBase || pathname === `${legacyBase}/`) {
     return "overview"

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation"
 import { type ReactNode, useState } from "react"
 import {
   ExternalLinkIcon,
+  Loader2Icon,
   MegaphoneIcon,
   UserPlusIcon,
   UsersIcon,
@@ -69,7 +70,10 @@ function OverviewSectionsSkeleton() {
   return (
     <div className={cn(contentWidthClass, "grid gap-3 sm:grid-cols-2")}>
       {Array.from({ length: 4 }, (_, index) => (
-        <div key={index} className="h-[7.5rem] animate-pulse rounded-2xl bg-muted/80" />
+        <div
+          key={index}
+          className="h-[7.5rem] rounded-2xl bg-muted/50 motion-safe:animate-pulse motion-reduce:animate-none"
+        />
       ))}
     </div>
   )
@@ -89,17 +93,20 @@ function AdminClientLayoutSkeleton({
         <div className={cn(heroWidthClass, "flex flex-col gap-5")}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-start gap-4">
-              <div className="size-14 animate-pulse rounded-2xl bg-muted/80" />
+              <div className="size-14 rounded-2xl bg-muted/50 motion-safe:animate-pulse motion-reduce:animate-none" />
               <div className="space-y-2">
-                <div className="h-8 w-64 max-w-full animate-pulse rounded-md bg-muted/80" />
-                <div className="h-4 w-32 animate-pulse rounded-md bg-muted/80" />
+                <div className="h-8 w-64 max-w-full rounded-md bg-muted/50 motion-safe:animate-pulse motion-reduce:animate-none" />
+                <div className="h-4 w-32 rounded-md bg-muted/50 motion-safe:animate-pulse motion-reduce:animate-none" />
               </div>
             </div>
-            <div className="h-10 w-40 animate-pulse rounded-[10px] bg-muted/80" />
+            <div className="h-10 w-40 rounded-[10px] bg-muted/50 motion-safe:animate-pulse motion-reduce:animate-none" />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="h-20 animate-pulse rounded-2xl bg-muted/80" />
+              <div
+                key={index}
+                className="h-20 rounded-2xl bg-muted/50 motion-safe:animate-pulse motion-reduce:animate-none"
+              />
             ))}
           </div>
         </div>
@@ -107,7 +114,12 @@ function AdminClientLayoutSkeleton({
       {isOverview ? (
         <OverviewSectionsSkeleton />
       ) : (
-        <div className={cn(contentShellClass, "h-80 animate-pulse rounded-2xl bg-muted/80")} />
+        <div
+          className={cn(
+            contentShellClass,
+            "h-80 rounded-2xl bg-muted/50 motion-safe:animate-pulse motion-reduce:animate-none"
+          )}
+        />
       )}
     </div>
   )
@@ -118,7 +130,7 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
   const { t } = useLanguage()
   const { setActiveOrganization } = useActiveOrganization()
   const { slug, organization, error, loading } = useAdminClient()
-  const { isReady, isSwitching, showSwitchingUI, switchingSlug } = useAdminClientPending()
+  const { isReady, isSwitching, isColdLoad, switchingSlug } = useAdminClientPending()
   const [openingDashboard, setOpeningDashboard] = useState(false)
   const section = adminClientSection(pathname)
   const isOverview = section === "overview"
@@ -136,13 +148,27 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
   }
 
   if (!isReady) {
+    const isClientSwitch =
+      !isColdLoad &&
+      (isSwitching || Boolean(organization && organization.slug !== slug))
+    if (isClientSwitch) {
+      const switchName =
+        switchingSlug ?? organization?.name ?? slug ?? t("loadingClient")
+      return (
+        <div
+          className="flex min-h-[24rem] w-full flex-col items-center justify-center gap-2 text-muted-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <Loader2Icon className="size-6 animate-spin text-primary" aria-hidden="true" />
+          <p className="text-sm">{t("switchingClient", { name: switchName })}</p>
+        </div>
+      )
+    }
+
     return (
-      <div className="min-h-[28rem] w-full">
-        <p className="sr-only">
-          {showSwitchingUI && switchingSlug
-            ? t("switchingClient", { name: switchingSlug })
-            : t("loadingClient")}
-        </p>
+      <div className="min-h-[28rem] w-full motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200">
+        <p className="sr-only">{t("loadingClient")}</p>
         <AdminClientLayoutSkeleton
           isOverview={isOverview}
           isMetaInstantForms={isMetaInstantForms}

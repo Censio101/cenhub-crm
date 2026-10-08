@@ -2,7 +2,10 @@ import { NextResponse } from "next/server"
 
 import { getSessionContext } from "@/lib/auth/session-context"
 import { isOrganizationProfileComplete } from "@/lib/organization-profile"
-import { resolveOrganizationLogoUrl } from "@/lib/organization-logo"
+import {
+  parseOrganizationLogoBackground,
+  resolveOrganizationLogoUrl,
+} from "@/lib/organization-logo"
 import { isLocale } from "@/lib/i18n"
 import type { Locale } from "@/lib/i18n/types"
 
@@ -28,6 +31,7 @@ export async function GET() {
           name: ctx.organization.name,
           demoMode: ctx.organization.demo_mode,
           logoUrl: resolveOrganizationLogoUrl(ctx.organization.logo_url),
+          logoBackground: parseOrganizationLogoBackground(ctx.organization.logo_background),
           profileComplete: isOrganizationProfileComplete(ctx.organization),
         }
       : null,

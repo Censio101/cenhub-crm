@@ -22,14 +22,17 @@ export function DashboardLocaleSwitcher({ className }: { className?: string }) {
 
   const handleChange = useCallback(
     (next: Locale) => {
+      if (next === locale) return
+      const previous = locale
+      setLocale(next)
       void (async () => {
         const persist =
           role === "censio_admin" ? persistAdminPreferredLocale : persistAccountPreferredLocale
         const ok = await persist(next)
-        if (ok) setLocale(next)
+        if (!ok) setLocale(previous)
       })()
     },
-    [role, setLocale]
+    [locale, role, setLocale]
   )
 
   return (

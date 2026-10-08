@@ -12,7 +12,8 @@ import {
 import { resolveClientDashboardSheet } from "@/lib/db/lead-sheet-repository"
 import { stripHiddenCustomFields } from "@/lib/lead-sheet/client-visibility"
 import { sanitizeNewLeadCustomFields } from "@/lib/lead-sheet/apply-custom-fields-patch"
-import type { Lead } from "@/lib/leads"
+import { isLeadStatusId, type Lead } from "@/lib/leads"
+import { isOnboardingContactEmailValid } from "@/lib/onboarding/application-input"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
@@ -57,10 +58,26 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { lead: Lead }
+    const body = (await request.json().catch(() => null)) as { lead?: Lead } | null
 
     if (!usesDatabaseLeads()) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 })
+    }
+
+    const input = body?.lead
+    if (!input || typeof input !== "object") {
+      return NextResponse.json({ error: "Missing lead" }, { status: 400 })
+    }
+    // A hand-added lead needs a name and a way to reach the person.
+    const textOf = (value: unknown) => (typeof value === "string" ? value.trim() : "")
+    if (!textOf(input.fullName)) {
+      return NextResponse.json({ error: "Full name is required" }, { status: 400 })
+    }
+    if (!isOnboardingContactEmailValid(textOf(input.email))) {
+      return NextResponse.json({ error: "A valid email is required" }, { status: 400 })
+    }
+    if (!textOf(input.phone)) {
+      return NextResponse.json({ error: "Phone is required" }, { status: 400 })
     }
 
     const ctx = await requireOrganizationContext()
@@ -75,13 +92,17 @@ export async function POST(request: Request) {
       supabase,
       ctx.organization.id
     )
-    const normalized = sanitizeNewLeadCustomFields(body.lead.customFields, leadSheet)
+    const normalized = sanitizeNewLeadCustomFields(input.customFields, leadSheet)
     if (normalized.error) {
       return NextResponse.json({ error: normalized.error }, { status: 400 })
     }
 
     const lead = await createLead(supabase, ctx.organization.id, {
-      ...body.lead,
+      ...input,
+      // Hand-added leads are always "manual" and never carry Meta's locked fields.
+      source: "manual",
+      lockedFields: [],
+      status: isLeadStatusId(input.status) ? input.status : "new_waiting_call",
       customFields: normalized.customFields,
     })
     return NextResponse.json({

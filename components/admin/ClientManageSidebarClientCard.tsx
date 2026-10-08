@@ -10,20 +10,22 @@ import {
   clientInitialsFromName,
   formatClientDisplayName,
 } from "@/lib/admin/format-client-display-name"
+import { clientManageClientCardTopGapClassName } from "@/components/admin/ClientManageHeaderBand"
 import { cn } from "cn"
 
 export function ClientManageSidebarClientCard({ routeSlug }: { routeSlug: string }) {
   const { t } = useLanguage()
-  const { organization, isPending } = useAdminClientPending()
+  const { organization, isColdLoad } = useAdminClientPending()
 
-  const isTransitioning = isPending
+  const isTransitioning = isColdLoad
 
   const displaySlug = organization?.slug ?? routeSlug
   const displayName = organization ? formatClientDisplayName(organization.name) : routeSlug
 
   const href = adminClientSettingsBasePath(routeSlug)
   const shellClass = cn(
-    "mx-3 mt-3 flex min-h-[52px] min-w-0 items-center gap-2.5 rounded-lg border border-[#e8e0d8] bg-[#faf8f6] px-2.5 py-2",
+    "mx-3 flex min-h-[52px] min-w-0 items-center gap-2.5 rounded-lg border border-[#e8e0d8] bg-[#faf8f6] px-2.5 py-2",
+    clientManageClientCardTopGapClassName,
     isTransitioning && "border-[#e8e0d8]"
   )
 

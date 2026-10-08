@@ -6,6 +6,7 @@ import {
   Building2Icon,
   RefreshCwIcon,
   ClipboardListIcon,
+  LayoutGridIcon,
   LayersIcon,
   TagsIcon,
   MailIcon,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { isAdminAllClientsNavActive } from "@/lib/layout/admin-profile-nav-active"
 import type { MessageKey } from "@/lib/i18n"
 import { cn } from "cn"
 
@@ -66,10 +68,16 @@ export function AdminSidebar() {
 
   const workspaceItems: NavItem[] = [
     {
+      href: "/admin/overview",
+      labelKey: "navAdminWorkspace",
+      icon: LayoutGridIcon,
+      active: pathname === "/admin/overview",
+    },
+    {
       href: "/admin/clients",
-      labelKey: "navClientSettings",
+      labelKey: "navAllClients",
       icon: Settings2Icon,
-      active: pathname.startsWith("/admin/clients"),
+      active: isAdminAllClientsNavActive(pathname),
     },
     {
       href: "/admin",

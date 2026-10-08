@@ -4,6 +4,7 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
+import { parsePortalAccess } from "@/lib/auth/portal-access"
 import {
   countOnboardingApplicationsByStatus,
   createOnboardingApplication,
@@ -51,6 +52,16 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!ctx.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const autoApprove = Boolean(body.autoApprove)
+    const parsedAccess = parsePortalAccess(autoApprove ? body.access : undefined)
+    if (!parsedAccess.ok) {
+      return NextResponse.json({ error: parsedAccess.error }, { status: 400 })
+    }
+
     const admin = createAdminClient()
     const application = await createOnboardingApplication(admin, {
       ...parsed.value,
@@ -58,11 +69,6 @@ export async function POST(request: Request) {
       consentGiven: true,
     })
 
-    if (!ctx.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const autoApprove = Boolean(body.autoApprove)
     if (!autoApprove) {
       return NextResponse.json({ application }, { status: 201 })
     }
@@ -72,6 +78,7 @@ export async function POST(request: Request) {
     const result = await provisionClientFromApplication(admin, application.id, {
       slugOverride,
       approvedByUserId: ctx.userId,
+      access: parsedAccess.access,
     })
 
     const metaAdAccountId =
@@ -88,7 +95,7 @@ export async function POST(request: Request) {
       {
         application: result.application,
         organization: result.organization,
-        inviteSent: result.inviteSent,
+        accessMethod: result.accessMethod,
         meta,
       },
       { status: 201 }

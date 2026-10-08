@@ -12,6 +12,7 @@ import {
   checkOnboardingRateLimit,
   hashRateLimitKey,
 } from "@/lib/onboarding/rate-limit"
+import { notifyApplicantOfOnboardingSubmission } from "@/lib/onboarding/notify-applicant-submission"
 import { notifyAdminsOfNewOnboardingApplication } from "@/lib/onboarding/notify-new-application"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -67,6 +68,12 @@ export async function POST(request: Request) {
     void notifyAdminsOfNewOnboardingApplication(admin, application).catch((notifyError) => {
       console.error("Onboarding admin notify failed:", notifyError)
     })
+
+    void notifyApplicantOfOnboardingSubmission(admin, application).catch(
+      (notifyError) => {
+        console.error("Onboarding applicant confirmation email failed:", notifyError)
+      }
+    )
 
     return NextResponse.json(
       { id: application.id, status: application.status },

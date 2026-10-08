@@ -45,7 +45,6 @@ export async function sendOnboardingApplicationNotifyEmail(
     formatLine("Telefon", displayOnboardingPhone(application.contact_phone)),
     formatLine("Adresse", `${application.address}, ${application.zip_code} ${application.city}`),
     formatLine("Website", application.website_url),
-    formatLine("Ansøgnings-ID", application.id),
   ].filter(Boolean)
 
   const text = [

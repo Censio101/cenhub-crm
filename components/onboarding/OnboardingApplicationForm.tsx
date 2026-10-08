@@ -5,6 +5,15 @@ import { FormEvent, useMemo, useState } from "react"
 import { isOnboardingContactEmailValid } from "@/lib/onboarding/application-input"
 
 import { adminFieldClass } from "@/components/admin/admin-ui-styles"
+import {
+  INITIAL_PORTAL_ACCESS_DRAFT,
+  isPortalAccessDraftValid,
+  PortalAccessFields,
+  portalAccessFromDraft,
+  type PortalAccessDraft,
+  type PortalLogin,
+} from "@/components/admin/PortalAccessFields"
+import type { PortalAccessMethod } from "@/lib/auth/portal-access"
 import { OnboardingApplicationSuccess } from "@/components/onboarding/OnboardingApplicationSuccess"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
@@ -66,12 +75,17 @@ function defaultValues(): OnboardingFormValues {
   }
 }
 
-type OnboardingApplicationFormProps = {
-  mode: "public" | "admin"
-  onSubmitted?: (result: { id?: string; organizationSlug?: string }) => void
+type SubmitResult = {
+  id?: string
+  organizationSlug?: string
+  accessMethod?: PortalAccessMethod | null
+  login?: PortalLogin
 }
 
-type SubmitResult = { id?: string; organizationSlug?: string }
+type OnboardingApplicationFormProps = {
+  mode: "public" | "admin"
+  onSubmitted?: (result: SubmitResult) => void
+}
 
 export function OnboardingApplicationForm({
   mode,
@@ -79,8 +93,9 @@ export function OnboardingApplicationForm({
 }: OnboardingApplicationFormProps) {
   const { t } = useLanguage()
   const [values, setValues] = useState<OnboardingFormValues>(() => defaultValues())
-  const [slugOverride, setSlugOverride] = useState("")
   const [autoApprove, setAutoApprove] = useState(mode === "admin")
+  const [access, setAccess] = useState<PortalAccessDraft>(INITIAL_PORTAL_ACCESS_DRAFT)
+  const needsAccess = mode === "admin" && autoApprove
   const [submitting, setSubmitting] = useState(false)
   const [validationActive, setValidationActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -172,6 +187,13 @@ export function OnboardingApplicationForm({
       return
     }
 
+    if (needsAccess && !isPortalAccessDraftValid(access)) {
+      requestAnimationFrame(() => {
+        focusInvalidField("onboarding-access-password")
+      })
+      return
+    }
+
     setSubmitting(true)
 
     try {
@@ -206,7 +228,7 @@ export function OnboardingApplicationForm({
           ? {
               ...payload,
               autoApprove,
-              slugOverride: slugOverride.trim() || undefined,
+              access: needsAccess ? portalAccessFromDraft(access) : undefined,
             }
           : payload
 
@@ -221,6 +243,7 @@ export function OnboardingApplicationForm({
         id?: string
         organization?: { slug?: string }
         application?: { id?: string }
+        accessMethod?: PortalAccessMethod | null
       }
 
       if (!response.ok) {
@@ -230,6 +253,15 @@ export function OnboardingApplicationForm({
       const result: SubmitResult = {
         id: data.id ?? data.application?.id,
         organizationSlug: data.organization?.slug,
+        accessMethod: data.accessMethod ?? null,
+        login:
+          data.accessMethod === "password"
+            ? {
+                email: values.contactEmail.trim().toLowerCase(),
+                password: access.password,
+                clientSlug: data.organization?.slug,
+              }
+            : undefined,
       }
 
       setSuccess(true)
@@ -255,6 +287,13 @@ export function OnboardingApplicationForm({
     mode === "admin" && autoApprove
       ? t("onboardingAdminSubmitting")
       : t("onboardingSubmitting")
+
+  function adminSubmitButtonLabel(): string {
+    if (!autoApprove) return t("onboardingSubmitAdminQueue")
+    if (needsAccess && access.method === "password") return t("onboardingSubmitAdminPassword")
+    if (needsAccess && access.method === "email") return t("onboardingSubmitAdminInvite")
+    return t("onboardingSubmitAdminInvite")
+  }
 
   const formSectionClass =
     mode === "public"
@@ -587,25 +626,26 @@ export function OnboardingApplicationForm({
       </section>
 
       {mode === "admin" ? (
-        <section className="grid gap-3 rounded-xl border border-[#d3c3b2] bg-[#faf8f6] p-4">
+        <section className="grid gap-4 border-t border-[#e8e0d8] pt-6">
           <h2 className="text-base font-semibold text-foreground">{t("onboardingAdminOptions")}</h2>
-          <label className="grid gap-1.5">
-            <span className="text-sm font-medium">{t("onboardingFieldSlugOverride")}</span>
-            <input
-              className={fieldClass}
-              value={slugOverride}
-              onChange={(event) => setSlugOverride(event.target.value)}
-              placeholder={t("onboardingFieldSlugPlaceholder")}
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2.5 text-sm">
             <input
               type="checkbox"
+              className="size-4 rounded border-[#d3c3b2]"
               checked={autoApprove}
               onChange={(event) => setAutoApprove(event.target.checked)}
             />
             {t("onboardingAutoApprove")}
           </label>
+          {autoApprove ? (
+            <PortalAccessFields
+              value={access}
+              onChange={setAccess}
+              loginEmail={values.contactEmail.trim() || undefined}
+              disabled={submitting}
+              idPrefix="onboarding-access"
+            />
+          ) : null}
           <label className="grid gap-1.5">
             <span className="text-sm font-medium">{t("onboardingFieldNotes")}</span>
             <textarea
@@ -665,7 +705,7 @@ export function OnboardingApplicationForm({
           ? submittingLabel
           : mode === "public"
             ? t("onboardingSubmitPublic")
-            : t("onboardingSubmitAdmin")}
+            : adminSubmitButtonLabel()}
         </Button>
       </div>
     </form>

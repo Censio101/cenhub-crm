@@ -206,42 +206,49 @@ export function useLeads() {
     [dataSource, persistPatch]
   )
 
+  /**
+   * Creates a lead. The list only gains the lead once the server confirmed it, and failures
+   * are thrown (with the server's message) so the add-lead popup can stay open and show them.
+   */
   const createLead = useCallback(
     async (lead: Lead) => {
-      setLeads((current) => {
-        const next = [lead, ...current]
-        setLeadsCache({ leads: next, source: dataSource })
-        return next
-      })
+      const prepend = (created: Lead) =>
+        setLeads((current) => {
+          const next = [created, ...current.filter((item) => item.id !== created.id)]
+          setLeadsCache({ leads: next, source: dataSource })
+          return next
+        })
 
-      if (dataSource === "mock") return lead
+      if (dataSource === "mock") {
+        prepend(lead)
+        return lead
+      }
 
+      let response: Response
       try {
-        const response = await fetch("/api/leads", {
+        response = await fetch("/api/leads", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lead }),
         })
-
-        if (!response.ok) {
-          throw new Error("leadsCreateError")
-        }
-
-        const data = (await response.json()) as { lead: Lead }
-        setLeads((current) => {
-          const next = current.map((item) => (item.id === lead.id ? data.lead : item))
-          setLeadsCache({ leads: next, source: dataSource })
-          return next
-        })
-        return data.lead
-      } catch (createError) {
-        console.error(createError)
-        setError("leadsCreateError")
-        await loadLeads()
-        return lead
+      } catch (networkError) {
+        console.error(networkError)
+        throw new Error("leadsCreateError")
       }
+
+      const data = (await response.json().catch(() => null)) as {
+        lead?: Lead
+        error?: string
+      } | null
+
+      if (!response.ok || !data?.lead) {
+        throw new Error(data?.error || "leadsCreateError")
+      }
+
+      prepend(data.lead)
+      return data.lead
     },
-    [dataSource, loadLeads]
+    [dataSource]
   )
 
   const deleteLead = useCallback(

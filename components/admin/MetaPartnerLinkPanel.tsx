@@ -117,6 +117,13 @@ export function MetaPartnerLinkPanel({
 
   const busy = linking || unlinking || disabled
 
+  const subtitle =
+    mode === "pending"
+      ? t("onboardingMetaLinkOptional")
+      : isLinked && !isEditing
+        ? t("onboardingMetaLinkedHint")
+        : null
+
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -124,13 +131,9 @@ export function MetaPartnerLinkPanel({
           <p className="text-[13px] font-semibold text-foreground">
             {t("onboardingMetaLinkTitle")}
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-            {mode === "pending"
-              ? t("onboardingMetaLinkOptional")
-              : isLinked && !isEditing
-                ? t("onboardingMetaLinkedHint")
-                : t("onboardingMetaLaterHint")}
-          </p>
+          {subtitle ? (
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{subtitle}</p>
+          ) : null}
         </div>
         {mode === "linked" && isLinked && !isEditing ? (
           <DropdownMenu>

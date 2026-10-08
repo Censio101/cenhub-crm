@@ -7,6 +7,7 @@ export type OrganizationRow = {
   slug: string
   name: string
   logo_url: string | null
+  logo_background?: string | null
   demo_mode: boolean
   lead_sheet_template_id?: string | null
   /** Set when the lead sheet changed while webhooks existed; cleared once reviewed. */

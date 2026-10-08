@@ -1,10 +1,12 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useRef, useState } from "react"
-import { ChevronRightIcon, UserPlusIcon } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import { ChevronLeftIcon, ChevronRightIcon, UserPlusIcon } from "lucide-react"
 
 import { OnboardingStatusBadge } from "@/components/admin/onboarding-status-badge"
+import { PortalLoginDetails, type PortalLogin } from "@/components/admin/PortalAccessFields"
 import { ShareSignupLinkButton } from "@/components/admin/ShareSignupLinkButton"
 import { adminOutlineButtonClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { OnboardingApplicationForm } from "@/components/onboarding/OnboardingApplicationForm"
@@ -77,6 +79,7 @@ export function AdminOnboardingBoard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [queueNotice, setQueueNotice] = useState<string | null>(null)
+  const [createdLogin, setCreatedLogin] = useState<PortalLogin | null>(null)
   const [counts, setCounts] = useState<OnboardingApplicationStatusCounts | null>(null)
   const loadGeneration = useRef(0)
 
@@ -95,6 +98,7 @@ export function AdminOnboardingBoard() {
   }
 
   const showCreateForm = useCallback(() => {
+    setCreatedLogin(null)
     router.replace("/admin/onboarding?tab=opret", { scroll: false })
   }, [router])
 
@@ -103,10 +107,16 @@ export function AdminOnboardingBoard() {
   }, [router])
 
   const load = useCallback(
-    async (status: OnboardingApplicationStatus | "all") => {
+    async (
+      status: OnboardingApplicationStatus | "all",
+      options?: { silent?: boolean }
+    ) => {
+      const silent = options?.silent ?? false
       const generation = ++loadGeneration.current
-      setLoading(true)
-      setError(null)
+      if (!silent) {
+        setLoading(true)
+        setError(null)
+      }
       try {
         const query = status === "all" ? "" : `?status=${status}`
         const response = await fetch(`/api/admin/onboarding/applications${query}`, {
@@ -122,10 +132,12 @@ export function AdminOnboardingBoard() {
         if (data.counts) setCounts(data.counts)
       } catch (loadError) {
         if (generation !== loadGeneration.current) return
-        setApplications([])
-        setError(loadError instanceof Error ? loadError.message : t("onboardingLoadError"))
+        if (!silent) {
+          setApplications([])
+          setError(loadError instanceof Error ? loadError.message : t("onboardingLoadError"))
+        }
       } finally {
-        if (generation === loadGeneration.current) setLoading(false)
+        if (!silent && generation === loadGeneration.current) setLoading(false)
       }
     },
     [t]
@@ -133,6 +145,25 @@ export function AdminOnboardingBoard() {
 
   useAsyncEffect(() => {
     if (!showingCreate) void load(filter)
+  }, [filter, load, showingCreate])
+
+  useEffect(() => {
+    if (showingCreate) return
+
+    const pollMs = 5_000
+    const intervalId = window.setInterval(() => {
+      void load(filter, { silent: true })
+    }, pollMs)
+
+    function onFocus() {
+      void load(filter, { silent: true })
+    }
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [filter, load, showingCreate])
 
   function selectFilter(value: OnboardingApplicationStatus | "all") {
@@ -143,57 +174,70 @@ export function AdminOnboardingBoard() {
     setError(null)
   }
 
+  const listActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <ShareSignupLinkButton className={cn("h-10 shrink-0 gap-2 px-4", adminOutlineButtonClass)} />
+      <Button type="button" className="h-10 shrink-0 gap-2 px-4" onClick={showCreateForm}>
+        <UserPlusIcon className="size-4" aria-hidden="true" />
+        {t("onboardingCreateClient")}
+      </Button>
+    </div>
+  )
+
   return (
     <div className={cn("admin-ui grid gap-6", outfit.className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {showingCreate ? t("onboardingCreateClient") : t("onboardingAdminTitle")}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            {showingCreate
-              ? t("onboardingAdminCreateDescription")
-              : t("onboardingAdminDescription")}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ShareSignupLinkButton
-            className={cn("h-10 shrink-0 gap-2 px-4", adminOutlineButtonClass)}
-          />
-          {showingCreate ? (
-            <Button
-              type="button"
-              variant="outline"
-              className={cn("h-10 shrink-0", adminOutlineButtonClass)}
-              onClick={showApplications}
-            >
-              {t("onboardingShowApplications")}
-            </Button>
-          ) : (
-            <Button type="button" className="h-10 shrink-0 gap-2 px-4" onClick={showCreateForm}>
-              <UserPlusIcon className="size-4" aria-hidden="true" />
-              {t("onboardingCreateClient")}
-            </Button>
-          )}
-        </div>
-      </div>
-
       {showingCreate ? (
-        <section className={cn(adminSectionCardClass, "mx-auto w-full max-w-2xl px-6 py-8")}>
-          <OnboardingApplicationForm
-            mode="admin"
-            onSubmitted={(result) => {
-              setQueueNotice(
-                result.organizationSlug
-                  ? t("onboardingApprovedNotice", { slug: result.organizationSlug })
-                  : t("onboardingAdminSubmitSuccess")
-              )
-              showApplications()
-              void load(filter)
-            }}
-          />
-        </section>
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+          <Link
+            href="/admin/onboarding"
+            className="inline-flex h-9 w-fit items-center gap-2 rounded-full border border-[#d3c3b2] bg-white px-4 text-[13px] font-semibold leading-none text-foreground shadow-[0_1px_2px_rgba(26,18,8,0.06)] transition-colors hover:border-primary/45 hover:text-primary hover:shadow-[0_2px_6px_rgba(228,102,12,0.1)]"
+          >
+            <ChevronLeftIcon className="size-4 shrink-0 text-primary/80" aria-hidden="true" />
+            <span className="leading-none">{t("onboardingBackToAllApplications")}</span>
+          </Link>
+
+          <header>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              {t("onboardingCreateClient")}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("onboardingAdminCreateDescription")}
+            </p>
+          </header>
+
+          <section className={cn(adminSectionCardClass, "px-6 py-8 sm:px-8")}>
+            <OnboardingApplicationForm
+              mode="admin"
+              onSubmitted={(result) => {
+                setCreatedLogin(result.login ?? null)
+                setQueueNotice(
+                  result.organizationSlug
+                    ? t(
+                        result.accessMethod === "password"
+                          ? "onboardingApprovedPasswordNotice"
+                          : "onboardingApprovedNotice",
+                        { slug: result.organizationSlug }
+                      )
+                    : t("onboardingAdminSubmitSuccess")
+                )
+                showApplications()
+                void load(filter, { silent: true })
+              }}
+            />
+          </section>
+        </div>
       ) : (
+        <>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight">{t("onboardingAdminTitle")}</h1>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                {t("onboardingAdminDescription")}
+              </p>
+            </div>
+            {listActions}
+          </div>
+
         <div className="grid w-full min-w-0 gap-4">
           <div className="flex min-h-9 flex-wrap items-center gap-2">
             {FILTERS.map((value) => (
@@ -224,6 +268,10 @@ export function AdminOnboardingBoard() {
             errorAutoDismissMs={adminFormNoticeDefaults.errorAutoDismissMs}
             successAutoDismissMs={adminFormNoticeDefaults.queueSuccessAutoDismissMs}
           />
+
+          {createdLogin ? (
+            <PortalLoginDetails login={createdLogin} onDone={() => setCreatedLogin(null)} />
+          ) : null}
 
           {!loading && applications.length > 0 ? (
             <p className="text-[13px] text-muted-foreground">{t("onboardingQueueReviewHint")}</p>
@@ -296,6 +344,7 @@ export function AdminOnboardingBoard() {
             )}
           </section>
         </div>
+        </>
       )}
     </div>
   )

@@ -1,13 +1,16 @@
 "use client"
 
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 
+import { AdminActiveClientBootstrap } from "@/components/admin/AdminActiveClientBootstrap"
+import { ClientContextBar } from "@/components/admin/ClientContextBar"
+import { ClientContextBarSkeleton } from "@/components/admin/ClientContextBarSkeleton"
 import { LocaleSync } from "@/components/i18n/LocaleSync"
 import { AuthHashErrorHandler } from "@/components/auth/AuthHashErrorHandler"
-import { ClientContextBar } from "@/components/admin/ClientContextBar"
 import { AppTopbar } from "@/components/layout/AppTopbar"
-import { OrganizationProfileIncompleteBanner } from "@/components/organization/OrganizationProfileIncompleteBanner"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { ACTIVE_ORG_COOKIE } from "@/lib/auth/active-organization"
 import {
   isAdminPath,
   isClientDashboardPath,
@@ -16,25 +19,37 @@ import {
 } from "@/lib/layout/app-paths"
 import { cn } from "cn"
 
+function useLikelyAdminClientSession() {
+  const [likely, setLikely] = useState(false)
+  useEffect(() => {
+    setLikely(document.cookie.includes(`${ACTIVE_ORG_COOKIE}=`))
+  }, [])
+  return likely
+}
+
 export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { organization, role, loading: orgLoading } = useActiveOrganization()
+  const likelyAdminClientSession = useLikelyAdminClientSession()
   const guestShell = isGuestShellPath(pathname)
   const publicSignupPage = isPublicSignupPath(pathname)
   const isAdminRoute = !guestShell && isAdminPath(pathname)
+  const onClientDashboard = isClientDashboardPath(pathname) && !guestShell && !isAdminRoute
+
   const showClientContextBar =
     !orgLoading &&
-    !guestShell &&
     role === "censio_admin" &&
     organization !== null &&
-    isClientDashboardPath(pathname)
-  const showProfileIncompleteBanner =
-    !orgLoading &&
-    !guestShell &&
-    !isAdminRoute &&
-    organization !== null &&
-    organization.profileComplete === false &&
-    isClientDashboardPath(pathname)
+    onClientDashboard
+
+  const showClientContextBarSkeleton =
+    onClientDashboard &&
+    orgLoading &&
+    role !== "client_admin" &&
+    role !== "client_user" &&
+    (role === "censio_admin" || (role === null && likelyAdminClientSession))
+
+  const animateDashboardMain = onClientDashboard && !orgLoading
 
   return (
     <div
@@ -50,22 +65,18 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       )}
     >
       <AuthHashErrorHandler />
-      {!isAdminRoute ? <LocaleSync /> : null}
+      <LocaleSync />
+      <AdminActiveClientBootstrap />
       <AppTopbar />
+      {showClientContextBarSkeleton ? <ClientContextBarSkeleton /> : null}
       {showClientContextBar ? <ClientContextBar /> : null}
-      {showProfileIncompleteBanner ? (
-        <div className="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 lg:px-8 xl:px-10">
-          <OrganizationProfileIncompleteBanner
-            variant={role === "censio_admin" ? "admin" : "client"}
-            organizationSlug={organization?.slug}
-          />
-        </div>
-      ) : null}
       <main
         className={cn(
           "flex min-w-0 flex-1 flex-col",
           publicSignupPage && "bg-[#faf8f6]",
-          isAdminRoute ? "p-0" : "px-4 py-8 sm:px-6 lg:px-8 xl:px-10"
+          isAdminRoute ? "min-h-0 p-0" : "px-4 py-8 sm:px-6 lg:px-8 xl:px-10",
+          animateDashboardMain &&
+            "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
         )}
       >
         {children}

@@ -1,3 +1,4 @@
+import { sanitizeStoredProfileImage } from "@/lib/auth/profile-image-sanitize"
 import { notifyStorageChange, readStorageRaw } from "@/lib/react/storage-store"
 
 export const LEGACY_ADMIN_ACCOUNT_SETTINGS_KEY = "censio-admin-account-settings"

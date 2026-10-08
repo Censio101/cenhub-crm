@@ -7,7 +7,7 @@ import { LayersIcon, MousePointerClickIcon, SearchIcon, Settings2Icon } from "lu
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useHubClients } from "@/hooks/useHubClients"
 import { adminClientSettingsBasePath } from "@/lib/admin/admin-routes"
-import { hubClientInEnabledTab, type HubClient } from "@/lib/admin/hub-clients"
+import type { HubClient } from "@/lib/admin/hub-clients"
 import {
   clientInitialsFromName,
   formatClientDisplayName,
@@ -122,9 +122,9 @@ export function AdminClientSettingsDirectory() {
   const { clients, loading, error } = useHubClients()
   const [query, setQuery] = useState("")
 
-  const enabledClients = useMemo(() => {
+  const visibleClients = useMemo(() => {
     return clients
-      .filter((c) => c.inApp && c.slug && hubClientInEnabledTab(c))
+      .filter((c) => c.inApp && c.slug)
       .filter((c) => matchesQuery(c, query))
       .sort((a, b) => a.name.localeCompare(b.name, "da"))
   }, [clients, query])
@@ -157,7 +157,7 @@ export function AdminClientSettingsDirectory() {
             />
           </div>
           <p className="shrink-0 text-sm text-muted-foreground tabular-nums">
-            {loading ? t("loadingClients") : t("clientsCount", { count: enabledClients.length })}
+            {loading ? t("loadingClients") : t("clientsCount", { count: visibleClients.length })}
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export function AdminClientSettingsDirectory() {
           </>
         ) : error ? (
           <p className="px-6 py-12 text-center text-sm text-destructive">{t("errorLoadClients")}</p>
-        ) : enabledClients.length === 0 ? (
+        ) : visibleClients.length === 0 ? (
           <p className="px-8 py-12 text-center text-sm text-muted-foreground sm:px-10">
             {t("clientPickerEmptyList")}
           </p>
@@ -181,7 +181,7 @@ export function AdminClientSettingsDirectory() {
               <span className="text-right">{t("clientPickerColumnAction")}</span>
             </div>
             <ul className="divide-y divide-[#efe6dd]">
-              {enabledClients.map((client) => {
+              {visibleClients.map((client) => {
                 const displayName = formatClientDisplayName(client.name)
                 const slug = client.slug!
                 return (
