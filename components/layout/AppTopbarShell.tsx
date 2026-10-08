@@ -17,6 +17,7 @@ import {
 import { ProfileMenu } from "@/components/layout/ProfileMenu"
 import { ProfileMenuSkeleton } from "@/components/layout/ProfileMenuSkeleton"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { isClientManagePath } from "@/lib/admin/admin-routes"
@@ -40,48 +41,58 @@ export function AppTopbarShell() {
   const pathname = usePathname()
   const { t } = useLanguage()
   const { organization, role, loading: orgLoading } = useActiveOrganization()
+  const { mustPickClient, resolvingActiveClient, useAdminShell, isClientRole } =
+    useAdminClientPickerGate()
   const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
 
   const sessionReady = !orgLoading && !authLoading
   const signedIn = configured ? isAuthenticated : false
-  const isAdmin = role === "censio_admin"
+  const isAdmin = role === "censio_admin" || useAdminShell
   const onAdminPath = isAdminPath(pathname)
   const onClientDashboard = isClientDashboardPath(pathname)
 
   const adminViewingClientDashboard =
-    sessionReady && isAdmin && organization !== null && onClientDashboard
+    sessionReady &&
+    isAdmin &&
+    organization !== null &&
+    !mustPickClient &&
+    onClientDashboard
 
   const showClientBranding =
     sessionReady &&
     organization !== null &&
+    !mustPickClient &&
+    !resolvingActiveClient &&
     (!isAdmin || adminViewingClientDashboard)
 
   const clientName = organization ? formatClientDisplayName(organization.name) : null
   const clientLogoSrc = organization?.logoUrl ?? null
 
+  const showClientDashboardNav =
+    !mustPickClient &&
+    !resolvingActiveClient &&
+    (isClientRole || (role === "censio_admin" && organization !== null))
+
   const navItems =
-    !sessionReady || !signedIn
+    !sessionReady || !signedIn || onAdminPath
       ? []
-      : onAdminPath
-        ? []
-        : isAdmin
-          ? organization
-            ? CLIENT_NAV.map((item) => ({
-                href: item.href,
-                label: t(item.labelKey),
-                icon: item.icon,
-              }))
-            : []
-          : CLIENT_NAV.map((item) => ({
-              href: item.href,
-              label: t(item.labelKey),
-              icon: item.icon,
-            }))
+      : showClientDashboardNav
+        ? CLIENT_NAV.map((item) => ({
+            href: item.href,
+            label: t(item.labelKey),
+            icon: item.icon,
+          }))
+        : []
 
   const reserveDashboardNav =
-    onClientDashboard && configured && (authLoading || isAuthenticated)
+    onClientDashboard &&
+    configured &&
+    (authLoading || isAuthenticated) &&
+    !mustPickClient &&
+    !resolvingActiveClient &&
+    !useAdminShell
 
-  const showAdminHeaderNav = sessionReady && signedIn && isAdmin
+  const showAdminHeaderNav = sessionReady && signedIn && useAdminShell
 
   const showNavRow =
     navItems.length > 0 ||
@@ -166,7 +177,7 @@ export function AppTopbarShell() {
         ) : null}
         {authLoading ||
         (configured && !signedIn) ||
-        (signedIn && role === null) ? (
+        (signedIn && role === null && (orgLoading || authLoading)) ? (
           <ProfileMenuSkeleton />
         ) : (
           <ProfileMenu />

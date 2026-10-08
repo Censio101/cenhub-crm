@@ -18,7 +18,7 @@ import {
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useSession } from "@/components/session/SessionProvider"
 import { useAdminAccountSettings } from "@/hooks/useAdminAccountSettings"
-import { useAdminOrganizationList } from "@/hooks/useAdminOrganizationList"
+import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import {
   clientInitialsFromName,
@@ -67,8 +67,8 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
   const router = useRouter()
   const { user } = useSession()
   const { settings: adminSettings } = useAdminAccountSettings()
+  const { mustPickClient, resolvingActiveClient } = useAdminClientPickerGate()
   const { organization, setActiveOrganization } = useActiveOrganization()
-  const { pickerOrganizations, loading: clientListLoading } = useAdminOrganizationList()
   const [menuOpen, setMenuOpen] = useState(false)
   const [openingDashboard, setOpeningDashboard] = useState(false)
 
@@ -85,9 +85,7 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
     sanitizeStoredProfileImage(adminSettings.profileImage) ||
     null
   const initials = clientInitialsFromName(personName || t("profileMenuAdminFallback"))
-  const clientSlug = organization?.slug ?? pickerOrganizations[0]?.slug ?? null
-  const canOpenClientDashboard =
-    Boolean(clientSlug) || clientListLoading || pickerOrganizations.length > 0
+  const activeClientSlug = organization?.slug ?? null
 
   const workspaceActive = isAdminWorkspaceNavActive(pathname)
   const allClientsActive = isAdminAllClientsNavActive(pathname)
@@ -96,12 +94,14 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
   const accountActive = isAdminMyAccountNavActive(pathname)
 
   async function handleOpenClientDashboard() {
-    const slug = organization?.slug ?? pickerOrganizations[0]?.slug ?? null
-    if (!slug) return
     setMenuOpen(false)
+    if (!activeClientSlug) {
+      router.push("/")
+      return
+    }
     setOpeningDashboard(true)
     try {
-      await openClientDashboard(slug, setActiveOrganization, { router, path: "/" })
+      await openClientDashboard(activeClientSlug, setActiveOrganization, { router, path: "/" })
     } finally {
       setOpeningDashboard(false)
     }
@@ -191,19 +191,21 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
                   <CheckIcon className="ml-auto size-4 shrink-0 opacity-90" aria-hidden="true" />
                 ) : null}
               </DropdownMenuItem>
+              {!mustPickClient && !resolvingActiveClient ? (
+                <DropdownMenuItem
+                  nativeButton={false}
+                  render={<Link href="/admin/clients" />}
+                  {...activeItemProps(allClientsActive)}
+                >
+                  <Settings2Icon />
+                  <span className="min-w-0 flex-1">{t("navAllClients")}</span>
+                  {allClientsActive ? (
+                    <CheckIcon className="ml-auto size-4 shrink-0 opacity-90" aria-hidden="true" />
+                  ) : null}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem
-                nativeButton={false}
-                render={<Link href="/admin/clients" />}
-                {...activeItemProps(allClientsActive)}
-              >
-                <Settings2Icon />
-                <span className="min-w-0 flex-1">{t("navAllClients")}</span>
-                {allClientsActive ? (
-                  <CheckIcon className="ml-auto size-4 shrink-0 opacity-90" aria-hidden="true" />
-                ) : null}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canOpenClientDashboard || openingDashboard}
+                disabled={!menuReady || openingDashboard}
                 {...activeItemProps(dashboardActive)}
                 onClick={() => {
                   void handleOpenClientDashboard()
@@ -218,13 +220,13 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
                 ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!clientSlug}
-                title={!clientSlug ? t("adminTopbarCompanyDetailsDisabled") : undefined}
+                disabled={!activeClientSlug}
+                title={!activeClientSlug ? t("adminTopbarCompanyDetailsDisabled") : undefined}
                 {...activeItemProps(companyActive)}
                 onClick={() => {
-                  if (!clientSlug) return
+                  if (!activeClientSlug) return
                   setMenuOpen(false)
-                  void openClientDashboard(clientSlug, setActiveOrganization, {
+                  void openClientDashboard(activeClientSlug, setActiveOrganization, {
                     router,
                     path: "/virksomhed",
                   })

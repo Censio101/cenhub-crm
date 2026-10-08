@@ -197,9 +197,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const setActiveOrganization = useCallback(
     async (slug: string | null) => {
+      const normalized = slug?.trim() || null
+
+      if (normalized && organization?.slug === normalized) {
+        setIsAdminViewingClient(true)
+        return true
+      }
+
       // Drop in-flight /api/auth/me responses (e.g. right after login before the cookie clears).
       reloadSeqRef.current += 1
-      if (!slug?.trim()) {
+      if (!normalized) {
         setOrganization(null)
         setIsAdminViewingClient(false)
       }
@@ -210,7 +217,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ slug }),
+        body: JSON.stringify({ slug: normalized }),
       })
 
       if (!response.ok) return false
@@ -230,21 +237,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           slug: data.organization.slug,
           name: data.organization.name,
           demoMode: data.organization.demoMode,
-          logoUrl: null,
-          logoBackground: "white",
-          profileComplete: true,
+          logoUrl: organization?.slug === data.organization.slug ? organization.logoUrl : null,
+          logoBackground:
+            organization?.slug === data.organization.slug
+              ? (organization.logoBackground ?? "white")
+              : "white",
+          profileComplete:
+            organization?.slug === data.organization.slug
+              ? (organization.profileComplete ?? true)
+              : true,
         })
         setIsAdminViewingClient(true)
-      } else if (!slug?.trim()) {
+      } else if (!normalized) {
         setOrganization(null)
         setIsAdminViewingClient(false)
       }
 
-      await reload({ silent: true })
+      void reload({ silent: true })
       emitClientOrgChanged()
       return true
     },
-    [reload]
+    [organization, reload]
   )
 
   const patchOrganization = useCallback((patch: Partial<ActiveOrganization>) => {

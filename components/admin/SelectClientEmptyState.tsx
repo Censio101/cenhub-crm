@@ -8,6 +8,7 @@ import { ClientPickerStatusChips } from "@/components/admin/client-picker/Client
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAdminOrganizationList } from "@/hooks/useAdminOrganizationList"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -74,19 +75,8 @@ function PickerSkeleton() {
 
 export function SelectClientEmptyState() {
   const { t } = useLanguage()
-  const {
-    needsClientSelection,
-    setActiveOrganization,
-    role,
-    organization,
-    loading: sessionLoading,
-  } = useActiveOrganization()
-  const isClientRole = role === "client_admin" || role === "client_user"
-  const showPicker =
-    needsClientSelection ||
-    (!organization &&
-      !isClientRole &&
-      (sessionLoading || role === null || role === "censio_admin"))
+  const { mustPickClient: showPicker } = useAdminClientPickerGate()
+  const { setActiveOrganization } = useActiveOrganization()
   const {
     pickerOrganizations,
     loading: listLoading,

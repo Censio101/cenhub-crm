@@ -4,10 +4,9 @@ import { useMemo, useState } from "react"
 import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
-import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
-import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import {
   Table,
@@ -71,7 +70,6 @@ export function CustomersBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/kunder")
-  const { needsClientSelection } = useActiveOrganization()
   const { customers, organizationName, error } = useCustomers()
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">(
     "all"
@@ -92,11 +90,8 @@ export function CustomersBoard() {
 
   const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
 
-  if (needsClientSelection) {
-    return <SelectClientEmptyState />
-  }
-
   return (
+    <AdminClientRouteGate>
     <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-6">
       <header className="flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -204,6 +199,7 @@ export function CustomersBoard() {
         </div>
       </section>
     </div>
+    </AdminClientRouteGate>
   )
 }
 

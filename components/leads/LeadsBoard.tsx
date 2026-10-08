@@ -12,9 +12,8 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
-import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useCompanyServices } from "@/hooks/useCompanyServices"
-import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { LeadDateTimeCell } from "@/components/leads/LeadDateTimeCell"
 import { AddLeadDialog } from "@/components/leads/AddLeadDialog"
 import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
@@ -877,7 +876,6 @@ export function LeadsBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/leads")
-  const { needsClientSelection } = useActiveOrganization()
   const {
     leads,
     leadSheet,
@@ -909,11 +907,8 @@ export function LeadsBoard() {
 
   const pipelineStats = useMemo(() => computeLeadPipelineStats(filtered), [filtered])
 
-  if (needsClientSelection) {
-    return <SelectClientEmptyState />
-  }
-
   return (
+    <AdminClientRouteGate>
     <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-6">
       <header className="flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -1050,5 +1045,6 @@ export function LeadsBoard() {
         <LeadPipelineFooter stats={pipelineStats} />
       </section>
     </div>
+    </AdminClientRouteGate>
   )
 }

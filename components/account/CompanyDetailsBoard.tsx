@@ -27,6 +27,8 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
+import { DashboardSkeleton } from "@/components/performance/DashboardStates"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { isOnboardingContactEmailValid } from "@/lib/onboarding/application-input"
 import type { OrganizationLogoBackground } from "@/lib/organization-logo"
@@ -114,11 +116,11 @@ const REQUIRED_TOTAL = 7
 
 export function CompanyDetailsBoard() {
   const { t } = useLanguage()
+  const { mustPickClient, resolvingActiveClient } = useAdminClientPickerGate()
   const {
     organization,
     role,
     loading: orgLoading,
-    needsClientSelection,
     reload: reloadOrg,
     patchOrganization,
   } = useActiveOrganization()
@@ -227,16 +229,20 @@ export function CompanyDetailsBoard() {
     }
   }
 
-  if (orgLoading || (role === "censio_admin" && needsClientSelection)) {
+  if (resolvingActiveClient) {
+    return <DashboardSkeleton />
+  }
+
+  if (mustPickClient) {
+    return <SelectClientEmptyState />
+  }
+
+  if (orgLoading) {
     return <CompanyDetailsPageSkeleton />
   }
 
   if (!organization) {
-    return role === "censio_admin" ? (
-      <SelectClientEmptyState />
-    ) : (
-      <p className="text-sm text-muted-foreground">{t("clientNotFound")}</p>
-    )
+    return <p className="text-sm text-muted-foreground">{t("clientNotFound")}</p>
   }
 
   if (loading && !values) {

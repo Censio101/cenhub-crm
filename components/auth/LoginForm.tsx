@@ -120,12 +120,16 @@ export function LoginForm() {
         return
       }
 
-      // Clear active client before session refresh so /api/auth/me cannot briefly restore the last client.
-      await setActiveOrganization(null)
       setLoginProgress("session")
-      // Invited users who already chose a password (legacy accounts) may lack this flag in the JWT.
-      await supabase.auth.updateUser({ data: { password_setup_complete: true } })
-      await supabase.auth.refreshSession()
+
+      // Post-sign-in setup must not surface "wrong password" — auth already succeeded.
+      try {
+        await setActiveOrganization(null)
+        await supabase.auth.updateUser({ data: { password_setup_complete: true } })
+        await supabase.auth.refreshSession()
+      } catch {
+        // Non-fatal after successful sign-in; redirect anyway.
+      }
 
       const next = safeLoginNextPath(searchParams.get("next"))
       setLoginProgress("redirect")
@@ -238,7 +242,10 @@ export function LoginForm() {
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value)
+                  setError(null)
+                }}
                 className={fieldClass}
                 placeholder={t("loginEmailPlaceholder")}
                 disabled={loginBusy || loading}
@@ -252,7 +259,10 @@ export function LoginForm() {
                   autoComplete="current-password"
                   required
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => {
+                    setPassword(event.target.value)
+                    setError(null)
+                  }}
                   className={cn(fieldClass, "pr-10")}
                   disabled={loginBusy || loading}
                 />
@@ -273,7 +283,7 @@ export function LoginForm() {
               </div>
             </label>
 
-            {error ? (
+            {error && !loginBusy ? (
               <FormNotice message={error} tone="error" onDismiss={dismissError} />
             ) : null}
             {message ? (

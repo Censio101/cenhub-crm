@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useMemo } from "react"
 
-import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DashboardHeader } from "@/components/performance/DashboardHeader"
 import {
@@ -16,7 +16,7 @@ import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { DevelopmentChart } from "@/components/performance/DevelopmentChart"
 import { KpiGrid } from "@/components/performance/KpiGrid"
 import { MonthlyTable } from "@/components/performance/MonthlyTable"
-import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
@@ -37,16 +37,8 @@ export function PerformanceDashboard() {
     onSegmentChange,
     onMetricChange,
   } = useDashboardViewState("/")
-  const { needsClientSelection, organization, loading: sessionLoading, role } =
-    useActiveOrganization()
+  const { sessionLoading } = useAdminClientPickerGate()
   const { leads, adSpendByMonth, error } = useDashboardData()
-
-  const isClientRole = role === "client_admin" || role === "client_user"
-  const showAdminClientPicker =
-    needsClientSelection ||
-    (!organization &&
-      !isClientRole &&
-      (sessionLoading || role === null || role === "censio_admin"))
 
   const data = useMemo(() => {
     try {
@@ -86,23 +78,13 @@ export function PerformanceDashboard() {
         : comparisonSeriesLabel(view.comparisonRange, t("dashboardChartComparison"))
       : null
 
-  if (showAdminClientPicker) {
-    return <SelectClientEmptyState />
-  }
-
-  if (sessionLoading) {
-    return <DashboardSkeleton />
-  }
-
-  if (data == null) {
-    return (
-      <DashboardErrorState
-        onRetry={() => router.refresh()}
-      />
-    )
-  }
-
   return (
+    <AdminClientRouteGate>
+      {sessionLoading ? (
+        <DashboardSkeleton />
+      ) : data == null ? (
+        <DashboardErrorState onRetry={() => router.refresh()} />
+      ) : (
     <div className="flex w-full flex-col gap-8">
       <DashboardHeader
         preset={view.preset}
@@ -162,5 +144,7 @@ export function PerformanceDashboard() {
         className="hidden"
       />
     </div>
+      )}
+    </AdminClientRouteGate>
   )
 }

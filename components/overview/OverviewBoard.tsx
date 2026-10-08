@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useMemo } from "react"
 
-import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
+import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import {
@@ -35,7 +35,7 @@ export function OverviewBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/overblik")
-  const { organization, role, needsClientSelection } = useActiveOrganization()
+  const { organization, role } = useActiveOrganization()
   const { leads, adSpendByMonth } = useDashboardData()
   const clientName = organization?.name ?? (role === "censio_admin" ? "klienten" : null)
 
@@ -56,17 +56,13 @@ export function OverviewBoard() {
     }
   }, [view, leads, adSpendByMonth])
 
-  if (needsClientSelection) {
-    return <SelectClientEmptyState />
-  }
-
-  if (data == null) {
-    return <DashboardErrorState onRetry={() => router.refresh()} />
-  }
-
   const dateRangeLabel = formatDateRangeLabel(view.range.start, view.range.end)
 
   return (
+    <AdminClientRouteGate>
+      {data == null ? (
+        <DashboardErrorState onRetry={() => router.refresh()} />
+      ) : (
     <div className="flex w-full flex-col gap-8">
       <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
@@ -151,5 +147,7 @@ export function OverviewBoard() {
         </>
       )}
     </div>
+      )}
+    </AdminClientRouteGate>
   )
 }

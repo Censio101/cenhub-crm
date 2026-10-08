@@ -15,10 +15,10 @@ export async function openClientDashboard(
   setActiveOrganization: (slug: string | null) => Promise<boolean>,
   options: OpenClientDashboardOptions = {}
 ) {
+  const path = options.path ?? "/"
+
   const success = await setActiveOrganization(slug)
   if (!success) return false
-
-  const path = options.path ?? "/"
 
   if (options.newTab) {
     window.open(path, "_blank", "noopener,noreferrer")

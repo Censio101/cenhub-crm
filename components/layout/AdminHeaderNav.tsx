@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Building2Icon, LayoutDashboardIcon, LayoutGridIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { useAdminOrganizationList } from "@/hooks/useAdminOrganizationList"
+import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import {
@@ -49,21 +49,30 @@ export function AdminHeaderNav() {
   const pathname = usePathname() ?? ""
   const router = useRouter()
   const { t } = useLanguage()
+  const { mustPickClient, resolvingActiveClient } = useAdminClientPickerGate()
   const { organization, setActiveOrganization } = useActiveOrganization()
-  const { pickerOrganizations } = useAdminOrganizationList()
   const [openingDashboard, setOpeningDashboard] = useState(false)
 
-  const slug = organization?.slug ?? pickerOrganizations[0]?.slug ?? null
+  const activeClientSlug = organization?.slug ?? null
 
   const workspaceActive = isAdminWorkspaceNavActive(pathname)
   const allClientsActive = isAdminAllClientsNavActive(pathname)
   const onClientDashboard = isClientDashboardPath(pathname)
 
+  useEffect(() => {
+    router.prefetch("/admin/overview")
+    router.prefetch("/admin/clients")
+    router.prefetch("/")
+  }, [router])
+
   async function openDashboard() {
-    if (!slug) return
     setOpeningDashboard(true)
     try {
-      await openClientDashboard(slug, setActiveOrganization, { router, path: "/" })
+      if (!activeClientSlug) {
+        router.push("/")
+        return
+      }
+      await openClientDashboard(activeClientSlug, setActiveOrganization, { router, path: "/" })
     } finally {
       setOpeningDashboard(false)
     }
@@ -81,22 +90,23 @@ export function AdminHeaderNav() {
         icon={LayoutGridIcon}
         active={workspaceActive}
       />
-      <AdminHeaderLink
-        href="/admin/clients"
-        label={t("navAllClients")}
-        icon={Building2Icon}
-        active={allClientsActive}
-      />
+      {!mustPickClient && !resolvingActiveClient ? (
+        <AdminHeaderLink
+          href="/admin/clients"
+          label={t("navAllClients")}
+          icon={Building2Icon}
+          active={allClientsActive}
+        />
+      ) : null}
       {!onClientDashboard ? (
         <button
           type="button"
-          disabled={!slug || openingDashboard}
+          disabled={openingDashboard}
           onClick={() => void openDashboard()}
           className={cn(
             "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
             "border-b-2 border-transparent text-white/70 hover:border-primary hover:text-white",
-            "focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none",
-            !slug && "cursor-not-allowed opacity-50"
+            "focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none"
           )}
         >
           <LayoutDashboardIcon className="size-4 shrink-0" aria-hidden="true" />

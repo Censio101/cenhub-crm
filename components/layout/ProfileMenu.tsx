@@ -7,13 +7,15 @@ import { AdminProfileMenu } from "@/components/layout/AdminProfileMenu"
 import { ClientProfileMenu } from "@/components/layout/ClientProfileMenu"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { isSignedIn, subscribeToSession } from "@/lib/session"
 
 export function ProfileMenu() {
   const { t } = useLanguage()
   const { configured, isAuthenticated, loading: authLoading } = useSupabaseSession()
-  const { role, loading: orgLoading } = useActiveOrganization()
+  const { useAdminShell } = useAdminClientPickerGate()
+  const { loading: orgLoading } = useActiveOrganization()
   const sessionLoading = authLoading || orgLoading
   const mockSignedIn = useSyncExternalStore(subscribeToSession, isSignedIn, () => true)
   const signedIn = configured ? isAuthenticated : mockSignedIn
@@ -30,7 +32,7 @@ export function ProfileMenu() {
     )
   }
 
-  if (role === "censio_admin") {
+  if (useAdminShell) {
     return <AdminProfileMenu menuReady={menuReady} sessionLoading={sessionLoading} />
   }
 
