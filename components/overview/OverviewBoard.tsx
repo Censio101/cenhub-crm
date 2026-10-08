@@ -35,8 +35,8 @@ export function OverviewBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/overblik")
-  const { organization, role } = useActiveOrganization()
-  const { leads, adSpendByMonth, needsClientSelection } = useDashboardData()
+  const { organization, role, needsClientSelection } = useActiveOrganization()
+  const { leads, adSpendByMonth } = useDashboardData()
   const clientName = organization?.name ?? (role === "censio_admin" ? "klienten" : null)
 
   const data = useMemo(() => {

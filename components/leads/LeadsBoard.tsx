@@ -12,6 +12,7 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import { LeadDateTimeCell } from "@/components/leads/LeadDateTimeCell"
@@ -876,11 +877,11 @@ export function LeadsBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/leads")
+  const { needsClientSelection } = useActiveOrganization()
   const {
     leads,
     leadSheet,
     error,
-    needsClientSelection,
     dataSource,
     updateLead,
     createLead,

@@ -15,6 +15,7 @@ import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { DevelopmentChart } from "@/components/performance/DevelopmentChart"
 import { KpiGrid } from "@/components/performance/KpiGrid"
 import { MonthlyTable } from "@/components/performance/MonthlyTable"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
@@ -35,7 +36,8 @@ export function PerformanceDashboard() {
     onSegmentChange,
     onMetricChange,
   } = useDashboardViewState("/")
-  const { leads, adSpendByMonth, error, needsClientSelection } = useDashboardData()
+  const { needsClientSelection } = useActiveOrganization()
+  const { leads, adSpendByMonth, error } = useDashboardData()
 
   const data = useMemo(() => {
     try {

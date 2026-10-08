@@ -7,6 +7,7 @@ import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import {
   Table,
@@ -70,8 +71,8 @@ export function CustomersBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/kunder")
-  const { customers, organizationName, error, needsClientSelection } =
-    useCustomers()
+  const { needsClientSelection } = useActiveOrganization()
+  const { customers, organizationName, error } = useCustomers()
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">(
     "all"
   )
