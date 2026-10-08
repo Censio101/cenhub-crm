@@ -25,6 +25,12 @@ import {
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
 
+function safeLoginNextPath(raw: string | null): string {
+  const next = raw?.trim() || "/"
+  if (!next.startsWith("/") || next.startsWith("//")) return "/"
+  return next
+}
+
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -47,16 +53,28 @@ export function LoginForm() {
   useAutoDismiss(message, dismissMessage)
   useAutoDismiss(error, dismissError, 6000)
 
+  // Already signed in (e.g. bookmarked /login): redirect without blocking on /api/auth/me.
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      void fetch("/api/auth/me", { cache: "no-store" })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((me: { role?: string | null } | null) => {
-          router.replace("/")
-        })
-        .catch(() => router.replace("/"))
-    }
-  }, [isAuthenticated, loading, router])
+    if (loading || !isAuthenticated || loginProgress !== null) return
+    const next = safeLoginNextPath(searchParams.get("next"))
+    // #region agent log
+    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
+      body: JSON.stringify({
+        sessionId: "138f58",
+        runId: "post-fix",
+        hypothesisId: "H2",
+        location: "LoginForm.tsx:useEffect",
+        message: "session_redirect",
+        data: { next },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    router.replace(next)
+    router.refresh()
+  }, [isAuthenticated, loading, loginProgress, router, searchParams])
 
   // Notices arrive as `?error=` / `?message=` after auth redirects. Each one is shown once
   // (adjusted while rendering), then the query is removed from the address bar.
@@ -117,13 +135,42 @@ export function LoginForm() {
       // Invited users who already chose a password (legacy accounts) may lack this flag in the JWT.
       await supabase.auth.updateUser({ data: { password_setup_complete: true } })
       await supabase.auth.refreshSession()
+      // #region agent log
+      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
+        body: JSON.stringify({
+          sessionId: "138f58",
+          hypothesisId: "H4",
+          location: "LoginForm.tsx:handlePasswordLogin",
+          message: "after_refresh_session",
+          data: {},
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
 
+      const next = safeLoginNextPath(searchParams.get("next"))
       setLoginProgress("redirect")
-      const meResponse = await fetch("/api/auth/me", { cache: "no-store" })
-      const me = meResponse.ok
-        ? ((await meResponse.json()) as { role?: string | null })
-        : null
-      router.replace("/")
+      // #region agent log
+      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
+        body: JSON.stringify({
+          sessionId: "138f58",
+          runId: "post-fix",
+          hypothesisId: "H1",
+          location: "LoginForm.tsx:handlePasswordLogin",
+          message: "password_login_redirect",
+          data: { next },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+      router.replace(next)
+      router.refresh()
+      setLoginProgress(null)
+      setSubmitting(false)
     } catch {
       setError(t("loginWrongCredentials"))
       setSubmitting(false)
