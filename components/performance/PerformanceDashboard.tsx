@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 
 import { SelectClientEmptyState } from "@/components/admin/SelectClientEmptyState"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -47,35 +47,6 @@ export function PerformanceDashboard() {
     (!organization &&
       !isClientRole &&
       (sessionLoading || role === null || role === "censio_admin"))
-
-  // #region agent log
-  useEffect(() => {
-    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
-      body: JSON.stringify({
-        sessionId: "138f58",
-        hypothesisId: "A",
-        location: "PerformanceDashboard.tsx:gate",
-        message: "home dashboard gate",
-        data: {
-          needsClientSelection,
-          showAdminClientPicker,
-          sessionLoading,
-          role,
-          orgSlug: organization?.slug ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-  }, [
-    needsClientSelection,
-    organization?.slug,
-    role,
-    sessionLoading,
-    showAdminClientPicker,
-  ])
-  // #endregion
 
   const data = useMemo(() => {
     try {

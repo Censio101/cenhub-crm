@@ -163,28 +163,6 @@ export function SelectClientEmptyState() {
     }
   }
 
-  // #region agent log
-  fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
-    body: JSON.stringify({
-      sessionId: "138f58",
-      hypothesisId: "C",
-      location: "SelectClientEmptyState.tsx:gate",
-      message: "picker gate",
-      data: {
-        showPicker,
-        needsClientSelection,
-        listLoading,
-        sessionLoading,
-        role,
-        orgSlug: organization?.slug ?? null,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
-
   if (!showPicker) return null
 
   if (listLoading) return <PickerSkeleton />
