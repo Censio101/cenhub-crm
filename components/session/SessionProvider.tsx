@@ -52,7 +52,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [organization, setOrganization] = useState<ActiveOrganization | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [isAdminViewingClient, setIsAdminViewingClient] = useState(false)
-  const [loading, setLoading] = useState(configured)
+  const [loading, setLoading] = useState(false)
   const sessionResolvedRef = useRef(false)
   /** Only the most recently started session fetch may write state (stale responses are dropped). */
   const reloadSeqRef = useRef(0)
@@ -73,13 +73,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async (options?: SessionReloadOptions) => {
     const seq = ++reloadSeqRef.current
     const isStale = () => seq !== reloadSeqRef.current
+    // #region agent log
+    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
+      body: JSON.stringify({
+        sessionId: "138f58",
+        hypothesisId: "B",
+        location: "SessionProvider.tsx:reload:start",
+        message: "crm session reload",
+        data: { seq, silent: Boolean(options?.silent), authLoading, isAuthenticated },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
 
     if (!configured) {
       setLoading(false)
-      return
-    }
-
-    if (authLoading) {
       return
     }
 
@@ -190,6 +200,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Only the latest fetch settles `loading`; an older one must not end it early.
       if (!isStale()) {
         setLoading(false)
+        // #region agent log
+        fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
+          body: JSON.stringify({
+            sessionId: "138f58",
+            hypothesisId: "B",
+            location: "SessionProvider.tsx:reload:done",
+            message: "crm session reload settled loading",
+            data: { seq, stale: isStale() },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {})
+        // #endregion
       }
     }
   }, [configured, isAuthenticated, authLoading, authUser?.email, authUser?.id])
@@ -264,7 +288,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       organization,
       isAdminViewingClient,
       needsClientSelection,
-      loading: loading || authLoading,
+      loading: loading || (authLoading && !sessionResolvedRef.current),
       reload,
       setActiveOrganization,
       patchOrganization,
