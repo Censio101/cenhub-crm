@@ -6,7 +6,7 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { isLocale } from "@/lib/i18n"
-import { writeStoredLocale } from "@/lib/i18n/stored-locale"
+import { readStoredLocale, writeStoredLocale } from "@/lib/i18n/stored-locale"
 import {
   ADMIN_LOCALE_STORAGE_KEY,
   LOCALE_STORAGE_KEY,
@@ -47,8 +47,16 @@ function useProfileLocaleSync() {
           data.preferredLocale && isLocale(data.preferredLocale)
             ? data.preferredLocale
             : "da"
+        const stored = readStoredLocale(LOCALE_STORAGE_KEY)
 
         syncedRef.current = syncKey
+
+        // User already picked a locale locally (e.g. before profile sync finished) — keep it.
+        if (stored !== next && stored !== "da") {
+          mirrorLocaleStorageKeys(stored)
+          if (stored !== locale) setLocale(stored)
+          return
+        }
 
         if (next === locale) {
           mirrorLocaleStorageKeys(next)
@@ -61,7 +69,7 @@ function useProfileLocaleSync() {
         // keep localStorage fallback
       }
     })()
-  }, [authLoading, configured, isAuthenticated, locale, orgLoading, role, setLocale, user])
+  }, [authLoading, configured, isAuthenticated, orgLoading, role, setLocale, user])
 }
 
 /** Sync profile preferred_locale into the app LanguageProvider (all signed-in areas). */

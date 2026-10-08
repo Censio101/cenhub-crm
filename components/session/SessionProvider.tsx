@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +14,7 @@ import {
 import { clearClientCaches, emitClientOrgChanged } from "@/lib/data/client-cache"
 import type { UserRole } from "@/lib/db/types"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { createClient, isBrowserSupabaseConfigured } from "@/lib/supabase/client"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 import type { ActiveOrganization } from "@/hooks/useActiveOrganization"
 
@@ -55,6 +57,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   /** Only the most recently started session fetch may write state (stale responses are dropped). */
   const reloadSeqRef = useRef(0)
 
+  useEffect(() => {
+    if (!isBrowserSupabaseConfigured()) return
+    const supabase = createClient()
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        sessionResolvedRef.current = false
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   const reload = useCallback(async (options?: SessionReloadOptions) => {
     const seq = ++reloadSeqRef.current
     const isStale = () => seq !== reloadSeqRef.current
@@ -64,48 +79,29 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    if (!isAuthenticated) {
+    if (authLoading) {
+      return
+    }
+
+    const clearSessionState = () => {
       sessionResolvedRef.current = false
       setUser(null)
       setOrganization(null)
       setRole(null)
       setIsAdminViewingClient(false)
-      setLoading(false)
-      return
     }
 
-    const background = options?.silent ?? sessionResolvedRef.current
-    if (!background) {
-      setLoading(true)
+    type MePayload = {
+      userId?: string | null
+      email?: string | null
+      fullName?: string | null
+      avatarUrl?: string | null
+      role?: UserRole | null
+      organization?: ActiveOrganization | null
+      isAdminViewingClient?: boolean
     }
-    try {
-      const response = await fetch("/api/auth/me", {
-        cache: "no-store",
-        credentials: "include",
-      })
-      if (isStale()) return
-      if (!response.ok) {
-        // A transient server error must not wipe a session we already resolved.
-        if (response.status === 401 || response.status === 403 || !sessionResolvedRef.current) {
-          setUser(null)
-          setOrganization(null)
-          setRole(null)
-          setIsAdminViewingClient(false)
-        }
-        return
-      }
 
-      const data = (await response.json()) as {
-        userId?: string | null
-        email?: string | null
-        fullName?: string | null
-        avatarUrl?: string | null
-        role?: UserRole | null
-        organization?: ActiveOrganization | null
-        isAdminViewingClient?: boolean
-      }
-      if (isStale()) return
-
+    const applyMePayload = (data: MePayload) => {
       const id = data.userId ?? authUser?.id ?? null
       setUser(
         id
@@ -130,13 +126,73 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       )
       setIsAdminViewingClient(Boolean(data.isAdminViewingClient))
       sessionResolvedRef.current = true
+      if (data.role === "censio_admin" && !data.organization) {
+        clearClientCaches()
+      }
+    }
+
+    if (!isAuthenticated) {
+      if (!sessionResolvedRef.current) {
+        clearSessionState()
+        setLoading(false)
+        return
+      }
+      // Supabase can briefly report no user during refresh; confirm with the server before wiping CRM session.
+      const verifyBackground = options?.silent ?? true
+      if (!verifyBackground) {
+        setLoading(true)
+      }
+      try {
+        const response = await fetch("/api/auth/me", {
+          cache: "no-store",
+          credentials: "include",
+        })
+        if (isStale()) return
+        if (response.status === 401 || response.status === 403) {
+          clearSessionState()
+          return
+        }
+        if (!response.ok) return
+        const data = (await response.json()) as MePayload
+        if (isStale()) return
+        applyMePayload(data)
+      } finally {
+        if (!isStale()) {
+          setLoading(false)
+        }
+      }
+      return
+    }
+
+    const background = options?.silent ?? sessionResolvedRef.current
+    if (!background) {
+      setLoading(true)
+    }
+    try {
+      const response = await fetch("/api/auth/me", {
+        cache: "no-store",
+        credentials: "include",
+      })
+      if (isStale()) return
+      if (!response.ok) {
+        // A transient server error must not wipe a session we already resolved.
+        if (response.status === 401 || response.status === 403 || !sessionResolvedRef.current) {
+          clearSessionState()
+        }
+        return
+      }
+
+      const data = (await response.json()) as MePayload
+      if (isStale()) return
+
+      applyMePayload(data)
     } finally {
       // Only the latest fetch settles `loading`; an older one must not end it early.
       if (!isStale()) {
         setLoading(false)
       }
     }
-  }, [configured, isAuthenticated, authUser?.email, authUser?.id])
+  }, [configured, isAuthenticated, authLoading, authUser?.email, authUser?.id])
 
   useAsyncEffect(() => {
     if (authLoading) return
@@ -145,6 +201,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const setActiveOrganization = useCallback(
     async (slug: string | null) => {
+      // Drop in-flight /api/auth/me responses (e.g. right after login before the cookie clears).
+      reloadSeqRef.current += 1
+      if (!slug?.trim()) {
+        setOrganization(null)
+        setIsAdminViewingClient(false)
+      }
+
       clearClientCaches()
 
       const response = await fetch("/api/admin/active-organization", {

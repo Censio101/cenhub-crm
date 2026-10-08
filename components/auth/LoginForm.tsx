@@ -3,10 +3,11 @@
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FormEvent, useCallback, useEffect, useState } from "react"
-import { Loader2Icon } from "lucide-react"
+import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
+import { useSession } from "@/components/session/SessionProvider"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import {
   createClient,
@@ -21,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { cn } from "cn"
 
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
@@ -36,8 +38,10 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const { t } = useLanguage()
   const { configured, isAuthenticated, loading } = useSupabaseSession()
+  const { setActiveOrganization } = useSession()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [passwordVisible, setPasswordVisible] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loginProgress, setLoginProgress] = useState<
     null | "signIn" | "session" | "redirect"
@@ -116,6 +120,8 @@ export function LoginForm() {
         return
       }
 
+      // Clear active client before session refresh so /api/auth/me cannot briefly restore the last client.
+      await setActiveOrganization(null)
       setLoginProgress("session")
       // Invited users who already chose a password (legacy accounts) may lack this flag in the JWT.
       await supabase.auth.updateUser({ data: { password_setup_complete: true } })
@@ -125,8 +131,7 @@ export function LoginForm() {
       setLoginProgress("redirect")
       router.replace(next)
       router.refresh()
-      setLoginProgress(null)
-      setSubmitting(false)
+      // Stay in "busy" until this page unmounts — avoids the submit button flashing back.
     } catch {
       setError(t("loginWrongCredentials"))
       setSubmitting(false)
@@ -241,15 +246,31 @@ export function LoginForm() {
             </label>
             <label className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-150 grid gap-2 text-sm">
               <span className="font-medium text-muted-foreground">{t("password")}</span>
-              <input
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className={fieldClass}
-                disabled={loginBusy || loading}
-              />
+              <div className="relative">
+                <input
+                  type={passwordVisible ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className={cn(fieldClass, "pr-10")}
+                  disabled={loginBusy || loading}
+                />
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                  disabled={loginBusy || loading}
+                  aria-label={passwordVisible ? t("portalPasswordHide") : t("portalPasswordShow")}
+                  aria-pressed={passwordVisible}
+                  onClick={() => setPasswordVisible((current) => !current)}
+                >
+                  {passwordVisible ? (
+                    <EyeOffIcon className="size-4" aria-hidden="true" />
+                  ) : (
+                    <EyeIcon className="size-4" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </label>
 
             {error ? (
@@ -259,21 +280,11 @@ export function LoginForm() {
               <FormNotice message={message} tone="success" onDismiss={dismissMessage} />
             ) : null}
 
-            {loginProgressMessage ? (
-              <div
-                role="status"
-                aria-live="polite"
-                className="flex items-center gap-2 rounded-[15px] border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground"
-              >
-                <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" aria-hidden="true" />
-                <span>{loginProgressMessage}</span>
-              </div>
-            ) : null}
-
             <Button
               type="submit"
               className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-200 h-11 rounded-[5px]"
               disabled={loginBusy || loading}
+              aria-busy={loginBusy}
             >
               {loginBusy ? (
                 <>

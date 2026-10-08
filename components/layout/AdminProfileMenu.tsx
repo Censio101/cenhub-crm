@@ -24,6 +24,7 @@ import {
   clientInitialsFromName,
   formatClientDisplayName,
 } from "@/lib/admin/format-client-display-name"
+import { clearActiveOrganization } from "@/lib/admin/clear-active-organization"
 import { openClientDashboard } from "@/lib/admin/open-client-dashboard"
 import { sanitizeStoredProfileImage } from "@/lib/auth/profile-image-sanitize"
 import { createClient } from "@/lib/supabase/client"
@@ -257,6 +258,7 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
           onClick={() => {
             if (!menuReady) return
             void (async () => {
+              await clearActiveOrganization()
               const supabase = createClient()
               await supabase.auth.signOut()
               router.push("/logget-ud")

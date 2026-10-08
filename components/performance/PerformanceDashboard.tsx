@@ -9,6 +9,7 @@ import { DashboardHeader } from "@/components/performance/DashboardHeader"
 import {
   DashboardEmptyState,
   DashboardErrorState,
+  DashboardSkeleton,
   PartialDataNotice,
 } from "@/components/performance/DashboardStates"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
@@ -36,7 +37,8 @@ export function PerformanceDashboard() {
     onSegmentChange,
     onMetricChange,
   } = useDashboardViewState("/")
-  const { needsClientSelection } = useActiveOrganization()
+  const { needsClientSelection, organization, loading: sessionLoading } =
+    useActiveOrganization()
   const { leads, adSpendByMonth, error } = useDashboardData()
 
   const data = useMemo(() => {
@@ -79,6 +81,10 @@ export function PerformanceDashboard() {
 
   if (needsClientSelection) {
     return <SelectClientEmptyState />
+  }
+
+  if (sessionLoading || !organization) {
+    return <DashboardSkeleton />
   }
 
   if (data == null) {
