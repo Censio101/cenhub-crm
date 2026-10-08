@@ -74,7 +74,19 @@ function PickerSkeleton() {
 
 export function SelectClientEmptyState() {
   const { t } = useLanguage()
-  const { needsClientSelection, setActiveOrganization } = useActiveOrganization()
+  const {
+    needsClientSelection,
+    setActiveOrganization,
+    role,
+    organization,
+    loading: sessionLoading,
+  } = useActiveOrganization()
+  const isClientRole = role === "client_admin" || role === "client_user"
+  const showPicker =
+    needsClientSelection ||
+    (!organization &&
+      !isClientRole &&
+      (sessionLoading || role === null || role === "censio_admin"))
   const {
     pickerOrganizations,
     loading: listLoading,
@@ -151,9 +163,9 @@ export function SelectClientEmptyState() {
     }
   }
 
-  if (!needsClientSelection) return null
+  if (!showPicker) return null
 
-  if (listLoading) return <PickerSkeleton />
+  if (listLoading || (sessionLoading && !needsClientSelection)) return <PickerSkeleton />
 
   // The list could not be loaded: say so and offer a retry — never claim "no clients".
   if (listError && pickerOrganizations.length === 0) {
