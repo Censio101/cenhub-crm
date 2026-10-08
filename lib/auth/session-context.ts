@@ -90,6 +90,13 @@ export async function getSessionContext(): Promise<SessionContext> {
             isAdminViewingClient: true,
           }
         }
+
+        try {
+          const cookieStore = await cookies()
+          cookieStore.delete(ACTIVE_ORG_COOKIE)
+        } catch {
+          // ignore when cookies() is unavailable
+        }
       }
 
       return {

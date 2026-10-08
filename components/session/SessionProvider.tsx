@@ -74,7 +74,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setLoading(true)
     }
     try {
-      const response = await fetch("/api/auth/me", { cache: "no-store" })
+      const response = await fetch("/api/auth/me", {
+        cache: "no-store",
+        credentials: "include",
+      })
       if (!response.ok) {
         setUser(null)
         setOrganization(null)
@@ -141,6 +144,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       })
 
       if (!response.ok) return false
+
+      const data = (await response.json()) as {
+        organization?: {
+          id: string
+          slug: string
+          name: string
+          demoMode: boolean
+        } | null
+      }
+
+      if (data.organization) {
+        setOrganization({
+          id: data.organization.id,
+          slug: data.organization.slug,
+          name: data.organization.name,
+          demoMode: data.organization.demoMode,
+          logoUrl: null,
+          logoBackground: "white",
+          profileComplete: true,
+        })
+        setIsAdminViewingClient(true)
+      } else if (!slug?.trim()) {
+        setOrganization(null)
+        setIsAdminViewingClient(false)
+      }
 
       await reload({ silent: true })
       emitClientOrgChanged()

@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 
-import { AdminActiveClientBootstrap } from "@/components/admin/AdminActiveClientBootstrap"
+import { AdminClientAutoSelectProvider } from "@/components/admin/AdminClientAutoSelectContext"
 import { ClientContextBar } from "@/components/admin/ClientContextBar"
 import { ClientContextBarSkeleton } from "@/components/admin/ClientContextBarSkeleton"
 import { LocaleSync } from "@/components/i18n/LocaleSync"
@@ -66,21 +66,22 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     >
       <AuthHashErrorHandler />
       <LocaleSync />
-      <AdminActiveClientBootstrap />
-      <AppTopbar />
-      {showClientContextBarSkeleton ? <ClientContextBarSkeleton /> : null}
-      {showClientContextBar ? <ClientContextBar /> : null}
-      <main
-        className={cn(
-          "flex min-w-0 flex-1 flex-col",
-          publicSignupPage && "bg-[#faf8f6]",
-          isAdminRoute ? "min-h-0 p-0" : "px-4 py-8 sm:px-6 lg:px-8 xl:px-10",
-          animateDashboardMain &&
-            "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
-        )}
-      >
-        {children}
-      </main>
+      <AdminClientAutoSelectProvider>
+        <AppTopbar />
+        {showClientContextBarSkeleton ? <ClientContextBarSkeleton /> : null}
+        {showClientContextBar ? <ClientContextBar /> : null}
+        <main
+          className={cn(
+            "flex min-w-0 flex-1 flex-col",
+            publicSignupPage && "bg-[#faf8f6]",
+            isAdminRoute ? "min-h-0 p-0" : "px-4 py-8 sm:px-6 lg:px-8 xl:px-10",
+            animateDashboardMain &&
+              "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
+          )}
+        >
+          {children}
+        </main>
+      </AdminClientAutoSelectProvider>
     </div>
   )
 }

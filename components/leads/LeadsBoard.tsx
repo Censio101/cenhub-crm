@@ -1,11 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react"
@@ -886,6 +888,13 @@ export function LeadsBoard() {
   } = useLeads()
   const [statusFilter, setStatusFilter] = useState<LeadStatusId | "all">("all")
   const [dateSort, setDateSort] = useState<"asc" | "desc">("desc")
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  function scrollSheet(direction: -1 | 1) {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollBy({ left: direction * Math.max(320, el.clientWidth * 0.6), behavior: "smooth" })
+  }
 
   const filtered = useMemo(() => {
     const next = filterDashboardLeads(leads, {
@@ -995,8 +1004,36 @@ export function LeadsBoard() {
 
       <LeadPipelineBar stats={pipelineStats} />
 
-      <section className="dashboard-card flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-auto">
+      <section className="dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-[#f7f7f5] px-4 py-2 sm:px-6">
+          <p className="hidden text-xs text-muted-foreground sm:block">{t("leadSheetScrollHint")}</p>
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label={t("leadSheetScrollLeft")}
+              title={t("leadSheetScrollLeft")}
+              onClick={() => scrollSheet(-1)}
+            >
+              <ChevronLeftIcon />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label={t("leadSheetScrollRight")}
+              title={t("leadSheetScrollRight")}
+              onClick={() => scrollSheet(1)}
+            >
+              <ChevronRightIcon />
+            </Button>
+          </div>
+        </div>
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-auto overscroll-contain [&::-webkit-scrollbar]:size-3 [&::-webkit-scrollbar-corner]:bg-[#efeae4] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-[#efeae4] [&::-webkit-scrollbar-thumb]:bg-[#b9ada0] hover:[&::-webkit-scrollbar-thumb]:bg-[#9d8f80] [&::-webkit-scrollbar-track]:bg-[#efeae4]"
+        >
           <LeadsTable
             columns={leadSheet.columns}
             leads={filtered}
