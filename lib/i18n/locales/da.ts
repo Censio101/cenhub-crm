@@ -894,6 +894,7 @@ const daMessages = {
   clientSwitcherSearchLimit: "{count} flere matcher — præcisér søgningen",
   clientSwitcherSearchHint: "Skriv for at finde andre klienter",
   adminOpeningClientWorkspace: "Åbner klient-dashboard…",
+  clientPickerLoadError: "Kunne ikke hente dine klienter. Tjek forbindelsen og prøv igen.",
   clientSwitcherFullList: "Åbn fuld klientliste",
   setting: "Indstillinger",
   sync: "Sync",

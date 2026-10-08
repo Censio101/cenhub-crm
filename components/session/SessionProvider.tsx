@@ -52,8 +52,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [isAdminViewingClient, setIsAdminViewingClient] = useState(false)
   const [loading, setLoading] = useState(configured)
   const sessionResolvedRef = useRef(false)
+  /** Only the most recently started session fetch may write state (stale responses are dropped). */
+  const reloadSeqRef = useRef(0)
 
   const reload = useCallback(async (options?: SessionReloadOptions) => {
+    const seq = ++reloadSeqRef.current
+    const isStale = () => seq !== reloadSeqRef.current
+
     if (!configured) {
       setLoading(false)
       return
@@ -78,11 +83,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         cache: "no-store",
         credentials: "include",
       })
+      if (isStale()) return
       if (!response.ok) {
-        setUser(null)
-        setOrganization(null)
-        setRole(null)
-        setIsAdminViewingClient(false)
+        // A transient server error must not wipe a session we already resolved.
+        if (response.status === 401 || response.status === 403 || !sessionResolvedRef.current) {
+          setUser(null)
+          setOrganization(null)
+          setRole(null)
+          setIsAdminViewingClient(false)
+        }
         return
       }
 
@@ -95,6 +104,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         organization?: ActiveOrganization | null
         isAdminViewingClient?: boolean
       }
+      if (isStale()) return
 
       const id = data.userId ?? authUser?.id ?? null
       setUser(
@@ -121,7 +131,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setIsAdminViewingClient(Boolean(data.isAdminViewingClient))
       sessionResolvedRef.current = true
     } finally {
-      if (!background) {
+      // Only the latest fetch settles `loading`; an older one must not end it early.
+      if (!isStale()) {
         setLoading(false)
       }
     }

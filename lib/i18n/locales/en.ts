@@ -893,6 +893,7 @@ export const en: Messages = {
   clientSwitcherSearchLimit: "{count} more matches — refine your search",
   clientSwitcherSearchHint: "Type to find other clients",
   adminOpeningClientWorkspace: "Opening client dashboard…",
+  clientPickerLoadError: "Couldn't load your clients. Check your connection and try again.",
   clientSwitcherFullList: "Open full client list",
   setting: "Setting",
   sync: "Sync",

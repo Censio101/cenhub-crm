@@ -46,6 +46,7 @@ export function AdminClientAutoSelectProvider({ children }: { children: ReactNod
   const { pickerOrganizations, loading: listLoading } = useAdminOrganizationList()
   const [autoSelecting, setAutoSelecting] = useState(false)
   const inFlightRef = useRef(false)
+  const attemptsRef = useRef(0)
 
   const runAutoSelect = useCallback(async () => {
     const slugs = orderSlugsForAutoSelect(pickerOrganizations)
@@ -69,6 +70,7 @@ export function AdminClientAutoSelectProvider({ children }: { children: ReactNod
 
   useEffect(() => {
     if (organization) {
+      attemptsRef.current = 0
       setAutoSelecting(false)
       return
     }
@@ -77,6 +79,9 @@ export function AdminClientAutoSelectProvider({ children }: { children: ReactNod
     if (!needsClientSelection) return
     if (pickerOrganizations.length === 0) return
     if (inFlightRef.current) return
+    // Give up after a few rounds so a failing API can never spin forever (picker list takes over).
+    if (attemptsRef.current >= 3) return
+    attemptsRef.current += 1
 
     void runAutoSelect()
   }, [
