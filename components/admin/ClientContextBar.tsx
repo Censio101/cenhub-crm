@@ -153,11 +153,6 @@ export function ClientContextBar() {
                     className="h-9 w-full rounded-md border border-border bg-white pr-2 pl-8 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
                   />
                 </div>
-                {!isSearching && listState.hiddenCount > 0 ? (
-                  <p className="mt-2 px-0.5 text-xs text-muted-foreground">
-                    {t("clientSwitcherSearchHint")}
-                  </p>
-                ) : null}
               </div>
               <ul
                 className="max-h-64 overflow-y-auto px-1 pt-1 pb-3"

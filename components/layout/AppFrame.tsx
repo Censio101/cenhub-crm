@@ -38,8 +38,6 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     organization !== null &&
     role === "censio_admin"
 
-  const animateDashboardMain = onClientDashboard && !orgLoading
-
   return (
     <div
       className={cn(
@@ -62,9 +60,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
         className={cn(
           "flex min-w-0 flex-1 flex-col",
           publicSignupPage && "bg-[#faf8f6]",
-          isAdminRoute ? "min-h-0 p-0" : "px-4 py-8 sm:px-6 lg:px-8 xl:px-10",
-          animateDashboardMain &&
-            "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
+          isAdminRoute ? "min-h-0 p-0" : "px-4 py-8 sm:px-6 lg:px-8 xl:px-10"
         )}
       >
         {children}

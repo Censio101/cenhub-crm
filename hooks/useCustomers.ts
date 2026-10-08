@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import type { MessageKey } from "@/lib/i18n"
 import {
@@ -10,6 +11,8 @@ import {
   hasCustomersCache,
   setCustomersCache,
 } from "@/lib/data/client-cache"
+import { fetchJsonDeduped } from "@/lib/data/in-flight"
+import { createRequestGuard } from "@/lib/data/request-guard"
 import type { Customer } from "@/lib/customers"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
@@ -27,30 +30,38 @@ type CustomersResponse = {
 }
 
 export function useCustomers() {
-  const cached = getCustomersCache()
-  const [customers, setCustomers] = useState<Customer[]>(() => cached?.customers ?? [])
-  const [organizationName, setOrganizationName] = useState<string | null>(
-    () => cached?.organizationName ?? null
+  const { organization } = useActiveOrganization()
+  const activeSlug = organization?.slug ?? null
+  const [customers, setCustomers] = useState<Customer[]>(
+    () => getCustomersCache(activeSlug)?.customers ?? []
   )
-  const [loading, setLoading] = useState(() => !hasCustomersCache())
+  const [organizationName, setOrganizationName] = useState<string | null>(
+    () => getCustomersCache(activeSlug)?.organizationName ?? null
+  )
+  const [loading, setLoading] = useState(() => !hasCustomersCache(activeSlug))
   const [error, setError] = useState<MessageKey | null>(null)
   const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [dataSource, setDataSource] = useState<"mock" | "supabase">(
-    () => cached?.source ?? "supabase"
+    () => getCustomersCache(activeSlug)?.source ?? "supabase"
   )
+  const [guard] = useState(createRequestGuard)
+
+  useEffect(() => () => guard.dispose(), [guard])
 
   const loadCustomers = useCallback(async () => {
+    const isCurrent = guard.begin()
     const showLoading = !hasCustomersCache()
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
 
     try {
-      const response = await fetch("/api/customers", { cache: "no-store" })
-      const data = (await response.json()) as CustomersResponse
+      const result = await fetchJsonDeduped<CustomersResponse>("/api/customers")
+      if (!isCurrent()) return
+      const data = result.data
 
-      if (!response.ok) {
-        if (data.error === NO_ACTIVE_ORGANIZATION_ERROR) {
+      if (!result.ok || !data) {
+        if (data?.error === NO_ACTIVE_ORGANIZATION_ERROR) {
           setCustomers([])
           setOrganizationName(null)
           setDataSource("supabase")
@@ -77,14 +88,14 @@ export function useCustomers() {
         organizationSlug: data.organization?.slug ?? null,
       })
     } catch (loadError) {
+      if (!isCurrent()) return
       console.error(loadError)
-      setCustomers([])
-      setDataSource("supabase")
+      // Keep the customers already on screen; only surface the error (with a retry in the UI).
       setError("customersLoadError")
     } finally {
-      if (showLoading) setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
-  }, [])
+  }, [guard])
 
   useAsyncEffect(() => {
     void loadCustomers()
@@ -92,6 +103,10 @@ export function useCustomers() {
 
   useEffect(() => {
     const onOrgChanged = () => {
+      // Drop the previous client's customers immediately; never show them while the new client loads.
+      setCustomers([])
+      setOrganizationName(null)
+      setLoading(true)
       void loadCustomers()
     }
     window.addEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)

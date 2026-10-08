@@ -1,11 +1,11 @@
 import { Suspense } from "react"
 
 import { CustomersBoard } from "@/components/customers/CustomersBoard"
-import { DashboardSkeleton } from "@/components/performance/DashboardStates"
+import { ClientPageBootstrapSpinner } from "@/components/client/ClientPageBootstrapSpinner"
 
 export default function KunderPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <Suspense fallback={<ClientPageBootstrapSpinner />}>
       <CustomersBoard />
     </Suspense>
   )

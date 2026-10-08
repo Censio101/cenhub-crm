@@ -5,6 +5,9 @@ import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
+import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
+import { CustomersBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
@@ -63,6 +66,7 @@ export function CustomersBoard() {
   const { enabledServices } = useCompanyServices()
   const {
     view,
+    pending,
     onPresetChange,
     onCustomRange,
     onComparisonChange,
@@ -70,7 +74,7 @@ export function CustomersBoard() {
     onFunnelChange,
     onSegmentChange,
   } = useDashboardViewState("/kunder")
-  const { customers, organizationName, error } = useCustomers()
+  const { customers, organizationName, loading, error, reload } = useCustomers()
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">(
     "all"
   )
@@ -106,7 +110,13 @@ export function CustomersBoard() {
               ? t("customersSubtitleOrg", { name: organizationName })
               : t("customersSubtitleDefault")}
           </p>
-          {error ? (
+          {error === "customersLoadError" ? (
+            <LoadErrorNotice
+              className="mt-1"
+              message={t(error)}
+              onRetry={() => void reload()}
+            />
+          ) : error ? (
             <p className="mt-1 text-xs text-muted-foreground" role="status">
               {t(error)}
             </p>
@@ -166,6 +176,10 @@ export function CustomersBoard() {
         </div>
       </header>
 
+      {loading ? (
+        <CustomersBoardSkeleton />
+      ) : (
+        <ClientBoardEnter className="flex flex-col gap-6" pending={pending}>
       <section aria-label={t("customersOverviewAria")}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <OverviewStat
@@ -198,6 +212,8 @@ export function CustomersBoard() {
           />
         </div>
       </section>
+        </ClientBoardEnter>
+      )}
     </div>
     </AdminClientRouteGate>
   )

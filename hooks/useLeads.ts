@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import type { MessageKey } from "@/lib/i18n"
 import {
   CLIENT_ORG_CHANGED_EVENT,
   getLeadsCache,
   hasLeadsCache,
+  replaceCachedLeads,
   setLeadsCache,
 } from "@/lib/data/client-cache"
+import { fetchJsonDeduped } from "@/lib/data/in-flight"
+import { createRequestGuard } from "@/lib/data/request-guard"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
 import { fetchCompanyConfig, leadSheetOrDefault } from "@/lib/data/company-config"
 import { buildDefaultLeadSheetConfig } from "@/lib/lead-sheet/default-config"
@@ -43,32 +47,38 @@ async function fetchLeadSheetConfig(): Promise<ResolvedLeadSheetConfig> {
 }
 
 export function useLeads() {
-  const cached = getLeadsCache()
-  const [leads, setLeads] = useState<Lead[]>(() => cached?.leads ?? [])
+  const { organization } = useActiveOrganization()
+  const activeSlug = organization?.slug ?? null
+  const [leads, setLeads] = useState<Lead[]>(() => getLeadsCache(activeSlug)?.leads ?? [])
   const [leadSheet, setLeadSheet] = useState<ResolvedLeadSheetConfig>(() =>
     buildDefaultLeadSheetConfig()
   )
-  const [loading, setLoading] = useState(() => !hasLeadsCache())
+  const [loading, setLoading] = useState(() => !hasLeadsCache(activeSlug))
   const [error, setError] = useState<MessageKey | null>(null)
   const [needsClientSelection, setNeedsClientSelection] = useState(false)
   const [dataSource, setDataSource] = useState<"mock" | "supabase">(
-    () => cached?.source ?? "supabase"
+    () => getLeadsCache(activeSlug)?.source ?? "supabase"
   )
   const pendingPatches = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const lastSheetFetchRef = useRef(0)
+  const [guard] = useState(createRequestGuard)
+
+  useEffect(() => () => guard.dispose(), [guard])
 
   const loadLeads = useCallback(async () => {
+    const isCurrent = guard.begin()
     const showLoading = !hasLeadsCache()
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
 
     try {
-      const response = await fetch("/api/leads", { cache: "no-store" })
-      const data = (await response.json()) as LeadsResponse
+      const result = await fetchJsonDeduped<LeadsResponse>("/api/leads")
+      if (!isCurrent()) return
+      const data = result.data
 
-      if (!response.ok) {
-        if (data.error === NO_ACTIVE_ORGANIZATION_ERROR) {
+      if (!result.ok || !data) {
+        if (data?.error === NO_ACTIVE_ORGANIZATION_ERROR) {
           setLeads([])
           setDataSource("supabase")
           setNeedsClientSelection(true)
@@ -91,20 +101,21 @@ export function useLeads() {
 
       if (data.source === "supabase") {
         const sheet = await fetchLeadSheetConfig()
+        if (!isCurrent()) return
         lastSheetFetchRef.current = Date.now()
         setLeadSheet(sheet)
       } else {
         setLeadSheet(buildDefaultLeadSheetConfig())
       }
     } catch (loadError) {
+      if (!isCurrent()) return
       console.error(loadError)
-      setLeads([])
-      setDataSource("supabase")
+      // Keep the leads already on screen; only surface the error (with a retry in the UI).
       setError("leadsLoadError")
     } finally {
-      if (showLoading) setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
-  }, [])
+  }, [guard])
 
   useAsyncEffect(() => {
     void loadLeads()
@@ -137,6 +148,10 @@ export function useLeads() {
 
   useEffect(() => {
     const onOrgChanged = () => {
+      // Drop the previous client's leads immediately; never show them while the new client loads.
+      setLeads([])
+      setLeadSheet(buildDefaultLeadSheetConfig())
+      setLoading(true)
       void loadLeads()
     }
     window.addEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
@@ -161,7 +176,7 @@ export function useLeads() {
         const data = (await response.json()) as { lead: Lead }
         setLeads((current) => {
           const next = current.map((lead) => (lead.id === id ? data.lead : lead))
-          setLeadsCache({ leads: next, source: dataSource })
+          replaceCachedLeads(next, dataSource)
           return next
         })
       } catch (patchError) {
@@ -186,7 +201,7 @@ export function useLeads() {
           }
           return { ...lead, ...patch }
         })
-        setLeadsCache({ leads: next, source: dataSource })
+        replaceCachedLeads(next, dataSource)
         return next
       })
 
@@ -215,7 +230,7 @@ export function useLeads() {
       const prepend = (created: Lead) =>
         setLeads((current) => {
           const next = [created, ...current.filter((item) => item.id !== created.id)]
-          setLeadsCache({ leads: next, source: dataSource })
+          replaceCachedLeads(next, dataSource)
           return next
         })
 
@@ -255,7 +270,7 @@ export function useLeads() {
     async (id: string) => {
       setLeads((current) => {
         const next = current.filter((lead) => lead.id !== id)
-        setLeadsCache({ leads: next, source: dataSource })
+        replaceCachedLeads(next, dataSource)
         return next
       })
 

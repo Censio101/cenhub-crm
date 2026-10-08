@@ -14,6 +14,9 @@ import {
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
+import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
+import { LeadsBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
 import { LeadDateTimeCell } from "@/components/leads/LeadDateTimeCell"
 import { AddLeadDialog } from "@/components/leads/AddLeadDialog"
 import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
@@ -869,6 +872,7 @@ export function LeadsBoard() {
   const { t } = useLanguage()
   const {
     view,
+    pending,
     onPresetChange,
     onCustomRange,
     onComparisonChange,
@@ -879,11 +883,13 @@ export function LeadsBoard() {
   const {
     leads,
     leadSheet,
+    loading,
     error,
     dataSource,
     updateLead,
     createLead,
     deleteLead,
+    reload,
   } = useLeads()
   const [statusFilter, setStatusFilter] = useState<LeadStatusId | "all">("all")
   const [dateSort, setDateSort] = useState<"asc" | "desc">("desc")
@@ -919,7 +925,13 @@ export function LeadsBoard() {
             {t("leadSheetPageTitle")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("leadSheetPageIntro")}</p>
-          {error ? (
+          {error === "leadsLoadError" ? (
+            <LoadErrorNotice
+              className="mt-2"
+              message={t(error)}
+              onRetry={() => void reload()}
+            />
+          ) : error ? (
             <p className="mt-2 text-sm text-amber-700">{t(error)}</p>
           ) : null}
           {dataSource === "supabase" ? (
@@ -998,6 +1010,10 @@ export function LeadsBoard() {
         </div>
       </header>
 
+      {loading ? (
+        <LeadsBoardSkeleton />
+      ) : (
+        <ClientBoardEnter className="flex flex-col gap-6" pending={pending}>
       <LeadPipelineBar stats={pipelineStats} />
 
       <section className="dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden">
@@ -1044,6 +1060,8 @@ export function LeadsBoard() {
         </div>
         <LeadPipelineFooter stats={pipelineStats} />
       </section>
+        </ClientBoardEnter>
+      )}
     </div>
     </AdminClientRouteGate>
   )

@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
-import { DashboardSkeleton } from "@/components/performance/DashboardStates"
+import { ClientPageBootstrapSpinner } from "@/components/client/ClientPageBootstrapSpinner"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { isOnboardingContactEmailValid } from "@/lib/onboarding/application-input"
 import type { OrganizationLogoBackground } from "@/lib/organization-logo"
@@ -230,7 +230,7 @@ export function CompanyDetailsBoard() {
   }
 
   if (resolvingActiveClient) {
-    return <DashboardSkeleton />
+    return <ClientPageBootstrapSpinner />
   }
 
   if (mustPickClient) {

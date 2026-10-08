@@ -184,11 +184,6 @@ function AdminClientScopeBarContent() {
                   ))
                 )}
               </ul>
-              {!listLoading && listState.hiddenCount > 0 && !isSearching ? (
-                <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-                  {t("clientSwitcherMoreCount", { count: listState.hiddenCount })}
-                </div>
-              ) : null}
             </PopoverContent>
           </Popover>
 

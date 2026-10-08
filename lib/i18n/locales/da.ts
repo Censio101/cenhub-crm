@@ -953,6 +953,7 @@ const daMessages = {
   metaSyncRelativeHours: "{count} t siden",
   metaSyncRelativeDays: "{count} d siden",
 
+  clientPageBootstrapLoading: "Indlæser",
   dashboardLoadingOverview: "Indlæser overblik",
   dashboardEmptyTitle: "Ingen leads i den valgte periode",
   dashboardEmptyBody:

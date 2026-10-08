@@ -132,6 +132,8 @@
 @utility dashboard-card {
   @apply border border-border bg-card shadow-none ring-0;
   border-radius: 15px;
+  /* Fixed-width digits so figures don't shift horizontally when data replaces skeletons. */
+  font-variant-numeric: tabular-nums;
 }
 
 /**
@@ -160,6 +162,37 @@
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Thin indeterminate progress line shown while filters change. */
+@keyframes client-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.client-progress-bar {
+  animation: client-progress 1.2s ease-in-out infinite;
+}
+
+/* Respect "reduce motion": no shimmer sweep, a much slower spinner. */
+@media (prefers-reduced-motion: reduce) {
+  .client-progress-bar {
+    animation: none;
+    width: 100%;
+  }
+
+  .skeleton-shimmer {
+    animation: none;
+    background-image: none;
+  }
+
+  .animate-spin {
+    animation-duration: 3s !important;
+  }
 }
 
 @utility dashboard-chip {

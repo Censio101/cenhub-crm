@@ -951,6 +951,7 @@ export const en: Messages = {
   metaSyncRelativeHours: "{count} h ago",
   metaSyncRelativeDays: "{count} d ago",
 
+  clientPageBootstrapLoading: "Loading",
   dashboardLoadingOverview: "Loading overview",
   dashboardEmptyTitle: "No leads in the selected period",
   dashboardEmptyBody:
