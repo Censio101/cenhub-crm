@@ -29,22 +29,7 @@ async function fetchPickerClients(): Promise<HubClient[] | null> {
       })
       if (response.ok) {
         const data = (await response.json()) as { clients?: HubClient[] }
-        const clients = data.clients ?? []
-        // #region agent log
-        fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
-          body: JSON.stringify({
-            sessionId: "138f58",
-            hypothesisId: "H2",
-            location: "useAdminOrganizationList.ts",
-            message: "picker_fetch_ok",
-            data: { attempt, rawCount: clients.length, inAppWithSlug: clients.filter((c) => c.inApp && c.slug).length },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {})
-        // #endregion
-        return clients
+        return data.clients ?? []
       }
     } catch {
       // retry below

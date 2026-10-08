@@ -60,20 +60,6 @@ export function useDashboardData(): DashboardDataState {
 
       if (!leadsResponse.ok) {
         if (leadsPayload.error === NO_ACTIVE_ORGANIZATION_ERROR) {
-          // #region agent log
-          fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
-            body: JSON.stringify({
-              sessionId: "138f58",
-              hypothesisId: "H3",
-              location: "useDashboardData.ts",
-              message: "data_needs_client_selection",
-              data: { status: leadsResponse.status },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => {})
-          // #endregion
           setLeads([])
           setAdSpendByMonth({})
           setSource("supabase")

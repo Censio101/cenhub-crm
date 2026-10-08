@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { Loader2Icon, SearchIcon } from "lucide-react"
 
 import { useAdminClientAutoSelect } from "@/components/admin/AdminClientAutoSelectContext"
@@ -21,13 +21,8 @@ const cardClass =
 export function SelectClientEmptyState() {
   const { t } = useLanguage()
   const { autoSelecting } = useAdminClientAutoSelect()
-  const {
-    needsClientSelection,
-    organization,
-    role,
-    loading: sessionLoading,
-    setActiveOrganization,
-  } = useActiveOrganization()
+  const { needsClientSelection, loading: sessionLoading, setActiveOrganization } =
+    useActiveOrganization()
   const {
     pickerOrganizations,
     loading: listLoading,
@@ -44,48 +39,6 @@ export function SelectClientEmptyState() {
 
   const showOpeningSpinner =
     needsClientSelection && (sessionLoading || listLoading || autoSelecting || openingSlug !== null)
-
-  let uiBranch: "spinner" | "loadError" | "picker" | "emptyNoClients" = "emptyNoClients"
-  if (showOpeningSpinner) uiBranch = "spinner"
-  else if (listError && pickerOrganizations.length === 0) uiBranch = "loadError"
-  else if (needsClientSelection && pickerOrganizations.length > 0) uiBranch = "picker"
-
-  useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "138f58" },
-      body: JSON.stringify({
-        sessionId: "138f58",
-        hypothesisId: "H3",
-        location: "SelectClientEmptyState.tsx",
-        message: "render_state",
-        data: {
-          uiBranch,
-          sessionNeedsClient: needsClientSelection,
-          orgSlug: organization?.slug ?? null,
-          role,
-          pickerCount: pickerOrganizations.length,
-          listError,
-          listLoading,
-          sessionLoading,
-          autoSelecting,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
-  }, [
-    uiBranch,
-    needsClientSelection,
-    organization?.slug,
-    role,
-    pickerOrganizations.length,
-    listError,
-    listLoading,
-    sessionLoading,
-    autoSelecting,
-  ])
 
   async function handleOpen(slug: string) {
     if (openingSlug) return
