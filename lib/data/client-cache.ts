@@ -103,6 +103,14 @@ export function hasCustomersCache(expectedSlug?: string | null): boolean {
 }
 
 export const CLIENT_ORG_CHANGED_EVENT = "crm-client-org-changed"
+/** Won customers list should reload after lead edits (server syncs customers from won leads). */
+export const CLIENT_CUSTOMERS_REFRESH_EVENT = "crm-customers-refresh"
+
+export function emitCustomersRefresh() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CLIENT_CUSTOMERS_REFRESH_EVENT))
+  }
+}
 
 export function clearClientCaches() {
   leadsCache = null

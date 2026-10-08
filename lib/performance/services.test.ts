@@ -59,7 +59,8 @@ describe("service filter", () => {
   })
 
   it("accumulates year totals from January onward", () => {
-    const data = getPerformanceDashboard({ range: ytd2026 })
+    const now = new Date(2026, 9, 8)
+    const data = getPerformanceDashboard({ range: ytd2026 }, undefined, { now })
     const last = data.year.cumulativeBuckets.at(-1)
     const monthlyRevenue = data.year.monthlyBuckets.reduce(
       (sum, bucket) => sum + bucket.revenue,
@@ -67,7 +68,7 @@ describe("service filter", () => {
     )
 
     expect(data.year.year).toBe(2026)
-    expect(data.year.monthlyBuckets).toHaveLength(12)
+    expect(data.year.monthlyBuckets).toHaveLength(10)
     expect(last?.revenue).toBe(monthlyRevenue)
     expect(data.year.cumulativeBuckets[0]?.revenue).toBe(
       data.year.monthlyBuckets[0]?.revenue

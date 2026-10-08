@@ -9,6 +9,7 @@ import {
   CLIENT_ORG_CHANGED_EVENT,
   getLeadsCache,
   hasLeadsCache,
+  emitCustomersRefresh,
   replaceCachedLeads,
   setLeadsCache,
 } from "@/lib/data/client-cache"
@@ -32,6 +33,30 @@ type LeadsResponse = {
   }
   error?: string
   message?: string
+}
+
+export type SaveStatus = "idle" | "saving" | "saved" | "error"
+
+/** Applies an edit to a lead; custom fields are merged key by key. */
+function applyPatchToLead(lead: Lead, patch: LeadPatch): Lead {
+  if (patch.customFields !== undefined) {
+    return {
+      ...lead,
+      ...patch,
+      customFields: { ...lead.customFields, ...patch.customFields },
+    }
+  }
+  return { ...lead, ...patch }
+}
+
+/** Combines two edits of the same lead (later values win, custom fields merge). */
+function mergeLeadPatches(first: LeadPatch | undefined, second: LeadPatch): LeadPatch {
+  if (!first) return second
+  const merged: LeadPatch = { ...first, ...second }
+  if (first.customFields !== undefined || second.customFields !== undefined) {
+    merged.customFields = { ...first.customFields, ...second.customFields }
+  }
+  return merged
 }
 
 /** Minimum time between focus-triggered refreshes of the lead sheet config. */
@@ -60,6 +85,11 @@ export function useLeads() {
     () => getLeadsCache(activeSlug)?.source ?? "supabase"
   )
   const pendingPatches = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  /** Edits waiting for the debounce timer, merged per lead. */
+  const pendingData = useRef<Map<string, LeadPatch>>(new Map())
+  const inflightSaves = useRef(0)
+  const saveFailed = useRef(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const lastSheetFetchRef = useRef(0)
   const [guard] = useState(createRequestGuard)
 
@@ -162,6 +192,9 @@ export function useLeads() {
     async (id: string, patch: LeadPatch) => {
       if (dataSource === "mock") return
 
+      inflightSaves.current += 1
+      setSaveStatus("saving")
+
       try {
         const response = await fetch(`/api/leads/${id}`, {
           method: "PATCH",
@@ -174,14 +207,26 @@ export function useLeads() {
         }
 
         const data = (await response.json()) as { lead: Lead }
-        setLeads((current) => {
-          const next = current.map((lead) => (lead.id === id ? data.lead : lead))
-          replaceCachedLeads(next, dataSource)
-          return next
-        })
+        // Newer edits are still queued for this lead: keep what is on screen instead of
+        // overwriting the user's latest typing with this (older) server copy.
+        if (!pendingData.current.has(id)) {
+          setLeads((current) => {
+            const next = current.map((lead) => (lead.id === id ? data.lead : lead))
+            replaceCachedLeads(next, dataSource)
+            return next
+          })
+        }
+        emitCustomersRefresh()
       } catch (patchError) {
         console.error(patchError)
+        saveFailed.current = true
         setError("leadsSaveError")
+      } finally {
+        inflightSaves.current -= 1
+        if (inflightSaves.current === 0 && pendingData.current.size === 0) {
+          setSaveStatus(saveFailed.current ? "error" : "saved")
+          saveFailed.current = false
+        }
       }
     },
     [dataSource]
@@ -190,22 +235,16 @@ export function useLeads() {
   const updateLead = useCallback(
     (id: string, patch: LeadPatch) => {
       setLeads((current) => {
-        const next = current.map((lead) => {
-          if (lead.id !== id) return lead
-          if (patch.customFields !== undefined) {
-            return {
-              ...lead,
-              ...patch,
-              customFields: { ...lead.customFields, ...patch.customFields },
-            }
-          }
-          return { ...lead, ...patch }
-        })
+        const next = current.map((lead) => (lead.id === id ? applyPatchToLead(lead, patch) : lead))
         replaceCachedLeads(next, dataSource)
         return next
       })
 
       if (dataSource === "mock") return
+
+      // Edits to different fields inside the debounce window are merged, never dropped.
+      pendingData.current.set(id, mergeLeadPatches(pendingData.current.get(id), patch))
+      setSaveStatus("saving")
 
       const existing = pendingPatches.current.get(id)
       if (existing) clearTimeout(existing)
@@ -214,11 +253,113 @@ export function useLeads() {
         id,
         setTimeout(() => {
           pendingPatches.current.delete(id)
-          void persistPatch(id, patch)
+          const queued = pendingData.current.get(id)
+          pendingData.current.delete(id)
+          if (queued) void persistPatch(id, queued)
         }, 400)
       )
     },
     [dataSource, persistPatch]
+  )
+
+  /** Sends queued edits right away (used when the tab is closed or hidden). */
+  useEffect(() => {
+    const flush = () => {
+      for (const [id, timer] of pendingPatches.current) {
+        clearTimeout(timer)
+        const queued = pendingData.current.get(id)
+        if (queued) {
+          void fetch(`/api/leads/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(queued),
+            keepalive: true,
+          })
+        }
+      }
+      pendingPatches.current.clear()
+      pendingData.current.clear()
+    }
+    window.addEventListener("pagehide", flush)
+    return () => window.removeEventListener("pagehide", flush)
+  }, [])
+
+  /**
+   * Saves one lead from the edit popup and waits for the server. Failures are thrown (with the
+   * server's message) so the popup can stay open and show them. Edits still queued from the
+   * sheet are sent in the same request.
+   */
+  const saveLead = useCallback(
+    async (id: string, patch: LeadPatch): Promise<Lead> => {
+      const timer = pendingPatches.current.get(id)
+      if (timer) clearTimeout(timer)
+      pendingPatches.current.delete(id)
+      const queued = pendingData.current.get(id)
+      pendingData.current.delete(id)
+      const merged = mergeLeadPatches(queued, patch)
+
+      const replaceLocal = (saved: Lead) =>
+        setLeads((current) => {
+          const next = current.map((lead) => (lead.id === id ? saved : lead))
+          replaceCachedLeads(next, dataSource)
+          return next
+        })
+
+      if (dataSource === "mock") {
+        let updated: Lead | null = null
+        setLeads((current) => {
+          const next = current.map((lead) => {
+            if (lead.id !== id) return lead
+            updated = applyPatchToLead(lead, merged)
+            return updated
+          })
+          replaceCachedLeads(next, dataSource)
+          return next
+        })
+        return updated ?? (merged as Lead)
+      }
+
+      inflightSaves.current += 1
+      setSaveStatus("saving")
+      try {
+        let response: Response
+        try {
+          response = await fetch(`/api/leads/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(merged),
+          })
+        } catch (networkError) {
+          console.error(networkError)
+          throw new Error("leadsSaveError")
+        }
+
+        const data = (await response.json().catch(() => null)) as {
+          lead?: Lead
+          error?: string
+        } | null
+
+        if (!response.ok || !data?.lead) {
+          throw new Error(data?.error || "leadsSaveError")
+        }
+
+        replaceLocal(data.lead)
+        emitCustomersRefresh()
+        setError(null)
+        saveFailed.current = false
+        return data.lead
+      } catch (saveError) {
+        saveFailed.current = true
+        throw saveError
+      } finally {
+        inflightSaves.current -= 1
+        if (inflightSaves.current === 0 && pendingData.current.size === 0) {
+          setSaveStatus(saveFailed.current ? "error" : "saved")
+          saveFailed.current = false
+        }
+      }
+    },
+    [dataSource]
   )
 
   /**
@@ -261,6 +402,7 @@ export function useLeads() {
       }
 
       prepend(data.lead)
+      if (data.lead.status === "won") emitCustomersRefresh()
       return data.lead
     },
     [dataSource]
@@ -281,6 +423,7 @@ export function useLeads() {
         if (!response.ok) {
           throw new Error("leadsDeleteError")
         }
+        emitCustomersRefresh()
       } catch (deleteError) {
         console.error(deleteError)
         setError("leadsDeleteError")
@@ -297,7 +440,9 @@ export function useLeads() {
     error,
     needsClientSelection,
     dataSource,
+    saveStatus,
     updateLead,
+    saveLead,
     createLead,
     deleteLead,
     reload: loadLeads,

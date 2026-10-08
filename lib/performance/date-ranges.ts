@@ -57,6 +57,21 @@ export function resolvePreset(
   }
 }
 
+/** Monthly table/chart: Jan → current month (same year as `now`), or full year if viewing a past year. */
+export function resolveYearOverviewRange(
+  year: number,
+  now: Date = new Date()
+): DateRange {
+  const start = startOfYear(new Date(year, 0, 1))
+  if (year < now.getFullYear()) {
+    return { start, end: endOfYear(start) }
+  }
+  if (year > now.getFullYear()) {
+    return { start, end: endOfMonth(start) }
+  }
+  return { start, end: endOfMonth(now) }
+}
+
 export function previousPeriod(range: DateRange): DateRange {
   const currentStart = startOfDay(range.start)
   const currentEnd = startOfDay(range.end)

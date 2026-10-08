@@ -6,6 +6,7 @@ import { useEffect } from "react"
 import {
   Building2Icon,
   CircleDotIcon,
+  RefreshCwIcon,
   FileInputIcon,
   FileUpIcon,
   WrenchIcon,
@@ -82,6 +83,7 @@ export function ClientManageSidebar() {
     router.prefetch(adminClientSettingsBasePath(slug))
     router.prefetch(adminClientSettingsSectionPath(slug, "company"))
     router.prefetch(adminClientSettingsSectionPath(slug, "meta"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "meta-sync"))
     router.prefetch(adminClientSettingsSectionPath(slug, "meta-instant-forms"))
     router.prefetch(adminClientSettingsSectionPath(slug, "industries"))
     router.prefetch(adminClientSettingsSectionPath(slug, "lead-sheet"))
@@ -112,6 +114,12 @@ export function ClientManageSidebar() {
       labelKey: "clientNavMeta",
       icon: CircleDotIcon,
       active: section === "meta",
+    },
+    {
+      href: adminClientSettingsSectionPath(slug, "meta-sync"),
+      labelKey: "clientNavMetaSync",
+      icon: RefreshCwIcon,
+      active: section === "meta-sync",
     },
     {
       href: adminClientSettingsSectionPath(slug, "meta-instant-forms"),

@@ -14,6 +14,7 @@ export type AdminClientSection =
   | "overview"
   | "company"
   | "meta"
+  | "meta-sync"
   | "meta-instant-forms"
   | "industries"
   | "lead-sheet"
@@ -75,6 +76,12 @@ function sectionSuffix(pathname: string, slug: string): AdminClientSection | nul
     pathname.startsWith(`${legacyBase}/meta-instant-forms`)
   ) {
     return "meta-instant-forms"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/meta-sync`) ||
+    pathname.startsWith(`${legacyBase}/meta-sync`)
+  ) {
+    return "meta-sync"
   }
   if (
     pathname.startsWith(`${canonicalBase}/lead-sheet`) ||

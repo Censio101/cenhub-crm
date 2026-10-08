@@ -28,11 +28,34 @@ export async function GET() {
       ctx.organization.id
     )
 
-    return NextResponse.json({
+    const payload = {
       adSpendByMonth,
       source,
       isAdminViewingClient: ctx.isAdminViewingClient,
-    })
+    }
+    // #region agent log
+    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "138f58",
+      },
+      body: JSON.stringify({
+        sessionId: "138f58",
+        hypothesisId: "A",
+        location: "ad-spend/route.ts:GET",
+        message: "ad spend api response",
+        data: {
+          orgId: ctx.organization.id,
+          orgSlug: ctx.organization.slug,
+          source,
+          monthKeys: Object.keys(adSpendByMonth),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    return NextResponse.json(payload)
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)
     if (orgResponse.status !== 500) return orgResponse

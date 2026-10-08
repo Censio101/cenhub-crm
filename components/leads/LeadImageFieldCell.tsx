@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ExternalLinkIcon, ImageIcon, PencilIcon, PlusIcon } from "lucide-react"
+import { ImageIcon, PencilIcon, PlusIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { ImageLinkPreviewDialog } from "@/components/leads/ImageLinkPreview"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -67,17 +68,23 @@ function ImageLinkForm({
   canRemove,
   onSave,
   onRemove,
+  onPreview,
 }: {
   initialText: string
   initialUrl: string
   canRemove: boolean
   onSave: (value: ImageLinkValue) => void
   onRemove: () => void
+  /** Shows what is typed in the image popup (the popover closes first). */
+  onPreview: (value: ImageLinkValue) => void
 }) {
   const { t } = useLanguage()
   const [text, setText] = useState(initialText)
   const [url, setUrl] = useState(initialUrl)
   const [error, setError] = useState<string | null>(null)
+  // The link as it would be saved, so "Open link" tests what is typed, not the old value.
+  const typed = buildImageLinkValue(text, url)
+  const openUrl = typed.ok ? typed.value.url : null
 
   function submit() {
     const built = buildImageLinkValue(text, url)
@@ -132,13 +139,24 @@ function ImageLinkForm({
         </p>
       ) : null}
       <div className="flex items-center justify-between gap-2">
-        {canRemove ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
-            {t("leadSheetImageLinkRemove")}
-          </Button>
-        ) : (
-          <span />
-        )}
+        <div className="flex items-center gap-1">
+          {canRemove ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
+              {t("leadSheetImageLinkRemove")}
+            </Button>
+          ) : null}
+          {openUrl ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-primary hover:bg-primary/10 hover:text-primary"
+              onClick={() => onPreview({ text: text.trim(), url: openUrl })}
+            >
+              {t("leadSheetImageLinkOpen")}
+            </Button>
+          ) : null}
+        </div>
         <Button type="button" size="sm" onClick={submit}>
           {t("leadSheetSaveAssignment")}
         </Button>
@@ -150,6 +168,7 @@ function ImageLinkForm({
 export function LeadImageFieldCell({ leadId, fieldKey, value, onChange, disabled }: Props) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
+  const [preview, setPreview] = useState<ImageLinkValue | null>(null)
   const parsed = parseImageCellValue(value)
 
   const triggerClass =
@@ -180,29 +199,41 @@ export function LeadImageFieldCell({ leadId, fieldKey, value, onChange, disabled
             onChange(null)
             setOpen(false)
           }}
+          onPreview={(link) => {
+            setOpen(false)
+            setPreview(link)
+          }}
         />
       </PopoverContent>
     </Popover>
   )
 
+  const previewDialog = preview ? (
+    <ImageLinkPreviewDialog
+      url={preview.url}
+      title={preview.text}
+      onClose={() => setPreview(null)}
+    />
+  ) : null
+
   if (parsed.kind === "link") {
     return (
       <div className="flex min-w-0 items-center gap-0.5">
-        <a
-          href={parsed.url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           title={parsed.url}
-          className="inline-flex min-w-0 items-center gap-1 rounded-md px-1.5 py-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md px-1.5 py-1 text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-primary/30"
+          onClick={() => setPreview({ text: parsed.text, url: parsed.url })}
         >
           <span className="truncate">{parsed.text || t("leadSheetImageView")}</span>
-          <ExternalLinkIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-        </a>
+        </button>
+        {previewDialog}
         {popover(
           <PopoverTrigger
             disabled={disabled}
             aria-label={t("leadSheetImageLinkEdit")}
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            title={t("leadSheetImageLinkEdit")}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
           >
             <PencilIcon className="size-3.5" aria-hidden />
           </PopoverTrigger>

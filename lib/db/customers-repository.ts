@@ -21,9 +21,14 @@ function mapDbSource(source: string): CustomerSourceId {
   return "website"
 }
 
-export function customerRowToCustomer(row: CustomerRow): Customer {
+type CustomerRowWithLead = CustomerRow & {
+  leads?: { custom_fields: Record<string, unknown> | null } | null
+}
+
+export function customerRowToCustomer(row: CustomerRowWithLead): Customer {
   return {
     id: row.id,
+    leadId: row.lead_id,
     closedDate: row.closed_date,
     fullName: row.full_name,
     email: row.email,
@@ -37,6 +42,7 @@ export function customerRowToCustomer(row: CustomerRow): Customer {
     salesPrice: Number(row.sales_price),
     profit: Number(row.profit),
     source: mapDbSource(row.source),
+    customFields: row.leads?.custom_fields ?? {},
   }
 }
 
@@ -46,12 +52,12 @@ export async function listCustomersForOrganization(
 ): Promise<Customer[]> {
   const { data, error } = await supabase
     .from("customers")
-    .select("*")
+    .select("*, leads ( custom_fields )")
     .eq("organization_id", organizationId)
     .order("closed_date", { ascending: false })
 
   if (error) throw error
-  return ((data ?? []) as CustomerRow[]).map(customerRowToCustomer)
+  return ((data ?? []) as CustomerRowWithLead[]).map(customerRowToCustomer)
 }
 
 export function listMockCustomers(): Customer[] {

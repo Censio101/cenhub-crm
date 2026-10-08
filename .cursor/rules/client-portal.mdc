@@ -1,0 +1,36 @@
+---
+description: Client portal UI (header, profile dropdown, auth pages, /konto, /virksomhed, client route rules)
+globs:
+  - components/layout/**
+  - components/account/**
+  - components/auth/**
+  - components/session/**
+  - components/organization/**
+  - components/performance/DashboardHeader.tsx
+  - components/overview/OverviewBoard.tsx
+  - app/konto/**
+  - app/virksomhed/**
+  - app/indstillinger/**
+  - app/login/**
+  - app/auth/**
+  - app/api/account/**
+  - hooks/useActiveOrganization.ts
+  - lib/auth/use-user-profile.ts
+  - lib/layout/**
+  - middleware.ts
+alwaysApply: false
+---
+
+# Client portal UI
+
+Before changing anything a client (`client_admin` or `client_user`) sees, read `docs/client-portal-guide.md` and follow it. Build it in the work order from section 5 of the guide.
+
+Rules that always apply:
+
+- A client sees only: Dashboard, Leads, Kunder in the header, and a dropdown with exactly Virksomhedsoplysninger (`/virksomhed`), Mine indstillinger (`/konto`), and Log ud.
+- Auth pages (`/login`, `/logget-ud`, `/auth/*`, `/tilmelding*`) show the Censio logo only: no dropdown, no nav, no language switcher.
+- Session data comes from the single session context (`useActiveOrganization` / `useUserProfile` read from it). Do not add new `/api/auth/me` fetches in components. Call `reload()` after any save the header shows.
+- Never show demo data to a signed-in client: no `CURRENT_COMPANY`, no localStorage name, picture, or logo, no Hvidbjerg badge default.
+- Choose admin vs client UI by role, never by URL. Keep the Censio admin experience unchanged.
+- Client route rules live in `lib/layout/client-routes.ts`, used by `middleware.ts`.
+- Add user-facing text to both `lib/i18n/locales/da.ts` and `lib/i18n/locales/en.ts`.

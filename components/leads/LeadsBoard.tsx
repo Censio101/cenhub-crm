@@ -1,13 +1,13 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
+
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  PencilIcon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react"
@@ -18,8 +18,12 @@ import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
 import { LeadsBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
 import { LeadDateTimeCell } from "@/components/leads/LeadDateTimeCell"
-import { AddLeadDialog } from "@/components/leads/AddLeadDialog"
+import { AddLeadDialog, EditLeadDialog } from "@/components/leads/AddLeadDialog"
 import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
+import { LeadSheetNoteCell } from "@/components/leads/LeadSheetNoteCell"
+import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
+import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
+import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { useLeadSelectOptions } from "@/components/leads/useLeadSelectOptions"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
@@ -73,10 +77,11 @@ import {
   type LeadPipelineStats,
   type LeadStatusId,
 } from "@/lib/leads"
+import { matchesSearch } from "@/lib/leads/search"
 import { cn } from "cn"
 
 const cellInputClass =
-  "h-8 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground/60 focus:bg-white focus:ring-1 focus:ring-ring"
+  "h-8 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground/60 focus:bg-white focus:ring-1 focus:ring-ring select-text"
 
 const leadHeaderCellClass =
   "sticky top-0 z-[2] h-11 border-b border-r border-white/15 bg-[#3f3a36] px-3 text-xs font-medium text-white"
@@ -464,6 +469,7 @@ function LeadsTable({
   dateSort,
   onToggleDateSort,
   onUpdate,
+  onEdit,
   onDelete,
 }: {
   columns: LeadSheetTemplateColumn[]
@@ -472,6 +478,7 @@ function LeadsTable({
   dateSort: "asc" | "desc"
   onToggleDateSort: () => void
   onUpdate: (id: string, patch: Partial<Lead>) => void
+  onEdit: (id: string) => void
   onDelete: (id: string) => void
 }) {
   const { t } = useLanguage()
@@ -520,12 +527,12 @@ function LeadsTable({
 
       if (col.customField.fieldType === "textarea") {
         return (
-          <TableCell key={col.id} className="min-w-48 px-2">
-            <textarea
+          <TableCell key={col.id} className="min-w-44 max-w-[15rem] px-2 py-1.5">
+            <LeadSheetNoteCell
               value={typeof value === "string" ? value : ""}
-              rows={2}
-              className={cn(cellInputClass, "min-h-8 resize-y py-1")}
-              onChange={(e) => patchCustom(e.target.value)}
+              fieldLabel={col.customField.label}
+              leadName={lead.fullName}
+              onChange={(next) => patchCustom(next)}
             />
           </TableCell>
         )
@@ -827,10 +834,10 @@ function LeadsTable({
           <TableHead
             className={cn(
               leadHeaderCellClass,
-              "sticky right-0 z-[3] w-11 min-w-11 border-r-0 border-l px-1 text-center"
+              "sticky right-0 z-[3] w-[4.75rem] min-w-[4.75rem] border-r-0 border-l px-1 text-center"
             )}
           >
-            <span className="sr-only">{t("leadSheetDeleteLead")}</span>
+            <span className="sr-only">{t("leadSheetEditLead")}</span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -850,14 +857,27 @@ function LeadsTable({
               {columns.map((col, colIndex) => renderColumnCell(lead, col, colIndex))}
               <TableCell
                 className={cn(
-                  "sticky right-0 z-[1] w-11 min-w-11 border-l border-border bg-card px-1",
+                  "sticky right-0 z-[1] w-[4.75rem] min-w-[4.75rem] border-l border-border bg-card px-1",
                   getWonLeadCellClass(lead.status)
                 )}
               >
-                <DeleteLeadButton
-                  leadName={lead.fullName.trim()}
-                  onDelete={() => onDelete(lead.id)}
-                />
+                <div className="flex items-center justify-center gap-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("leadSheetEditLead")}
+                    title={t("leadSheetEditLead")}
+                    className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                    onClick={() => onEdit(lead.id)}
+                  >
+                    <PencilIcon />
+                  </Button>
+                  <DeleteLeadButton
+                    leadName={lead.fullName.trim()}
+                    onDelete={() => onDelete(lead.id)}
+                  />
+                </div>
               </TableCell>
             </TableRow>
           ))
@@ -886,30 +906,41 @@ export function LeadsBoard() {
     loading,
     error,
     dataSource,
+    saveStatus,
     updateLead,
+    saveLead,
     createLead,
     deleteLead,
     reload,
   } = useLeads()
   const [statusFilter, setStatusFilter] = useState<LeadStatusId | "all">("all")
   const [dateSort, setDateSort] = useState<"asc" | "desc">("desc")
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const [search, setSearch] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const editingLead = editingId ? (leads.find((lead) => lead.id === editingId) ?? null) : null
 
-  function scrollSheet(direction: -1 | 1) {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollBy({ left: direction * Math.max(320, el.clientWidth * 0.6), behavior: "smooth" })
-  }
+  const inFilters = useMemo(
+    () =>
+      filterDashboardLeads(leads, {
+        range: view.range,
+        service: view.service,
+        funnel: view.funnel,
+        segment: view.segment,
+      }).filter((lead) => statusFilter === "all" || lead.status === statusFilter),
+    [leads, statusFilter, view]
+  )
 
   const filtered = useMemo(() => {
-    const next = filterDashboardLeads(leads, {
-      range: view.range,
-      service: view.service,
-      funnel: view.funnel,
-      segment: view.segment,
-    }).filter((lead) => statusFilter === "all" || lead.status === statusFilter)
-    return sortLeadsByDate(next, dateSort)
-  }, [dateSort, leads, statusFilter, view])
+    const searched = search.trim()
+      ? inFilters.filter((lead) =>
+          matchesSearch(
+            [lead.fullName, lead.email, lead.phone, lead.companyName, lead.city, lead.address],
+            search
+          )
+        )
+      : inFilters
+    return sortLeadsByDate(searched, dateSort)
+  }, [dateSort, inFilters, search])
 
   const pipelineStats = useMemo(() => computeLeadPipelineStats(filtered), [filtered])
 
@@ -957,6 +988,12 @@ export function LeadsBoard() {
             showComparison={false}
           />
           <div className="flex flex-wrap items-center justify-end gap-4">
+            <SheetSearchField
+              value={search}
+              onChange={setSearch}
+              placeholder={t("leadSheetSearchPlaceholder")}
+              ariaLabel={t("leadSheetSearchAria")}
+            />
             <Select
               value={statusFilter}
               onValueChange={(value) => {
@@ -1017,34 +1054,18 @@ export function LeadsBoard() {
       <LeadPipelineBar stats={pipelineStats} />
 
       <section className="dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden">
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-[#f7f7f5] px-4 py-2 sm:px-6">
-          <p className="hidden text-xs text-muted-foreground sm:block">{t("leadSheetScrollHint")}</p>
-          <div className="ml-auto flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              aria-label={t("leadSheetScrollLeft")}
-              title={t("leadSheetScrollLeft")}
-              onClick={() => scrollSheet(-1)}
-            >
-              <ChevronLeftIcon />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              aria-label={t("leadSheetScrollRight")}
-              title={t("leadSheetScrollRight")}
-              onClick={() => scrollSheet(1)}
-            >
-              <ChevronRightIcon />
-            </Button>
-          </div>
-        </div>
-        <div
-          ref={scrollRef}
-          className="min-h-0 flex-1 overflow-auto overscroll-contain [&::-webkit-scrollbar]:size-3 [&::-webkit-scrollbar-corner]:bg-[#efeae4] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-[#efeae4] [&::-webkit-scrollbar-thumb]:bg-[#b9ada0] hover:[&::-webkit-scrollbar-thumb]:bg-[#9d8f80] [&::-webkit-scrollbar-track]:bg-[#efeae4]"
+        <LeadSheetScrollArea
+          toolbarStart={
+            <>
+              <span className="text-xs font-semibold tabular-nums text-foreground">
+                {t("leadSheetRowCount", {
+                  shown: String(filtered.length),
+                  total: String(leads.length),
+                })}
+              </span>
+              <SaveStatusBadge status={saveStatus} />
+            </>
+          }
         >
           <LeadsTable
             columns={leadSheet.columns}
@@ -1053,13 +1074,23 @@ export function LeadsBoard() {
             onToggleDateSort={() => setDateSort((current) => (current === "desc" ? "asc" : "desc"))}
             emptyText={t("leadSheetEmptyFiltered")}
             onUpdate={updateLead}
+            onEdit={setEditingId}
             onDelete={(id) => {
               void deleteLead(id)
             }}
           />
-        </div>
+        </LeadSheetScrollArea>
         <LeadPipelineFooter stats={pipelineStats} />
       </section>
+      {editingLead ? (
+        <EditLeadDialog
+          key={editingLead.id}
+          columns={leadSheet.columns}
+          lead={editingLead}
+          onSave={(patch) => saveLead(editingLead.id, patch)}
+          onClose={() => setEditingId(null)}
+        />
+      ) : null}
         </ClientBoardEnter>
       )}
     </div>

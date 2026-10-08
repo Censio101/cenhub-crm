@@ -58,21 +58,32 @@ export function validateNewLead({
   draft,
   dateText,
   columns,
+  mode = "create",
 }: {
   draft: Lead
   dateText: string
   columns: readonly LeadSheetTemplateColumn[]
+  /**
+   * `create` enforces the required fields. `edit` is lenient for existing leads (an older lead
+   * may legitimately lack a phone number or a newly required column) but still checks that
+   * filled values are valid.
+   */
+  mode?: "create" | "edit"
 }): NewLeadValidation {
   const errors: Record<string, MessageKey> = {}
   const customFields: Record<string, unknown> = { ...draft.customFields }
   const builtins = new Set<string>(
     columns.flatMap((col) => (col.kind === "builtin" ? [col.builtinKey] : []))
   )
+  const enforceRequired = mode === "create"
 
-  for (const key of REQUIRED_NEW_LEAD_BUILTINS) {
-    if (!draft[key].trim()) errors[key] = "leadSheetFieldRequired"
+  if (enforceRequired) {
+    for (const key of REQUIRED_NEW_LEAD_BUILTINS) {
+      if (!draft[key].trim()) errors[key] = "leadSheetFieldRequired"
+    }
   }
-  if (!errors.email && !isOnboardingContactEmailValid(draft.email)) {
+  // An empty email is already flagged above in create mode; edit mode only checks filled ones.
+  if (!errors.email && draft.email.trim() && !isOnboardingContactEmailValid(draft.email)) {
     errors.email = "leadSheetEmailInvalid"
   }
 
@@ -90,7 +101,7 @@ export function validateNewLead({
       const url = typeof link.url === "string" ? link.url : ""
       if (!text.trim() && !url.trim()) {
         delete customFields[fieldKey]
-        if (required) errors[fieldKey] = "leadSheetFieldRequired"
+        if (required && enforceRequired) errors[fieldKey] = "leadSheetFieldRequired"
         continue
       }
       const built = buildImageLinkValue(text, url)
@@ -101,7 +112,7 @@ export function validateNewLead({
 
     if (isEmptyCustomFieldValue(raw) || (fieldType === "number" && typeof raw === "number" && !Number.isFinite(raw))) {
       delete customFields[fieldKey]
-      if (required) errors[fieldKey] = "leadSheetFieldRequired"
+      if (required && enforceRequired) errors[fieldKey] = "leadSheetFieldRequired"
     }
   }
 

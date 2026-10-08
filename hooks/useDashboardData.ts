@@ -105,6 +105,30 @@ export function useDashboardData(): DashboardDataState {
         organizationSlug: nextSlug,
       })
       setAdSpendCache(nextAdSpend, nextSlug)
+      // #region agent log
+      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "138f58",
+        },
+        body: JSON.stringify({
+          sessionId: "138f58",
+          hypothesisId: "A-F",
+          location: "useDashboardData.ts:load",
+          message: "dashboard data loaded",
+          data: {
+            orgSlug: nextSlug,
+            leadCount: leadsPayload.leads.length,
+            adSpendMonthKeys: Object.keys(nextAdSpend),
+            adSpendSample: nextAdSpend,
+            source: nextSource,
+            adSpendOk: adSpendResult.ok,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
     } catch (loadError) {
       if (!isCurrent()) return
       console.error(loadError)

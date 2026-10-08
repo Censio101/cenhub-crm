@@ -32,4 +32,36 @@ describe("buildDailyBucketsFromLeads", () => {
     expect(data.current.totals.leads).toBeGreaterThan(0)
     expect(data.current.totals.adSpend).toBeGreaterThan(0)
   })
+
+  it("includes synced Meta spend when there are no leads in range", () => {
+    const range = {
+      start: new Date("2026-03-01T00:00:00"),
+      end: new Date("2026-04-30T23:59:59"),
+    }
+    const data = getPerformanceDashboard(
+      { range },
+      {
+        leads: [],
+        adSpendByMonth: { "2026-03": 10_000, "2026-04": 12_000 },
+      }
+    )
+
+    expect(data.current.totals.leads).toBe(0)
+    expect(data.current.totals.adSpend).toBe(22_000)
+    expect(data.status).toBe("ok")
+  })
+
+  it("prorates ad spend for a custom partial month", () => {
+    const range = {
+      start: new Date("2026-03-10T00:00:00"),
+      end: new Date("2026-03-20T23:59:59"),
+    }
+    const data = getPerformanceDashboard(
+      { range },
+      { leads: [], adSpendByMonth: { "2026-03": 31_000 } }
+    )
+
+    expect(data.current.totals.adSpend).toBeGreaterThan(0)
+    expect(data.current.totals.adSpend).toBeLessThan(31_000)
+  })
 })

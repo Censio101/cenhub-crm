@@ -21,7 +21,8 @@ import { MonthlyTable } from "@/components/performance/MonthlyTable"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
-import { currentSeriesLabel, comparisonSeriesLabel } from "@/lib/performance/compare"
+import { currentSeriesLabel } from "@/lib/performance/compare"
+import { toIsoDate } from "@/lib/performance/date-ranges"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 
 export function PerformanceDashboard() {
@@ -51,7 +52,7 @@ export function PerformanceDashboard() {
   const data = useMemo(() => {
     if (dataLoading) return null
     try {
-      return getPerformanceDashboard(
+      const result = getPerformanceDashboard(
         {
           range: view.range,
           comparison: view.comparisonEnabled ? view.comparisonRange : null,
@@ -61,7 +62,57 @@ export function PerformanceDashboard() {
         },
         { leads, adSpendByMonth }
       )
-    } catch {
+      // #region agent log
+      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "138f58",
+        },
+        body: JSON.stringify({
+          sessionId: "138f58",
+          hypothesisId: "B-D-E",
+          location: "PerformanceDashboard.tsx:useMemo",
+          message: "dashboard computed",
+          data: {
+            preset: view.preset,
+            from: toIsoDate(view.range.start),
+            to: toIsoDate(view.range.end),
+            service: view.service,
+            funnel: view.funnel,
+            segment: view.segment,
+            leadCount: leads.length,
+            adSpendMonthKeys: Object.keys(adSpendByMonth),
+            totalsLeads: result.current.totals.leads,
+            totalsAdSpend: result.current.totals.adSpend,
+            status: result.status,
+            bucketCount: result.current.buckets.length,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+      return result
+    } catch (computeError) {
+      // #region agent log
+      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "138f58",
+        },
+        body: JSON.stringify({
+          sessionId: "138f58",
+          hypothesisId: "E",
+          location: "PerformanceDashboard.tsx:useMemo",
+          message: "dashboard compute threw",
+          data: {
+            error: computeError instanceof Error ? computeError.message : "unknown",
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
       return null
     }
   }, [view, leads, adSpendByMonth, dataLoading])
@@ -79,13 +130,9 @@ export function PerformanceDashboard() {
     [view, leads]
   )
 
-  const chartCurrentLabel = currentSeriesLabel(view.range)
-  const chartComparisonLabel =
-    view.comparisonEnabled && view.comparisonRange && data?.comparison
-      ? view.comparisonMode === "custom"
-        ? t("dashboardChartBefore")
-        : comparisonSeriesLabel(view.comparisonRange, t("dashboardChartComparison"))
-      : null
+  const chartCurrentLabel =
+    data != null ? String(data.year.year) : currentSeriesLabel(view.range)
+  const chartComparisonLabel = null
 
   const header = (
     <DashboardHeader

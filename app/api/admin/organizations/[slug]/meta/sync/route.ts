@@ -38,7 +38,8 @@ export async function POST(request: Request, context: RouteContext) {
       scope === "leads"
         ? null
         : await syncOrganizationAdMetrics(admin, organization.id, {
-            source: "admin-manual",
+            source: body.source ?? "admin-manual",
+            metricsRange: body.metricsRange,
           })
 
     const leads =

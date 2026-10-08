@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { FormEvent, useCallback, useState, type ReactNode } from "react"
 import {
   AppWindowIcon,
@@ -22,6 +23,7 @@ import {
   adminSectionCardClass,
 } from "@/components/admin/admin-ui-styles"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 import { useKeyedState } from "@/lib/react/use-keyed-state"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
@@ -252,13 +254,12 @@ export function AdminMetaConfigForm({
       const response = await fetch(`/api/admin/organizations/${slug}/meta/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scope: "all" }),
+        body: JSON.stringify({ scope: "metrics", metricsRange: "maximum" }),
       })
       const data = (await response.json()) as {
         error?: string
         ensured?: { adAccountDiscovered?: boolean; pageIdDiscovered?: boolean }
         metrics?: { success?: boolean; reason?: string; monthCount?: number }
-        leads?: { imported?: number; scanned?: number; reason?: string }
       }
       if (!response.ok) throw new Error(data.error ?? t("syncFailed"))
 
@@ -273,16 +274,6 @@ export function AdminMetaConfigForm({
         parts.push(t("adSpendSynced", { months: data.metrics.monthCount ?? 0 }))
       } else if (data.metrics?.reason) {
         parts.push(t("adSpendFailed", { reason: data.metrics.reason }))
-      }
-      if (typeof data.leads?.imported === "number") {
-        parts.push(
-          t("leadsSynced", {
-            imported: data.leads.imported,
-            scanned: data.leads.scanned ?? 0,
-          })
-        )
-      } else if (data.leads?.reason) {
-        parts.push(t("leadsFailed", { reason: data.leads.reason }))
       }
 
       setMessage(parts.join(" · ") || t("syncComplete"))
@@ -311,11 +302,20 @@ export function AdminMetaConfigForm({
 
   return (
     <section className={cn(adminSectionCardClass, "overflow-hidden")}>
-      <div className="flex items-center gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5 sm:px-6">
-        <span className={adminIconBoxClass("brand")} aria-hidden="true">
-          <CircleDotIcon className="size-[18px]" />
-        </span>
-        <h2 className="text-base font-semibold text-foreground">{t("metaSetupTitle")}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e0d8] bg-[#faf8f6] px-5 py-3.5 sm:px-6">
+        <div className="flex items-center gap-3">
+          <span className={adminIconBoxClass("brand")} aria-hidden="true">
+            <CircleDotIcon className="size-[18px]" />
+          </span>
+          <h2 className="text-base font-semibold text-foreground">{t("metaSetupTitle")}</h2>
+        </div>
+        <Link
+          href={adminClientSettingsSectionPath(slug, "meta-sync")}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-[#d3c3b2] bg-white px-3 text-[13px] font-semibold text-foreground hover:bg-[#faf8f6]"
+        >
+          <RefreshCwIcon className="size-3.5" aria-hidden="true" />
+          {t("clientNavMetaSync")}
+        </Link>
       </div>
 
       <div className="px-5 py-4 sm:px-6">
@@ -461,7 +461,7 @@ export function AdminMetaConfigForm({
                   className={cn("size-4", syncing && "animate-spin")}
                   aria-hidden="true"
                 />
-                {syncing ? t("syncing") : t("syncNow")}
+                {syncing ? t("syncing") : t("clientMetaSyncMetricsNow")}
               </Button>
             </div>
           </form>

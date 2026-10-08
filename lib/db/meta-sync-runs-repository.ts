@@ -43,6 +43,27 @@ export async function listRecentMetaSyncRuns(
   return data ?? []
 }
 
+export async function listMetaSyncRunsWithinDays(
+  supabase: SupabaseClient,
+  organizationId: string,
+  days: number,
+  limit = 50
+) {
+  const safeDays = Math.min(Math.max(days, 1), 30)
+  const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabase
+    .from("meta_sync_runs")
+    .select("id, status, message, details, started_at, finished_at, batch_id")
+    .eq("organization_id", organizationId)
+    .gte("started_at", since)
+    .order("started_at", { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 100))
+
+  if (error) throw error
+  return data ?? []
+}
+
 export async function listMetaSyncRunsForBatch(
   supabase: SupabaseClient,
   batchId: string

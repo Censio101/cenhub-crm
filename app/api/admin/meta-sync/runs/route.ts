@@ -4,8 +4,12 @@ import {
   adminErrorResponse,
   requireCensioAdmin,
 } from "@/lib/auth/require-censio-admin"
-import { listRecentMetaSyncRuns } from "@/lib/db/meta-sync-runs-repository"
+import {
+  listMetaSyncRunsWithinDays,
+  listRecentMetaSyncRuns,
+} from "@/lib/db/meta-sync-runs-repository"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
+import { META_SYNC_LOG_RETENTION_DAYS } from "@/lib/meta/sync-center-constants"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function GET(request: Request) {
@@ -16,6 +20,11 @@ export async function GET(request: Request) {
     const slug = searchParams.get("slug")
     const limitRaw = searchParams.get("limit")
     const limit = Math.min(Math.max(Number(limitRaw) || 10, 1), 50)
+    const daysRaw = searchParams.get("days")
+    const days =
+      daysRaw != null && daysRaw !== ""
+        ? Math.min(Math.max(Number(daysRaw) || META_SYNC_LOG_RETENTION_DAYS, 1), 30)
+        : null
 
     const admin = createAdminClient()
     let orgId = organizationId
@@ -35,8 +44,15 @@ export async function GET(request: Request) {
       )
     }
 
-    const runs = await listRecentMetaSyncRuns(admin, orgId, limit)
-    return NextResponse.json({ organizationId: orgId, runs })
+    const runs =
+      days != null
+        ? await listMetaSyncRunsWithinDays(admin, orgId, days, limit)
+        : await listRecentMetaSyncRuns(admin, orgId, limit)
+    return NextResponse.json({
+      organizationId: orgId,
+      runs,
+      days: days ?? undefined,
+    })
   } catch (error) {
     return adminErrorResponse(error)
   }

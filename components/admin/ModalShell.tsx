@@ -58,7 +58,7 @@ export function ModalShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c2723]/55 p-4 backdrop-blur-[2px]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && dismissible && !busy) onClose()
       }}
@@ -79,7 +79,7 @@ export function ModalShell({
                 : "max-w-xl"
         )}
       >
-        <header className="flex items-start justify-between gap-3 border-b border-[#efe7de] px-5 py-3.5">
+        <header className="flex items-start justify-between gap-3 border-b border-[#e8dfd4] bg-[#faf8f6] px-5 py-3.5">
           <div className="min-w-0">
             <h2 id={titleId} className="text-xl font-semibold tracking-tight">
               {title}

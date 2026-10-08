@@ -14,6 +14,7 @@ import {
   parseDashboardParams,
   type DashboardViewState,
 } from "@/lib/performance/url-state"
+import { toIsoDate } from "@/lib/performance/date-ranges"
 import { useKeyedState } from "@/lib/react/use-keyed-state"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
 import type { FunnelId } from "@/lib/performance/funnels"
@@ -32,6 +33,30 @@ export function useDashboardViewState(basePath: string) {
 
   const replaceState = useCallback(
     (next: DashboardViewState) => {
+      // #region agent log
+      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "138f58",
+        },
+        body: JSON.stringify({
+          sessionId: "138f58",
+          hypothesisId: "B",
+          location: "useDashboardViewState.ts:replaceState",
+          message: "filter state replace",
+          data: {
+            preset: next.preset,
+            from: toIsoDate(next.range.start),
+            to: toIsoDate(next.range.end),
+            service: next.service,
+            funnel: next.funnel,
+            urlBefore: queryKey,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
       setView(next)
       const query = dashboardStateToParams(next)
       const path = query ? `${basePath}?${query}` : basePath
@@ -39,7 +64,7 @@ export function useDashboardViewState(basePath: string) {
         router.replace(path, { scroll: false })
       })
     },
-    [basePath, router, setView]
+    [basePath, queryKey, router, setView]
   )
 
   const onPresetChange = useCallback(

@@ -6,6 +6,7 @@ import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import type { MessageKey } from "@/lib/i18n"
 import {
+  CLIENT_CUSTOMERS_REFRESH_EVENT,
   CLIENT_ORG_CHANGED_EVENT,
   getCustomersCache,
   hasCustomersCache,
@@ -109,8 +110,15 @@ export function useCustomers() {
       setLoading(true)
       void loadCustomers()
     }
+    const onCustomersRefresh = () => {
+      void loadCustomers()
+    }
     window.addEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
-    return () => window.removeEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
+    window.addEventListener(CLIENT_CUSTOMERS_REFRESH_EVENT, onCustomersRefresh)
+    return () => {
+      window.removeEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
+      window.removeEventListener(CLIENT_CUSTOMERS_REFRESH_EVENT, onCustomersRefresh)
+    }
   }, [loadCustomers])
 
   return {

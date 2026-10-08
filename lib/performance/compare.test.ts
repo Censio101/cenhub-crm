@@ -76,20 +76,22 @@ describe("period comparison", () => {
   })
 
   it("overlays ad spend on the revenue chart series", () => {
+    const now = new Date(2026, 9, 8)
     const range = {
       start: new Date(2026, 6, 1),
       end: new Date(2026, 11, 31),
     }
-    const data = getPerformanceDashboard({ range })
+    const data = getPerformanceDashboard({ range }, undefined, { now })
     const revenue = getChartSeries(data, "revenue")
     const leads = getChartSeries(data, "leads")
 
+    expect(revenue).toHaveLength(10)
     expect(revenue[0]?.spend).toBeGreaterThan(0)
     expect(revenue[0]?.spend).not.toBe(revenue[0]?.current)
     expect(leads[0]?.spend).toBeUndefined()
 
     const meta = getChartSeries(
-      getPerformanceDashboard({ range, funnel: "meta" }),
+      getPerformanceDashboard({ range, funnel: "meta" }, undefined, { now }),
       "revenue"
     )
     expect(meta[0]?.spend).toBeGreaterThan(0)

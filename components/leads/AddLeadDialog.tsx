@@ -4,7 +4,9 @@ import { FormEvent, useId, useMemo, useState, type ReactNode } from "react"
 import {
   BuildingIcon,
   CalendarIcon,
+  CheckIcon,
   ClipboardListIcon,
+  LockIcon,
   Loader2Icon,
   MailIcon,
   PhoneIcon,
@@ -26,8 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { isLeadFieldLocked, type LeadPatch } from "@/lib/db/lead-mapper"
 import { IMAGE_LINK_TEXT_MAX } from "@/lib/lead-sheet/image-link"
 import { builtinColumnLabelKey } from "@/lib/lead-sheet/lead-labels"
+import { buildLeadPatch, isEmptyLeadPatch } from "@/lib/lead-sheet/lead-patch-diff"
 import {
   groupNewLeadColumns,
   REQUIRED_NEW_LEAD_BUILTINS,
@@ -58,12 +62,40 @@ const FIELD_ICONS: Record<string, LucideIcon | undefined> = {
 
 type CustomColumn = Extract<LeadSheetTemplateColumn, { kind: "custom" }>
 
-type Props = {
+type CreateProps = {
+  mode: "create"
   columns: LeadSheetTemplateColumn[]
   trigger: ReactNode
   /** Resolves when the lead was saved; throws (with a readable message) when it was not. */
   onCreate: (lead: Lead) => void | Promise<unknown>
 }
+
+type EditProps = {
+  mode: "edit"
+  columns: LeadSheetTemplateColumn[]
+  /** The lead being edited. Mount the dialog while editing; it opens immediately. */
+  lead: Lead
+  /** Receives only the changed fields. Throws (with a readable message) when saving fails. */
+  onSave: (patch: LeadPatch) => void | Promise<unknown>
+  onClose: () => void
+}
+
+type Props = CreateProps | EditProps
+
+/** Fields a Meta lead keeps in sync with Meta; editing them here would be overwritten. */
+const LOCKED_PATCH_KEYS = [
+  "date",
+  "time",
+  "fullName",
+  "email",
+  "phone",
+  "segment",
+  "companyName",
+  "address",
+  "zipCode",
+  "city",
+  "metaAdId",
+] as const
 
 function Field({
   id,
@@ -118,21 +150,41 @@ function Section({
   )
 }
 
-export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
+function cloneLead(lead: Lead): Lead {
+  return {
+    ...lead,
+    serviceIds: [...(lead.serviceIds ?? [])],
+    customFields: { ...(lead.customFields ?? {}) },
+  }
+}
+
+function LeadFormDialog(props: Props) {
+  const { columns } = props
+  const isEdit = props.mode === "edit"
+  const editLead = props.mode === "edit" ? props.lead : null
   const { t } = useLanguage()
   const formId = useId()
   const { segments, statuses } = useLeadSelectOptions()
   const { enabledServices } = useCompanyServices()
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<Lead>(() => emptyLead(`lead-${Date.now()}`))
-  // The date is text: the day first, then the time. It starts as "now" every time the popup opens.
-  const [dateText, setDateText] = useState(() => currentDateText())
+  const [open, setOpen] = useState(isEdit)
+  const [draft, setDraft] = useState<Lead>(() =>
+    editLead ? cloneLead(editLead) : emptyLead(`lead-${Date.now()}`)
+  )
+  // The date is text: the day first, then the time. A new lead starts as "now"; an edit starts
+  // from the lead's own date and time.
+  const [dateText, setDateText] = useState(() =>
+    editLead ? formatLeadDateTime(editLead.date, editLead.time) : currentDateText()
+  )
   const [busy, setBusy] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
 
   const sections = useMemo(() => groupNewLeadColumns(columns), [columns])
   const fieldId = (key: string) => `${formId}-${key}`
+  const hasLockedFields = Boolean(editLead && editLead.source === "meta")
+  /** True when this field is controlled by Meta for this lead (shown, but not editable). */
+  const isLocked = (key: string) =>
+    Boolean(editLead && isLeadFieldLocked(editLead, key as keyof LeadPatch))
 
   function openDialog() {
     setDraft(emptyLead(`lead-${Date.now()}`))
@@ -140,6 +192,11 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
     setFieldErrors({})
     setFormError(null)
     setOpen(true)
+  }
+
+  function closeDialog() {
+    setOpen(false)
+    if (props.mode === "edit") props.onClose()
   }
 
   function clearFieldError(key: string) {
@@ -161,7 +218,12 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
     event?.preventDefault()
     if (busy) return
 
-    const result = validateNewLead({ draft, dateText, columns })
+    const result = validateNewLead({
+      draft,
+      dateText,
+      columns,
+      mode: isEdit ? "edit" : "create",
+    })
     if (!result.ok) {
       setFieldErrors(
         Object.fromEntries(Object.entries(result.errors).map(([key, message]) => [key, t(message)]))
@@ -177,11 +239,27 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
     setBusy(true)
     setFormError(null)
     try {
-      await onCreate(result.lead)
-      setOpen(false)
+      if (props.mode === "edit") {
+        const patch: Record<string, unknown> = { ...buildLeadPatch(props.lead, result.lead) }
+        // Fields Meta controls are never sent (the server would ignore them anyway).
+        if (hasLockedFields) {
+          for (const key of LOCKED_PATCH_KEYS) delete patch[key]
+        }
+        if (!isEmptyLeadPatch(patch as LeadPatch)) {
+          await props.onSave(patch as LeadPatch)
+        }
+      } else {
+        await props.onCreate(result.lead)
+      }
+      closeDialog()
     } catch (error) {
       const message = error instanceof Error ? error.message : ""
-      setFormError(message && message !== "leadsCreateError" ? message : t("leadsCreateError"))
+      const fallback = isEdit ? t("leadsSaveError") : t("leadsCreateError")
+      setFormError(
+        message && message !== "leadsCreateError" && message !== "leadsSaveError"
+          ? message
+          : fallback
+      )
     } finally {
       setBusy(false)
     }
@@ -215,10 +293,11 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
             type={key === "email" ? "email" : key === "phone" ? "tel" : "text"}
             inputMode={key === "zipCode" ? "numeric" : undefined}
             autoComplete="off"
-            autoFocus={key === "fullName"}
+            autoFocus={!isEdit && key === "fullName"}
             className={cn(fieldClass, Icon && "pl-9", error && errorFieldClass)}
             value={typeof value === "string" ? value : ""}
-            disabled={busy}
+            disabled={busy || isLocked(key)}
+            title={isLocked(key) ? t("leadSheetEditLeadLockedField") : undefined}
             placeholder={isDate ? t("leadSheetDatePlaceholder") : undefined}
             aria-invalid={Boolean(error)}
             onChange={(e) => {
@@ -247,7 +326,11 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
               }))
             }
           >
-            <SelectTrigger id={fieldId(key)} className={fieldClass} disabled={busy}>
+            <SelectTrigger
+              id={fieldId(key)}
+              className={fieldClass}
+              disabled={busy || isLocked("segment")}
+            >
               <SelectValue placeholder={t("leadSheetSelectPlaceholder")}>
                 {segments.find((s) => s.id === draft.segment)?.label}
               </SelectValue>
@@ -501,32 +584,44 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
 
   return (
     <>
-      <span className="inline-flex" onClick={openDialog} role="presentation">
-        {trigger}
-      </span>
+      {props.mode === "create" ? (
+        <span className="inline-flex" onClick={openDialog} role="presentation">
+          {props.trigger}
+        </span>
+      ) : null}
       {open ? (
         <ModalShell
           size="lg"
-          title={t("leadSheetAddLeadTitle")}
-          subtitle={t("leadSheetAddLeadSubtitle")}
+          title={isEdit ? t("leadSheetEditLeadTitle") : t("leadSheetAddLeadTitle")}
+          subtitle={
+            isEdit
+              ? draft.fullName.trim() || t("leadSheetEditLeadSubtitle")
+              : t("leadSheetAddLeadSubtitle")
+          }
           busy={busy}
           dismissible={!busy}
-          onClose={() => setOpen(false)}
+          onClose={closeDialog}
           footer={
             <>
               <span className="mr-auto hidden self-center text-xs text-muted-foreground sm:inline">
-                {t("leadSheetAddLeadRequiredHint")}
+                {isEdit ? t("leadSheetEditLeadHint") : t("leadSheetAddLeadRequiredHint")}
               </span>
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>
+              <Button type="button" variant="ghost" disabled={busy} onClick={closeDialog}>
                 {t("leadSheetCancel")}
               </Button>
               <Button type="submit" form={`${formId}-form`} disabled={busy} className="gap-2">
                 {busy ? (
                   <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
+                ) : isEdit ? (
+                  <CheckIcon className="size-4" aria-hidden="true" />
                 ) : (
                   <UserRoundPlusIcon className="size-4" aria-hidden="true" />
                 )}
-                {busy ? t("leadSheetAddLeadSaving") : t("leadSheetAddLeadSave")}
+                {busy
+                  ? t("leadSheetAddLeadSaving")
+                  : isEdit
+                    ? t("leadSheetEditLeadSave")
+                    : t("leadSheetAddLeadSave")}
               </Button>
             </>
           }
@@ -538,6 +633,13 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
             onSubmit={(e) => void submit(e)}
             noValidate
           >
+            {hasLockedFields ? (
+              <p className="flex items-start gap-2 rounded-xl border border-[#f0dcc0] bg-[#fff8ee] px-3.5 py-2.5 text-[13px] text-[#7a4a12]">
+                <LockIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                {t("leadSheetEditLeadMetaNotice")}
+              </p>
+            ) : null}
+
             {sections.contact.length > 0 ? (
               <Section icon={UserIcon} title={t("leadSheetAddLeadSectionContact")}>
                 {sections.contact.map((key) => renderBuiltin(key))}
@@ -575,4 +677,16 @@ export function AddLeadDialog({ columns, trigger, onCreate }: Props) {
       ) : null}
     </>
   )
+}
+
+export function AddLeadDialog(props: Omit<CreateProps, "mode">) {
+  return <LeadFormDialog mode="create" {...props} />
+}
+
+/**
+ * Edits every field of one lead in a popup. Mount it while a lead is being edited
+ * (for example `{editing ? <EditLeadDialog key={editing.id} … /> : null}`); it opens at once.
+ */
+export function EditLeadDialog(props: Omit<EditProps, "mode">) {
+  return <LeadFormDialog mode="edit" {...props} />
 }

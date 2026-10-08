@@ -24,6 +24,7 @@ export const CUSTOMER_SOURCES: { id: CustomerSourceId; label: string }[] = [
 
 export type Customer = {
   id: string
+  leadId: string
   closedDate: string
   fullName: string
   email: string
@@ -37,11 +38,14 @@ export type Customer = {
   salesPrice: number
   profit: number
   source: CustomerSourceId
+  customFields: Record<string, unknown>
 }
 
 const EXTRA_CUSTOMERS: Customer[] = [
   {
     id: "customer-1",
+    leadId: "mock-lead-1",
+    customFields: {},
     closedDate: "2025-09-16",
     fullName: "Birgitte Aagaard",
     email: "birgitte.aagaard@gmail.com",
@@ -58,6 +62,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-2",
+    leadId: "mock-customer-2",
+    customFields: {},
     closedDate: "2025-08-21",
     fullName: "Frederik Storm",
     email: "fs@storm-bolig.dk",
@@ -74,6 +80,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-3",
+    leadId: "mock-customer-3",
+    customFields: {},
     closedDate: "2025-07-09",
     fullName: "Pia Grønbæk",
     email: "pia.groenbaek@outlook.dk",
@@ -90,6 +98,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-4",
+    leadId: "mock-customer-4",
+    customFields: {},
     closedDate: "2025-06-18",
     fullName: "Niels Kofoed",
     email: "niels@kofoed-gaard.dk",
@@ -106,6 +116,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-5",
+    leadId: "mock-customer-5",
+    customFields: {},
     closedDate: "2025-05-03",
     fullName: "Julie Vang",
     email: "julie.vang@icloud.com",
@@ -122,6 +134,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-6",
+    leadId: "mock-customer-6",
+    customFields: {},
     closedDate: "2025-04-14",
     fullName: "Søren Bille",
     email: "sb@bille-ejendomme.dk",
@@ -138,6 +152,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-7",
+    leadId: "mock-customer-7",
+    customFields: {},
     closedDate: "2025-03-27",
     fullName: "Emilie Holm",
     email: "emilie.holm@gmail.com",
@@ -154,6 +170,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-8",
+    leadId: "mock-customer-8",
+    customFields: {},
     closedDate: "2025-02-11",
     fullName: "Carsten Munk",
     email: "carsten@munk-holding.dk",
@@ -170,6 +188,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-9",
+    leadId: "mock-customer-9",
+    customFields: {},
     closedDate: "2025-01-23",
     fullName: "Thea Krarup",
     email: "thea.krarup@outlook.dk",
@@ -186,6 +206,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-10",
+    leadId: "mock-customer-10",
+    customFields: {},
     closedDate: "2024-11-29",
     fullName: "Henning Lassen",
     email: "henning@lassen-byg.dk",
@@ -202,6 +224,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-11",
+    leadId: "mock-customer-11",
+    customFields: {},
     closedDate: "2024-10-08",
     fullName: "Amalie Frost",
     email: "amalie.frost@gmail.com",
@@ -218,6 +242,8 @@ const EXTRA_CUSTOMERS: Customer[] = [
   },
   {
     id: "customer-12",
+    leadId: "mock-customer-12",
+    customFields: {},
     closedDate: "2024-08-19",
     fullName: "Torben Skov",
     email: "torben@skov-udlejning.dk",
@@ -254,6 +280,7 @@ function customerFromWonLead(
   if (lead.status !== "won" || lead.salesPrice == null) return null
   return {
     id: `customer-lead-${index + 1}`,
+    leadId: lead.id,
     closedDate: lead.date,
     fullName: lead.fullName,
     email: lead.email,
@@ -267,6 +294,7 @@ function customerFromWonLead(
     salesPrice: lead.salesPrice,
     profit: lead.profit ?? Math.round(lead.salesPrice * 0.74),
     source: sourceFromLeadPlatform(lead.platform),
+    customFields: lead.customFields ?? {},
   }
 }
 

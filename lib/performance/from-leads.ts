@@ -5,11 +5,12 @@ import {
   type Lead,
   type LeadStatusId,
 } from "@/lib/leads"
+import { adSpendForRange } from "./ad-spend-for-range"
 import { isFunnelId, type FunnelId } from "./funnels"
 import type { ServiceId } from "./services"
 import { monthKeyFromDate } from "./demo-ad-spend"
 import { toIsoDate } from "./date-ranges"
-import type { PerformanceBucket } from "./types"
+import type { DateRange, PerformanceBucket } from "./types"
 
 const QUOTE_STATUSES = new Set<LeadStatusId>([
   "awaiting_proposal",
@@ -140,21 +141,81 @@ function distributeAdSpend(
   }
 }
 
+function allocatedSpendForMonth(
+  buckets: readonly PerformanceBucket[],
+  monthKey: string
+): number {
+  return buckets
+    .filter((bucket) => monthKeyFromDate(bucket.start) === monthKey)
+    .reduce((sum, bucket) => sum + bucket.adSpend, 0)
+}
+
+/** Months with synced spend but no leads still contribute ad budget (all-funnel view). */
+function appendSpendOnlyMonthBuckets(
+  buckets: PerformanceBucket[],
+  spendByMonth: Record<string, number>
+): PerformanceBucket[] {
+  const extras: PerformanceBucket[] = []
+
+  for (const [monthKey, spend] of Object.entries(spendByMonth)) {
+    if (spend <= 0) continue
+    const allocated = allocatedSpendForMonth(buckets, monthKey)
+    const remaining = spend - allocated
+    if (remaining <= 0.005) continue
+
+    const monthStart = startOfMonth(new Date(`${monthKey}-01T00:00:00`))
+    const monthEnd = endOfMonth(monthStart)
+    extras.push({
+      start: toIsoDate(monthStart),
+      end: toIsoDate(monthEnd),
+      leads: 0,
+      customers: 0,
+      b2bCustomers: 0,
+      b2cCustomers: 0,
+      revenue: 0,
+      adSpend: remaining,
+      profit: 0,
+      qualified: 0,
+      quotes: 0,
+    })
+  }
+
+  if (extras.length === 0) return buckets
+  return [...buckets, ...extras].sort((left, right) =>
+    left.start.localeCompare(right.start)
+  )
+}
+
+export type BuildDailyBucketsOptions = {
+  /** When set, Meta monthly spend is prorated and months without leads still count. */
+  range?: DateRange
+}
+
 export function buildDailyBucketsFromLeads(
   leads: readonly Lead[],
-  adSpendByMonth: Record<string, number> = {}
+  adSpendByMonth: Record<string, number> = {},
+  options?: BuildDailyBucketsOptions
 ): PerformanceBucket[] {
   const buckets = new Map<BucketKey, PerformanceBucket>()
+  const spendByMonth = options?.range
+    ? adSpendForRange(adSpendByMonth, options.range)
+    : adSpendByMonth
 
   for (const lead of leads) {
     addLeadContribution(buckets, lead)
   }
 
-  distributeAdSpend(buckets, adSpendByMonth)
+  distributeAdSpend(buckets, spendByMonth)
 
-  return [...buckets.values()].sort((left, right) =>
+  let result = [...buckets.values()].sort((left, right) =>
     left.start.localeCompare(right.start)
   )
+
+  if (options?.range) {
+    result = appendSpendOnlyMonthBuckets(result, spendByMonth)
+  }
+
+  return result
 }
 
 export function getLeadDataDateRange(

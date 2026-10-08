@@ -174,6 +174,37 @@ describe("validateNewLead", () => {
     expect(broken.ok).toBe(false)
   })
 
+  it("edit mode accepts older leads with missing contact or required custom values", () => {
+    const columns = [...coreColumns, custom("budget", "number", 5, { required: true })]
+    const draft = filled({ phone: "", email: "" })
+
+    expect(validateNewLead({ draft, dateText: "2026-10-07", columns }).ok).toBe(false)
+    expect(validateNewLead({ draft, dateText: "2026-10-07", columns, mode: "edit" }).ok).toBe(true)
+  })
+
+  it("edit mode still rejects a filled but invalid email, date or image link", () => {
+    const columns = [...coreColumns, custom("photo", "image", 5)]
+    expect(
+      validateNewLead({
+        draft: filled({ email: "nope" }),
+        dateText: "2026-10-07",
+        columns,
+        mode: "edit",
+      })
+    ).toMatchObject({ ok: false, errors: { email: "leadSheetEmailInvalid" } })
+    expect(
+      validateNewLead({ draft: filled(), dateText: "???", columns, mode: "edit" })
+    ).toMatchObject({ ok: false, errors: { date: "leadSheetDateInvalid" } })
+    expect(
+      validateNewLead({
+        draft: filled({ customFields: { photo: { text: "x", url: "" } } }),
+        dateText: "2026-10-07",
+        columns,
+        mode: "edit",
+      }).ok
+    ).toBe(false)
+  })
+
   it("does not require a date when the sheet has no date column", () => {
     const result = validateNewLead({
       draft: filled(),
