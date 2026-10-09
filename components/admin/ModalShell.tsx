@@ -18,6 +18,12 @@ type Props = {
   /** While saving, all ways of closing are disabled. */
   busy?: boolean
   size?: "sm" | "md" | "lg" | "xl"
+  /** On phones the dialog fills the screen instead of floating with margins. */
+  fullscreenOnMobile?: boolean
+  /** Extra classes for the scrolling body (for example a background). */
+  bodyClassName?: string
+  /** Optional icon shown in a soft orange tile beside the title; also warms the header. */
+  icon?: React.ReactNode
   children: React.ReactNode
   footer: React.ReactNode
 }
@@ -30,6 +36,9 @@ export function ModalShell({
   dismissible = true,
   busy = false,
   size = "md",
+  fullscreenOnMobile = false,
+  bodyClassName,
+  icon,
   children,
   footer,
 }: Props) {
@@ -58,7 +67,10 @@ export function ModalShell({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c2723]/55 p-4 backdrop-blur-[2px]"
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center bg-[#2c2723]/55 backdrop-blur-[2px]",
+        fullscreenOnMobile ? "p-0 sm:p-4" : "p-4"
+      )}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && dismissible && !busy) onClose()
       }}
@@ -69,7 +81,10 @@ export function ModalShell({
         aria-labelledby={titleId}
         className={cn(
           adminSectionCardClass,
-          "flex max-h-[90vh] w-full flex-col overflow-hidden",
+          "flex w-full flex-col overflow-hidden",
+          fullscreenOnMobile
+            ? "h-dvh max-h-dvh rounded-none sm:h-auto sm:max-h-[90vh] sm:rounded-2xl"
+            : "max-h-[90vh]",
           size === "sm"
             ? "max-w-md"
             : size === "lg"
@@ -79,14 +94,29 @@ export function ModalShell({
                 : "max-w-xl"
         )}
       >
-        <header className="flex items-start justify-between gap-3 border-b border-[#e8dfd4] bg-[#faf8f6] px-5 py-3.5">
-          <div className="min-w-0">
-            <h2 id={titleId} className="text-xl font-semibold tracking-tight">
-              {title}
-            </h2>
-            {subtitle ? (
-              <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p>
+        <header
+          className={cn(
+            "flex items-center justify-between gap-3 border-b px-6 py-4",
+            icon ? "border-[#e8dccb] bg-[#f9f5ef]" : "items-start border-[#ece4da] bg-[#faf8f6]"
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-3.5">
+            {icon ? (
+              <span
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#fde6d2] text-primary [&_svg]:size-5"
+                aria-hidden="true"
+              >
+                {icon}
+              </span>
             ) : null}
+            <div className="min-w-0">
+              <h2 id={titleId} className="text-lg font-semibold tracking-tight">
+                {title}
+              </h2>
+              {subtitle ? (
+                <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{subtitle}</p>
+              ) : null}
+            </div>
           </div>
           <Button
             type="button"
@@ -100,9 +130,11 @@ export function ModalShell({
           </Button>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">{children}</div>
+        <div className={cn("min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5", bodyClassName)}>
+          {children}
+        </div>
 
-        <footer className="flex justify-end gap-2 border-t border-[#efe7de] bg-[#faf8f6] px-5 py-3">
+        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#ece4da] bg-[#faf8f6] px-6 py-3.5">
           {footer}
         </footer>
       </div>

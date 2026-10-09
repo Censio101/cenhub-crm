@@ -1,15 +1,15 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
   CheckIcon,
   ChevronDownIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
+  XIcon,
 } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
@@ -17,17 +17,28 @@ import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
 import { LeadsBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
-import { LeadDateTimeCell } from "@/components/leads/LeadDateTimeCell"
 import { AddLeadDialog, EditLeadDialog } from "@/components/leads/AddLeadDialog"
+import { LeadSheetSortableHeader } from "@/components/leads/LeadSheetSortableHeader"
+import { LeadSheetFilterBar } from "@/components/leads/LeadSheetFilterBar"
+import { LeadSheetFocusShell } from "@/components/leads/LeadSheetFocusShell"
+import {
+  LeadSheetReadOnlyDateCell,
+  LeadSheetReadOnlyEmailCell,
+  LeadSheetReadOnlyFullNameCell,
+  LeadSheetReadOnlyPhoneCell,
+  LeadSheetReadOnlyPlainCell,
+  LeadSheetReadOnlySegmentCell,
+} from "@/components/leads/LeadSheetReadOnlyCell"
 import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
 import { LeadSheetNoteCell } from "@/components/leads/LeadSheetNoteCell"
+import { LeadCardList } from "@/components/leads/LeadCardList"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
-import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { useLeadSelectOptions } from "@/components/leads/useLeadSelectOptions"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
+import type { FunnelId } from "@/lib/performance/funnels"
+import type { DateRange } from "@/lib/performance/types"
 import { useLeads } from "@/hooks/useLeads"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { Button } from "@/components/ui/button"
@@ -54,14 +65,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { isLeadFieldLocked } from "@/lib/db/lead-mapper"
+import {
+  matchesStatusFilter,
+  type StatusFilterValue,
+} from "@/lib/leads/status-filter-groups"
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import { isServiceId, resolveServiceLabel } from "@/lib/performance/services"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
-import { leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
+import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import {
-  LEAD_STATUSES,
   computeLeadPipelineStats,
   filterDashboardLeads,
   formatLeadServices,
@@ -70,14 +83,23 @@ import {
   getLeadStatusClass,
   getWonLeadCellClass,
   getWonLeadRowClass,
-  isLeadSegmentId,
   isLeadStatusId,
-  sortLeadsByDate,
   type Lead,
   type LeadPipelineStats,
+  type LeadSegmentId,
   type LeadStatusId,
 } from "@/lib/leads"
+import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
+import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
+import { leadMatchesServiceFilter } from "@/lib/leads/service-filter"
 import { matchesSearch } from "@/lib/leads/search"
+import {
+  findDefaultDateColumnId,
+  isColumnSortable,
+  sortLeadsWithSheetState,
+  type SheetSortDirection,
+  type SheetSortState,
+} from "@/lib/leads/sheet-sort"
 import { cn } from "cn"
 
 const cellInputClass =
@@ -307,16 +329,16 @@ function ServiceMultiSelect({
         aria-label={label}
         disabled={disabled}
         className={cn(
-          "flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border-0 bg-transparent px-1.5 text-left text-sm outline-none hover:bg-white focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-ring",
+          "flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border border-[#e4ddd4] bg-white px-2 text-left text-sm shadow-[0_1px_2px_rgba(26,18,8,0.04)] outline-none hover:border-[#d3c3b2] hover:bg-white focus-visible:border-primary/40 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary/15",
           disabled && "cursor-not-allowed opacity-60"
         )}
       >
         <span className={cn("truncate", !summary && "text-muted-foreground")}>
           {summary || "Service"}
         </span>
-        <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
+        <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent align="start" alignOffset={0} className="z-[80] w-56 gap-0.5 p-1">
+      <PopoverContent align="start" alignOffset={0} className="z-[80] w-56 gap-0.5 bg-white p-1">
         {options.length === 0 ? (
           <p className="px-2 py-1.5 text-sm text-muted-foreground">{t("leadSheetNoServices")}</p>
         ) : (
@@ -462,27 +484,30 @@ function FooterStat({
   )
 }
 
-function LeadsTable({
+export function LeadsTable({
   columns,
   leads,
   emptyText,
-  dateSort,
-  onToggleDateSort,
+  sheetSort,
+  onSheetSort,
   onUpdate,
   onEdit,
   onDelete,
+  separatePinnedColumns = false,
 }: {
   columns: LeadSheetTemplateColumn[]
   leads: Lead[]
   emptyText: string
-  dateSort: "asc" | "desc"
-  onToggleDateSort: () => void
+  sheetSort: SheetSortState
+  onSheetSort: (columnId: string, direction: SheetSortDirection | null) => void
   onUpdate: (id: string, patch: Partial<Lead>) => void
   onEdit: (id: string) => void
   onDelete: (id: string) => void
+  /** Customer sheet: the two frozen columns read as fixed, and the rest as the scrolling area. */
+  separatePinnedColumns?: boolean
 }) {
   const { t } = useLanguage()
-  const { statuses, segments } = useLeadSelectOptions()
+  const { statuses } = useLeadSelectOptions()
   const colSpan = columns.length + 1
 
   function headerLabel(col: LeadSheetTemplateColumn) {
@@ -490,9 +515,6 @@ function LeadsTable({
   }
 
   function renderColumnCell(lead: Lead, col: LeadSheetTemplateColumn, colIndex: number) {
-    const lockedInputClass = (field: Parameters<typeof isLeadFieldLocked>[1]) =>
-      cn(cellInputClass, isLeadFieldLocked(lead, field) && "cursor-not-allowed opacity-60")
-
     // Sticky first two columns follow template order (not always date + name).
     const stickyFirst =
       colIndex === 0
@@ -594,124 +616,37 @@ function LeadsTable({
     switch (col.builtinKey) {
       case "date":
         return (
-          <TableCell key={col.id} className={stickyBg}>
-            <LeadDateTimeCell
-              date={lead.date}
-              time={lead.time}
-              ariaLabel={t("leadSheetColDate")}
-              disabled={isLeadFieldLocked(lead, "date")}
-              className={cn(lockedInputClass("date"), "min-w-[9.5rem]")}
-              onCommit={({ date, time }) => onUpdate(lead.id, { date, time })}
-            />
-          </TableCell>
+          <LeadSheetReadOnlyDateCell key={col.id} lead={lead} className={stickyBg} />
         )
       case "fullName":
         return (
-          <TableCell key={col.id} className={stickyBg}>
-            <div className="flex items-center gap-1.5">
-              <input
-                value={lead.fullName}
-                aria-label={t("leadSheetColFullName")}
-                disabled={isLeadFieldLocked(lead, "fullName")}
-                className={lockedInputClass("fullName")}
-                onChange={(event) => onUpdate(lead.id, { fullName: event.target.value })}
-              />
-              {lead.source === "meta" ? (
-                <span className="shrink-0 rounded-full bg-[#1877F2]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1877F2]">
-                  Meta
-                </span>
-              ) : null}
-            </div>
-          </TableCell>
+          <LeadSheetReadOnlyFullNameCell key={col.id} lead={lead} className={stickyBg} />
         )
       case "email":
-        return (
-          <TableCell key={col.id} className="min-w-52 px-2">
-            <input
-              type="email"
-              value={lead.email}
-              disabled={isLeadFieldLocked(lead, "email")}
-              className={lockedInputClass("email")}
-              onChange={(event) => onUpdate(lead.id, { email: event.target.value })}
-            />
-          </TableCell>
-        )
+        return <LeadSheetReadOnlyEmailCell key={col.id} lead={lead} />
       case "phone":
-        return (
-          <TableCell key={col.id} className="min-w-36 px-2">
-            <input
-              value={lead.phone}
-              disabled={isLeadFieldLocked(lead, "phone")}
-              className={lockedInputClass("phone")}
-              onChange={(event) => onUpdate(lead.id, { phone: event.target.value })}
-            />
-          </TableCell>
-        )
+        return <LeadSheetReadOnlyPhoneCell key={col.id} lead={lead} />
       case "segment":
-        return (
-          <TableCell key={col.id} className="px-1">
-            <CellSelect
-              value={lead.segment}
-              label={t("leadSheetColSegment")}
-              placeholder={t("leadSheetSelectPlaceholder")}
-              className="min-w-24"
-              disabled={isLeadFieldLocked(lead, "segment")}
-              options={segments}
-              onChange={(segment) =>
-                onUpdate(lead.id, {
-                  segment: isLeadSegmentId(segment) ? segment : "",
-                  companyName: segment === "b2c" ? "" : lead.companyName,
-                })
-              }
-            />
-          </TableCell>
-        )
+        return <LeadSheetReadOnlySegmentCell key={col.id} lead={lead} className="px-1" />
       case "companyName":
         return (
-          <TableCell key={col.id} className="min-w-44 px-2">
-            <input
-              value={lead.companyName}
-              disabled={lead.segment !== "b2b" || isLeadFieldLocked(lead, "companyName")}
-              className={cn(
-                lockedInputClass("companyName"),
-                lead.segment !== "b2b" && "text-muted-foreground"
-              )}
-              onChange={(event) => onUpdate(lead.id, { companyName: event.target.value })}
-            />
-          </TableCell>
+          <LeadSheetReadOnlyPlainCell
+            key={col.id}
+            value={lead.companyName}
+            className="min-w-44 px-2"
+          />
         )
       case "address":
         return (
-          <TableCell key={col.id} className="min-w-44 px-2">
-            <input
-              value={lead.address}
-              disabled={isLeadFieldLocked(lead, "address")}
-              className={lockedInputClass("address")}
-              onChange={(event) => onUpdate(lead.id, { address: event.target.value })}
-            />
-          </TableCell>
+          <LeadSheetReadOnlyPlainCell key={col.id} value={lead.address} className="min-w-44 px-2" />
         )
       case "zipCode":
         return (
-          <TableCell key={col.id} className="min-w-24 px-2">
-            <input
-              value={lead.zipCode}
-              disabled={isLeadFieldLocked(lead, "zipCode")}
-              className={lockedInputClass("zipCode")}
-              onChange={(event) => onUpdate(lead.id, { zipCode: event.target.value })}
-            />
-          </TableCell>
+          <LeadSheetReadOnlyPlainCell key={col.id} value={lead.zipCode} className="min-w-24 px-2" />
         )
       case "city":
         return (
-          <TableCell key={col.id} className="min-w-32 px-2">
-            <input
-              value={lead.city}
-              disabled={isLeadFieldLocked(lead, "city")}
-              className={lockedInputClass("city")}
-              onChange={(event) => onUpdate(lead.id, { city: event.target.value })}
-            />
-          </TableCell>
+          <LeadSheetReadOnlyPlainCell key={col.id} value={lead.city} className="min-w-32 px-2" />
         )
       case "serviceIds":
         return (
@@ -731,14 +666,12 @@ function LeadsTable({
         )
       case "metaAdId":
         return (
-          <TableCell key={col.id} className="min-w-48 px-2">
-            <input
-              value={lead.metaAdId}
-              disabled={isLeadFieldLocked(lead, "metaAdId")}
-              className={cn(lockedInputClass("metaAdId"), "font-mono text-[0.8125rem]")}
-              onChange={(event) => onUpdate(lead.id, { metaAdId: event.target.value.trim() })}
-            />
-          </TableCell>
+          <LeadSheetReadOnlyPlainCell
+            key={col.id}
+            value={lead.metaAdId}
+            className="min-w-48 px-2"
+            mono
+          />
         )
       case "status":
         return (
@@ -799,7 +732,7 @@ function LeadsTable({
         <TableRow className="hover:bg-transparent">
           {columns.map((col, index) => {
             const label = headerLabel(col)
-            const isDateCol = col.kind === "builtin" && col.builtinKey === "date"
+            const sortable = isColumnSortable(col)
             return (
               <TableHead
                 key={col.id}
@@ -809,22 +742,13 @@ function LeadsTable({
                   index === 1 && "sticky left-36 z-[3] min-w-44"
                 )}
               >
-                {isDateCol ? (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-white hover:text-white/80"
-                    aria-label={
-                      dateSort === "desc" ? t("leadSheetSortOldest") : t("leadSheetSortNewest")
-                    }
-                    onClick={onToggleDateSort}
-                  >
-                    {label}
-                    {dateSort === "desc" ? (
-                      <ArrowDownIcon className="size-3.5" />
-                    ) : (
-                      <ArrowUpIcon className="size-3.5" />
-                    )}
-                  </button>
+                {sortable ? (
+                  <LeadSheetSortableHeader
+                    columnId={col.id}
+                    label={label}
+                    sort={sheetSort}
+                    onSort={onSheetSort}
+                  />
                 ) : (
                   label
                 )}
@@ -841,7 +765,7 @@ function LeadsTable({
           </TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody>
+      <TableBody className="[&_td]:border-b [&_td]:border-b-[#eee7de]">
         {leads.length === 0 ? (
           <TableRow className="hover:bg-transparent">
             <TableCell
@@ -853,7 +777,14 @@ function LeadsTable({
           </TableRow>
         ) : (
           leads.map((lead) => (
-            <TableRow key={lead.id} className={getWonLeadRowClass(lead.status)}>
+            <TableRow
+              key={lead.id}
+              className={
+                separatePinnedColumns
+                  ? "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(-n+2)]:bg-[#e8f3eb] [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(-n+2)]:bg-[#dceee1] [&:hover>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
+                  : getWonLeadRowClass(lead.status)
+              }
+            >
               {columns.map((col, colIndex) => renderColumnCell(lead, col, colIndex))}
               <TableCell
                 className={cn(
@@ -888,18 +819,18 @@ function LeadsTable({
 }
 
 export function LeadsBoard() {
-  useCompanyServices()
+  const { enabledServices, loaded: servicesLoaded } = useCompanyServices()
   const { t } = useLanguage()
-  const {
-    view,
-    pending,
-    onPresetChange,
-    onCustomRange,
-    onComparisonChange,
-    onServiceChange,
-    onFunnelChange,
-    onSegmentChange,
-  } = useDashboardViewState("/leads")
+  const searchParams = useSearchParams()
+  const { view, pending, onPresetChange, onCustomRange: onCustomRangeRaw } =
+    useDashboardViewState("/leads")
+  const dateIsAllTime =
+    view.preset === "all_time" || (!searchParams.has("preset") && !searchParams.has("from"))
+  const resetDate = useCallback(() => onPresetChange("all_time"), [onPresetChange])
+  const onSheetCustomRange = useCallback(
+    (range: DateRange) => onCustomRangeRaw(range, "current"),
+    [onCustomRangeRaw]
+  )
   const {
     leads,
     leadSheet,
@@ -913,21 +844,57 @@ export function LeadsBoard() {
     deleteLead,
     reload,
   } = useLeads()
-  const [statusFilter, setStatusFilter] = useState<LeadStatusId | "all">("all")
-  const [dateSort, setDateSort] = useState<"asc" | "desc">("desc")
+  const leadDateSpan = useMemo(() => {
+    let earliest: string | null = null
+    let latest: string | null = null
+    for (const lead of leads) {
+      if (!lead.date) continue
+      if (!earliest || lead.date < earliest) earliest = lead.date
+      if (!latest || lead.date > latest) latest = lead.date
+    }
+    return { earliest, latest }
+  }, [leads])
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all")
+  const [sheetService, setSheetService] = useState<string | null>(null)
+  const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
+  const [sheetFunnel, setSheetFunnel] = useState<FunnelId | "all">(() => view.funnel ?? "all")
+  const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
+  const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const editingLead = editingId ? (leads.find((lead) => lead.id === editingId) ?? null) : null
 
-  const inFilters = useMemo(
+  useEffect(() => {
+    if (view.funnel) setSheetFunnel(view.funnel)
+  }, [view.funnel])
+
+  const scoped = useMemo(
+    () => filterDashboardLeads(leads, { range: view.range, ignoreDate: dateIsAllTime }),
+    [dateIsAllTime, leads, view.range]
+  )
+
+  const sheetScoped = useMemo(
     () =>
-      filterDashboardLeads(leads, {
-        range: view.range,
-        service: view.service,
-        funnel: view.funnel,
-        segment: view.segment,
-      }).filter((lead) => statusFilter === "all" || lead.status === statusFilter),
-    [leads, statusFilter, view]
+      scoped.filter((lead) => {
+        if (sheetSegment !== "all" && lead.segment !== sheetSegment) return false
+        if (!leadMatchesServiceFilter(lead, sheetService, enabledServices)) return false
+        if (sheetFunnel !== "all" && lead.platform !== sheetFunnel) return false
+        return true
+      }),
+    [enabledServices, scoped, sheetFunnel, sheetSegment, sheetService]
+  )
+
+  const statusCounts = useMemo(() => {
+    const counts: Partial<Record<LeadStatusId, number>> = {}
+    for (const lead of sheetScoped) {
+      counts[lead.status] = (counts[lead.status] ?? 0) + 1
+    }
+    return counts
+  }, [sheetScoped])
+
+  const inFilters = useMemo(
+    () => sheetScoped.filter((lead) => matchesStatusFilter(lead.status, statusFilter)),
+    [sheetScoped, statusFilter]
   )
 
   const filtered = useMemo(() => {
@@ -939,23 +906,55 @@ export function LeadsBoard() {
           )
         )
       : inFilters
-    return sortLeadsByDate(searched, dateSort)
-  }, [dateSort, inFilters, search])
+    return sortLeadsWithSheetState(searched, leadSheet.columns, sheetSort, enabledServices)
+  }, [enabledServices, inFilters, leadSheet.columns, search, sheetSort])
+
+  const handleSheetSort = useCallback((columnId: string, direction: SheetSortDirection | null) => {
+    setSheetSort(direction ? { columnId, direction } : null)
+  }, [])
+
+  const defaultSortApplied = useRef(false)
+  useEffect(() => {
+    if (defaultSortApplied.current || leadSheet.columns.length === 0) return
+    defaultSortApplied.current = true
+    const dateId = findDefaultDateColumnId(leadSheet.columns)
+    if (dateId) setSheetSort({ columnId: dateId, direction: "desc" })
+  }, [leadSheet.columns])
 
   const pipelineStats = useMemo(() => computeLeadPipelineStats(filtered), [filtered])
 
+  function exportFiltered() {
+    const headers = leadSheet.columns.map((col) => columnDisplayLabel(col, t))
+    const rows = filtered.map((lead) =>
+      leadSheet.columns.map((col) => {
+        if (col.kind === "custom") return plainCell(lead.customFields?.[col.customField.fieldKey])
+        switch (col.builtinKey) {
+          case "date":
+            return formatLeadDateTime(lead.date, lead.time)
+          case "status":
+            return t(leadStatusLabelKey(lead.status))
+          case "segment":
+            return lead.segment ? t(leadSegmentLabelKey(lead.segment)) : ""
+          case "serviceIds":
+            return formatLeadServices(lead, enabledServices)
+          case "salesPrice":
+            return lead.salesPrice == null ? "" : String(lead.salesPrice)
+          case "profit":
+            return lead.profit == null ? "" : String(lead.profit)
+          default:
+            return String(lead[col.builtinKey] ?? "")
+        }
+      })
+    )
+    downloadCsv("leads.csv", toCsv(headers, rows))
+  }
+
   return (
     <AdminClientRouteGate>
-    <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-6">
-      <header className="flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-            {t("navLeads")}
-          </p>
-          <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-[1.75rem]">
-            {t("leadSheetPageTitle")}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("leadSheetPageIntro")}</p>
+    <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-4">
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-medium tracking-tight sm:text-2xl">{t("leadSheetPageTitle")}</h1>
           {error === "leadsLoadError" ? (
             <LoadErrorNotice
               className="mt-2"
@@ -963,129 +962,181 @@ export function LeadsBoard() {
               onRetry={() => void reload()}
             />
           ) : error ? (
-            <p className="mt-2 text-sm text-amber-700">{t(error)}</p>
-          ) : null}
-          {dataSource === "supabase" ? (
-            <p className="mt-1 text-xs text-muted-foreground">{t("leadSheetSavedInDb")}</p>
+            <p className="mt-1 text-sm text-amber-700">{t(error)}</p>
           ) : null}
         </div>
-        <div className="flex flex-col items-stretch gap-4 sm:items-end">
-          <DateRangeControls
-            preset={view.preset}
-            range={view.range}
-            comparisonEnabled={view.comparisonEnabled}
-            comparisonMode={view.comparisonMode}
-            comparisonRange={view.comparisonRange}
-            onPresetChange={onPresetChange}
-            onCustomRange={onCustomRange}
-            onComparisonChange={onComparisonChange}
-            service={view.service}
-            onServiceChange={onServiceChange}
-            funnel={view.funnel}
-            onFunnelChange={onFunnelChange}
-            segment={view.segment}
-            onSegmentChange={onSegmentChange}
-            showComparison={false}
-          />
-          <div className="flex flex-wrap items-center justify-end gap-4">
-            <SheetSearchField
-              value={search}
-              onChange={setSearch}
-              placeholder={t("leadSheetSearchPlaceholder")}
-              ariaLabel={t("leadSheetSearchAria")}
-            />
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => {
-                if (value === "all" || (typeof value === "string" && isLeadStatusId(value))) {
-                  setStatusFilter(value as LeadStatusId | "all")
-                }
-              }}
-            >
-              <SelectTrigger
-                className={cn(
-                  "dashboard-chip min-w-52 px-4",
-                  statusFilter !== "all" && getLeadStatusClass(statusFilter)
-                )}
-                aria-label={t("leadSheetFilterStatusAria")}
-              >
-                <SelectValue>
-                  {statusFilter === "all"
-                    ? t("leadSheetFilterAllStatuses")
-                    : t(leadStatusLabelKey(statusFilter))}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent
-                align="end"
-                alignItemWithTrigger={false}
-                className="dashboard-filter-menu lead-status-filter-menu"
-              >
-                <SelectItem
-                  value="all"
-                  className="hover:bg-[#3f3a36] hover:text-white hover:**:text-white focus:bg-[#3f3a36] focus:text-white focus:**:text-white data-highlighted:bg-[#3f3a36] data-highlighted:text-white data-highlighted:**:text-white"
-                >
-                  {t("leadSheetFilterAllStatuses")}
-                </SelectItem>
-                {LEAD_STATUSES.map((item) => (
-                  <SelectItem key={item.id} value={item.id} className={getLeadStatusClass(item.id)}>
-                    {t(leadStatusLabelKey(item.id))}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <AddLeadDialog
-              columns={leadSheet.columns}
-              onCreate={(lead) => createLead(lead)}
-              trigger={
-                <Button>
-                  <PlusIcon />
-                  {t("leadSheetAddLead")}
-                </Button>
-              }
-            />
-          </div>
-        </div>
+        <AddLeadDialog
+          columns={leadSheet.columns}
+          existingLeads={leads}
+          onCreate={(lead) => createLead(lead)}
+          trigger={
+            <Button size="sm" className="shrink-0">
+              <PlusIcon />
+              {t("leadSheetAddLead")}
+            </Button>
+          }
+        />
       </header>
 
       {loading ? (
         <LeadsBoardSkeleton />
       ) : (
         <ClientBoardEnter className="flex flex-col gap-6" pending={pending}>
-      <LeadPipelineBar stats={pipelineStats} />
+      {!sheetFocusOpen ? <LeadPipelineBar stats={pipelineStats} /> : null}
 
-      <section className="dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden">
-        <LeadSheetScrollArea
-          toolbarStart={
-            <>
-              <span className="text-xs font-semibold tabular-nums text-foreground">
-                {t("leadSheetRowCount", {
-                  shown: String(filtered.length),
-                  total: String(leads.length),
-                })}
-              </span>
-              <SaveStatusBadge status={saveStatus} />
-            </>
-          }
-        >
-          <LeadsTable
-            columns={leadSheet.columns}
-            leads={filtered}
-            dateSort={dateSort}
-            onToggleDateSort={() => setDateSort((current) => (current === "desc" ? "asc" : "desc"))}
-            emptyText={t("leadSheetEmptyFiltered")}
-            onUpdate={updateLead}
-            onEdit={setEditingId}
-            onDelete={(id) => {
-              void deleteLead(id)
-            }}
+      <LeadSheetFocusShell open={sheetFocusOpen} onClose={() => setSheetFocusOpen(false)}>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 sm:px-6">
+            <h2 className="text-base font-medium text-foreground">{t("leadSheetPageTitle")}</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("leadSheetFocusExit")}
+              title={t("leadSheetFocusExit")}
+              onClick={() => setSheetFocusOpen(false)}
+            >
+              <XIcon />
+            </Button>
+          </div>
+          <LeadSheetFilterBar
+            preset={view.preset}
+            range={view.range}
+            onPresetChange={onPresetChange}
+            onCustomRange={onSheetCustomRange}
+            statusCounts={statusCounts}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            sheetService={sheetService}
+            onSheetServiceChange={setSheetService}
+            sheetSegment={sheetSegment}
+            onSheetSegmentChange={setSheetSegment}
+            sheetFunnel={sheetFunnel}
+            onSheetFunnelChange={setSheetFunnel}
+            enabledServices={enabledServices}
+            servicesLoaded={servicesLoaded}
+            search={search}
+            onSearchChange={setSearch}
+            dateIsAllTime={dateIsAllTime}
+            earliestLeadDate={leadDateSpan.earliest}
+            latestLeadDate={leadDateSpan.latest}
+            onResetDate={resetDate}
+            onExport={exportFiltered}
           />
-        </LeadSheetScrollArea>
-        <LeadPipelineFooter stats={pipelineStats} />
+          <LeadSheetScrollArea
+            className="min-h-0 flex-1"
+            toolbarStart={
+              <>
+                <span className="text-xs font-semibold tabular-nums text-foreground">
+                  {t("leadSheetRowCount", {
+                    shown: String(filtered.length),
+                    total: String(leads.length),
+                  })}
+                </span>
+                <SaveStatusBadge status={saveStatus} />
+              </>
+            }
+          >
+            <LeadsTable
+              columns={leadSheet.columns}
+              leads={filtered}
+              sheetSort={sheetSort}
+              onSheetSort={handleSheetSort}
+              emptyText={t("leadSheetEmptyFiltered")}
+              onUpdate={updateLead}
+              onEdit={setEditingId}
+              onDelete={(id) => {
+                void deleteLead(id)
+              }}
+            />
+          </LeadSheetScrollArea>
+        </div>
+      </LeadSheetFocusShell>
+
+      <section
+        className={cn(
+          "dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden",
+          sheetFocusOpen && "hidden"
+        )}
+      >
+        <LeadSheetFilterBar
+          preset={view.preset}
+          range={view.range}
+          onPresetChange={onPresetChange}
+          onCustomRange={onSheetCustomRange}
+          statusCounts={statusCounts}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          sheetService={sheetService}
+          onSheetServiceChange={setSheetService}
+          sheetSegment={sheetSegment}
+          onSheetSegmentChange={setSheetSegment}
+          sheetFunnel={sheetFunnel}
+          onSheetFunnelChange={setSheetFunnel}
+          enabledServices={enabledServices}
+          servicesLoaded={servicesLoaded}
+          search={search}
+          onSearchChange={setSearch}
+          dateIsAllTime={dateIsAllTime}
+          earliestLeadDate={leadDateSpan.earliest}
+          latestLeadDate={leadDateSpan.latest}
+          onResetDate={resetDate}
+          onExport={exportFiltered}
+          focusOpen={false}
+          onToggleFocus={() => setSheetFocusOpen(true)}
+        />
+        <div className="hidden min-h-0 flex-1 flex-col md:flex">
+          <LeadSheetScrollArea
+            toolbarStart={
+              <>
+                <span className="text-xs font-semibold tabular-nums text-foreground">
+                  {t("leadSheetRowCount", {
+                    shown: String(filtered.length),
+                    total: String(leads.length),
+                  })}
+                </span>
+                <SaveStatusBadge status={saveStatus} />
+              </>
+            }
+          >
+            <LeadsTable
+              columns={leadSheet.columns}
+              leads={filtered}
+              sheetSort={sheetSort}
+              onSheetSort={handleSheetSort}
+              emptyText={t("leadSheetEmptyFiltered")}
+              onUpdate={updateLead}
+              onEdit={setEditingId}
+              onDelete={(id) => {
+                void deleteLead(id)
+              }}
+            />
+          </LeadSheetScrollArea>
+          <LeadPipelineFooter stats={pipelineStats} />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col md:hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {t("leadSheetRowCount", {
+                shown: String(filtered.length),
+                total: String(leads.length),
+              })}
+            </span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
+            <LeadCardList
+              leads={filtered}
+              emptyText={t("leadSheetEmptyFiltered")}
+              onEdit={setEditingId}
+            />
+          </div>
+        </div>
       </section>
       {editingLead ? (
         <EditLeadDialog
           key={editingLead.id}
           columns={leadSheet.columns}
+          existingLeads={leads}
           lead={editingLead}
           onSave={(patch) => saveLead(editingLead.id, patch)}
           onClose={() => setEditingId(null)}

@@ -53,12 +53,3 @@ export function DashboardErrorState({ onRetry }: { onRetry: () => void }) {
     </Card>
   )
 }
-
-export function PartialDataNotice() {
-  const { t } = useLanguage()
-  return (
-    <p className="text-xs text-[var(--text-muted)]">
-      {t("dashboardPartialData")}
-    </p>
-  )
-}

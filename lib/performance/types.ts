@@ -62,6 +62,7 @@ export type DatePreset =
   | "last_6_months"
   | "ytd"
   | "last_12_months"
+  | "all_time"
   | "custom"
 
 export type ComparisonMode = "previous_period" | "previous_year" | "custom"
@@ -98,6 +99,8 @@ export type PerformanceDashboardData = {
   current: PeriodResult
   comparison: PeriodResult | null
   year: YearOverview
+  /** Years available for the development chart tabs (from leads / ad spend). */
+  chartYears: number[]
   status: DashboardStatus
   granularity: Granularity
 }

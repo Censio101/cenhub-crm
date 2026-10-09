@@ -1,49 +1,20 @@
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Card } from "@/components/ui/card"
-import { previousPeriod } from "@/lib/performance/date-ranges"
-import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 import { buildValueStory } from "@/lib/performance/insights"
-import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
-import type { FunnelId } from "@/lib/performance/funnels"
-import type { ServiceId } from "@/lib/performance/services"
-import type {
-  DateRange,
-  PerformanceDashboardData,
-} from "@/lib/performance/types"
-import type { Lead } from "@/lib/leads"
+import type { PerformanceDashboardData } from "@/lib/performance/types"
 
 export function ValueStory({
   data,
-  leads,
-  adSpendByMonth,
-  range,
-  service,
-  funnel,
-  segment,
+  comparisonEnabled,
 }: {
   data: PerformanceDashboardData
-  leads: readonly Lead[]
-  adSpendByMonth: Record<string, number>
-  range: DateRange
-  service: ServiceId | null
-  funnel: FunnelId | null
-  segment: CustomerSegmentId | null
+  comparisonEnabled: boolean
 }) {
+  const { t } = useLanguage()
   if (data.status === "empty") return null
 
-  const performanceInput = { leads, adSpendByMonth }
-  const fallbackComparison =
-    data.comparison ??
-    getPerformanceDashboard(
-      {
-        range: previousPeriod(range),
-        service,
-        funnel,
-        segment,
-      },
-      performanceInput
-    ).current
-
-  const story = buildValueStory(data.current.totals, fallbackComparison.totals)
+  const comparisonTotals = comparisonEnabled ? (data.comparison?.totals ?? null) : null
+  const story = buildValueStory(data.current.totals, comparisonTotals)
 
   return (
     <Card className="dashboard-card gap-3 px-6 py-5">
@@ -63,6 +34,9 @@ export function ValueStory({
         <p className="text-base font-medium text-[var(--text-primary)]">
           For hver 1 kr. i annoncer kom der {story.roas} kr. tilbage.
         </p>
+      ) : null}
+      {comparisonEnabled && !data.comparison ? (
+        <p className="text-sm text-[var(--text-secondary)]">{t("kpiNoCompareData")}</p>
       ) : null}
       {story.comparisonLines.length > 0 ? (
         <p className="text-sm text-[var(--text-secondary)]">

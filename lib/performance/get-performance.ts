@@ -3,6 +3,7 @@ import { endOfDay, endOfWeek, startOfDay, startOfWeek } from "date-fns"
 import type { Locale } from "@/lib/i18n/types"
 import type { Lead } from "@/lib/leads"
 
+import { chartYearsFromData } from "./chart-years"
 import { buildChartPoints } from "./compare"
 import {
   inferGranularity,
@@ -161,35 +162,6 @@ function collectDays(
         (!funnel || bucket.funnel === funnel)
     )
     .map((bucket) => applyCustomerSegment(bucket, segment))
-  if (typeof fetch !== "undefined") {
-    // #region agent log
-    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "138f58",
-      },
-      body: JSON.stringify({
-        sessionId: "138f58",
-        hypothesisId: "C-D",
-        location: "get-performance.ts:collectDays",
-        message: "buckets collected",
-        data: {
-          from: toIsoDate(range.start),
-          to: toIsoDate(range.end),
-          service,
-          funnel,
-          rawCount: raw.length,
-          filteredCount: filtered.length,
-          rawAdSpend: raw.reduce((s, b) => s + b.adSpend, 0),
-          filteredAdSpend: filtered.reduce((s, b) => s + b.adSpend, 0),
-          leadsInRange: input?.leads ? leadsInRange(input.leads, range).length : null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
-  }
   return filtered
 }
 
@@ -242,6 +214,8 @@ function isPartial(range: DateRange, input?: PerformanceInput): boolean {
 export type GetPerformanceDashboardOptions = {
   /** Calendar month cap for year table/chart (defaults to real today). */
   now?: Date
+  /** Which calendar year the chart + monthly table show (defaults to end of filter range). */
+  chartYear?: number
 }
 
 export function getPerformanceDashboard(
@@ -272,8 +246,12 @@ export function getPerformanceDashboard(
   const comparison =
     comparisonPeriod && hasActivity(comparisonPeriod) ? comparisonPeriod : null
 
-  const year = query.range.end.getFullYear()
+  const defaultYear = query.range.end.getFullYear()
+  const year = options?.chartYear ?? defaultYear
   const yearOverviewRange = resolveYearOverviewRange(year, now)
+  const chartYears = input
+    ? chartYearsFromData(input.leads ?? [], input.adSpendByMonth ?? {})
+    : []
   const yearPeriod = buildPeriod(
     yearOverviewRange,
     "month",
@@ -298,6 +276,7 @@ export function getPerformanceDashboard(
       monthlyBuckets: yearPeriod.monthlyBuckets,
       cumulativeBuckets: accumulateMonthly(yearPeriod.monthlyBuckets),
     },
+    chartYears: chartYears.length > 0 ? chartYears : [year],
     status,
     granularity,
   }
@@ -306,13 +285,18 @@ export function getPerformanceDashboard(
 export function getChartSeries(
   data: PerformanceDashboardData,
   metricId: MetricId,
-  locale: Locale = "da"
+  locale: Locale = "da",
+  options?: { compare?: boolean }
 ) {
+  const compare = Boolean(options?.compare)
+  const buckets = compare ? data.current.buckets : data.year.monthlyBuckets
+  const comparisonBuckets = compare ? (data.comparison?.buckets ?? null) : null
+  const granularity = compare ? data.granularity : "month"
   const points = buildChartPoints(
     metricId,
-    data.year.monthlyBuckets,
-    null,
-    "month",
+    buckets,
+    comparisonBuckets,
+    granularity,
     locale
   )
 
@@ -320,9 +304,9 @@ export function getChartSeries(
 
   const spendPoints = buildChartPoints(
     "adSpend",
-    data.year.monthlyBuckets,
+    buckets,
     null,
-    "month",
+    granularity,
     locale
   )
 

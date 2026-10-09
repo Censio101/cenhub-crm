@@ -19,7 +19,6 @@ export type AccountSettings = {
   logo: string
   email: string
   employees: EmployeeAccess[]
-  hvidbjergPartner: boolean
 }
 
 export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = {

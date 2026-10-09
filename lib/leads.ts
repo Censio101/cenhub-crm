@@ -1,3 +1,4 @@
+import { leadMatchesServiceFilter } from "@/lib/leads/service-filter"
 import {
   isServiceId,
   resolveServiceLabel,
@@ -185,7 +186,10 @@ export function getLeadStatusCellClass(id: LeadStatusId): string {
 }
 
 export function getWonLeadRowClass(status: LeadStatusId): string {
-  if (status !== "won") return "hover:bg-transparent"
+  // The hover tint goes on the cells so the pinned (sticky) columns light up with the row.
+  if (status !== "won") {
+    return "hover:bg-transparent [&:hover>td:not([data-lead-status-cell])]:bg-[#f8f4ee]"
+  }
   return "bg-[#e8f3eb] text-[#1f4d30] hover:bg-[#dceee1] [&>td:not([data-lead-status-cell])]:bg-[#e8f3eb] [&:hover>td:not([data-lead-status-cell])]:bg-[#dceee1]"
 }
 
@@ -269,7 +273,7 @@ export function filterDashboardLeads(
       const date = new Date(`${lead.date}T12:00:00`)
       if (date < filter.range.start || date > filter.range.end) return false
     }
-    if (filter.service && !getLeadServiceIds(lead).includes(filter.service)) {
+    if (filter.service && !leadMatchesServiceFilter(lead, filter.service)) {
       return false
     }
     if (filter.funnel && lead.platform !== filter.funnel) return false

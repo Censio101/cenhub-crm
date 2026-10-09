@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
+import { AdminClientHvidbjergPartnerSection } from "@/components/admin/AdminClientHvidbjergPartnerSection"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import {

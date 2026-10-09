@@ -66,11 +66,12 @@ function dateFnsLocale(locale: Locale) {
   return locale === "en" ? enUS : da
 }
 
+export function formatDayLabel(date: Date, locale: Locale = "da"): string {
+  return format(date, "d. MMM yyyy", { locale: dateFnsLocale(locale) })
+}
+
 export function formatDateRangeLabel(start: Date, end: Date, locale: Locale = "da"): string {
-  const dateLocale = dateFnsLocale(locale)
-  const startLabel = format(start, "d. MMM yyyy", { locale: dateLocale })
-  const endLabel = format(end, "d. MMM yyyy", { locale: dateLocale })
-  return `${startLabel} – ${endLabel}`
+  return `${formatDayLabel(start, locale)} – ${formatDayLabel(end, locale)}`
 }
 
 export const DANISH_MONTHS_SHORT = [

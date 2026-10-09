@@ -9,6 +9,7 @@ export const DATE_PRESET_MESSAGE_KEYS: Record<DatePreset, MessageKey> = {
   last_6_months: "datePresetLast6Months",
   ytd: "datePresetYtd",
   last_12_months: "datePresetLast12Months",
+  all_time: "datePresetAllTime",
   custom: "datePresetCustom",
 }
 

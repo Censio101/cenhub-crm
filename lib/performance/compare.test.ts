@@ -2,6 +2,7 @@ import { differenceInCalendarDays } from "date-fns"
 import { describe, expect, it } from "vitest"
 
 import { alignByOffset, buildChartPoints } from "./compare"
+import { applyComparisonChange, comparisonBaseRange } from "./dashboard-view-mutations"
 import { previousPeriod, resolvePreset } from "./date-ranges"
 import { getChartSeries, getPerformanceDashboard } from "./get-performance"
 import { dashboardStateToParams, parseDashboardParams } from "./url-state"
@@ -35,6 +36,28 @@ describe("period comparison", () => {
     const query = dashboardStateToParams(parsed)
     expect(new URLSearchParams(query).get("compare")).toBe("previous")
     expect(new URLSearchParams(query).get("compareFrom")).toBeTruthy()
+  })
+
+  it("disables comparison for all time (full history is not comparable)", () => {
+    const now = new Date(2026, 9, 9, 12, 0, 0)
+    const view = parseDashboardParams(
+      new URLSearchParams("preset=all_time&compare=previous"),
+      now
+    )
+    expect(view.comparisonEnabled).toBe(false)
+    expect(view.comparisonRange).toBeNull()
+
+    const anchor = new Date(2025, 10, 21)
+    const base = comparisonBaseRange(view.range, view.preset, anchor)
+    expect(base?.start.getFullYear()).toBe(2025)
+
+    const next = applyComparisonChange(
+      view,
+      { enabled: true, mode: "previous_period" },
+      anchor
+    )
+    expect(next.comparisonEnabled).toBe(false)
+    expect(next.comparisonRange).toBeNull()
   })
 
   it("builds a previous period of equal length immediately before", () => {
@@ -85,7 +108,7 @@ describe("period comparison", () => {
     const revenue = getChartSeries(data, "revenue")
     const leads = getChartSeries(data, "leads")
 
-    expect(revenue).toHaveLength(10)
+    expect(revenue).toHaveLength(data.year.monthlyBuckets.length)
     expect(revenue[0]?.spend).toBeGreaterThan(0)
     expect(revenue[0]?.spend).not.toBe(revenue[0]?.current)
     expect(leads[0]?.spend).toBeUndefined()

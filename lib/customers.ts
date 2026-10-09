@@ -340,6 +340,7 @@ export type DashboardCustomerFilter = {
   range?: { start: Date; end: Date } | null
   service?: string | null
   segment?: LeadSegmentId | null
+  ignoreDate?: boolean
 }
 
 export function filterDashboardCustomers(
@@ -347,7 +348,7 @@ export function filterDashboardCustomers(
   filter: DashboardCustomerFilter
 ): Customer[] {
   return customers.filter((customer) => {
-    if (filter.range) {
+    if (!filter.ignoreDate && filter.range) {
       const date = new Date(`${customer.closedDate}T12:00:00`)
       if (date < filter.range.start || date > filter.range.end) return false
     }

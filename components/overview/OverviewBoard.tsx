@@ -9,7 +9,6 @@ import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import {
   DashboardEmptyState,
   DashboardErrorState,
-  PartialDataNotice,
 } from "@/components/performance/DashboardStates"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
@@ -18,13 +17,23 @@ import { EconomyInsights } from "@/components/overview/EconomyInsights"
 import { LeadFlowCard } from "@/components/overview/LeadFlowCard"
 import { MarketingCompare } from "@/components/overview/MarketingCompare"
 import { ValueStory } from "@/components/overview/ValueStory"
+import { HvidbjergPartnerBadge } from "@/components/organization/HvidbjergPartnerBadge"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
-import { formatDateRangeLabel } from "@/lib/performance/format"
+import { parseIsoDate } from "@/lib/performance/date-ranges"
+import { formatDateRangeLabel, formatDayLabel } from "@/lib/performance/format"
+import { getLeadDataDateRange } from "@/lib/performance/from-leads"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 
 export function OverviewBoard() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { locale, t } = useLanguage()
+  const { organization, role } = useActiveOrganization()
+  const { leads, adSpendByMonth } = useDashboardData()
+  const leadDateSpan = useMemo(() => getLeadDataDateRange(leads), [leads])
+  const comparisonAnchor = useMemo(
+    () => (leadDateSpan?.start ? parseIsoDate(leadDateSpan.start) : null),
+    [leadDateSpan]
+  )
   const {
     view,
     pending,
@@ -34,16 +43,21 @@ export function OverviewBoard() {
     onServiceChange,
     onFunnelChange,
     onSegmentChange,
-  } = useDashboardViewState("/overblik")
-  const { organization, role } = useActiveOrganization()
-  const { leads, adSpendByMonth } = useDashboardData()
+  } = useDashboardViewState("/overblik", comparisonAnchor)
+  const measuredRange = useMemo(
+    () =>
+      view.preset === "all_time" && comparisonAnchor
+        ? { start: comparisonAnchor, end: view.range.end }
+        : view.range,
+    [comparisonAnchor, view.preset, view.range]
+  )
   const clientName = organization?.name ?? (role === "censio_admin" ? "klienten" : null)
 
   const data = useMemo(() => {
     try {
       return getPerformanceDashboard(
         {
-          range: view.range,
+          range: measuredRange,
           comparison: view.comparisonEnabled ? view.comparisonRange : null,
           service: view.service,
           funnel: view.funnel,
@@ -54,9 +68,12 @@ export function OverviewBoard() {
     } catch {
       return null
     }
-  }, [view, leads, adSpendByMonth])
+  }, [view, leads, adSpendByMonth, measuredRange])
 
-  const dateRangeLabel = formatDateRangeLabel(view.range.start, view.range.end)
+  const dateRangeLabel =
+    view.preset === "all_time"
+      ? t("datePresetAllTimeRange", { date: formatDayLabel(view.range.end, locale) })
+      : formatDateRangeLabel(view.range.start, view.range.end, locale)
 
   return (
     <AdminClientRouteGate>
@@ -98,27 +115,19 @@ export function OverviewBoard() {
           onFunnelChange={onFunnelChange}
           segment={view.segment}
           onSegmentChange={onSegmentChange}
+          earliestLeadDate={leadDateSpan?.start}
+          latestLeadDate={leadDateSpan?.end}
         />
       </header>
 
       {pending ? (
         <span className="sr-only">{t("dashboardUpdating")}</span>
       ) : null}
-      {data.status === "partial" ? <PartialDataNotice /> : null}
-
       {data.status === "empty" ? (
         <DashboardEmptyState />
       ) : (
         <>
-          <ValueStory
-            data={data}
-            leads={leads}
-            adSpendByMonth={adSpendByMonth}
-            range={view.range}
-            service={view.service}
-            funnel={view.funnel}
-            segment={view.segment}
-          />
+          <ValueStory data={data} comparisonEnabled={view.comparisonEnabled} />
           <div className="grid gap-4 xl:grid-cols-2">
             <LeadFlowCard
               leads={leads}

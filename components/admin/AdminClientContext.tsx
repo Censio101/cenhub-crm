@@ -35,6 +35,7 @@ export type AdminClientOrganization = {
   leadCount: number
   userCount: number
   metaEnabled: boolean
+  hvidbjerg_partner: boolean
 }
 
 type AdminClientContextValue = {

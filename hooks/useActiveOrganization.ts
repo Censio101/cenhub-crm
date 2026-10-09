@@ -12,6 +12,7 @@ export type ActiveOrganization = {
   logoUrl: string | null
   logoBackground: OrganizationLogoBackground
   profileComplete: boolean
+  hvidbjergPartner: boolean
 }
 
 type ActiveOrganizationState = {

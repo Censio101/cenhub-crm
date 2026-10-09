@@ -1,10 +1,11 @@
 "use client"
 
+import { HvidbjergPartnerBadge } from "@/components/organization/HvidbjergPartnerBadge"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
-import { formatDateRangeLabel } from "@/lib/performance/format"
+import { formatDateRangeLabel, formatDayLabel } from "@/lib/performance/format"
 import type { CustomerSegmentId } from "@/lib/performance/customer-segments"
 import { FUNNEL_MESSAGE_KEYS } from "@/lib/performance/funnel-i18n"
 import type { FunnelId } from "@/lib/performance/funnels"
@@ -31,6 +32,8 @@ export function DashboardHeader({
   onFunnelChange,
   segment,
   onSegmentChange,
+  earliestLeadDate,
+  latestLeadDate,
 }: {
   preset: DatePreset
   range: DateRange
@@ -50,6 +53,8 @@ export function DashboardHeader({
   onFunnelChange: (funnel: FunnelId | null) => void
   segment: CustomerSegmentId | null
   onSegmentChange: (segment: CustomerSegmentId | null) => void
+  earliestLeadDate?: string | null
+  latestLeadDate?: string | null
 }) {
   const { organization } = useActiveOrganization()
   const { locale, t } = useLanguage()
@@ -80,7 +85,10 @@ export function DashboardHeader({
         </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           {t("dashboardShowingData", {
-            dateRange: formatDateRangeLabel(range.start, range.end, locale),
+            dateRange:
+              preset === "all_time"
+                ? t("datePresetAllTimeRange", { date: formatDayLabel(range.end, locale) })
+                : formatDateRangeLabel(range.start, range.end, locale),
           })}
           {scope ? ` · ${scope}` : ""}
         </p>
@@ -100,6 +108,8 @@ export function DashboardHeader({
         onFunnelChange={onFunnelChange}
         segment={segment}
         onSegmentChange={onSegmentChange}
+        earliestLeadDate={earliestLeadDate}
+        latestLeadDate={latestLeadDate}
       />
     </header>
   )

@@ -329,6 +329,49 @@
   line-height: 1.25;
 }
 
+/* Lead sheet filter dropdowns: quick, subtle open/close (replaces the slower stock animation). */
+@keyframes sheet-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sheet-menu-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.sheet-filter-menu {
+  transform-origin: var(--transform-origin, top left);
+  will-change: transform, opacity;
+}
+
+.sheet-filter-menu[data-open] {
+  animation: sheet-menu-in 130ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sheet-filter-menu[data-closed] {
+  animation: sheet-menu-out 80ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-filter-menu[data-open],
+  .sheet-filter-menu[data-closed] {
+    animation: none;
+  }
+}
+
 /* Portaled filter menus sit outside .dashboard-page */
 .dashboard-filter-menu {
   border-radius: 5px;

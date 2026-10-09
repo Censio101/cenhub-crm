@@ -6,6 +6,7 @@ import {
   parseOrganizationLogoBackground,
   resolveOrganizationLogoUrl,
 } from "@/lib/organization-logo"
+import { parseHvidbjergPartner } from "@/lib/hvidbjerg-partner"
 import { isLocale } from "@/lib/i18n"
 import type { Locale } from "@/lib/i18n/types"
 

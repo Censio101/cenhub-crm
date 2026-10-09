@@ -246,6 +246,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             organization?.slug === data.organization.slug
               ? (organization.profileComplete ?? true)
               : true,
+          // The silent reload below fills in the real value for a newly picked client.
+          hvidbjergPartner:
+            organization?.slug === data.organization.slug
+              ? (organization.hvidbjergPartner ?? false)
+              : false,
         })
         setIsAdminViewingClient(true)
       } else if (!normalized) {

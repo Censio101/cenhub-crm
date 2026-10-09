@@ -12,6 +12,7 @@ import {
   WalletIcon,
 } from "lucide-react"
 
+import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Card } from "@/components/ui/card"
 import {
   formatCompactNumber,
@@ -19,8 +20,9 @@ import {
   formatInteger,
   formatPercentage,
   formatRoasMultiplier,
+  formatSignedPercentage,
 } from "@/lib/performance/format"
-import type { MetricDefinition, MetricId } from "@/lib/performance/types"
+import type { MetricDefinition, MetricDelta, MetricId } from "@/lib/performance/types"
 import { cn } from "cn"
 
 const KPI_ICONS: Record<MetricId, LucideIcon> = {
@@ -74,14 +76,46 @@ function valueTextClass(formatted: string, compact?: boolean): string {
   return "text-[2.35rem] leading-none"
 }
 
+function KpiDeltaLine({
+  delta,
+  compareEmpty,
+}: {
+  delta?: MetricDelta | null
+  compareEmpty?: boolean
+}) {
+  const { t } = useLanguage()
+  if (compareEmpty) {
+    return <p className="mt-1 text-xs text-[var(--text-muted)]">{t("kpiNoCompareData")}</p>
+  }
+  if (!delta || delta.direction === "unknown") return null
+  if (delta.direction === "flat") {
+    return <p className="mt-1 text-xs text-[var(--text-muted)]">{t("kpiCompareFlat")}</p>
+  }
+  const label = delta.percent == null ? t("kpiCompareNew") : formatSignedPercentage(delta.percent)
+  return (
+    <p
+      className={cn(
+        "mt-1 text-xs font-medium tabular-nums",
+        delta.isPositive ? "text-[#168a62]" : "text-[#c2413b]"
+      )}
+    >
+      {label}
+    </p>
+  )
+}
+
 function KpiMetricValue({
   metric,
   value,
   compact,
+  delta,
+  compareEmpty,
 }: {
   metric: MetricDefinition
   value: number | null
   compact?: boolean
+  delta?: MetricDelta | null
+  compareEmpty?: boolean
 }) {
   const Icon = KPI_ICONS[metric.id]
   const fullFormatted = formatValue(metric, value)
@@ -131,6 +165,7 @@ function KpiMetricValue({
         >
           {formatted}
         </p>
+        <KpiDeltaLine delta={delta} compareEmpty={compareEmpty} />
       </div>
     </div>
   )
@@ -141,14 +176,18 @@ const KPI_CARD_BODY_CLASS = "flex min-h-[7.25rem] flex-col justify-center py-5"
 export function KpiCard({
   metric,
   value,
+  delta,
+  compareEmpty,
 }: {
   metric: MetricDefinition
   value: number | null
+  delta?: MetricDelta | null
+  compareEmpty?: boolean
 }) {
   return (
     <Card size="sm" className="dashboard-card kpi-card gap-0">
       <div className={cn(KPI_CARD_BODY_CLASS, "px-5")}>
-        <KpiMetricValue metric={metric} value={value} />
+        <KpiMetricValue metric={metric} value={value} delta={delta} compareEmpty={compareEmpty} />
       </div>
     </Card>
   )
@@ -160,6 +199,8 @@ export function CombinedKpiCard({
   items: Array<{
     metric: MetricDefinition
     value: number | null
+    delta?: MetricDelta | null
+    compareEmpty?: boolean
   }>
 }) {
   return (
@@ -167,7 +208,13 @@ export function CombinedKpiCard({
       <div className={cn(KPI_CARD_BODY_CLASS, "grid grid-cols-2 gap-x-3 gap-y-0 px-4 sm:gap-x-4 sm:px-5")}>
         {items.map((item) => (
           <div key={item.metric.id} className="min-w-0 overflow-hidden">
-            <KpiMetricValue metric={item.metric} value={item.value} compact />
+            <KpiMetricValue
+              metric={item.metric}
+              value={item.value}
+              compact
+              delta={item.delta}
+              compareEmpty={item.compareEmpty}
+            />
           </div>
         ))}
       </div>

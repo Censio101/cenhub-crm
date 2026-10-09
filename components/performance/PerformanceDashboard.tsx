@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
@@ -12,7 +12,6 @@ import { DashboardHeader } from "@/components/performance/DashboardHeader"
 import {
   DashboardEmptyState,
   DashboardErrorState,
-  PartialDataNotice,
 } from "@/components/performance/DashboardStates"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { DevelopmentChart } from "@/components/performance/DevelopmentChart"
@@ -21,13 +20,26 @@ import { MonthlyTable } from "@/components/performance/MonthlyTable"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
-import { currentSeriesLabel } from "@/lib/performance/compare"
-import { toIsoDate } from "@/lib/performance/date-ranges"
+import { parseIsoDate } from "@/lib/performance/date-ranges"
+import { formatDateRangeLabel } from "@/lib/performance/format"
+import { getLeadDataDateRange } from "@/lib/performance/from-leads"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 
 export function PerformanceDashboard() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { locale, t } = useLanguage()
+  const {
+    leads,
+    adSpendByMonth,
+    loading: dataLoading,
+    error,
+    reload,
+  } = useDashboardData()
+  const leadDateSpan = useMemo(() => getLeadDataDateRange(leads), [leads])
+  const comparisonAnchor = useMemo(
+    () => (leadDateSpan?.start ? parseIsoDate(leadDateSpan.start) : null),
+    [leadDateSpan]
+  )
   const {
     view,
     pending,
@@ -38,90 +50,52 @@ export function PerformanceDashboard() {
     onFunnelChange,
     onSegmentChange,
     onMetricChange,
-  } = useDashboardViewState("/")
-  const {
-    leads,
-    adSpendByMonth,
-    loading: dataLoading,
-    error,
-    reload,
-  } = useDashboardData()
+  } = useDashboardViewState("/", comparisonAnchor)
+  const measuredRange = useMemo(
+    () =>
+      view.preset === "all_time" && comparisonAnchor
+        ? { start: comparisonAnchor, end: view.range.end }
+        : view.range,
+    [comparisonAnchor, view.preset, view.range]
+  )
   // "Select client" is handled by the route gate; every other error is a failed load.
   const loadError = error && error !== "leadsSelectClient" ? error : null
+  const [chartYear, setChartYear] = useState<number | null>(null)
 
   const data = useMemo(() => {
     if (dataLoading) return null
     try {
       const result = getPerformanceDashboard(
         {
-          range: view.range,
+          range: measuredRange,
           comparison: view.comparisonEnabled ? view.comparisonRange : null,
           service: view.service,
           funnel: view.funnel,
           segment: view.segment,
         },
-        { leads, adSpendByMonth }
+        { leads, adSpendByMonth },
+        chartYear != null ? { chartYear } : undefined
       )
-      // #region agent log
-      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "138f58",
-        },
-        body: JSON.stringify({
-          sessionId: "138f58",
-          hypothesisId: "B-D-E",
-          location: "PerformanceDashboard.tsx:useMemo",
-          message: "dashboard computed",
-          data: {
-            preset: view.preset,
-            from: toIsoDate(view.range.start),
-            to: toIsoDate(view.range.end),
-            service: view.service,
-            funnel: view.funnel,
-            segment: view.segment,
-            leadCount: leads.length,
-            adSpendMonthKeys: Object.keys(adSpendByMonth),
-            totalsLeads: result.current.totals.leads,
-            totalsAdSpend: result.current.totals.adSpend,
-            status: result.status,
-            bucketCount: result.current.buckets.length,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
       return result
-    } catch (computeError) {
-      // #region agent log
-      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "138f58",
-        },
-        body: JSON.stringify({
-          sessionId: "138f58",
-          hypothesisId: "E",
-          location: "PerformanceDashboard.tsx:useMemo",
-          message: "dashboard compute threw",
-          data: {
-            error: computeError instanceof Error ? computeError.message : "unknown",
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+    } catch {
       return null
     }
-  }, [view, leads, adSpendByMonth, dataLoading])
+  }, [view, leads, adSpendByMonth, dataLoading, measuredRange, chartYear])
+
+  useEffect(() => {
+    if (!data) return
+    setChartYear((prev) => {
+      if (prev != null && data.chartYears.includes(prev)) return prev
+      if (data.chartYears.includes(data.year.year)) return data.year.year
+      return data.chartYears[data.chartYears.length - 1] ?? data.year.year
+    })
+  }, [data?.chartYears, data?.year.year])
 
   const pipelineStats = useMemo(
     () =>
       computeLeadPipelineStats(
         filterDashboardLeads(leads, {
-          range: view.range,
+          range: measuredRange,
           service: view.service,
           funnel: view.funnel,
           segment: view.segment,
@@ -130,9 +104,14 @@ export function PerformanceDashboard() {
     [view, leads]
   )
 
-  const chartCurrentLabel =
-    data != null ? String(data.year.year) : currentSeriesLabel(view.range)
-  const chartComparisonLabel = null
+  const chartCurrentLabel = data != null ? String(data.year.year) : String(measuredRange.end.getFullYear())
+  const chartComparisonLabel =
+    view.comparisonEnabled &&
+    view.comparisonRange &&
+    view.comparisonRange.start.getFullYear() >= 2000 &&
+    data?.comparison
+      ? formatDateRangeLabel(view.comparisonRange.start, view.comparisonRange.end, locale)
+      : null
 
   const header = (
     <DashboardHeader
@@ -150,6 +129,8 @@ export function PerformanceDashboard() {
       onFunnelChange={onFunnelChange}
       segment={view.segment}
       onSegmentChange={onSegmentChange}
+      earliestLeadDate={leadDateSpan?.start}
+      latestLeadDate={leadDateSpan?.end}
     />
   )
 
@@ -172,21 +153,23 @@ export function PerformanceDashboard() {
               <LoadErrorNotice message={t(loadError)} onRetry={() => void reload()} />
             ) : null}
 
-            {data.status === "partial" ? <PartialDataNotice /> : null}
-
             {data.status === "empty" ? (
               <>
-                <KpiGrid data={data} />
+                <KpiGrid data={data} comparisonEnabled={view.comparisonEnabled} />
                 <DashboardEmptyState />
               </>
             ) : (
               <>
-                <KpiGrid data={data} />
+                <KpiGrid data={data} comparisonEnabled={view.comparisonEnabled} />
                 <DevelopmentChart
                   data={data}
                   metricId={view.metric}
                   currentLabel={chartCurrentLabel}
                   comparisonLabel={chartComparisonLabel}
+                  compareActive={view.comparisonEnabled}
+                  chartYears={data.chartYears}
+                  chartYear={data.year.year}
+                  onChartYearChange={setChartYear}
                   onMetricChange={onMetricChange}
                 />
                 <LeadPipelineBar

@@ -1,0 +1,19 @@
+---
+description: Keep the lead sheet and the customer sheet in sync
+alwaysApply: true
+---
+
+# Lead sheet and customer sheet stay together
+
+The lead list (`/leads`, `components/leads/LeadsBoard.tsx`) and the customer list (`/kunder`, `components/customers/CustomersBoard.tsx`) are the same kind of sheet. When you change the lead sheet’s filters, date range, active-filter chips, search, export, full screen, or toolbar, apply the same change to the customer sheet in the same turn.
+
+Shared pieces already exist. Use them on both pages instead of copying a one-off control:
+
+- Date menu and calendar: `LeadSheetCompactDateFilter` (All time is the quiet default; the calendar opens on real record months)
+- Filter dropdowns: `LeadSheetFilterMenu`
+- Removable chips: `SheetFilterChipRow`
+- Full screen: `LeadSheetFocusShell`, with the page title and one close icon in the header
+
+Customers do not have a status filter. Their source filter takes that place.
+
+The customer sheet renders won customers with the same `LeadsTable`, `leadSheet.columns`, sort, and inline-edit rules as the lead sheet. A template change must show up on both pages because both read that column list. Do not give the customer sheet a separate hardcoded column set.

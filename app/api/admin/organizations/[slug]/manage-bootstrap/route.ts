@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/admin-users"
 import { getMetaConfig } from "@/lib/db/meta-config-repository"
 import { getOrganizationWithStatsBySlug } from "@/lib/db/organizations-repository"
+import { parseHvidbjergPartner } from "@/lib/hvidbjerg-partner"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type RouteContext = { params: Promise<{ slug: string }> }

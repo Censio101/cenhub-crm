@@ -52,6 +52,8 @@ export function resolvePreset(
       return { start: startOfYear(now), end: today }
     case "last_12_months":
       return { start: startOfDay(subMonths(now, 12)), end: today }
+    case "all_time":
+      return { start: startOfDay(new Date(2000, 0, 1)), end: today }
     case "custom":
       return { start: startOfYear(now), end: today }
   }

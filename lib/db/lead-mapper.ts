@@ -10,6 +10,7 @@ import {
   type LeadSegmentId,
   type LeadStatusId,
 } from "@/lib/leads"
+import { leadFieldHasValue } from "@/lib/leads/lead-field-values"
 import { isServiceId, type ServiceId } from "@/lib/performance/services"
 
 export const META_LOCKED_FIELDS = [
@@ -173,7 +174,8 @@ export function leadToInsertRow(
 export function filterPatchForLockedLead(patch: LeadPatch, row: LeadRow): LeadPatch {
   if (row.source !== "meta") return patch
 
-  const allowed = new Set([
+  const lead = leadRowToLead(row)
+  const alwaysAllowed = new Set([
     "serviceIds",
     "service",
     "status",
@@ -188,7 +190,15 @@ export function filterPatchForLockedLead(patch: LeadPatch, row: LeadRow): LeadPa
     LeadPatch[keyof LeadPatch],
   ][]) {
     if (value === undefined) continue
-    if (allowed.has(key)) {
+    if (alwaysAllowed.has(key)) {
+      ;(next as Record<string, unknown>)[key] = value
+      continue
+    }
+    // CRM users may correct fields Meta filled; a later Meta sync can still refresh them.
+    if (
+      META_LOCKED_FIELDS.includes(key as (typeof META_LOCKED_FIELDS)[number]) &&
+      leadFieldHasValue(lead, key)
+    ) {
       ;(next as Record<string, unknown>)[key] = value
     }
   }

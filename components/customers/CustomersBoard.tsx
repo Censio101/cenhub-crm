@@ -1,67 +1,79 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ArrowDownIcon, ArrowUpIcon, PencilIcon } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { XIcon } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
 import { CustomersBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
+import { CustomersSheetFilterBar } from "@/components/customers/CustomersSheetFilterBar"
 import { EditLeadDialog } from "@/components/leads/AddLeadDialog"
-import { ImageLinkButton } from "@/components/leads/ImageLinkPreview"
-import { LeadSheetNoteCell } from "@/components/leads/LeadSheetNoteCell"
+import { LeadCardList } from "@/components/leads/LeadCardList"
+import { LeadSheetFocusShell } from "@/components/leads/LeadSheetFocusShell"
+import { LeadsTable } from "@/components/leads/LeadsBoard"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
-import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { DateRangeControls } from "@/components/performance/DateRangeControls"
 import { Button } from "@/components/ui/button"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useCustomers } from "@/hooks/useCustomers"
 import { useLeads } from "@/hooks/useLeads"
 import {
-  CUSTOMER_SOURCES,
   filterDashboardCustomers,
-  formatCustomerServices,
-  sortCustomersByDate,
   sumCustomerValue,
   type Customer,
   type CustomerSourceId,
 } from "@/lib/customers"
 import type { MessageKey } from "@/lib/i18n"
-import type { Locale } from "@/lib/i18n/types"
-import { parseImageCellValue } from "@/lib/lead-sheet/image-link"
+import { formatLeadServices, type Lead, type LeadPlatformId } from "@/lib/leads"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
-import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
+import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
+import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
+import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import { matchesSearch } from "@/lib/leads/search"
-import { formatCurrencyDKK, formatMonthLabel } from "@/lib/performance/format"
+import {
+  findDefaultDateColumnId,
+  sortLeadsWithSheetState,
+  type SheetSortDirection,
+  type SheetSortState,
+} from "@/lib/leads/sheet-sort"
+import { formatCurrencyDKK } from "@/lib/performance/format"
+import type { DateRange } from "@/lib/performance/types"
+import type { LeadSegmentId } from "@/lib/leads"
 import { cn } from "cn"
 
-function countLabel(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`
+function sourceToPlatform(source: CustomerSourceId): LeadPlatformId | "" {
+  if (source === "facebook" || source === "instagram") return "meta"
+  if (source === "website" || source === "landing") return source
+  return ""
 }
 
-function formatClosedDate(value: string, locale: Locale): string {
-  const [year, month, day] = value.split("-")
-  if (!year || !month || !day) return value
-  const date = new Date(Number(year), Number(month) - 1, Number(day))
-  return `${Number(day)}. ${formatMonthLabel(date, locale).toLowerCase()}`
+/** Prefer the live lead so the customer sheet edits the same record as the lead sheet. */
+function leadForCustomer(customer: Customer, leadsById: Map<string, Lead>): Lead {
+  const existing = leadsById.get(customer.leadId)
+  if (existing) return existing
+  return {
+    id: customer.leadId || customer.id,
+    date: customer.closedDate,
+    fullName: customer.fullName,
+    email: customer.email,
+    phone: customer.phone,
+    segment: customer.segment,
+    companyName: customer.companyName,
+    address: customer.address,
+    zipCode: customer.zipCode,
+    city: customer.city,
+    serviceIds: customer.serviceIds,
+    platform: sourceToPlatform(customer.source),
+    metaAdId: "",
+    status: "won",
+    salesPrice: customer.salesPrice,
+    profit: customer.profit,
+    customFields: customer.customFields,
+  }
 }
 
 const SOURCE_LABEL_KEYS: Record<CustomerSourceId, MessageKey> = {
@@ -73,54 +85,45 @@ const SOURCE_LABEL_KEYS: Record<CustomerSourceId, MessageKey> = {
   repeat: "customersSourceRepeat",
 }
 
-const headerCellClass =
-  "sticky top-0 z-[2] h-11 border-b border-r border-white/15 bg-[#3f3a36] px-3 text-xs font-medium whitespace-nowrap text-white"
-
-type CustomColumn = Extract<LeadSheetTemplateColumn, { kind: "custom" }>
-
-function CustomFieldValue({ column, value }: { column: CustomColumn; value: unknown }) {
-  const type = column.customField.fieldType
-
-  if (type === "image") {
-    const parsed = parseImageCellValue(value)
-    if (parsed.kind === "link") {
-      return <ImageLinkButton url={parsed.url} text={parsed.text} className="max-w-[12rem]" />
-    }
-    return <span className="text-muted-foreground">–</span>
-  }
-
-  if (value == null || value === "") return <span className="text-muted-foreground">–</span>
-  if (typeof value === "number") {
-    return <span className="tabular-nums">{value.toLocaleString("da-DK")}</span>
-  }
-  return <span>{String(value)}</span>
+function countLabel(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`
 }
 
+
 export function CustomersBoard() {
-  const { locale, t } = useLanguage()
-  const { enabledServices } = useCompanyServices()
-  const {
-    view,
-    pending,
-    onPresetChange,
-    onCustomRange,
-    onComparisonChange,
-    onServiceChange,
-    onFunnelChange,
-    onSegmentChange,
-  } = useDashboardViewState("/kunder")
+  const { t } = useLanguage()
+  const { enabledServices, loaded: servicesLoaded } = useCompanyServices()
+  const searchParams = useSearchParams()
+  const { view, pending, onPresetChange, onCustomRange: onCustomRangeRaw } =
+    useDashboardViewState("/kunder")
+  const dateIsAllTime =
+    view.preset === "all_time" || (!searchParams.has("preset") && !searchParams.has("from"))
+  const resetDate = useCallback(() => onPresetChange("all_time"), [onPresetChange])
+  const onSheetCustomRange = useCallback(
+    (range: DateRange) => onCustomRangeRaw(range, "current"),
+    [onCustomRangeRaw]
+  )
   const { customers, organizationName, loading, error, reload } = useCustomers()
   // Customers mirror won leads; the lead record is what the edit popup changes.
-  const { leads, leadSheet, saveLead, saveStatus } = useLeads()
+  const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead } = useLeads()
+  const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">(view.segment ?? "all")
+  const [sheetService, setSheetService] = useState<string | null>(view.service)
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">("all")
-  const [dateSort, setDateSort] = useState<"asc" | "desc">("desc")
+  const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
+  const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null)
+  const customerDateSpan = useMemo(() => {
+    let earliest: string | null = null
+    let latest: string | null = null
+    for (const customer of customers) {
+      if (!customer.closedDate) continue
+      if (!earliest || customer.closedDate < earliest) earliest = customer.closedDate
+      if (!latest || customer.closedDate > latest) latest = customer.closedDate
+    }
+    return { earliest, latest }
+  }, [customers])
 
-  const customColumns = useMemo(
-    () => leadSheet.columns.filter((col): col is CustomColumn => col.kind === "custom"),
-    [leadSheet.columns]
-  )
   const leadsById = useMemo(() => new Map(leads.map((lead) => [lead.id, lead])), [leads])
   const editingLead = editingLeadId ? (leadsById.get(editingLeadId) ?? null) : null
 
@@ -128,10 +131,11 @@ export function CustomersBoard() {
     () =>
       filterDashboardCustomers(customers, {
         range: view.range,
-        service: view.service,
-        segment: view.segment,
+        ignoreDate: dateIsAllTime,
+        service: sheetService,
+        segment: sheetSegment === "all" ? null : sheetSegment,
       }).filter((customer) => sourceFilter === "all" || customer.source === sourceFilter),
-    [customers, sourceFilter, view]
+    [customers, dateIsAllTime, sheetSegment, sheetService, sourceFilter, view.range]
   )
 
   const filtered = useMemo(() => {
@@ -150,104 +154,82 @@ export function CustomersBoard() {
           )
         )
       : inFilters
-    return sortCustomersByDate(searched, dateSort)
-  }, [dateSort, inFilters, search])
+    return searched
+  }, [inFilters, search])
+
+  const shownLeads = useMemo(() => {
+    const rows = filtered.map((customer) => leadForCustomer(customer, leadsById))
+    return sortLeadsWithSheetState(rows, leadSheet.columns, sheetSort, enabledServices)
+  }, [enabledServices, filtered, leadSheet.columns, leadsById, sheetSort])
+
+  const handleSheetSort = useCallback((columnId: string, direction: SheetSortDirection | null) => {
+    setSheetSort(direction ? { columnId, direction } : null)
+  }, [])
+
+  const defaultSortApplied = useRef(false)
+  useEffect(() => {
+    if (defaultSortApplied.current || leadSheet.columns.length === 0) return
+    defaultSortApplied.current = true
+    const dateId = findDefaultDateColumnId(leadSheet.columns)
+    if (dateId) setSheetSort({ columnId: dateId, direction: "desc" })
+  }, [leadSheet.columns])
 
   const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
 
+  function exportFiltered() {
+    const headers = leadSheet.columns.map((col) => columnDisplayLabel(col, t))
+    const rows = shownLeads.map((lead) =>
+      leadSheet.columns.map((col) => {
+        if (col.kind === "custom") return plainCell(lead.customFields?.[col.customField.fieldKey])
+        switch (col.builtinKey) {
+          case "date":
+            return formatLeadDateTime(lead.date, lead.time)
+          case "status":
+            return t(leadStatusLabelKey(lead.status))
+          case "segment":
+            return lead.segment ? t(leadSegmentLabelKey(lead.segment)) : ""
+          case "serviceIds":
+            return formatLeadServices(lead, enabledServices)
+          case "salesPrice":
+            return lead.salesPrice == null ? "" : String(lead.salesPrice)
+          case "profit":
+            return lead.profit == null ? "" : String(lead.profit)
+          default:
+            return String(lead[col.builtinKey] ?? "")
+        }
+      })
+    )
+    downloadCsv("customers.csv", toCsv(headers, rows))
+  }
+
   return (
     <AdminClientRouteGate>
-      <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-6">
-        <header className="flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-              {t("customersEyebrow")}
-            </p>
-            <h1 className="mt-1 text-2xl font-medium tracking-tight sm:text-[1.75rem]">
-              {t("customersTitle")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {organizationName
-                ? t("customersSubtitleOrg", { name: organizationName })
-                : t("customersSubtitleDefault")}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{t("customersSheetSyncHint")}</p>
+      <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-4">
+        <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-medium tracking-tight sm:text-2xl">{t("customersTitle")}</h1>
+            {organizationName ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("customersSubtitleOrg", { name: organizationName })}
+              </p>
+            ) : null}
             {error === "customersLoadError" ? (
               <LoadErrorNotice
-                className="mt-1"
+                className="mt-2"
                 message={t(error)}
                 onRetry={() => void reload()}
               />
             ) : error ? (
-              <p className="mt-1 text-xs text-muted-foreground" role="status">
-                {t(error)}
-              </p>
+              <p className="mt-1 text-sm text-amber-700">{t(error)}</p>
             ) : null}
-          </div>
-          <div className="flex flex-col items-stretch gap-4 sm:items-end">
-            <DateRangeControls
-              preset={view.preset}
-              range={view.range}
-              comparisonEnabled={view.comparisonEnabled}
-              comparisonMode={view.comparisonMode}
-              comparisonRange={view.comparisonRange}
-              onPresetChange={onPresetChange}
-              onCustomRange={onCustomRange}
-              onComparisonChange={onComparisonChange}
-              service={view.service}
-              onServiceChange={onServiceChange}
-              funnel={view.funnel}
-              onFunnelChange={onFunnelChange}
-              segment={view.segment}
-              onSegmentChange={onSegmentChange}
-              showComparison={false}
-            />
-            <div className="flex flex-wrap items-center justify-end gap-4">
-              <SheetSearchField
-                value={search}
-                onChange={setSearch}
-                placeholder={t("customersSearchPlaceholder")}
-                ariaLabel={t("customersSearchAria")}
-              />
-              <Select
-                value={sourceFilter}
-                onValueChange={(value) => {
-                  if (typeof value === "string") {
-                    setSourceFilter(value === "all" ? "all" : (value as CustomerSourceId))
-                  }
-                }}
-              >
-                <SelectTrigger
-                  className="dashboard-chip min-w-40 px-4"
-                  aria-label={t("customersFilterSourceAria")}
-                >
-                  <SelectValue>
-                    {sourceFilter === "all"
-                      ? t("customersAllSources")
-                      : t(SOURCE_LABEL_KEYS[sourceFilter])}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent
-                  align="end"
-                  alignItemWithTrigger={false}
-                  className="dashboard-filter-menu"
-                >
-                  <SelectItem value="all">{t("customersAllSources")}</SelectItem>
-                  {CUSTOMER_SOURCES.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {t(SOURCE_LABEL_KEYS[item.id])}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </header>
 
         {loading ? (
           <CustomersBoardSkeleton />
         ) : (
-          <ClientBoardEnter className="flex flex-col gap-6" pending={pending}>
+          <ClientBoardEnter className="flex flex-col gap-4" pending={pending}>
+            {!sheetFocusOpen ? (
             <section aria-label={t("customersOverviewAria")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <OverviewStat
@@ -270,8 +252,106 @@ export function CustomersBoard() {
                 />
               </div>
             </section>
+            ) : null}
 
-            <section className="dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden">
+            <LeadSheetFocusShell open={sheetFocusOpen} onClose={() => setSheetFocusOpen(false)}>
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 sm:px-6">
+                  <h2 className="text-base font-medium text-foreground">{t("customersTitle")}</h2>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("leadSheetFocusExit")}
+                    title={t("leadSheetFocusExit")}
+                    onClick={() => setSheetFocusOpen(false)}
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
+                <CustomersSheetFilterBar
+                  preset={view.preset}
+                  range={view.range}
+                  dateIsAllTime={dateIsAllTime}
+                  earliestLeadDate={customerDateSpan.earliest}
+                  latestLeadDate={customerDateSpan.latest}
+                  onPresetChange={onPresetChange}
+                  onCustomRange={onSheetCustomRange}
+                  onResetDate={resetDate}
+                  sheetSegment={sheetSegment}
+                  onSheetSegmentChange={setSheetSegment}
+                  sheetService={sheetService}
+                  onSheetServiceChange={setSheetService}
+                  sourceFilter={sourceFilter}
+                  onSourceFilterChange={setSourceFilter}
+                  sourceLabelKeys={SOURCE_LABEL_KEYS}
+                  enabledServices={enabledServices}
+                  servicesLoaded={servicesLoaded}
+                  search={search}
+                  onSearchChange={setSearch}
+                  onExport={exportFiltered}
+                />
+                <LeadSheetScrollArea
+                  className="min-h-0 flex-1"
+                  toolbarStart={
+                    <>
+                      <span className="text-xs font-semibold tabular-nums text-foreground">
+                        {t("customersRowCount", {
+                          shown: String(filtered.length),
+                          total: String(customers.length),
+                        })}
+                      </span>
+                      <SaveStatusBadge status={saveStatus} />
+                    </>
+                  }
+                >
+                  <LeadsTable
+                    columns={leadSheet.columns}
+                    leads={shownLeads}
+                    sheetSort={sheetSort}
+                    onSheetSort={handleSheetSort}
+                    emptyText={t("customersEmpty")}
+                    onUpdate={updateLead}
+                    onEdit={setEditingLeadId}
+                    onDelete={(id) => {
+                      void deleteLead(id)
+                    }}
+                    separatePinnedColumns
+                  />
+                </LeadSheetScrollArea>
+              </div>
+            </LeadSheetFocusShell>
+
+            <section
+              className={cn(
+                "dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden",
+                sheetFocusOpen && "hidden"
+              )}
+            >
+              <CustomersSheetFilterBar
+                preset={view.preset}
+                range={view.range}
+                dateIsAllTime={dateIsAllTime}
+                earliestLeadDate={customerDateSpan.earliest}
+                latestLeadDate={customerDateSpan.latest}
+                onPresetChange={onPresetChange}
+                onCustomRange={onSheetCustomRange}
+                onResetDate={resetDate}
+                sheetSegment={sheetSegment}
+                onSheetSegmentChange={setSheetSegment}
+                sheetService={sheetService}
+                onSheetServiceChange={setSheetService}
+                sourceFilter={sourceFilter}
+                onSourceFilterChange={setSourceFilter}
+                sourceLabelKeys={SOURCE_LABEL_KEYS}
+                enabledServices={enabledServices}
+                servicesLoaded={servicesLoaded}
+                search={search}
+                onSearchChange={setSearch}
+                onExport={exportFiltered}
+                onToggleFocus={() => setSheetFocusOpen(true)}
+              />
+              <div className="hidden min-h-0 flex-1 flex-col md:flex">
               <LeadSheetScrollArea
                 toolbarStart={
                   <>
@@ -285,19 +365,38 @@ export function CustomersBoard() {
                   </>
                 }
               >
-                <CustomersTable
-                  customers={filtered}
-                  customColumns={customColumns}
-                  dateSort={dateSort}
-                  enabledServices={enabledServices}
-                  locale={locale}
-                  canEdit={(customer) => leadsById.has(customer.leadId)}
-                  onEdit={(customer) => setEditingLeadId(customer.leadId)}
-                  onToggleDateSort={() =>
-                    setDateSort((current) => (current === "desc" ? "asc" : "desc"))
-                  }
+                <LeadsTable
+                  columns={leadSheet.columns}
+                  leads={shownLeads}
+                  sheetSort={sheetSort}
+                  onSheetSort={handleSheetSort}
+                  emptyText={t("customersEmpty")}
+                  onUpdate={updateLead}
+                  onEdit={setEditingLeadId}
+                  onDelete={(id) => {
+                    void deleteLead(id)
+                  }}
+                  separatePinnedColumns
                 />
               </LeadSheetScrollArea>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col md:hidden">
+                <div className="flex items-center gap-3 border-b border-border px-4 py-2">
+                  <span className="text-xs font-semibold tabular-nums text-foreground">
+                    {t("customersRowCount", {
+                      shown: String(filtered.length),
+                      total: String(customers.length),
+                    })}
+                  </span>
+                </div>
+                <div className="min-h-0 flex-1 overflow-auto">
+                  <LeadCardList
+                    leads={shownLeads}
+                    emptyText={t("customersEmpty")}
+                    onEdit={setEditingLeadId}
+                  />
+                </div>
+              </div>
             </section>
           </ClientBoardEnter>
         )}
@@ -340,197 +439,3 @@ function OverviewStat({
   )
 }
 
-function CustomersTable({
-  customers,
-  customColumns,
-  dateSort,
-  enabledServices,
-  locale,
-  canEdit,
-  onEdit,
-  onToggleDateSort,
-}: {
-  customers: Customer[]
-  customColumns: CustomColumn[]
-  dateSort: "asc" | "desc"
-  enabledServices: ReturnType<typeof useCompanyServices>["enabledServices"]
-  locale: Locale
-  canEdit: (customer: Customer) => boolean
-  onEdit: (customer: Customer) => void
-  onToggleDateSort: () => void
-}) {
-  const { t } = useLanguage()
-  const baseColumns = [
-    t("customersColClosed"),
-    t("customersColCustomer"),
-    t("customersColSegment"),
-    t("customersColCompany"),
-    t("customersColAddress"),
-    t("customersColCity"),
-    t("customersColService"),
-    t("customersColSource"),
-    t("customersColSalesPrice"),
-    t("customersColProfit"),
-  ]
-  const customLabels = customColumns.map((col) => columnDisplayLabel(col, t))
-  const columns = [...baseColumns, ...customLabels]
-  const colSpan = columns.length + 1
-
-  return (
-    <Table
-      containerClassName="overflow-visible"
-      className="min-w-[76rem] border-separate border-spacing-0"
-    >
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          {columns.map((label, index) => (
-            <TableHead
-              key={`${label}-${index}`}
-              className={cn(
-                headerCellClass,
-                index === 0 && "sticky left-0 z-[3] w-40 min-w-40",
-                index === 1 && "sticky left-40 z-[3] min-w-48"
-              )}
-            >
-              {index === 0 ? (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-white hover:text-white/80"
-                  aria-label={
-                    dateSort === "desc" ? t("customersSortOldest") : t("customersSortNewest")
-                  }
-                  onClick={onToggleDateSort}
-                >
-                  {label}
-                  {dateSort === "desc" ? (
-                    <ArrowDownIcon className="size-3.5" />
-                  ) : (
-                    <ArrowUpIcon className="size-3.5" />
-                  )}
-                </button>
-              ) : (
-                label
-              )}
-            </TableHead>
-          ))}
-          <TableHead
-            className={cn(
-              headerCellClass,
-              "sticky right-0 z-[3] w-12 min-w-12 border-r-0 border-l px-1 text-center"
-            )}
-          >
-            <span className="sr-only">{t("customersEditCustomer")}</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {customers.length === 0 ? (
-          <TableRow className="hover:bg-transparent">
-            <TableCell
-              colSpan={colSpan}
-              className="px-4 py-10 text-center text-sm text-muted-foreground"
-            >
-              {t("customersEmpty")}
-            </TableCell>
-          </TableRow>
-        ) : (
-          customers.map((customer) => (
-            <TableRow key={customer.id} className="hover:bg-transparent">
-              <TableCell className="sticky left-0 z-[1] w-40 min-w-40 bg-card px-3 whitespace-nowrap">
-                {formatClosedDate(customer.closedDate, locale)}
-              </TableCell>
-              <TableCell className="sticky left-40 z-[1] min-w-48 border-r border-border bg-card px-3">
-                <div className="min-w-0">
-                  <p className="font-medium">{customer.fullName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {customer.email ? (
-                      <a
-                        href={`mailto:${customer.email}`}
-                        className="hover:text-primary hover:underline"
-                      >
-                        {customer.email}
-                      </a>
-                    ) : null}
-                    {customer.email && customer.phone ? " · " : null}
-                    {customer.phone ? (
-                      <a
-                        href={`tel:${customer.phone.replace(/[^\d+]/g, "")}`}
-                        className="hover:text-primary hover:underline"
-                      >
-                        {customer.phone}
-                      </a>
-                    ) : null}
-                  </p>
-                </div>
-              </TableCell>
-              <TableCell className="px-3">
-                <span
-                  className={cn(
-                    "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                    customer.segment === "b2b"
-                      ? "bg-[#e8eefb] text-[#1d4ed8]"
-                      : "bg-[#f1ece5] text-[#6b5a45]"
-                  )}
-                >
-                  {customer.segment === "b2b" ? t("filterSegmentB2b") : t("filterSegmentB2c")}
-                </span>
-              </TableCell>
-              <TableCell className="min-w-44 px-3">{customer.companyName || "–"}</TableCell>
-              <TableCell className="min-w-48 px-3">
-                {customer.address}
-                {customer.zipCode ? `, ${customer.zipCode}` : ""}
-              </TableCell>
-              <TableCell className="min-w-32 px-3">{customer.city}</TableCell>
-              <TableCell className="min-w-44 px-3">
-                {formatCustomerServices(customer, enabledServices)}
-              </TableCell>
-              <TableCell className="px-3">{t(SOURCE_LABEL_KEYS[customer.source])}</TableCell>
-              <TableCell className="px-3 text-right tabular-nums">
-                {formatCurrencyDKK(customer.salesPrice)}
-              </TableCell>
-              <TableCell className="px-3 text-right font-medium tabular-nums text-success-foreground">
-                {formatCurrencyDKK(customer.profit)}
-              </TableCell>
-              {customColumns.map((col) => {
-                const value = customer.customFields?.[col.customField.fieldKey]
-                if (col.customField.fieldType === "textarea") {
-                  return (
-                    <TableCell key={col.id} className="min-w-44 max-w-[15rem] px-2 py-1.5">
-                      <LeadSheetNoteCell
-                        readOnly
-                        value={typeof value === "string" ? value : ""}
-                        fieldLabel={col.customField.label}
-                        leadName={customer.fullName}
-                      />
-                    </TableCell>
-                  )
-                }
-                return (
-                  <TableCell key={col.id} className="min-w-36 px-3 text-sm">
-                    <CustomFieldValue column={col} value={value} />
-                  </TableCell>
-                )
-              })}
-              <TableCell className="sticky right-0 z-[1] w-12 min-w-12 border-l border-border bg-card px-1">
-                <div className="flex items-center justify-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    disabled={!canEdit(customer)}
-                    aria-label={t("customersEditCustomer")}
-                    title={canEdit(customer) ? t("customersEditCustomer") : t("customersLeadMissing")}
-                    className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                    onClick={() => onEdit(customer)}
-                  >
-                    <PencilIcon />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  )
-}

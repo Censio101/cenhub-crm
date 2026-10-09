@@ -23,6 +23,8 @@ export type OrganizationRow = {
   primary_contact_email?: string | null
   primary_contact_phone?: string | null
   website_url?: string | null
+  /** Hvidbjerg certified marketing program (admin-only). */
+  hvidbjerg_partner?: boolean
   created_at: string
   updated_at: string
 }

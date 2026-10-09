@@ -48,8 +48,8 @@ export function buildValueStory(
       const count = formatInteger(Math.abs(customerDelta.absolute))
       comparisonLines.push(
         customerDelta.absolute > 0
-          ? `${count} flere kunder end forrige periode`
-          : `${count} færre kunder end forrige periode`
+          ? `${count} flere kunder end sammenligningsperioden`
+          : `${count} færre kunder end sammenligningsperioden`
       )
     }
 

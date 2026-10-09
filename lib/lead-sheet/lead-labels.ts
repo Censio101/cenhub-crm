@@ -1,6 +1,6 @@
 import type { BuiltinColumnKey } from "@/lib/lead-sheet/types"
 import type { MessageKey } from "@/lib/i18n"
-import type { LeadSegmentId, LeadStatusId } from "@/lib/leads"
+import type { LeadSegmentId, LeadSource, LeadStatusId } from "@/lib/leads"
 
 const BUILTIN_LABEL_KEYS: Record<BuiltinColumnKey, MessageKey> = {
   date: "leadSheetColDate",
@@ -25,6 +25,10 @@ export function builtinColumnLabelKey(key: BuiltinColumnKey): MessageKey {
 
 export function leadStatusLabelKey(id: LeadStatusId): MessageKey {
   return `leadStatus_${id}` as MessageKey
+}
+
+export function leadSourceLabelKey(source: LeadSource): MessageKey {
+  return `leadSheetSource_${source}` as MessageKey
 }
 
 export function leadSegmentLabelKey(id: LeadSegmentId): MessageKey {

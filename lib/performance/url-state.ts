@@ -5,6 +5,7 @@ import {
   startOfDay,
 } from "date-fns"
 
+import { isDashboardComparisonAvailable } from "./comparison-availability"
 import { DATE_PRESETS, parseIsoDate, previousPeriod, previousYear, resolvePreset, toIsoDate } from "./date-ranges"
 import { isCustomerSegmentId } from "./customer-segments"
 import type { CustomerSegmentId } from "./customer-segments"
@@ -62,10 +63,10 @@ export function parseDashboardParams(
   if (from && to) {
     range = { start: startOfDay(from), end: endOfDay(to) }
     preset =
-      presetParam && DATE_PRESETS.some((item) => item.id === presetParam)
+      presetParam && (presetParam === "all_time" || DATE_PRESETS.some((item) => item.id === presetParam))
         ? presetParam
         : detectPreset(range, now)
-  } else if (presetParam && DATE_PRESETS.some((item) => item.id === presetParam)) {
+  } else if (presetParam === "all_time" || (presetParam && DATE_PRESETS.some((item) => item.id === presetParam))) {
     preset = presetParam
     range = resolvePreset(preset, now)
   } else {
@@ -108,21 +109,34 @@ export function parseDashboardParams(
 
   let comparisonRange: DateRange | null = null
   if (comparisonEnabled) {
-    if (comparisonMode === "previous_year") comparisonRange = previousYear(range)
-    else if (comparisonMode === "custom" && customComparison) {
+    if (comparisonMode === "custom" && customComparison) {
       comparisonRange = customComparison
+    } else if (preset === "all_time") {
+      comparisonRange =
+        customComparison && customComparison.start.getFullYear() >= 2000
+          ? customComparison
+          : null
+    } else if (comparisonMode === "previous_year") {
+      comparisonRange = previousYear(range)
     } else {
       comparisonRange = previousPeriod(range)
       comparisonMode = "previous_period"
     }
   }
 
+  let comparisonEnabledOut = comparisonEnabled
+  let comparisonRangeOut = comparisonRange
+  if (!isDashboardComparisonAvailable(preset, range, null, now)) {
+    comparisonEnabledOut = false
+    comparisonRangeOut = null
+  }
+
   return {
     preset,
     range,
-    comparisonEnabled,
+    comparisonEnabled: comparisonEnabledOut,
     comparisonMode,
-    comparisonRange,
+    comparisonRange: comparisonRangeOut,
     metric,
     service,
     funnel,
@@ -140,7 +154,10 @@ export function dashboardStateToParams(state: DashboardViewState): string {
   if (state.funnel) params.set("funnel", state.funnel)
   if (state.segment) params.set("segment", state.segment)
 
-  if (state.comparisonEnabled) {
+  if (
+    state.comparisonEnabled &&
+    isDashboardComparisonAvailable(state.preset, state.range, null)
+  ) {
     const compareValue =
       state.comparisonMode === "previous_year"
         ? "year"

@@ -45,17 +45,25 @@ export function DevelopmentChart({
   metricId,
   currentLabel,
   comparisonLabel,
+  compareActive = false,
+  chartYears,
+  chartYear,
+  onChartYearChange,
   onMetricChange,
 }: {
   data: PerformanceDashboardData
   metricId: MetricId
   currentLabel: string
   comparisonLabel: string | null
+  compareActive?: boolean
+  chartYears: number[]
+  chartYear: number
+  onChartYearChange: (year: number) => void
   onMetricChange: (metricId: MetricId) => void
 }) {
   const { locale, t } = useLanguage()
   const metric = localizeMetric(getMetric(metricId), t)
-  const points = getChartSeries(data, metricId, locale)
+  const points = getChartSeries(data, metricId, locale, { compare: compareActive })
   const metrics = chartMetrics().map((item) => localizeMetric(item, t))
   const showSpend = metricId === "revenue"
   const revenueLabel = showSpend ? metric.label : currentLabel
@@ -71,7 +79,11 @@ export function DevelopmentChart({
             {t("dashboardChartTitle")}
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {t("dashboardChartSubtitle")}
+            {compareActive
+              ? comparisonLabel
+                ? t("dashboardChartCompareSubtitle")
+                : t("kpiNoCompareData")
+              : t("dashboardChartSubtitle")}
           </p>
         </div>
 
@@ -115,10 +127,38 @@ export function DevelopmentChart({
           </SelectContent>
         </Select>
       </CardHeader>
+      {!compareActive && chartYears.length > 1 ? (
+        <div
+          className="flex flex-wrap gap-1.5 px-6 pb-2"
+          role="tablist"
+          aria-label={t("dashboardChartYearTabs")}
+        >
+          {chartYears.map((year) => {
+            const selected = year === chartYear
+            return (
+              <button
+                key={year}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                className={cn(
+                  "h-8 rounded-full px-3.5 text-sm font-medium transition-colors",
+                  selected
+                    ? "bg-[#bbf7d0] text-[#166534]"
+                    : "text-[var(--text-muted)] hover:bg-[#dcfce7] hover:text-[#166534]"
+                )}
+                onClick={() => onChartYearChange(year)}
+              >
+                {year}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
       <CardContent className="px-3 pb-6 sm:px-6">
         <div className="h-[240px] w-full sm:h-[320px] lg:h-[380px]">
           <ResponsiveContainer
-            key={`${metricId}-${points.length}-${points[0]?.current ?? 0}`}
+            key={`${metricId}-${compareActive ? "cmp" : chartYear}-${points.length}-${points[0]?.key ?? "none"}`}
             width="100%"
             height="100%"
           >
