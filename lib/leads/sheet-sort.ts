@@ -14,7 +14,7 @@ export type SheetSortState = {
   direction: SheetSortDirection
 } | null
 
-const SORTABLE_BUILTIN_KEYS = new Set(["date", "salesPrice", "profit"])
+const SORTABLE_BUILTIN_KEYS = new Set(["date", "salesPrice", "profit", "ltv"])
 
 /** Only deal/date metrics and numeric custom fields — not name, status, services, etc. */
 export function isColumnSortable(col: LeadSheetTemplateColumn): boolean {
@@ -72,6 +72,8 @@ function sortValueForColumn(
       return lead.salesPrice ?? Number.NaN
     case "profit":
       return lead.profit ?? Number.NaN
+    case "ltv":
+      return lead.ltv ?? Number.NaN
     case "serviceIds":
       return formatLeadServices(lead, enabledServices).toLowerCase()
     case "segment":

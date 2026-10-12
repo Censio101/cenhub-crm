@@ -18,10 +18,11 @@ const SCALAR_KEYS = [
   "status",
   "salesPrice",
   "profit",
+  "ltv",
 ] as const satisfies readonly (keyof LeadPatch)[]
 
 /** Columns that store NULL when emptied (numbers and the optional time); the rest store "". */
-const NULLABLE_KEYS = new Set<string>(["time", "salesPrice", "profit"])
+const NULLABLE_KEYS = new Set<string>(["time", "salesPrice", "profit", "ltv"])
 
 /** JSON text with object keys sorted, so `{a,b}` equals `{b,a}` (the database reorders keys). */
 function stableJson(value: unknown): string {

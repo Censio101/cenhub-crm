@@ -30,6 +30,8 @@ type Props = {
   sharedNote?: string | null
   /** Client-owned sheet: pick from library or create a new field in this dialog. */
   allowInlineCreate?: boolean
+  /** Client settings: create a field here — no global library picker. */
+  createOnly?: boolean
   onPick: (field: FieldRef) => Promise<string | null>
   onCreateAndAdd?: (values: NewColumnValues) => Promise<string | null>
   onClose: () => void
@@ -44,12 +46,13 @@ export function AddFieldToTemplateDialog({
   usedCustomFieldIds,
   sharedNote,
   allowInlineCreate = false,
+  createOnly = false,
   onPick,
   onCreateAndAdd,
   onClose,
 }: Props) {
   const { t } = useLanguage()
-  const [tab, setTab] = useState<Tab>("library")
+  const [tab, setTab] = useState<Tab>(createOnly ? "new" : "library")
   const [fields, setFields] = useState<LeadSheetLibraryField[] | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [search, setSearch] = useState("")
@@ -89,7 +92,9 @@ export function AddFieldToTemplateDialog({
   const libraryBusy = pickingKey !== null
   const createBusy = createForm.saving
   const busy = libraryBusy || createBusy
-  const showTabs = allowInlineCreate && Boolean(onCreateAndAdd)
+  const showTabs = !createOnly && allowInlineCreate && Boolean(onCreateAndAdd)
+  const showLibrary = !createOnly && (tab === "library" || !showTabs)
+  const showNewForm = createOnly || (showTabs && tab === "new")
 
   async function pick(field: LeadSheetLibraryField) {
     if (libraryBusy) return
@@ -117,21 +122,22 @@ export function AddFieldToTemplateDialog({
     }
   }
 
-  const dismissible =
-    tab === "library"
+  const dismissible = createOnly
+    ? createForm.pristine && !createBusy
+    : tab === "library"
       ? !libraryBusy && !search.trim()
       : createForm.pristine && !createBusy
 
   return (
     <ModalShell
-      size={showTabs ? "lg" : "md"}
-      title={t("leadSheetsAddFieldTitle")}
+      size={showTabs || createOnly ? "lg" : "md"}
+      title={createOnly ? t("leadSheetsAddFieldTabNew") : t("leadSheetsAddFieldTitle")}
       busy={busy}
       dismissible={dismissible}
       onClose={onClose}
       footer={
         <>
-          {!showTabs ? (
+          {!showTabs && !createOnly ? (
             <Link
               href="/admin/lead-sheets/fields"
               className="mr-auto inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -143,7 +149,7 @@ export function AddFieldToTemplateDialog({
           <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
             {t("leadSheetCancel")}
           </Button>
-          {showTabs && tab === "new" ? (
+          {showNewForm ? (
             <Button type="button" disabled={!createForm.canSubmit} onClick={() => void submitCreate()}>
               {createBusy ? <Loader2Icon className="size-4 animate-spin" /> : null}
               {t("leadSheetsAddColumn")}
@@ -164,7 +170,7 @@ export function AddFieldToTemplateDialog({
         />
       ) : null}
 
-      {tab === "library" || !showTabs ? (
+      {showLibrary ? (
         <>
           <label className="relative block">
             <SearchIcon
@@ -244,7 +250,9 @@ export function AddFieldToTemplateDialog({
             </ul>
           )}
         </>
-      ) : (
+      ) : null}
+
+      {showNewForm ? (
         <NewColumnForm
           form={createForm}
           sharedNote={sharedNote}
@@ -252,16 +260,16 @@ export function AddFieldToTemplateDialog({
           fieldKeyId="template-add-column-field-key"
           onEnterSubmit={() => void submitCreate()}
         />
-      )}
+      ) : null}
 
-      {tab === "library" && sharedNote ? (
+      {showLibrary && sharedNote ? (
         <p className="flex items-start gap-2 rounded-lg border border-[#d3c3b2] bg-[#faf8f6] px-3 py-2 text-xs text-muted-foreground">
           <InfoIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           {sharedNote}
         </p>
       ) : null}
 
-      {tab === "library" && error ? (
+      {showLibrary && error ? (
         <p
           role="alert"
           className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"

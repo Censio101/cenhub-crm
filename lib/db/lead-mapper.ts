@@ -44,6 +44,7 @@ export type LeadPatch = Partial<{
   status: LeadStatusId
   salesPrice: number | null
   profit: number | null
+  ltv: number | null
   customFields: Record<string, unknown>
 }>
 
@@ -71,6 +72,7 @@ export function leadRowToLead(row: LeadRow): Lead {
     status: isLeadStatusId(row.status) ? row.status : "new_waiting_call",
     salesPrice: row.sales_price,
     profit: row.profit,
+    ltv: row.ltv,
     source: row.source,
     lockedFields: row.locked_fields ?? [],
     customFields: row.custom_fields ?? {},
@@ -107,6 +109,7 @@ export function leadPatchToRow(
     | "status"
     | "sales_price"
     | "profit"
+    | "ltv"
     | "custom_fields"
   >
 > {
@@ -129,6 +132,7 @@ export function leadPatchToRow(
   if (patch.status !== undefined) next.status = patch.status
   if (patch.salesPrice !== undefined) next.sales_price = patch.salesPrice
   if (patch.profit !== undefined) next.profit = patch.profit
+  if (patch.ltv !== undefined) next.ltv = patch.ltv
   if (patch.customFields !== undefined) next.custom_fields = patch.customFields
 
   return next
@@ -162,6 +166,7 @@ export function leadToInsertRow(
     status: lead.status,
     sales_price: lead.salesPrice,
     profit: lead.profit,
+    ltv: lead.ltv,
     source,
     locked_fields: source === "meta" ? [...META_LOCKED_FIELDS] : [],
     meta_form_id: lead.metaFormId ?? null,
@@ -181,6 +186,7 @@ export function filterPatchForLockedLead(patch: LeadPatch, row: LeadRow): LeadPa
     "status",
     "salesPrice",
     "profit",
+    "ltv",
     "customFields",
   ])
   const next: LeadPatch = {}

@@ -116,6 +116,7 @@ export type LeadRow = {
   status: string
   sales_price: number | null
   profit: number | null
+  ltv: number | null
   source: LeadSource
   locked_fields: string[]
   custom_fields: Record<string, unknown>

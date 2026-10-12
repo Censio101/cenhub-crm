@@ -72,6 +72,7 @@ function leadForCustomer(customer: Customer, leadsById: Map<string, Lead>): Lead
     status: "won",
     salesPrice: customer.salesPrice,
     profit: customer.profit,
+    ltv: null,
     customFields: customer.customFields,
   }
 }

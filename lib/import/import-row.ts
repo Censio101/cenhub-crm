@@ -183,6 +183,7 @@ export function buildImportLead(input: {
     status,
     salesPrice,
     profit,
+    ltv: null,
     source: "import",
     lockedFields: [],
     customFields: custom.values,

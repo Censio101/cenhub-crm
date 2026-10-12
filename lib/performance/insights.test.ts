@@ -36,6 +36,7 @@ function lead(overrides: Partial<Lead>): Lead {
     status: "new_waiting_call",
     salesPrice: null,
     profit: null,
+    ltv: null,
     ...overrides,
   }
 }

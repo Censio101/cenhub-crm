@@ -217,17 +217,20 @@ function resolveAuditStatus(monthIndex: number, slot: number): LeadStatusId {
 function auditCommercials(
   monthIndex: number,
   status: LeadStatusId
-): { salesPrice: number | null; profit: number | null } {
+): { salesPrice: number | null; profit: number | null; ltv: number | null } {
   const quotePrice = 85_000 + monthIndex * 2_500
   if (status === "proposal_sent") {
-    return { salesPrice: quotePrice, profit: null }
+    return { salesPrice: quotePrice, profit: null, ltv: null }
   }
   if (status !== "won") {
-    return { salesPrice: null, profit: null }
+    return { salesPrice: null, profit: null, ltv: null }
   }
+  const salesPrice = 90_000 + monthIndex * 3_000
+  const profit = 22_000 + monthIndex * 500
   return {
-    salesPrice: 90_000 + monthIndex * 3_000,
-    profit: 22_000 + monthIndex * 500,
+    salesPrice,
+    profit,
+    ltv: Math.round(salesPrice * 1.15 + 12_000),
   }
 }
 
@@ -289,7 +292,7 @@ function buildSeedLeads(serviceSlugs: string[]): Lead[] {
     for (let monthIndex = 0; monthIndex < 12; monthIndex += 1) {
       const slug = serviceSlugs[index % serviceSlugs.length] ?? serviceSlugs[0] ?? ""
       const status = resolveAuditStatus(monthIndex, slot)
-      const { salesPrice, profit } = auditCommercials(monthIndex, status)
+      const { salesPrice, profit, ltv } = auditCommercials(monthIndex, status)
       const segment = index % 3 === 0 ? "b2b" : "b2c"
       const date = auditLeadDate(monthIndex, slot)
     const kwh = 4200 + (index % 20) * 650
@@ -314,6 +317,7 @@ function buildSeedLeads(serviceSlugs: string[]): Lead[] {
         status,
         salesPrice,
         profit,
+        ltv,
         source: "manual",
         customFields: {
           suntech_site_reference: `SUN-AUDIT-${1000 + index}`,

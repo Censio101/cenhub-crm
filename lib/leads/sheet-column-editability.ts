@@ -7,6 +7,7 @@ export const SHEET_INLINE_EDITABLE_BUILTIN_KEYS = [
   "serviceIds",
   "salesPrice",
   "profit",
+  "ltv",
 ] as const satisfies readonly BuiltinColumnKey[]
 
 const inlineEditableBuiltinSet = new Set<string>(SHEET_INLINE_EDITABLE_BUILTIN_KEYS)

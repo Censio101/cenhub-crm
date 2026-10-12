@@ -17,17 +17,15 @@ const baseTotals = (overrides: Partial<PeriodTotals> = {}): PeriodTotals => ({
 })
 
 describe("metric calculations", () => {
-  it("computes LTV as revenue divided by closed customers", () => {
-    expect(getMetric("ltv").compute(baseTotals())).toBe(8000)
+  it("computes LTV as the sum of lead LTV values in period totals", () => {
+    expect(getMetric("ltv").compute(baseTotals({ ltv: 125_000 }))).toBe(125_000)
+    expect(getMetric("ltv").compute(baseTotals())).toBe(0)
   })
 
   it("computes CAC as ad spend divided by customers", () => {
     expect(getMetric("cac").compute(baseTotals())).toBe(2000)
   })
 
-  it("returns null for LTV when there are no customers", () => {
-    expect(getMetric("ltv").compute(baseTotals({ customers: 0 }))).toBeNull()
-  })
 
   it("computes CPL as ad spend divided by leads", () => {
     expect(getMetric("cpl").compute(baseTotals())).toBe(500)

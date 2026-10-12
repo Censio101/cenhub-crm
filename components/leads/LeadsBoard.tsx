@@ -718,6 +718,16 @@ export function LeadsTable({
             />
           </TableCell>
         )
+      case "ltv":
+        return (
+          <TableCell key={col.id} className="min-w-32 px-2">
+            <CurrencyInput
+              value={lead.ltv}
+              label={t("leadSheetColLtv")}
+              onChange={(ltv) => onUpdate(lead.id, { ltv })}
+            />
+          </TableCell>
+        )
       default:
         return null
     }
@@ -941,6 +951,8 @@ export function LeadsBoard() {
             return lead.salesPrice == null ? "" : String(lead.salesPrice)
           case "profit":
             return lead.profit == null ? "" : String(lead.profit)
+          case "ltv":
+            return lead.ltv == null ? "" : String(lead.ltv)
           default:
             return String(lead[col.builtinKey] ?? "")
         }

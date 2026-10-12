@@ -14,6 +14,7 @@ export type PerformanceBucket = {
   revenue: number
   adSpend: number
   profit?: number | null
+  ltv?: number | null
   qualified?: number
   quotes?: number
   service?: ServiceId

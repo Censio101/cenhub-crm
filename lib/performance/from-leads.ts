@@ -52,6 +52,7 @@ function emptyBucket(
     revenue: 0,
     adSpend: 0,
     profit: 0,
+    ltv: 0,
     qualified: 0,
     quotes: 0,
     service,
@@ -87,6 +88,8 @@ function addLeadContribution(
     isWon && lead.profit != null && Number.isFinite(lead.profit)
       ? lead.profit * share
       : 0
+  const ltv =
+    isWon && lead.ltv != null && Number.isFinite(lead.ltv) ? lead.ltv * share : 0
   const qualified = QUALIFIED_STATUSES.has(lead.status) ? share : 0
   const quotes = QUOTE_STATUSES.has(lead.status) ? share : 0
 
@@ -108,6 +111,7 @@ function addLeadContribution(
     }
     bucket.revenue += revenue
     bucket.profit = (bucket.profit ?? 0) + profit
+    bucket.ltv = (bucket.ltv ?? 0) + ltv
     bucket.qualified = (bucket.qualified ?? 0) + qualified
     bucket.quotes = (bucket.quotes ?? 0) + quotes
 
@@ -175,6 +179,7 @@ function appendSpendOnlyMonthBuckets(
       revenue: 0,
       adSpend: remaining,
       profit: 0,
+      ltv: 0,
       qualified: 0,
       quotes: 0,
     })
@@ -277,6 +282,7 @@ export function fillMonthRangeGaps(
       revenue: 0,
       adSpend: spend,
       profit: 0,
+      ltv: 0,
       qualified: 0,
       quotes: 0,
     })

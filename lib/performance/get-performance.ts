@@ -113,6 +113,7 @@ function applyCustomerSegment(
     revenue: bucket.revenue * share,
     adSpend: bucket.adSpend * share,
     profit: bucket.profit == null ? null : bucket.profit * share,
+    ltv: bucket.ltv == null ? null : bucket.ltv * share,
     qualified:
       bucket.qualified == null
         ? undefined

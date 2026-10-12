@@ -34,6 +34,8 @@ export function leadFieldHasValue(lead: Lead, field: keyof LeadPatch): boolean {
       return lead.salesPrice != null
     case "profit":
       return lead.profit != null
+    case "ltv":
+      return lead.ltv != null
     default:
       return false
   }

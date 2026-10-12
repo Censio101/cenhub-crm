@@ -22,6 +22,7 @@ function lead(date: string): Lead {
     status: "new_waiting_call",
     salesPrice: null,
     profit: null,
+    ltv: null,
   }
 }
 

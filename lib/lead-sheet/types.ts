@@ -13,6 +13,7 @@ export const BUILTIN_COLUMN_KEYS = [
   "status",
   "salesPrice",
   "profit",
+  "ltv",
 ] as const
 
 export type BuiltinColumnKey = (typeof BUILTIN_COLUMN_KEYS)[number]
@@ -70,8 +71,8 @@ export type LeadSheetLibraryField =
     }
 
 /**
- * Built-in fields every template must contain and no one can hide from the client dashboard:
- * without them a lead has no identity, contact details, date or pipeline stage.
+ * Built-in fields every template must contain and no one can hide or remove from the client
+ * dashboard: identity, pipeline stage, and the financial columns used for dashboard metrics.
  */
 export const LOCKED_BUILTIN_KEYS: readonly BuiltinColumnKey[] = [
   "fullName",
@@ -79,6 +80,9 @@ export const LOCKED_BUILTIN_KEYS: readonly BuiltinColumnKey[] = [
   "phone",
   "date",
   "status",
+  "salesPrice",
+  "profit",
+  "ltv",
 ]
 
 export function isLockedBuiltinKey(key: string): boolean {

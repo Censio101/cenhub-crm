@@ -233,8 +233,11 @@ function EditorContent({
     )
   }
 
+  /** Shared templates: pick fields from the library (create fields under Lead sheets → Fields). */
   const allowInlineFieldCreate =
     embeddedInClientSettings || Boolean(config.template.organizationId)
+  /** Client settings column tab: create custom fields in place — no library step. */
+  const clientInlineCreateOnly = embeddedInClientSettings
 
   /** Returns an error message for the dialog, or `null` when the field was added. */
   async function addFieldAfter(afterColumnId: string, field: FieldRef): Promise<string | null> {
@@ -463,6 +466,7 @@ function EditorContent({
           usedBuiltinKeys={usedBuiltinKeys}
           usedCustomFieldIds={usedCustomFieldIds}
           allowInlineCreate={allowInlineFieldCreate}
+          createOnly={clientInlineCreateOnly}
           sharedNote={
             sharedClients && sharedClients.length > 0
               ? t("leadSheetsSharedAddNote").replace(

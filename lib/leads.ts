@@ -65,6 +65,7 @@ export type Lead = {
   status: LeadStatusId
   salesPrice: number | null
   profit: number | null
+  ltv: number | null
   source?: LeadSource
   lockedFields?: string[]
   customFields?: Record<string, unknown>
@@ -401,6 +402,7 @@ export function emptyLead(id: string, date = new Date()): Lead {
     status: "new_waiting_call",
     salesPrice: null,
     profit: null,
+    ltv: null,
     customFields: {},
   }
 }
@@ -436,6 +438,7 @@ const MOCK_LEAD_SEED = [
     status: "new_waiting_call",
     salesPrice: null,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-2",
@@ -453,6 +456,7 @@ const MOCK_LEAD_SEED = [
     status: "call_1",
     salesPrice: null,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-3",
@@ -470,6 +474,7 @@ const MOCK_LEAD_SEED = [
     status: "waiting_on_client",
     salesPrice: null,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-4",
@@ -504,6 +509,7 @@ const MOCK_LEAD_SEED = [
     status: "awaiting_proposal",
     salesPrice: 248000,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-6",
@@ -538,6 +544,7 @@ const MOCK_LEAD_SEED = [
     status: "call_2",
     salesPrice: null,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-8",
@@ -555,6 +562,7 @@ const MOCK_LEAD_SEED = [
     status: "lost",
     salesPrice: null,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-9",
@@ -572,6 +580,7 @@ const MOCK_LEAD_SEED = [
     status: "not_qualified",
     salesPrice: null,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-10",
@@ -606,6 +615,7 @@ const MOCK_LEAD_SEED = [
     status: "proposal_sent",
     salesPrice: 94000,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-12",
@@ -640,6 +650,7 @@ const MOCK_LEAD_SEED = [
     status: "proposal_sent",
     salesPrice: 428000,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-14",
@@ -674,6 +685,7 @@ const MOCK_LEAD_SEED = [
     status: "lost",
     salesPrice: 890000,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-16",
@@ -708,6 +720,7 @@ const MOCK_LEAD_SEED = [
     status: "call_3",
     salesPrice: 198000,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-18",
@@ -742,6 +755,7 @@ const MOCK_LEAD_SEED = [
     status: "awaiting_proposal",
     salesPrice: 540000,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-20",
@@ -776,6 +790,7 @@ const MOCK_LEAD_SEED = [
     status: "lost",
     salesPrice: 142000,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-22",
@@ -810,6 +825,7 @@ const MOCK_LEAD_SEED = [
     status: "not_qualified",
     salesPrice: null,
     profit: null,
+    ltv: null,
   },
   {
     id: "lead-24",
@@ -861,12 +877,14 @@ const MOCK_LEAD_SEED = [
     status: "lost",
     salesPrice: 98000,
     profit: null,
+    ltv: null,
   },
 ]
 
 export const MOCK_LEADS: Lead[] = MOCK_LEAD_SEED.map((lead) =>
   withMetaAdId({
     ...lead,
+    ltv: lead.ltv ?? null,
     segment: lead.segment as LeadSegmentId | "",
     platform: lead.platform as LeadPlatformId | "",
     status: lead.status as LeadStatusId,

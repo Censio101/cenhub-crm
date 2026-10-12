@@ -22,6 +22,7 @@ export const NEW_LEAD_DETAIL_KEYS = [
   "serviceIds",
   "salesPrice",
   "profit",
+  "ltv",
 ] as const
 
 export type NewLeadSections = {

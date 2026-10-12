@@ -33,6 +33,7 @@ async function resolveOrganizationSlug(admin: ReturnType<typeof createAdminClien
   const preferred = process.env.SUNTECH_ORG_SLUG?.trim()
   const candidates = [
     preferred,
+    "suntech-nordic",
     "suntech",
     "sun-tech",
     "suntech-solar",

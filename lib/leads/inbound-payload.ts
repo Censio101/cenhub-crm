@@ -203,6 +203,7 @@ export function canonicalToLead(
     status: "new_waiting_call",
     salesPrice: null,
     profit: null,
+    ltv: null,
     source: defaults.source,
     lockedFields: [],
   }

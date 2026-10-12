@@ -308,7 +308,8 @@ function LeadFormDialog(props: Props) {
       initialLead &&
         (initialLead.status === "won" ||
           initialLead.salesPrice != null ||
-          initialLead.profit != null)
+          initialLead.profit != null ||
+          initialLead.ltv != null)
     )
   )
   const [busy, setBusy] = useState(false)
@@ -335,7 +336,8 @@ function LeadFormDialog(props: Props) {
 
   const showDealFields = dealRevealed || draft.status === "won"
   const detailKeys = sections.details.filter(
-    (key) => (key !== "salesPrice" && key !== "profit") || showDealFields
+    (key) =>
+      (key !== "salesPrice" && key !== "profit" && key !== "ltv") || showDealFields
   )
 
   const duplicatePhone = useMemo(
@@ -675,8 +677,9 @@ function LeadFormDialog(props: Props) {
       )
     }
 
-    if (key === "salesPrice" || key === "profit") {
-      const val = key === "salesPrice" ? draft.salesPrice : draft.profit
+    if (key === "salesPrice" || key === "profit" || key === "ltv") {
+      const val =
+        key === "salesPrice" ? draft.salesPrice : key === "profit" ? draft.profit : draft.ltv
       return (
         <Field key={key} id={fieldId(key)} label={label}>
           <span className="relative block">

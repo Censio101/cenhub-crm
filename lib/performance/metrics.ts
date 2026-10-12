@@ -161,8 +161,11 @@ export const METRICS: MetricDefinition[] = [
     showInTable: true,
     showInYearTotals: true,
     emphasizePositive: true,
-    nullHint: "Ingen lukkede kunder i perioden",
-    compute: (totals) => safeDivide(totals.revenue, totals.customers),
+    nullHint: "Ingen LTV udfyldt på vundne kunder",
+    compute: (totals) => {
+      const sum = totals.ltv ?? 0
+      return Number.isFinite(sum) ? sum : null
+    },
   },
 ]
 
@@ -239,6 +242,7 @@ export function emptyTotals(): PeriodTotals {
     revenue: 0,
     adSpend: 0,
     profit: null,
+    ltv: null,
     qualified: 0,
     quotes: 0,
   }
@@ -259,6 +263,10 @@ export function sumTotals(buckets: PeriodTotals[]): PeriodTotals {
         profit: hasProfitOverride
           ? (acc.profit ?? 0) + computeProfit(bucket)
           : null,
+        ltv:
+          acc.ltv != null || bucket.ltv != null
+            ? (acc.ltv ?? 0) + (bucket.ltv ?? 0)
+            : null,
         qualified: (acc.qualified ?? 0) + (bucket.qualified ?? 0),
         quotes: (acc.quotes ?? 0) + (bucket.quotes ?? 0),
       }
