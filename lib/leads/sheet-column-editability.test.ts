@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
+import type { BuiltinColumnKey, LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import {
   isLeadSheetColumnInlineEditable,
   isLeadSheetColumnReadOnlyBuiltin,
 } from "@/lib/leads/sheet-column-editability"
 
-function builtinCol(key: LeadSheetTemplateColumn & { kind: "builtin" }["builtinKey"]): LeadSheetTemplateColumn {
+function builtinCol(key: BuiltinColumnKey): LeadSheetTemplateColumn {
   return { id: "c1", sortIndex: 0, kind: "builtin", builtinKey: key }
 }
 

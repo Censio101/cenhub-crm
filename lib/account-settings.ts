@@ -27,11 +27,6 @@ export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = {
   logo: "",
   email: "",
   employees: [],
-  hvidbjergPartner: false,
-}
-
-export function parseHvidbjergPartner(value: unknown): boolean {
-  return typeof value === "boolean" ? value : DEFAULT_ACCOUNT_SETTINGS.hvidbjergPartner
 }
 
 export function getEmployeeRoleLabel(role: EmployeeRole): string {
@@ -56,7 +51,6 @@ export function parseAccountSettings(raw: string | null): AccountSettings {
       employees: Array.isArray(parsed.employees)
         ? parsed.employees
         : DEFAULT_ACCOUNT_SETTINGS.employees,
-      hvidbjergPartner: parseHvidbjergPartner(parsed.hvidbjergPartner),
     }
   } catch {
     return DEFAULT_ACCOUNT_SETTINGS
