@@ -5,6 +5,7 @@ import {
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
 import { listAdSpendByMonth } from "@/lib/db/ad-metrics-repository"
+import { getMetaConfig } from "@/lib/db/meta-config-repository"
 import { usesDatabaseLeads } from "@/lib/db/leads-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -23,14 +24,16 @@ export async function GET() {
     const supabase =
       ctx.isDemoFallback && !ctx.userId ? createAdminClient() : await createClient()
 
-    const { adSpendByMonth, source } = await listAdSpendByMonth(
-      supabase,
-      ctx.organization.id
-    )
+    const [{ adSpendByMonth, source }, metaConfig] = await Promise.all([
+      listAdSpendByMonth(supabase, ctx.organization.id),
+      getMetaConfig(supabase, ctx.organization.id),
+    ])
 
     const payload = {
       adSpendByMonth,
       source,
+      metaEnabled: metaConfig?.enabled ?? false,
+      metaLastSyncedAt: metaConfig?.metaLastSyncedAt ?? null,
       isAdminViewingClient: ctx.isAdminViewingClient,
     }
     return NextResponse.json(payload)

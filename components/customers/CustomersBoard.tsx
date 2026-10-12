@@ -69,6 +69,7 @@ function leadForCustomer(customer: Customer, leadsById: Map<string, Lead>): Lead
     platform: sourceToPlatform(customer.source),
     metaAdId: "",
     status: "won",
+    wonDate: customer.closedDate,
     salesPrice: customer.salesPrice,
     profit: customer.profit,
     ltv: null,
@@ -168,7 +169,11 @@ export function CustomersBoard() {
     if (dateId) setSheetSort({ columnId: dateId, direction: "desc" })
   }, [leadSheet.columns])
 
-  const totals = useMemo(() => sumCustomerValue(filtered), [filtered])
+  const totals = useMemo(() => {
+    const base = sumCustomerValue(filtered)
+    const ltv = shownLeads.reduce((sum, lead) => sum + (lead.ltv ?? 0), 0)
+    return { ...base, ltv }
+  }, [filtered, shownLeads])
 
   function exportFiltered() {
     const headers = leadSheet.columns.map((col) => columnDisplayLabel(col, t))
@@ -225,7 +230,7 @@ export function CustomersBoard() {
           <ClientBoardEnter className="flex flex-col gap-4" pending={pending}>
             {!sheetFocusOpen ? (
             <section aria-label={t("customersOverviewAria")}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <OverviewStat
                   label={t("customersStatCustomers")}
                   value={countLabel(
@@ -242,6 +247,11 @@ export function CustomersBoard() {
                 <OverviewStat
                   label={t("customersStatProfit")}
                   value={formatCurrencyDKK(totals.profit)}
+                  tone="success"
+                />
+                <OverviewStat
+                  label={t("customersStatLtv")}
+                  value={formatCurrencyDKK(totals.ltv)}
                   tone="success"
                 />
               </div>

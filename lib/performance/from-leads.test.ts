@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { MOCK_LEADS } from "@/lib/leads"
+import { MOCK_LEADS, type Lead } from "@/lib/leads"
 
 import { demoAdSpendByMonth } from "./demo-ad-spend"
 import { buildDailyBucketsFromLeads } from "./from-leads"
@@ -49,6 +49,38 @@ describe("buildDailyBucketsFromLeads", () => {
     expect(data.current.totals.leads).toBe(0)
     expect(data.current.totals.adSpend).toBe(22_000)
     expect(data.status).toBe("ok")
+  })
+
+  it("attributes won revenue to won date, not intake date", () => {
+    const lead: Lead = {
+      id: "split-date",
+      date: "2026-01-15",
+      fullName: "Test",
+      email: "t@example.com",
+      phone: "1",
+      segment: "b2c",
+      companyName: "",
+      address: "",
+      zipCode: "",
+      city: "",
+      serviceIds: [],
+      platform: "",
+      metaAdId: "",
+      status: "won",
+      wonDate: "2026-03-10",
+      salesPrice: 50_000,
+      profit: 10_000,
+      ltv: 5_000,
+    }
+    const marchRange = {
+      start: new Date("2026-03-01T00:00:00"),
+      end: new Date("2026-03-31T23:59:59"),
+    }
+    const data = getPerformanceDashboard({ range: marchRange }, { leads: [lead], adSpendByMonth: {} })
+
+    expect(data.current.totals.leads).toBe(0)
+    expect(data.current.totals.customers).toBe(1)
+    expect(data.current.totals.revenue).toBe(50_000)
   })
 
   it("prorates ad spend for a custom partial month", () => {

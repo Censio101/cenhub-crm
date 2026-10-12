@@ -6,6 +6,7 @@ import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import type { MessageKey } from "@/lib/i18n"
 import {
+  CLIENT_LEADS_UPDATED_EVENT,
   CLIENT_ORG_CHANGED_EVENT,
   getAdSpendCache,
   getLeadsCache,
@@ -18,9 +19,14 @@ import { createRequestGuard } from "@/lib/data/request-guard"
 import type { Lead } from "@/lib/leads"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
+type AdSpendSource = "synced" | "demo" | "pending"
+
 type DashboardDataState = {
   leads: Lead[]
   adSpendByMonth: Record<string, number>
+  adSpendSource: AdSpendSource
+  metaEnabled: boolean
+  metaLastSyncedAt: string | null
   loading: boolean
   error: MessageKey | null
   needsClientSelection: boolean
@@ -38,6 +44,9 @@ type LeadsPayload = {
 
 type AdSpendPayload = {
   adSpendByMonth?: Record<string, number>
+  source?: AdSpendSource
+  metaEnabled?: boolean
+  metaLastSyncedAt?: string | null
 }
 
 export function useDashboardData(): DashboardDataState {
@@ -54,6 +63,9 @@ export function useDashboardData(): DashboardDataState {
   const [source, setSource] = useState<"mock" | "supabase">(
     () => getLeadsCache(activeSlug)?.source ?? "supabase"
   )
+  const [adSpendSource, setAdSpendSource] = useState<AdSpendSource>("pending")
+  const [metaEnabled, setMetaEnabled] = useState(false)
+  const [metaLastSyncedAt, setMetaLastSyncedAt] = useState<string | null>(null)
   const [guard] = useState(createRequestGuard)
 
   useEffect(() => () => guard.dispose(), [guard])
@@ -98,6 +110,9 @@ export function useDashboardData(): DashboardDataState {
 
       setLeads(leadsPayload.leads)
       setAdSpendByMonth(nextAdSpend)
+      setAdSpendSource(adSpendResult.data?.source ?? "pending")
+      setMetaEnabled(Boolean(adSpendResult.data?.metaEnabled))
+      setMetaLastSyncedAt(adSpendResult.data?.metaLastSyncedAt ?? null)
       setSource(nextSource)
       setLeadsCache({
         leads: leadsPayload.leads,
@@ -131,5 +146,25 @@ export function useDashboardData(): DashboardDataState {
     return () => window.removeEventListener(CLIENT_ORG_CHANGED_EVENT, onOrgChanged)
   }, [load])
 
-  return { leads, adSpendByMonth, loading, error, needsClientSelection, source, reload: load }
+  useEffect(() => {
+    const onLeadsUpdated = () => {
+      const cached = getLeadsCache(activeSlug)
+      if (cached?.leads) setLeads(cached.leads)
+    }
+    window.addEventListener(CLIENT_LEADS_UPDATED_EVENT, onLeadsUpdated)
+    return () => window.removeEventListener(CLIENT_LEADS_UPDATED_EVENT, onLeadsUpdated)
+  }, [activeSlug])
+
+  return {
+    leads,
+    adSpendByMonth,
+    adSpendSource,
+    metaEnabled,
+    metaLastSyncedAt,
+    loading,
+    error,
+    needsClientSelection,
+    source,
+    reload: load,
+  }
 }

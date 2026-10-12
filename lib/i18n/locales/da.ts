@@ -989,11 +989,22 @@ const daMessages = {
   dashboardRetry: "Prøv igen",
   dashboardPartialData: "Ufuldstændige data – perioden rækker ud over de tilgængelige måneder.",
   dashboardUpdating: "Opdaterer nøgletal",
-  dashboardPipelinePeriod: "Pipeline-værdi for den valgte periode",
+  dashboardPipelinePeriod: "Pipeline for leads oprettet i den valgte periode",
+  dashboardDateBasisHint:
+    "Lead-tal bruger lead-dato; omsætning, lukkede kunder og LTV bruger vundet-dato.",
   dashboardSecondaryAria: "Sekundære indsigter",
   dashboardChartBefore: "Før",
   dashboardWelcome: "Velkommen, {name}",
   dashboardShowingData: "Viser data for {dateRange}",
+  dashboardAdSpendPending: "Meta-annonceforbrug er ikke synkroniseret endnu. KPI'er kan vise nul.",
+  dashboardAdSpendStale: "Meta-annonceforbrug blev sidst synkroniseret for over 6 timer siden.",
+  dashboardAdSpendPendingAdmin: "Synkroniser Meta-metrics i admin for at vise annonceforbrug her.",
+  dashboardWonMissingFinancials:
+    "{count} vundne leads i perioden mangler salgspris, profit eller LTV på arket.",
+  dashboardServiceFilterFractionHint:
+    "Leads med flere services tæller brøkdelvist med i filtrerede KPI'er.",
+  dashboardChartYearScopeHint:
+    "Diagram-år viser kalendermåneder uafhængigt af perioden ovenfor.",
   dashboardKpiAria: "Nøgletal",
   dashboardChartTitle: "Udvikling",
   dashboardChartSubtitle:
@@ -1114,6 +1125,7 @@ const daMessages = {
   customersCountMany: "kunder",
   customersStatRevenue: "Omsætning",
   customersStatProfit: "Bundlinje",
+  customersStatLtv: "LTV",
   customersColClosed: "Lukket",
   customersColCustomer: "Kunde",
   customersColSegment: "Privat/Erhverv",
@@ -1770,7 +1782,8 @@ const daMessages = {
   leadSheetAdminIntro: "Opret og sorter kolonner. Klienter ser samme rækkefølge i Leads.",
   businessCategoriesTitle: "Administrer kategorier",
   businessCategoriesIntro: "Bruges til at filtrere skabeloner og tildele klienter.",
-  leadSheetColDate: "Dato",
+  leadSheetColDate: "Lead-dato",
+  leadSheetColWonDate: "Vundet d.",
   leadSheetColFullName: "Fulde navn",
   leadSheetColEmail: "E-mail",
   leadSheetColPhone: "Telefon",

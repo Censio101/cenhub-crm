@@ -114,6 +114,7 @@ export type LeadRow = {
   meta_form_id: string | null
   meta_extra: Record<string, string>
   status: string
+  won_date: string | null
   sales_price: number | null
   profit: number | null
   ltv: number | null

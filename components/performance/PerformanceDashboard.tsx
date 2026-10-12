@@ -17,6 +17,7 @@ import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { DevelopmentChart } from "@/components/performance/DevelopmentChart"
 import { KpiGrid } from "@/components/performance/KpiGrid"
 import { MonthlyTable } from "@/components/performance/MonthlyTable"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
@@ -24,13 +25,22 @@ import { parseIsoDate } from "@/lib/performance/date-ranges"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import { getLeadDataDateRange } from "@/lib/performance/from-leads"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
+import { isMetaMetricsStale } from "@/lib/meta/sync-center-constants"
+import {
+  countWonLeadsMissingFinancials,
+  filterWonLeadsByCloseDate,
+} from "@/lib/performance/won-financials"
 
 export function PerformanceDashboard() {
   const router = useRouter()
   const { locale, t } = useLanguage()
+  const { role } = useActiveOrganization()
   const {
     leads,
     adSpendByMonth,
+    adSpendSource,
+    metaEnabled,
+    metaLastSyncedAt,
     loading: dataLoading,
     error,
     reload,
@@ -101,8 +111,29 @@ export function PerformanceDashboard() {
           segment: view.segment,
         })
       ),
-    [view, leads]
+    [measuredRange, view, leads]
   )
+
+  const adSpendNotice = useMemo(() => {
+    if (!metaEnabled) return null
+    if (adSpendSource === "pending") {
+      return role === "censio_admin"
+        ? t("dashboardAdSpendPendingAdmin")
+        : t("dashboardAdSpendPending")
+    }
+    if (isMetaMetricsStale(metaLastSyncedAt)) return t("dashboardAdSpendStale")
+    return null
+  }, [adSpendSource, metaEnabled, metaLastSyncedAt, role, t])
+
+  const missingFinancialsCount = useMemo(
+    () => countWonLeadsMissingFinancials(filterWonLeadsByCloseDate(leads, measuredRange)),
+    [leads, measuredRange]
+  )
+
+  const showChartYearHint =
+    view.preset !== "ytd" &&
+    view.preset !== "last_12_months" &&
+    view.preset !== "all_time"
 
   const chartCurrentLabel = data != null ? String(data.year.year) : String(measuredRange.end.getFullYear())
   const chartComparisonLabel =
@@ -153,6 +184,18 @@ export function PerformanceDashboard() {
               <LoadErrorNotice message={t(loadError)} onRetry={() => void reload()} />
             ) : null}
 
+            {adSpendNotice ? (
+              <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {adSpendNotice}
+              </p>
+            ) : null}
+
+            {missingFinancialsCount > 0 ? (
+              <p className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                {t("dashboardWonMissingFinancials", { count: String(missingFinancialsCount) })}
+              </p>
+            ) : null}
+
             {data.status === "empty" ? (
               <>
                 <KpiGrid data={data} comparisonEnabled={view.comparisonEnabled} />
@@ -171,6 +214,7 @@ export function PerformanceDashboard() {
                   chartYear={data.year.year}
                   onChartYearChange={setChartYear}
                   onMetricChange={onMetricChange}
+                  showYearScopeHint={showChartYearHint}
                 />
                 <LeadPipelineBar
                   stats={pipelineStats}

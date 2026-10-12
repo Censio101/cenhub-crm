@@ -14,7 +14,7 @@ export function customerPayloadFromLead(lead: LeadRow) {
   return {
     organization_id: lead.organization_id,
     lead_id: lead.id,
-    closed_date: lead.lead_date,
+    closed_date: lead.won_date ?? lead.lead_date,
     full_name: lead.full_name,
     email: lead.email,
     phone: lead.phone,

@@ -63,6 +63,8 @@ export type Lead = {
   metaFormId?: string
   metaExtra?: Record<string, string>
   status: LeadStatusId
+  /** Set when status becomes won; read-only on the client sheet. */
+  wonDate?: string | null
   salesPrice: number | null
   profit: number | null
   ltv: number | null

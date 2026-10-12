@@ -11,6 +11,7 @@ export const BUILTIN_COLUMN_KEYS = [
   "serviceIds",
   "metaAdId",
   "status",
+  "wonDate",
   "salesPrice",
   "profit",
   "ltv",

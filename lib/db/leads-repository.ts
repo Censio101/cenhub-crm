@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { syncCustomerForWonLead } from "@/lib/db/customers-sync"
+import { applyWonDateForStatusChange } from "@/lib/db/won-date"
 import {
   filterPatchForLockedLead,
   leadPatchToRow,
@@ -45,7 +46,9 @@ export async function createLead(
     .single()
 
   if (error) throw error
-  return leadRowToLead(data as LeadRow)
+  const inserted = data as LeadRow
+  await syncCustomerForWonLead(supabase, inserted)
+  return leadRowToLead(inserted)
 }
 
 export async function updateLeadById(
@@ -67,6 +70,16 @@ export async function updateLeadById(
   const row = existing as LeadRow
   const safePatch = filterPatchForLockedLead(patch, row)
   const rowPatch = leadPatchToRow(safePatch)
+
+  const nextStatus = (rowPatch.status ?? row.status) as string
+  const wonDateChange = applyWonDateForStatusChange(
+    row.status,
+    nextStatus,
+    row.won_date
+  )
+  if (wonDateChange !== undefined) {
+    rowPatch.won_date = wonDateChange
+  }
 
   if (Object.keys(rowPatch).length === 0) {
     return leadRowToLead(row)

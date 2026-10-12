@@ -69,17 +69,32 @@ function resolveLeadServices(lead: Lead): ServiceId[] {
   return getLeadServiceIds(lead)
 }
 
+function touchBucket(
+  buckets: Map<BucketKey, PerformanceBucket>,
+  date: string,
+  service: ServiceId | "",
+  funnel: FunnelId | ""
+): PerformanceBucket {
+  const key = bucketKey(date, service, funnel)
+  const bucket =
+    buckets.get(key) ??
+    emptyBucket(date, service || undefined, funnel || undefined)
+  buckets.set(key, bucket)
+  return bucket
+}
+
 function addLeadContribution(
   buckets: Map<BucketKey, PerformanceBucket>,
   lead: Lead
 ) {
-  const date = lead.date
+  const intakeDate = lead.date
   const funnel = resolveLeadFunnel(lead)
   const services = resolveLeadServices(lead)
   const serviceTargets: (ServiceId | "")[] =
     services.length > 0 ? services : [""]
   const share = 1 / serviceTargets.length
   const isWon = lead.status === "won"
+  const wonDate = isWon ? lead.wonDate ?? lead.date : null
   const revenue =
     isWon && lead.salesPrice != null && Number.isFinite(lead.salesPrice)
       ? lead.salesPrice * share
@@ -94,28 +109,24 @@ function addLeadContribution(
   const quotes = QUOTE_STATUSES.has(lead.status) ? share : 0
 
   for (const service of serviceTargets) {
-    const key = bucketKey(date, service, funnel)
-    const bucket =
-      buckets.get(key) ??
-      emptyBucket(
-        date,
-        service || undefined,
-        funnel || undefined
-      )
+    const intakeBucket = touchBucket(buckets, intakeDate, service, funnel)
+    intakeBucket.leads += share
+    intakeBucket.qualified = (intakeBucket.qualified ?? 0) + qualified
+    intakeBucket.quotes = (intakeBucket.quotes ?? 0) + quotes
 
-    bucket.leads += share
-    if (isWon) {
-      bucket.customers += share
-      if (lead.segment === "b2b") bucket.b2bCustomers = (bucket.b2bCustomers ?? 0) + share
-      if (lead.segment === "b2c") bucket.b2cCustomers = (bucket.b2cCustomers ?? 0) + share
+    if (isWon && wonDate) {
+      const wonBucket = touchBucket(buckets, wonDate, service, funnel)
+      wonBucket.customers += share
+      if (lead.segment === "b2b") {
+        wonBucket.b2bCustomers = (wonBucket.b2bCustomers ?? 0) + share
+      }
+      if (lead.segment === "b2c") {
+        wonBucket.b2cCustomers = (wonBucket.b2cCustomers ?? 0) + share
+      }
+      wonBucket.revenue += revenue
+      wonBucket.profit = (wonBucket.profit ?? 0) + profit
+      wonBucket.ltv = (wonBucket.ltv ?? 0) + ltv
     }
-    bucket.revenue += revenue
-    bucket.profit = (bucket.profit ?? 0) + profit
-    bucket.ltv = (bucket.ltv ?? 0) + ltv
-    bucket.qualified = (bucket.qualified ?? 0) + qualified
-    bucket.quotes = (bucket.quotes ?? 0) + quotes
-
-    buckets.set(key, bucket)
   }
 }
 

@@ -22,6 +22,7 @@ import { LeadSheetFilterBar } from "@/components/leads/LeadSheetFilterBar"
 import { LeadSheetFocusShell } from "@/components/leads/LeadSheetFocusShell"
 import {
   LeadSheetReadOnlyDateCell,
+  LeadSheetReadOnlyWonDateCell,
   LeadSheetReadOnlyEmailCell,
   LeadSheetReadOnlyFullNameCell,
   LeadSheetReadOnlyPhoneCell,
@@ -672,6 +673,8 @@ export function LeadsTable({
             mono
           />
         )
+      case "wonDate":
+        return <LeadSheetReadOnlyWonDateCell key={col.id} lead={lead} className="min-w-28 px-2" />
       case "status":
         return (
           <TableCell
@@ -930,6 +933,8 @@ export function LeadsBoard() {
         switch (col.builtinKey) {
           case "date":
             return formatLeadDateTime(lead.date, lead.time)
+          case "wonDate":
+            return lead.status === "won" && lead.wonDate ? lead.wonDate : ""
           case "status":
             return t(leadStatusLabelKey(lead.status))
           case "segment":

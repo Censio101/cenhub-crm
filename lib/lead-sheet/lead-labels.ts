@@ -15,6 +15,7 @@ const BUILTIN_LABEL_KEYS: Record<BuiltinColumnKey, MessageKey> = {
   serviceIds: "leadSheetColServiceIds",
   metaAdId: "leadSheetColMetaAdId",
   status: "leadSheetColStatus",
+  wonDate: "leadSheetColWonDate",
   salesPrice: "leadSheetColSalesPrice",
   profit: "leadSheetColProfit",
   ltv: "leadSheetColLtv",

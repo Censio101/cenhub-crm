@@ -10,6 +10,7 @@ import {
   type LeadSegmentId,
   type LeadStatusId,
 } from "@/lib/leads"
+import { wonDateForNewLead } from "@/lib/db/won-date"
 import { leadFieldHasValue } from "@/lib/leads/lead-field-values"
 import { isServiceId, type ServiceId } from "@/lib/performance/services"
 
@@ -70,6 +71,7 @@ export function leadRowToLead(row: LeadRow): Lead {
     metaFormId: row.meta_form_id ?? undefined,
     metaExtra: row.meta_extra ?? {},
     status: isLeadStatusId(row.status) ? row.status : "new_waiting_call",
+    wonDate: row.won_date ?? null,
     salesPrice: row.sales_price,
     profit: row.profit,
     ltv: row.ltv,
@@ -107,6 +109,7 @@ export function leadPatchToRow(
     | "platform"
     | "meta_ad_id"
     | "status"
+    | "won_date"
     | "sales_price"
     | "profit"
     | "ltv"
@@ -164,6 +167,7 @@ export function leadToInsertRow(
     platform: lead.platform,
     meta_ad_id: lead.metaAdId,
     status: lead.status,
+    won_date: lead.wonDate ?? wonDateForNewLead(lead.status, lead.date),
     sales_price: lead.salesPrice,
     profit: lead.profit,
     ltv: lead.ltv,

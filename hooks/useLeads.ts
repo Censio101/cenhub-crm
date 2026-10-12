@@ -10,6 +10,7 @@ import {
   getLeadsCache,
   hasLeadsCache,
   emitCustomersRefresh,
+  emitLeadsUpdated,
   replaceCachedLeads,
   setLeadsCache,
 } from "@/lib/data/client-cache"
@@ -217,6 +218,7 @@ export function useLeads() {
           })
         }
         emitCustomersRefresh()
+        emitLeadsUpdated()
       } catch (patchError) {
         console.error(patchError)
         saveFailed.current = true
@@ -345,6 +347,7 @@ export function useLeads() {
 
         replaceLocal(data.lead)
         emitCustomersRefresh()
+        emitLeadsUpdated()
         setError(null)
         saveFailed.current = false
         return data.lead

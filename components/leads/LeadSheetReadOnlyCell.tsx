@@ -41,6 +41,22 @@ export function LeadSheetReadOnlyDateCell({
   )
 }
 
+export function LeadSheetReadOnlyWonDateCell({
+  lead,
+  className,
+}: {
+  lead: Lead
+  className?: string
+}) {
+  const value =
+    lead.status === "won" && lead.wonDate ? formatLeadDateTime(lead.wonDate, null) : ""
+  return (
+    <TableCell className={className}>
+      <LeadSheetReadOnlyText>{value}</LeadSheetReadOnlyText>
+    </TableCell>
+  )
+}
+
 export function LeadSheetReadOnlyFullNameCell({
   lead,
   className,

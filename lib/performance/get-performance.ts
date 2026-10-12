@@ -128,19 +128,13 @@ export type PerformanceInput = {
   adSpendByMonth?: Record<string, number>
 }
 
-function leadsInRange(leads: readonly Lead[], range: DateRange): Lead[] {
-  const start = toIsoDate(startOfDay(range.start))
-  const end = toIsoDate(startOfDay(range.end))
-  return leads.filter((lead) => lead.date >= start && lead.date <= end)
-}
-
 function resolveDailyBuckets(
   range: DateRange,
   input?: PerformanceInput
 ): PerformanceBucket[] {
   if (input !== undefined) {
     const adSpendByMonth = input.adSpendByMonth ?? {}
-    return buildDailyBucketsFromLeads(leadsInRange(input.leads ?? [], range), adSpendByMonth, {
+    return buildDailyBucketsFromLeads(input.leads ?? [], adSpendByMonth, {
       range,
     })
   }

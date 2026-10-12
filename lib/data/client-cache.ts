@@ -105,6 +105,14 @@ export function hasCustomersCache(expectedSlug?: string | null): boolean {
 export const CLIENT_ORG_CHANGED_EVENT = "crm-client-org-changed"
 /** Won customers list should reload after lead edits (server syncs customers from won leads). */
 export const CLIENT_CUSTOMERS_REFRESH_EVENT = "crm-customers-refresh"
+/** Dashboard should pick up lead sheet edits without a full page reload. */
+export const CLIENT_LEADS_UPDATED_EVENT = "crm-leads-updated"
+
+export function emitLeadsUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CLIENT_LEADS_UPDATED_EVENT))
+  }
+}
 
 export function emitCustomersRefresh() {
   if (typeof window !== "undefined") {

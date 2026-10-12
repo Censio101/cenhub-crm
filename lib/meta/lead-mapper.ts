@@ -89,6 +89,7 @@ export function mapMetaLeadToInsertRow(
     platform: "meta",
     meta_ad_id: mapped.metaAdId || lead.ad_id || "",
     status: "new_waiting_call",
+    won_date: null,
     sales_price: null,
     profit: null,
     ltv: null,
