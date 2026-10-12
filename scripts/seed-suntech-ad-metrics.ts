@@ -49,6 +49,18 @@ async function main() {
     .single()
   if (error || !org) throw error ?? new Error(`Organization not found: ${slug}`)
 
+  const { data: meta } = await admin
+    .from("client_meta_config")
+    .select("enabled")
+    .eq("organization_id", org.id)
+    .maybeSingle()
+
+  if (meta?.enabled) {
+    throw new Error(
+      `${org.name} has Meta enabled — use Meta sync instead of demo ad metrics (would overwrite real spend).`
+    )
+  }
+
   const rows = DEMO_AD_SPEND_MONTHS.map((month) => ({
     organization_id: org.id,
     month_key: month.monthKey,

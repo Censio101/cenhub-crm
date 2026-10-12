@@ -1,4 +1,7 @@
-import { upsertMonthlyAdMetrics } from "@/lib/db/ad-metrics-repository"
+import {
+  purgeStaleAdMetricsAfterMetaSync,
+  upsertMonthlyAdMetrics,
+} from "@/lib/db/ad-metrics-repository"
 import {
   getMetaConfigRow,
   listMetaSyncableOrganizations,
@@ -151,6 +154,11 @@ export async function syncOrganizationAdMetrics(
       { range: metricsRange }
     )
     await upsertMonthlyAdMetrics(supabase, organizationId, monthly)
+    const purgedDemoRows = await purgeStaleAdMetricsAfterMetaSync(
+      supabase,
+      organizationId,
+      monthly.map((row) => row.month)
+    )
 
     const finishedAt = new Date().toISOString()
     await setMetaSyncState(supabase, organizationId, {
@@ -167,6 +175,7 @@ export async function syncOrganizationAdMetrics(
         tokenSource: resolved.source,
         monthCount: monthly.length,
         metricsRange,
+        purgedDemoRows,
       },
       startedAt,
       finishedAt,
