@@ -325,7 +325,7 @@ export function CustomersBoard() {
 
             <section
               className={cn(
-                "dashboard-card flex h-[calc(100dvh-7rem)] min-h-[24rem] flex-none flex-col overflow-hidden",
+                "dashboard-card flex max-h-[calc(100dvh-7rem)] min-h-[24rem] flex-col overflow-hidden",
                 sheetFocusOpen && "hidden"
               )}
             >
