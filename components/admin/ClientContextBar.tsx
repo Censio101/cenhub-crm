@@ -186,20 +186,6 @@ export function ClientContextBar() {
                   ))
                 )}
               </ul>
-              {!listLoading && listState.hiddenCount > 0 ? (
-                <div className="border-t border-border px-3 py-3">
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {listState.mode === "preview"
-                      ? t("clientSwitcherMoreCount", { count: listState.hiddenCount })
-                      : t("clientSwitcherSearchLimit", { count: listState.hiddenCount })}
-                  </p>
-                  {listState.mode === "preview" ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t("clientSwitcherSearchHint")}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
             </PopoverContent>
           </Popover>
         </div>

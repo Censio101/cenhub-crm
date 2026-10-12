@@ -52,12 +52,6 @@ export function filterPickerOrganizations(
   )
 }
 
-/** Max clients shown in the header switcher before the user searches. */
-export const CLIENT_SWITCHER_PREVIEW_LIMIT = 8
-
-/** Max matches shown when searching in the header switcher. */
-export const CLIENT_SWITCHER_SEARCH_LIMIT = 8
-
 export type ContextBarClientList = {
   items: readonly PickerOrganization[]
   totalCount: number
@@ -65,23 +59,21 @@ export type ContextBarClientList = {
   mode: "preview" | "search"
 }
 
+/** Full client list for the header switcher (scrollable popover). Active client stays first. */
 export function resolveContextBarClientList(
   organizations: readonly PickerOrganization[],
   query: string,
-  activeSlug: string | null,
-  previewLimit = CLIENT_SWITCHER_PREVIEW_LIMIT,
-  searchLimit = CLIENT_SWITCHER_SEARCH_LIMIT
+  activeSlug: string | null
 ): ContextBarClientList {
   const needle = query.trim()
   const totalCount = organizations.length
 
   if (needle) {
-    const matches = filterPickerOrganizations(organizations, query)
-    const items = matches.slice(0, searchLimit)
+    const items = filterPickerOrganizations(organizations, query)
     return {
       items,
       totalCount,
-      hiddenCount: Math.max(0, matches.length - items.length),
+      hiddenCount: 0,
       mode: "search",
     }
   }
@@ -89,18 +81,12 @@ export function resolveContextBarClientList(
   const sorted = [...organizations]
   const active = activeSlug ? sorted.find((org) => org.slug === activeSlug) : undefined
   const rest = activeSlug ? sorted.filter((org) => org.slug !== activeSlug) : sorted
-
-  const preview: PickerOrganization[] = []
-  if (active) preview.push(active)
-  for (const org of rest) {
-    if (preview.length >= previewLimit) break
-    preview.push(org)
-  }
+  const items = active ? [active, ...rest] : rest
 
   return {
-    items: preview,
+    items,
     totalCount,
-    hiddenCount: Math.max(0, totalCount - preview.length),
+    hiddenCount: 0,
     mode: "preview",
   }
 }
