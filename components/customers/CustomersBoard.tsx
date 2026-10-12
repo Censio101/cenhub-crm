@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { XIcon } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
@@ -34,7 +34,7 @@ import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import { matchesSearch } from "@/lib/leads/search"
 import {
-  findDefaultDateColumnId,
+  defaultCustomersSheetSort,
   sortLeadsWithSheetState,
   type SheetSortDirection,
   type SheetSortState,
@@ -152,22 +152,32 @@ export function CustomersBoard() {
     return searched
   }, [inFilters, search])
 
+  const activeSheetSort = useMemo(
+    () => sheetSort ?? defaultCustomersSheetSort(leadSheet.columns),
+    [leadSheet.columns, sheetSort]
+  )
+
   const shownLeads = useMemo(() => {
     const rows = filtered.map((customer) => leadForCustomer(customer, leadsById))
-    return sortLeadsWithSheetState(rows, leadSheet.columns, sheetSort, enabledServices)
-  }, [enabledServices, filtered, leadSheet.columns, leadsById, sheetSort])
+    return sortLeadsWithSheetState(rows, leadSheet.columns, activeSheetSort, enabledServices)
+  }, [activeSheetSort, enabledServices, filtered, leadSheet.columns, leadsById])
 
   const handleSheetSort = useCallback((columnId: string, direction: SheetSortDirection | null) => {
     setSheetSort(direction ? { columnId, direction } : null)
   }, [])
 
-  const defaultSortApplied = useRef(false)
-  useEffect(() => {
-    if (defaultSortApplied.current || leadSheet.columns.length === 0) return
-    defaultSortApplied.current = true
-    const dateId = findDefaultDateColumnId(leadSheet.columns)
-    if (dateId) setSheetSort({ columnId: dateId, direction: "desc" })
-  }, [leadSheet.columns])
+  const customersEmptyText = useMemo(() => {
+    if (
+      !dateIsAllTime &&
+      !search.trim() &&
+      sourceFilter === "all" &&
+      sheetSegment === "all" &&
+      !sheetService
+    ) {
+      return t("customersEmptyPeriod")
+    }
+    return t("customersEmpty")
+  }, [dateIsAllTime, search, sheetSegment, sheetService, sourceFilter, t])
 
   const totals = useMemo(() => {
     const base = sumCustomerValue(filtered)
@@ -312,9 +322,9 @@ export function CustomersBoard() {
                   <LeadsTable
                     columns={leadSheet.columns}
                     leads={shownLeads}
-                    sheetSort={sheetSort}
+                    sheetSort={activeSheetSort}
                     onSheetSort={handleSheetSort}
-                    emptyText={t("customersEmpty")}
+                    emptyText={customersEmptyText}
                     onUpdate={updateLead}
                     onEdit={setEditingLeadId}
                     onDelete={(id) => {
@@ -372,9 +382,9 @@ export function CustomersBoard() {
                 <LeadsTable
                   columns={leadSheet.columns}
                   leads={shownLeads}
-                  sheetSort={sheetSort}
+                  sheetSort={activeSheetSort}
                   onSheetSort={handleSheetSort}
-                  emptyText={t("customersEmpty")}
+                  emptyText={customersEmptyText}
                   onUpdate={updateLead}
                   onEdit={setEditingLeadId}
                   onDelete={(id) => {
@@ -396,7 +406,7 @@ export function CustomersBoard() {
                 <div className="min-h-0 flex-1 overflow-auto">
                   <LeadCardList
                     leads={shownLeads}
-                    emptyText={t("customersEmpty")}
+                    emptyText={customersEmptyText}
                     onEdit={setEditingLeadId}
                   />
                 </div>

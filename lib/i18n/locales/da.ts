@@ -1001,6 +1001,8 @@ const daMessages = {
   dashboardAdSpendPendingAdmin: "Synkroniser Meta-metrics i admin for at vise annonceforbrug her.",
   dashboardWonMissingFinancials:
     "{count} vundne leads i perioden mangler salgspris, profit eller LTV på arket.",
+  dashboardWonMissingSalesPrice:
+    "{count} vundne sager i perioden mangler salgspris. Udfyld prisen under Kunder eller Leads.",
   dashboardServiceFilterFractionHint:
     "Leads med flere services tæller brøkdelvist med i filtrerede KPI'er.",
   dashboardChartYearScopeHint:
@@ -1139,6 +1141,7 @@ const daMessages = {
   customersSortOldest: "Sortér ældste først",
   customersSortNewest: "Sortér nyeste først",
   customersEmpty: "Ingen kunder matcher filtrene.",
+  customersEmptyPeriod: "Ingen kunder i denne periode.",
   customersLoadError: "Kunne ikke hente kunder",
 
   funnelsAdminTitle: "Webhooks",
@@ -1813,6 +1816,8 @@ const daMessages = {
   leadSheetDeleteLeadConfirm: "Slet",
   leadSheetCancel: "Annuller",
   leadSheetEmptyFiltered: "Ingen leads matcher filtrene.",
+  leadSheetEmptyPeriod: "Ingen leads i denne periode.",
+  leadSheetMissingSalesPrice: "Mangler pris",
   leadSheetSavedInDb: "Gemmes i database",
   leadSheetScrollHint:
     "Scroll først i arket; i kanten fortsætter scroll på siden. Træk for at panne, Shift + hjul til siden eller pilene.",

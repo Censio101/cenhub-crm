@@ -27,9 +27,9 @@ import { getLeadDataDateRange } from "@/lib/performance/from-leads"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 import { isMetaMetricsStale } from "@/lib/meta/sync-center-constants"
 import {
-  countWonLeadsMissingFinancials,
   filterWonLeadsByCloseDate,
 } from "@/lib/performance/won-financials"
+import { countWonLeadsMissingSalesPrice } from "@/lib/leads/won-sales-price"
 
 export function PerformanceDashboard() {
   const router = useRouter()
@@ -125,8 +125,8 @@ export function PerformanceDashboard() {
     return null
   }, [adSpendSource, metaEnabled, metaLastSyncedAt, role, t])
 
-  const missingFinancialsCount = useMemo(
-    () => countWonLeadsMissingFinancials(filterWonLeadsByCloseDate(leads, measuredRange)),
+  const missingSalesPriceCount = useMemo(
+    () => countWonLeadsMissingSalesPrice(filterWonLeadsByCloseDate(leads, measuredRange)),
     [leads, measuredRange]
   )
 
@@ -190,9 +190,9 @@ export function PerformanceDashboard() {
               </p>
             ) : null}
 
-            {missingFinancialsCount > 0 ? (
-              <p className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                {t("dashboardWonMissingFinancials", { count: String(missingFinancialsCount) })}
+            {missingSalesPriceCount > 0 ? (
+              <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                {t("dashboardWonMissingSalesPrice", { count: String(missingSalesPriceCount) })}
               </p>
             ) : null}
 

@@ -999,6 +999,8 @@ export const en: Messages = {
   dashboardAdSpendPendingAdmin: "Sync Meta ad metrics in admin to populate ad spend on this dashboard.",
   dashboardWonMissingFinancials:
     "{count} won leads in this period are missing sales price, profit, or LTV on the sheet.",
+  dashboardWonMissingSalesPrice:
+    "{count} won jobs in this period are missing a sales price. Add the price on Customers or Leads.",
   dashboardServiceFilterFractionHint:
     "Leads with multiple services count fractionally toward filtered KPIs.",
   dashboardChartYearScopeHint: "Chart year tabs show calendar months and are independent of the period above.",
@@ -1136,6 +1138,7 @@ export const en: Messages = {
   customersSortOldest: "Sort oldest first",
   customersSortNewest: "Sort newest first",
   customersEmpty: "No customers match the filters.",
+  customersEmptyPeriod: "No customers in this period.",
   customersLoadError: "Could not load customers",
 
   funnelsAdminTitle: "Webhooks",
@@ -1806,6 +1809,8 @@ export const en: Messages = {
   leadSheetDeleteLeadConfirm: "Delete",
   leadSheetCancel: "Cancel",
   leadSheetEmptyFiltered: "No leads match the filters.",
+  leadSheetEmptyPeriod: "No leads in this period.",
+  leadSheetMissingSalesPrice: "Missing price",
   leadSheetSavedInDb: "Saved to database",
   leadSheetScrollHint:
     "Scroll inside the sheet first; at the edge, scrolling continues on the page. Drag to pan, Shift + wheel sideways, or use the arrows.",

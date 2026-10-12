@@ -4,6 +4,7 @@ import { PencilIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
+import { wonLeadMissingSalesPrice } from "@/lib/leads/won-sales-price"
 import { getLeadStatusClass, type Lead } from "@/lib/leads"
 import { cn } from "cn"
 
@@ -36,6 +37,11 @@ export function LeadCardList({
                 {lead.fullName || "–"}
               </span>
               <span className="flex shrink-0 items-center gap-2">
+                {wonLeadMissingSalesPrice(lead) ? (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-950">
+                    {t("leadSheetMissingSalesPrice")}
+                  </span>
+                ) : null}
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[11px] font-medium",

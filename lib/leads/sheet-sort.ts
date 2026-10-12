@@ -139,6 +139,20 @@ export function findDefaultDateColumnId(columns: readonly LeadSheetTemplateColum
   return dateCol?.id ?? null
 }
 
+export function findWonDateColumnId(columns: readonly LeadSheetTemplateColumn[]): string | null {
+  const wonCol = columns.find((c) => c.kind === "builtin" && c.builtinKey === "wonDate")
+  return wonCol?.id ?? null
+}
+
+/** Kunder: newest won deals first when the user has not picked a sort. */
+export function defaultCustomersSheetSort(
+  columns: readonly LeadSheetTemplateColumn[]
+): SheetSortState {
+  const columnId = findWonDateColumnId(columns)
+  if (!columnId) return null
+  return { columnId, direction: "desc" }
+}
+
 export function sortLeadsWithSheetState(
   leads: readonly Lead[],
   columns: readonly LeadSheetTemplateColumn[],

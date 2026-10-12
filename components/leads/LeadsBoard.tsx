@@ -90,6 +90,7 @@ import {
   type LeadStatusId,
 } from "@/lib/leads"
 import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
+import { missingPriceCellClass } from "@/lib/leads/won-sales-price"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import { leadMatchesServiceFilter } from "@/lib/leads/service-filter"
 import { matchesSearch } from "@/lib/leads/search"
@@ -515,6 +516,8 @@ export function LeadsTable({
   }
 
   function renderColumnCell(lead: Lead, col: LeadSheetTemplateColumn, colIndex: number) {
+    const priceCue = missingPriceCellClass(lead, col)
+
     // Sticky first two columns follow template order (not always date + name).
     const stickyFirst =
       colIndex === 0
@@ -525,7 +528,8 @@ export function LeadsTable({
 
     const stickyBg = cn(
       stickyFirst,
-      getWonLeadCellClass(lead.status) || (colIndex <= 1 ? "bg-card" : "")
+      getWonLeadCellClass(lead.status) || (colIndex <= 1 ? "bg-card" : ""),
+      priceCue
     )
 
     if (col.kind === "custom") {
@@ -536,7 +540,7 @@ export function LeadsTable({
 
       if (col.customField.fieldType === "image") {
         return (
-          <TableCell key={col.id} className="min-w-40 px-2">
+          <TableCell key={col.id} className={cn("min-w-40 px-2", priceCue)}>
             <LeadImageFieldCell
               leadId={lead.id}
               fieldKey={key}
@@ -549,7 +553,7 @@ export function LeadsTable({
 
       if (col.customField.fieldType === "textarea") {
         return (
-          <TableCell key={col.id} className="min-w-44 max-w-[15rem] px-2 py-1.5">
+          <TableCell key={col.id} className={cn("min-w-44 max-w-[15rem] px-2 py-1.5", priceCue)}>
             <LeadSheetNoteCell
               value={typeof value === "string" ? value : ""}
               fieldLabel={col.customField.label}
@@ -562,7 +566,7 @@ export function LeadsTable({
 
       if (col.customField.fieldType === "number") {
         return (
-          <TableCell key={col.id} className="min-w-28 px-2">
+          <TableCell key={col.id} className={cn("min-w-28 px-2", priceCue)}>
             <input
               type="number"
               value={typeof value === "number" ? value : ""}
@@ -582,7 +586,7 @@ export function LeadsTable({
           cellOptions.push({ id: current, label: `${current} (${t("leadSheetSelectRemoved")})` })
         }
         return (
-          <TableCell key={col.id} className="px-1">
+          <TableCell key={col.id} className={cn("px-1", priceCue)}>
             <LeadSheetSelectCell
               value={current}
               label={col.customField.label}
@@ -602,7 +606,7 @@ export function LeadsTable({
             : "text"
 
       return (
-        <TableCell key={col.id} className="min-w-36 px-2">
+        <TableCell key={col.id} className={cn("min-w-36 px-2", priceCue)}>
           <input
             type={inputType}
             value={typeof value === "string" ? value : ""}
@@ -623,34 +627,48 @@ export function LeadsTable({
           <LeadSheetReadOnlyFullNameCell key={col.id} lead={lead} className={stickyBg} />
         )
       case "email":
-        return <LeadSheetReadOnlyEmailCell key={col.id} lead={lead} />
+        return <LeadSheetReadOnlyEmailCell key={col.id} lead={lead} className={priceCue} />
       case "phone":
-        return <LeadSheetReadOnlyPhoneCell key={col.id} lead={lead} />
+        return <LeadSheetReadOnlyPhoneCell key={col.id} lead={lead} className={priceCue} />
       case "segment":
-        return <LeadSheetReadOnlySegmentCell key={col.id} lead={lead} className="px-1" />
+        return (
+          <LeadSheetReadOnlySegmentCell key={col.id} lead={lead} className={cn("px-1", priceCue)} />
+        )
       case "companyName":
         return (
           <LeadSheetReadOnlyPlainCell
             key={col.id}
             value={lead.companyName}
-            className="min-w-44 px-2"
+            className={cn("min-w-44 px-2", priceCue)}
           />
         )
       case "address":
         return (
-          <LeadSheetReadOnlyPlainCell key={col.id} value={lead.address} className="min-w-44 px-2" />
+          <LeadSheetReadOnlyPlainCell
+            key={col.id}
+            value={lead.address}
+            className={cn("min-w-44 px-2", priceCue)}
+          />
         )
       case "zipCode":
         return (
-          <LeadSheetReadOnlyPlainCell key={col.id} value={lead.zipCode} className="min-w-24 px-2" />
+          <LeadSheetReadOnlyPlainCell
+            key={col.id}
+            value={lead.zipCode}
+            className={cn("min-w-24 px-2", priceCue)}
+          />
         )
       case "city":
         return (
-          <LeadSheetReadOnlyPlainCell key={col.id} value={lead.city} className="min-w-32 px-2" />
+          <LeadSheetReadOnlyPlainCell
+            key={col.id}
+            value={lead.city}
+            className={cn("min-w-32 px-2", priceCue)}
+          />
         )
       case "serviceIds":
         return (
-          <TableCell key={col.id} className="px-1">
+          <TableCell key={col.id} className={cn("px-1", priceCue)}>
             <ServiceMultiSelect
               value={getLeadServiceIds(lead)}
               label={t("leadSheetColServiceIds")}
@@ -669,12 +687,18 @@ export function LeadsTable({
           <LeadSheetReadOnlyPlainCell
             key={col.id}
             value={lead.metaAdId}
-            className="min-w-48 px-2"
+            className={cn("min-w-48 px-2", priceCue)}
             mono
           />
         )
       case "wonDate":
-        return <LeadSheetReadOnlyWonDateCell key={col.id} lead={lead} className="min-w-28 px-2" />
+        return (
+          <LeadSheetReadOnlyWonDateCell
+            key={col.id}
+            lead={lead}
+            className={cn("min-w-28 px-2", priceCue)}
+          />
+        )
       case "status":
         return (
           <TableCell
@@ -701,7 +725,7 @@ export function LeadsTable({
         )
       case "salesPrice":
         return (
-          <TableCell key={col.id} className="min-w-32 px-2">
+          <TableCell key={col.id} className={cn("min-w-32 px-2", priceCue)}>
             <CurrencyInput
               value={lead.salesPrice}
               label={t("leadSheetColSalesPrice")}
@@ -711,7 +735,7 @@ export function LeadsTable({
         )
       case "profit":
         return (
-          <TableCell key={col.id} className="min-w-32 px-2">
+          <TableCell key={col.id} className={cn("min-w-32 px-2", priceCue)}>
             <CurrencyInput
               value={lead.profit}
               label={t("leadSheetColProfit")}
@@ -722,7 +746,7 @@ export function LeadsTable({
         )
       case "ltv":
         return (
-          <TableCell key={col.id} className="min-w-32 px-2">
+          <TableCell key={col.id} className={cn("min-w-32 px-2", priceCue)}>
             <CurrencyInput
               value={lead.ltv}
               label={t("leadSheetColLtv")}
@@ -925,6 +949,28 @@ export function LeadsBoard() {
 
   const pipelineStats = useMemo(() => computeLeadPipelineStats(filtered), [filtered])
 
+  const leadsEmptyText = useMemo(() => {
+    if (
+      !dateIsAllTime &&
+      !search.trim() &&
+      statusFilter === "all" &&
+      sheetSegment === "all" &&
+      sheetFunnel === "all" &&
+      !sheetService
+    ) {
+      return t("leadSheetEmptyPeriod")
+    }
+    return t("leadSheetEmptyFiltered")
+  }, [
+    dateIsAllTime,
+    search,
+    sheetFunnel,
+    sheetSegment,
+    sheetService,
+    statusFilter,
+    t,
+  ])
+
   function exportFiltered() {
     const headers = leadSheet.columns.map((col) => columnDisplayLabel(col, t))
     const rows = filtered.map((lead) =>
@@ -1048,7 +1094,7 @@ export function LeadsBoard() {
               leads={filtered}
               sheetSort={sheetSort}
               onSheetSort={handleSheetSort}
-              emptyText={t("leadSheetEmptyFiltered")}
+              emptyText={leadsEmptyText}
               onUpdate={updateLead}
               onEdit={setEditingId}
               onDelete={(id) => {
@@ -1110,7 +1156,7 @@ export function LeadsBoard() {
               leads={filtered}
               sheetSort={sheetSort}
               onSheetSort={handleSheetSort}
-              emptyText={t("leadSheetEmptyFiltered")}
+              emptyText={leadsEmptyText}
               onUpdate={updateLead}
               onEdit={setEditingId}
               onDelete={(id) => {
@@ -1132,7 +1178,7 @@ export function LeadsBoard() {
           <div className="min-h-0 flex-1 overflow-auto">
             <LeadCardList
               leads={filtered}
-              emptyText={t("leadSheetEmptyFiltered")}
+              emptyText={leadsEmptyText}
               onEdit={setEditingId}
             />
           </div>

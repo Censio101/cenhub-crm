@@ -92,7 +92,6 @@ export function DashboardHeader({
           })}
           {scope ? ` · ${scope}` : ""}
         </p>
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">{t("dashboardDateBasisHint")}</p>
         {service ? (
           <p className="mt-1 text-xs text-[var(--text-secondary)]">
             {t("dashboardServiceFilterFractionHint")}
