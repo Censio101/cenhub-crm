@@ -1,6 +1,5 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import {
@@ -36,7 +35,7 @@ import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
 import { useLeadSelectOptions } from "@/components/leads/useLeadSelectOptions"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { useDashboardViewState } from "@/hooks/useDashboardViewState"
+import { useSheetViewState } from "@/hooks/useSheetViewState"
 import type { FunnelId } from "@/lib/performance/funnels"
 import type { DateRange } from "@/lib/performance/types"
 import { useLeads } from "@/hooks/useLeads"
@@ -831,16 +830,10 @@ export function LeadsTable({
 export function LeadsBoard() {
   const { enabledServices, loaded: servicesLoaded } = useCompanyServices()
   const { t } = useLanguage()
-  const searchParams = useSearchParams()
-  const { view, pending, onPresetChange, onCustomRange: onCustomRangeRaw } =
-    useDashboardViewState("/leads")
-  const dateIsAllTime =
-    view.preset === "all_time" || (!searchParams.has("preset") && !searchParams.has("from"))
+  const { view, pending, onPresetChange, onCustomRange: onSheetCustomRange } =
+    useSheetViewState("/leads")
+  const dateIsAllTime = view.preset === "all_time"
   const resetDate = useCallback(() => onPresetChange("all_time"), [onPresetChange])
-  const onSheetCustomRange = useCallback(
-    (range: DateRange) => onCustomRangeRaw(range, "current"),
-    [onCustomRangeRaw]
-  )
   const {
     leads,
     leadSheet,
@@ -867,16 +860,12 @@ export function LeadsBoard() {
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all")
   const [sheetService, setSheetService] = useState<string | null>(null)
   const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
-  const [sheetFunnel, setSheetFunnel] = useState<FunnelId | "all">(() => view.funnel ?? "all")
+  const [sheetFunnel, setSheetFunnel] = useState<FunnelId | "all">("all")
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const editingLead = editingId ? (leads.find((lead) => lead.id === editingId) ?? null) : null
-
-  useEffect(() => {
-    if (view.funnel) setSheetFunnel(view.funnel)
-  }, [view.funnel])
 
   const scoped = useMemo(
     () => filterDashboardLeads(leads, { range: view.range, ignoreDate: dateIsAllTime }),

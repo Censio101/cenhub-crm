@@ -1,6 +1,5 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { XIcon } from "lucide-react"
 
@@ -18,7 +17,7 @@ import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
-import { useDashboardViewState } from "@/hooks/useDashboardViewState"
+import { useSheetViewState } from "@/hooks/useSheetViewState"
 import { useCustomers } from "@/hooks/useCustomers"
 import { useLeads } from "@/hooks/useLeads"
 import {
@@ -94,21 +93,15 @@ function countLabel(count: number, one: string, many: string) {
 export function CustomersBoard() {
   const { t } = useLanguage()
   const { enabledServices, loaded: servicesLoaded } = useCompanyServices()
-  const searchParams = useSearchParams()
-  const { view, pending, onPresetChange, onCustomRange: onCustomRangeRaw } =
-    useDashboardViewState("/kunder")
-  const dateIsAllTime =
-    view.preset === "all_time" || (!searchParams.has("preset") && !searchParams.has("from"))
+  const { view, pending, onPresetChange, onCustomRange: onSheetCustomRange } =
+    useSheetViewState("/kunder")
+  const dateIsAllTime = view.preset === "all_time"
   const resetDate = useCallback(() => onPresetChange("all_time"), [onPresetChange])
-  const onSheetCustomRange = useCallback(
-    (range: DateRange) => onCustomRangeRaw(range, "current"),
-    [onCustomRangeRaw]
-  )
   const { customers, organizationName, loading, error, reload } = useCustomers()
   // Customers mirror won leads; the lead record is what the edit popup changes.
   const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead } = useLeads()
-  const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">(view.segment ?? "all")
-  const [sheetService, setSheetService] = useState<string | null>(view.service)
+  const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
+  const [sheetService, setSheetService] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">("all")
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")

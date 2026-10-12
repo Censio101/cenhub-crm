@@ -1,10 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
 
-import { isClientDashboardPath } from "@/lib/layout/app-paths"
 import { cn } from "cn"
 
 export type AppTopbarNavItem = {
@@ -20,12 +18,6 @@ export function AppTopbarNavLinks({
   pathname: string
   items: AppTopbarNavItem[]
 }) {
-  const searchParams = useSearchParams()
-  const dashboardFilterQuery =
-    isClientDashboardPath(pathname) && searchParams.toString()
-      ? `?${searchParams.toString()}`
-      : ""
-
   return (
     <>
       {items.map((item) => {
@@ -38,7 +30,7 @@ export function AppTopbarNavLinks({
         return (
           <Link
             key={item.href}
-            href={`${item.href}${dashboardFilterQuery}`}
+            href={item.href}
             aria-label={item.label}
             className={cn(
               "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
