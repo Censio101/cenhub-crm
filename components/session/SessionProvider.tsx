@@ -36,6 +36,8 @@ type SessionContextValue = {
   organization: ActiveOrganization | null
   isAdminViewingClient: boolean
   needsClientSelection: boolean
+  /** True after the first /api/auth/me (or confirmed no session) for this login. */
+  sessionReady: boolean
   loading: boolean
   reload: (options?: SessionReloadOptions) => Promise<void>
   setActiveOrganization: (slug: string | null) => Promise<boolean>
@@ -53,6 +55,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null)
   const [isAdminViewingClient, setIsAdminViewingClient] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [sessionReady, setSessionReady] = useState(false)
   const sessionResolvedRef = useRef(false)
   /** Only the most recently started session fetch may write state (stale responses are dropped). */
   const reloadSeqRef = useRef(0)
@@ -65,6 +68,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         sessionResolvedRef.current = false
+        setSessionReady(false)
       }
     })
     return () => subscription.unsubscribe()
@@ -79,8 +83,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    const markSessionReady = () => {
+      sessionResolvedRef.current = true
+      setSessionReady(true)
+    }
+
     const clearSessionState = () => {
-      sessionResolvedRef.current = false
       setUser(null)
       setOrganization(null)
       setRole(null)
@@ -121,7 +129,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           : null
       )
       setIsAdminViewingClient(Boolean(data.isAdminViewingClient))
-      sessionResolvedRef.current = true
+      markSessionReady()
       if (data.role === "censio_admin" && !data.organization) {
         clearClientCaches()
       }
@@ -130,6 +138,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated) {
       if (!sessionResolvedRef.current) {
         clearSessionState()
+        markSessionReady()
         setLoading(false)
         return
       }
@@ -148,6 +157,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (isStale()) return
         if (response.status === 401 || response.status === 403) {
           clearSessionState()
+          markSessionReady()
           return
         }
         if (!response.ok) return
@@ -178,6 +188,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // A transient server error must not wipe a session we already resolved.
         if (response.status === 401 || response.status === 403 || !sessionResolvedRef.current) {
           clearSessionState()
+          markSessionReady()
         }
         return
       }
@@ -282,7 +293,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       organization,
       isAdminViewingClient,
       needsClientSelection,
-      loading: loading || (authLoading && !sessionResolvedRef.current),
+      sessionReady,
+      loading: loading || (authLoading && !sessionReady),
       reload,
       setActiveOrganization,
       patchOrganization,
@@ -293,6 +305,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       organization,
       isAdminViewingClient,
       needsClientSelection,
+      sessionReady,
       loading,
       authLoading,
       reload,

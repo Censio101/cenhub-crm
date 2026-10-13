@@ -7,19 +7,23 @@ import { useActiveOrganization } from "@/hooks/useActiveOrganization"
  * While session is loading / restoring cookie org, use `resolvingActiveClient` + skeleton — not the picker.
  */
 export function useAdminClientPickerGate() {
-  const { needsClientSelection, organization, role, loading: sessionLoading } =
-    useActiveOrganization()
+  const {
+    needsClientSelection,
+    organization,
+    role,
+    loading: sessionLoading,
+    sessionReady,
+  } = useActiveOrganization()
 
   const isClientRole = role === "client_admin" || role === "client_user"
 
-  /** Only while /api/auth/me (or auth bootstrap) is in flight — not when role is still null after a failed/cancelled fetch. */
-  const sessionPending = sessionLoading
-
   const mustPickClient =
-    role === "censio_admin" && !organization && !sessionLoading
+    sessionReady && needsClientSelection && !sessionLoading
 
-  /** Admin on client routes before /api/auth/me restores active org from cookie. */
-  const resolvingActiveClient = sessionLoading && !organization && !isClientRole
+  /** Wait for /api/auth/me before showing an empty client dashboard (role still unknown). */
+  const resolvingActiveClient =
+    sessionLoading ||
+    (!sessionReady && !isClientRole && !organization)
 
   const useAdminShell =
     role === "censio_admin" ||
@@ -29,7 +33,7 @@ export function useAdminClientPickerGate() {
   return {
     mustPickClient,
     resolvingActiveClient,
-    sessionPending,
+    sessionPending: sessionLoading,
     useAdminShell,
     needsClientSelection,
     organization,

@@ -20,6 +20,7 @@ type ActiveOrganizationState = {
   role: UserRole | null
   isAdminViewingClient: boolean
   needsClientSelection: boolean
+  sessionReady: boolean
   loading: boolean
   setActiveOrganization: (slug: string | null) => Promise<boolean>
   reload: (options?: SessionReloadOptions) => Promise<void>
@@ -33,6 +34,7 @@ export function useActiveOrganization(): ActiveOrganizationState {
     role: ctx.role,
     isAdminViewingClient: ctx.isAdminViewingClient,
     needsClientSelection: ctx.needsClientSelection,
+    sessionReady: ctx.sessionReady,
     loading: ctx.loading,
     setActiveOrganization: ctx.setActiveOrganization,
     reload: ctx.reload,
