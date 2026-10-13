@@ -25,7 +25,7 @@ export async function PUT(request: Request, context: Ctx) {
     const updated = await reorderTemplateColumns(supabase, id, body.orderedColumnIds)
     return NextResponse.json(updated)
   } catch (error) {
-    if (error instanceof Error && error.message.includes("built-in")) {
+    if (error instanceof TemplateEditError) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     return adminErrorResponse(error)

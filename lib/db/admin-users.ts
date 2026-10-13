@@ -338,12 +338,33 @@ export async function inviteOrCreateUser(
     await setAuthUserPassword(admin, userId, input.password!)
   }
 
-  const profilePayload = {
+  const { data: priorProfile } = await admin
+    .from("profiles")
+    .select("role, avatar_url")
+    .eq("id", userId)
+    .maybeSingle()
+
+  const prior = priorProfile as Pick<ProfileRow, "role" | "avatar_url"> | null
+
+  const profilePayload: {
+    organization_id: string | null | undefined
+    role: UserRole
+    email: string
+    full_name: string | null
+    updated_at: string
+    avatar_url?: string | null
+  } = {
     organization_id: input.role === "censio_admin" ? null : input.organizationId,
     role: input.role,
     email,
     full_name: input.fullName?.trim() || null,
     updated_at: new Date().toISOString(),
+  }
+
+  // New or promoted Censio admins should not inherit another workspace’s avatar.
+  if (input.role === "censio_admin") {
+    profilePayload.avatar_url =
+      prior?.role === "censio_admin" ? prior.avatar_url ?? null : null
   }
 
   const { error: profileError } = await admin

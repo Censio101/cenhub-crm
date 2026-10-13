@@ -235,7 +235,7 @@ function EditorContent({
 
   /** Shared templates: pick fields from the library (create fields under Lead sheets → Fields). */
   const allowInlineFieldCreate =
-    embeddedInClientSettings || Boolean(config.template.organizationId)
+    embeddedInClientSettings || Boolean(config.template.organizationId) || isSystemDefault
   /** Client settings column tab: create custom fields in place — no library step. */
   const clientInlineCreateOnly = embeddedInClientSettings
 
@@ -311,9 +311,8 @@ function EditorContent({
     }
   }
 
-  /** The Standard template's field set is fixed; the five core fields are in every template. */
   function canRemoveColumn(col: LeadSheetColumn) {
-    return !isSystemDefault && !isColumnLocked(col)
+    return !isColumnLocked(col)
   }
 
   function rowProps(col: LeadSheetColumn) {
@@ -321,7 +320,7 @@ function EditorContent({
       col,
       busy: busyIds.has(col.id),
       canRemove: canRemoveColumn(col),
-      canAdd: !isSystemDefault,
+      canAdd: true,
       canToggleHidden: !config.template.organizationId,
       onAddAfter: () => setAddAfterId(col.id),
       onRemove: () => setRemoveTarget(col),
@@ -399,7 +398,9 @@ function EditorContent({
             <p className="text-xs text-muted-foreground">
               {columnSearch.trim()
                 ? t("leadSheetsEditorColumnsReorderPaused")
-                : t("leadSheetDragToReorder")}
+                : isSystemDefault
+                  ? t("leadSheetsStandardEditorColumnsHint")
+                  : t("leadSheetDragToReorder")}
             </p>
           </div>
           <label className="relative block w-full sm:w-64">

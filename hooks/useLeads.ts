@@ -88,6 +88,8 @@ export function useLeads() {
   const pendingPatches = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   /** Edits waiting for the debounce timer, merged per lead. */
   const pendingData = useRef<Map<string, LeadPatch>>(new Map())
+  /** Increments on every edit so an older PATCH response cannot replace a newer status. */
+  const leadWriteRevision = useRef<Map<string, number>>(new Map())
   const inflightSaves = useRef(0)
   const saveFailed = useRef(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
@@ -190,7 +192,7 @@ export function useLeads() {
   }, [loadLeads])
 
   const persistPatch = useCallback(
-    async (id: string, patch: LeadPatch) => {
+    async (id: string, patch: LeadPatch, revision: number) => {
       if (dataSource === "mock") return
 
       inflightSaves.current += 1
@@ -208,6 +210,8 @@ export function useLeads() {
         }
 
         const data = (await response.json()) as { lead: Lead }
+        const latestRevision = leadWriteRevision.current.get(id) ?? revision
+        if (latestRevision !== revision) return
         // Newer edits are still queued for this lead: keep what is on screen instead of
         // overwriting the user's latest typing with this (older) server copy.
         if (!pendingData.current.has(id)) {
@@ -246,6 +250,8 @@ export function useLeads() {
 
       // Edits to different fields inside the debounce window are merged, never dropped.
       pendingData.current.set(id, mergeLeadPatches(pendingData.current.get(id), patch))
+      const revision = (leadWriteRevision.current.get(id) ?? 0) + 1
+      leadWriteRevision.current.set(id, revision)
       setSaveStatus("saving")
 
       const existing = pendingPatches.current.get(id)
@@ -257,7 +263,7 @@ export function useLeads() {
           pendingPatches.current.delete(id)
           const queued = pendingData.current.get(id)
           pendingData.current.delete(id)
-          if (queued) void persistPatch(id, queued)
+          if (queued) void persistPatch(id, queued, revision)
         }, 400)
       )
     },

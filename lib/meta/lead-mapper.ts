@@ -56,7 +56,7 @@ export function mapMetaLeadToInsertRow(
   const mapped = applyMetaFieldMapping(fields, options.fieldMapping ?? {}, lead.ad_id)
   const fullName =
     mapped.fullName ||
-    readField(fields, ["full_name", "navn", "name", "fornavn"]) ||
+    readField(fields, ["full_name", "fulde_navn", "navn", "name", "fornavn"]) ||
     [readField(fields, ["first_name", "fornavn"]), readField(fields, ["last_name", "efternavn"])]
       .filter(Boolean)
       .join(" ")
@@ -65,7 +65,8 @@ export function mapMetaLeadToInsertRow(
     mapped.phone || readField(fields, ["phone_number", "phone", "telefon", "mobile_phone"])
   const companyName =
     mapped.companyName || readField(fields, ["company_name", "virksomhed", "company"])
-  const address = mapped.address || readField(fields, ["street_address", "address", "adresse"])
+  const address =
+    mapped.address || readField(fields, ["street_address", "address", "vejnavn", "adresse"])
   const zipCode =
     mapped.zipCode || readField(fields, ["zip_code", "post_code", "postnummer", "postnr"])
   const city = mapped.city || readField(fields, ["city", "by"])

@@ -31,7 +31,7 @@ type RowProps = {
   /** Only this row is disabled while its own request is in flight. */
   busy: boolean
   canRemove: boolean
-  /** Show the "add a field after this one" button (not on the Standard template). */
+  /** Show the "add a field after this one" button. */
   canAdd: boolean
   onAddAfter: () => void
   onRemove: () => void

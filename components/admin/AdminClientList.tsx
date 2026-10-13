@@ -2,11 +2,12 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FormEvent, useCallback, useMemo, useState } from "react"
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   ExternalLinkIcon,
   LayoutGridIcon,
   ListIcon,
+  Loader2Icon,
   RefreshCwIcon,
   Settings2Icon,
 } from "lucide-react"
@@ -32,7 +33,9 @@ import type { MessageKey } from "@/lib/i18n"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { outfit, poppins } from "@/lib/fonts/app-fonts"
+import { adminFormNoticeDefaults } from "@/lib/admin/form-notice-defaults"
 import { Button } from "@/components/ui/button"
+import { FormNoticeStack } from "@/components/ui/form-notice"
 import { cn } from "cn"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 import { useLocalStorageValue } from "@/lib/react/use-local-storage-state"
@@ -49,6 +52,26 @@ const FILTER_LABELS: Record<ClientFilter, MessageKey> = {
   enabled: "filterEnabled",
   "needs-setup": "filterNeedsSetup",
   all: "filterAll",
+}
+
+type MetaTogglePin = {
+  client: HubClient
+  targetEnabled: boolean
+  status: "pending" | "done"
+}
+
+/** Client row should stay visible briefly when the active tab would hide it after toggle. */
+function hubPinAppliesToFilter(pin: MetaTogglePin, tab: ClientFilter): boolean {
+  if (tab === "needs-setup" && pin.targetEnabled) return true
+  if (tab === "enabled" && !pin.targetEnabled) return true
+  return false
+}
+
+function shouldAnnounceHubTabMove(tab: ClientFilter, enabled: boolean): boolean {
+  if (tab === "all") return true
+  if (tab === "needs-setup" && enabled) return true
+  if (tab === "enabled" && !enabled) return true
+  return false
 }
 
 function parseStoredView(raw: string | null): ClientView {
@@ -81,7 +104,11 @@ function MetaToggle({
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onChange(!checked)
+      }}
       className={cn(
         "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "bg-primary" : "bg-muted"
@@ -123,8 +150,36 @@ export function AdminClientList() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const dismissNotice = useCallback(() => setNotice(null), [])
+  const [hubBatchMoved, setHubBatchMoved] = useState({ toEnabled: 0, toNeedsSetup: 0 })
+  const [hubProfileSetupSlug, setHubProfileSetupSlug] = useState<string | null>(null)
+  const [metaTogglePin, setMetaTogglePin] = useState<MetaTogglePin | null>(null)
+  const metaTogglePinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastHubMoveRef = useRef<{ name: string; toEnabled: boolean } | null>(null)
 
   useAutoDismiss(notice, dismissNotice)
+  useEffect(() => {
+    return () => {
+      if (metaTogglePinTimerRef.current) clearTimeout(metaTogglePinTimerRef.current)
+    }
+  }, [])
+
+  const clearMetaTogglePinTimer = useCallback(() => {
+    if (metaTogglePinTimerRef.current) {
+      clearTimeout(metaTogglePinTimerRef.current)
+      metaTogglePinTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleClearMetaTogglePin = useCallback(
+    (ms = 4500) => {
+      clearMetaTogglePinTimer()
+      metaTogglePinTimerRef.current = setTimeout(() => {
+        setMetaTogglePin(null)
+        metaTogglePinTimerRef.current = null
+      }, ms)
+    },
+    [clearMetaTogglePinTimer]
+  )
 
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<ClientFilter>("enabled")
@@ -168,30 +223,46 @@ export function AdminClientList() {
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return clients
-      .filter((client) => {
-        const matchesFilter =
-          filter === "all"
-            ? true
-            : filter === "enabled"
-              ? hubClientInEnabledTab(client)
-              : hubClientInNeedsSetupTab(client)
-        if (!matchesFilter) return false
-        if (!needle) return true
-        const haystack = [client.name, client.slug ?? "", client.metaAdAccountId]
-          .join(" ")
-          .toLowerCase()
-        return haystack.includes(needle)
-      })
-      .sort((left, right) => {
-        if (filter === "all") {
-          const leftEnabled = hubClientInEnabledTab(left)
-          const rightEnabled = hubClientInEnabledTab(right)
-          if (leftEnabled !== rightEnabled) return leftEnabled ? -1 : 1
-        }
-        return left.name.localeCompare(right.name, "da")
-      })
-  }, [clients, filter, query])
+    const matchesQuery = (client: HubClient) => {
+      if (!needle) return true
+      const haystack = [client.name, client.slug ?? "", client.metaAdAccountId]
+        .join(" ")
+        .toLowerCase()
+      return haystack.includes(needle)
+    }
+
+    let list = clients.filter((client) => {
+      const matchesFilter =
+        filter === "all"
+          ? true
+          : filter === "enabled"
+            ? hubClientInEnabledTab(client)
+            : hubClientInNeedsSetupTab(client)
+      if (!matchesFilter) return false
+      return matchesQuery(client)
+    })
+
+    if (metaTogglePin && hubPinAppliesToFilter(metaTogglePin, filter) && matchesQuery(metaTogglePin.client)) {
+      const pinned = {
+        ...metaTogglePin.client,
+        metaEnabled: metaTogglePin.targetEnabled,
+      }
+      if (!list.some((row) => row.key === pinned.key)) {
+        list = [pinned, ...list]
+      }
+    }
+
+    return list.sort((left, right) => {
+      if (metaTogglePin && left.key === metaTogglePin.client.key) return -1
+      if (metaTogglePin && right.key === metaTogglePin.client.key) return 1
+      if (filter === "all") {
+        const leftEnabled = hubClientInEnabledTab(left)
+        const rightEnabled = hubClientInEnabledTab(right)
+        if (leftEnabled !== rightEnabled) return leftEnabled ? -1 : 1
+      }
+      return left.name.localeCompare(right.name, "da")
+    })
+  }, [clients, filter, query, metaTogglePin])
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault()
@@ -247,8 +318,10 @@ export function AdminClientList() {
 
       await loadClients(true)
       if (data.organization?.slug) {
-        setNotice(t("clientProfileEnabledMissingNotice"))
-        router.push(adminClientSettingsSectionPath(data.organization.slug, "company"))
+        const displayName = formatClientDisplayName(client.name)
+        lastHubMoveRef.current = { name: displayName, toEnabled: true }
+        setHubBatchMoved((current) => ({ ...current, toEnabled: current.toEnabled + 1 }))
+        setHubProfileSetupSlug(data.organization.slug)
       }
     } catch (enableError) {
       setError(enableError instanceof Error ? enableError.message : t("errorEnableMetaClient"))
@@ -281,13 +354,12 @@ export function AdminClientList() {
 
   async function handleToggleMeta(client: HubClient, enabled: boolean) {
     if (!client.slug) return
+    const displayName = formatClientDisplayName(client.name)
     setTogglingSlug(client.slug)
     setError(null)
     setNotice(null)
-
-    setClients((current) =>
-      current.map((row) => (row.key === client.key ? { ...row, metaEnabled: enabled } : row))
-    )
+    clearMetaTogglePinTimer()
+    setMetaTogglePin({ client, targetEnabled: enabled, status: "pending" })
 
     try {
       const response = await fetch(`/api/admin/organizations/${client.slug}/meta`, {
@@ -299,11 +371,27 @@ export function AdminClientList() {
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("errorUpdateMetaStatus"))
       await loadClients(true)
-      if (enabled) setNotice(t("metaSetupSaved"))
+      setMetaTogglePin({
+        client: { ...client, metaEnabled: enabled },
+        targetEnabled: enabled,
+        status: "done",
+      })
+      if (shouldAnnounceHubTabMove(filter, enabled)) {
+        lastHubMoveRef.current = { name: displayName, toEnabled: enabled }
+        setHubBatchMoved((current) =>
+          enabled
+            ? { ...current, toEnabled: current.toEnabled + 1 }
+            : { ...current, toNeedsSetup: current.toNeedsSetup + 1 }
+        )
+        setHubProfileSetupSlug(null)
+        if (hubPinAppliesToFilter({ client, targetEnabled: enabled, status: "done" }, filter)) {
+          scheduleClearMetaTogglePin()
+        }
+      } else if (enabled) {
+        setNotice(t("metaSetupSaved"))
+      }
     } catch (toggleError) {
-      setClients((current) =>
-        current.map((row) => (row.key === client.key ? { ...row, metaEnabled: !enabled } : row))
-      )
+      setMetaTogglePin(null)
       setError(toggleError instanceof Error ? toggleError.message : t("errorUpdateMetaStatus"))
     } finally {
       setTogglingSlug(null)
@@ -349,6 +437,126 @@ export function AdminClientList() {
   const iconButtonClass =
     "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[#faf8f6] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
 
+  const togglingClient = togglingSlug
+    ? clients.find((row) => row.slug === togglingSlug) ??
+      (metaTogglePin?.client.slug === togglingSlug ? metaTogglePin.client : null)
+    : null
+
+  const toggleProgressMessage =
+    togglingClient && metaTogglePin?.status === "pending"
+      ? metaTogglePin.targetEnabled
+        ? t("metaHubSwitchingToActive", {
+            name: formatClientDisplayName(togglingClient.name),
+          })
+        : t("metaHubSwitchingToNeedsSetup", {
+            name: formatClientDisplayName(togglingClient.name),
+          })
+      : null
+
+  function openHubTargetTab(next: ClientFilter) {
+    setFilter(next)
+    setMetaTogglePin(null)
+    setHubProfileSetupSlug(null)
+    clearMetaTogglePinTimer()
+    if (next === "enabled") {
+      setHubBatchMoved((current) => ({ ...current, toEnabled: 0 }))
+    }
+    if (next === "needs-setup") {
+      setHubBatchMoved((current) => ({ ...current, toNeedsSetup: 0 }))
+    }
+  }
+
+  function hubStatusBannerShell(content: ReactNode) {
+    return (
+      <div
+        className="w-full min-w-0 rounded-2xl border border-[#1877F2]/30 bg-[#1877F2]/8 px-4 py-3 text-sm text-[#0d3d7a]"
+        role="status"
+        aria-live="polite"
+      >
+        {content}
+      </div>
+    )
+  }
+
+  function renderHubStatusBanner() {
+    if (toggleProgressMessage) {
+      return hubStatusBannerShell(
+        <div className="flex min-w-0 items-center gap-2.5 font-medium">
+          <Loader2Icon className="size-4 shrink-0 animate-spin text-[#1877F2]" aria-hidden="true" />
+          <p className="min-w-0">{toggleProgressMessage}</p>
+        </div>
+      )
+    }
+
+    const enabledCount = hubBatchMoved.toEnabled
+    const disabledCount = hubBatchMoved.toNeedsSetup
+    const lastMove = lastHubMoveRef.current
+
+    const showEnabledMoves =
+      enabledCount > 0 && (filter === "needs-setup" || filter === "all")
+    const showDisabledMoves =
+      disabledCount > 0 && (filter === "enabled" || filter === "all")
+
+    if (showEnabledMoves) {
+      const title =
+        enabledCount === 1 && lastMove?.toEnabled
+          ? t("metaHubMovedToActive", { name: lastMove.name })
+          : t("metaHubBatchMovedToEnabled", { count: enabledCount })
+
+      return hubStatusBannerShell(
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-0.5">
+            <p className="font-semibold">{title}</p>
+            <p className="text-[13px] font-normal text-[#0d3d7a]/85">
+              {hubProfileSetupSlug
+                ? t("metaHubPartnerEnabledProfileHint")
+                : t("metaHubStayOnTabHint")}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {hubProfileSetupSlug ? (
+              <Link
+                href={adminClientSettingsSectionPath(hubProfileSetupSlug, "company")}
+                className="inline-flex rounded-[10px] border border-[#1877F2]/35 bg-white px-3.5 py-2 text-[13px] font-semibold text-[#1877F2] hover:bg-[#1877F2]/5"
+              >
+                {t("clientProfileIncompleteClientCta")}
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              className="rounded-[10px] border border-[#1877F2]/35 bg-white px-3.5 py-2 text-[13px] font-semibold text-[#1877F2] hover:bg-[#1877F2]/5"
+              onClick={() => openHubTargetTab("enabled")}
+            >
+              {t("metaHubShowEnabledTab")}
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    if (showDisabledMoves) {
+      const title =
+        disabledCount === 1 && lastMove && !lastMove.toEnabled
+          ? t("metaHubMovedToNeedsSetup", { name: lastMove.name })
+          : t("metaHubBatchMovedToNeedsSetup", { count: disabledCount })
+
+      return hubStatusBannerShell(
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="min-w-0 font-semibold">{title}</p>
+          <button
+            type="button"
+            className="shrink-0 rounded-[10px] border border-[#1877F2]/35 bg-white px-3.5 py-2 text-[13px] font-semibold text-[#1877F2] hover:bg-[#1877F2]/5"
+            onClick={() => openHubTargetTab("needs-setup")}
+          >
+            {t("metaHubShowNeedsSetupTab")}
+          </button>
+        </div>
+      )
+    }
+
+    return null
+  }
+
   function renderClientCard(client: HubClient) {
     const displayName = formatClientDisplayName(client.name)
     const isEnabled = hubClientInEnabledTab(client)
@@ -361,7 +569,7 @@ export function AdminClientList() {
       <article
         key={client.key}
         className={cn(
-          "flex flex-col gap-3 rounded-2xl border border-[#d3c3b2] bg-card p-[18px]",
+          "flex min-w-0 flex-col gap-3 rounded-2xl border border-[#d3c3b2] bg-card p-[18px]",
           isEnabled
             ? "shadow-[0_1px_3px_rgba(26,18,8,0.06)] transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(26,18,8,0.12)]"
             : "shadow-[0_1px_2px_rgba(26,18,8,0.04)]"
@@ -481,8 +689,9 @@ export function AdminClientList() {
     return (
       <li
         key={client.key}
-        className="flex flex-col gap-3 border-b border-[#e8e0d8] py-3.5 pr-4 pl-6 last:border-b-0 sm:flex-row sm:items-center"
+        className="flex flex-col gap-3 border-b border-[#e8e0d8] py-3.5 pr-4 pl-6 last:border-b-0"
       >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold text-foreground" title={displayName}>
             {displayName}
@@ -557,6 +766,7 @@ export function AdminClientList() {
             </>
           )}
         </div>
+        </div>
       </li>
     )
   }
@@ -579,7 +789,16 @@ export function AdminClientList() {
         onSearchChange={setQuery}
         searchPlaceholder={t("searchClients")}
         filter={filter}
-        onFilterChange={setFilter}
+        onFilterChange={(next) => {
+          setFilter(next)
+          setHubProfileSetupSlug(null)
+          if (next === "enabled") {
+            setHubBatchMoved((current) => ({ ...current, toEnabled: 0 }))
+          }
+          if (next === "needs-setup") {
+            setHubBatchMoved((current) => ({ ...current, toNeedsSetup: 0 }))
+          }
+        }}
         filters={FILTERS}
         filterLabels={FILTER_LABELS}
         countLabel={t("clientsCount", { count: visible.length })}
@@ -639,16 +858,18 @@ export function AdminClientList() {
         </p>
       ) : null}
 
-      {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {notice ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      ) : null}
+      {renderHubStatusBanner()}
+
+      <FormNoticeStack
+        dismissLabel={t("noticeDismiss")}
+        size={adminFormNoticeDefaults.size}
+        error={error}
+        success={notice}
+        onDismissError={() => setError(null)}
+        onDismissSuccess={() => setNotice(null)}
+        successAutoDismissMs={adminFormNoticeDefaults.queueSuccessAutoDismissMs}
+        errorAutoDismissMs={adminFormNoticeDefaults.errorAutoDismissMs}
+      />
 
       {loading ? (
         <div
@@ -691,7 +912,7 @@ export function AdminClientList() {
           {clients.length === 0 ? t("noClientsYet") : t("noMatchingClients")}
         </p>
       ) : view === "cards" ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-4">
           {visible.map(renderClientCard)}
         </div>
       ) : (

@@ -2,21 +2,25 @@
 
 import { useMemo } from "react"
 
+import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import { LEAD_SEGMENTS, LEAD_STATUSES } from "@/lib/leads"
 
-/** Stored labels for lead rows. These stay the same in Danish and English. */
+/** Translated labels for lead sheet selects (status, segment). */
 export function useLeadSelectOptions() {
+  const { t } = useLanguage()
+
   return useMemo(
     () => ({
       statuses: LEAD_STATUSES.map((item) => ({
         id: item.id,
-        label: item.label,
+        label: t(leadStatusLabelKey(item.id)),
       })),
       segments: LEAD_SEGMENTS.map((item) => ({
         id: item.id,
-        label: item.label,
+        label: t(leadSegmentLabelKey(item.id)),
       })),
     }),
-    []
+    [t]
   )
 }

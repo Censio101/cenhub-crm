@@ -15,6 +15,7 @@ import { adminIconBoxClass, adminSectionCardClass } from "@/components/admin/adm
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { adminInitials, formatAdminDisplayName } from "@/lib/admin/format-admin-display-name"
+import { sanitizeStoredProfileImage } from "@/lib/auth/profile-image-sanitize"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
@@ -28,11 +29,20 @@ type CensioAdmin = {
   accessStatus: "active" | "pending"
 }
 
-function AdminAvatar({ image, initials }: { image: string | null; initials: string }) {
+function AdminAvatar({
+  adminId,
+  image,
+  initials,
+}: {
+  adminId: string
+  image: string | null
+  initials: string
+}) {
   if (image) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
+        key={adminId}
         src={image}
         alt=""
         className="size-11 shrink-0 rounded-full object-cover ring-1 ring-[#e8e0d8]"
@@ -89,7 +99,7 @@ function AdminListRow({
   const { t } = useLanguage()
   const displayName = formatAdminDisplayName(admin)
   const initials = adminInitials(admin)
-  const profileImage = admin.avatarUrl?.trim() || null
+  const profileImage = sanitizeStoredProfileImage(admin.avatarUrl) || null
   const isPending = admin.accessStatus === "pending"
 
   const rowBusy = isRemoving || isResending
@@ -101,7 +111,7 @@ function AdminListRow({
         rowBusy && "opacity-70"
       )}
     >
-      <AdminAvatar image={profileImage} initials={initials} />
+      <AdminAvatar adminId={admin.id} image={profileImage} initials={initials} />
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">

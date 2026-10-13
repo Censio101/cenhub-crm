@@ -6,7 +6,7 @@ import {
   suggestFieldKey,
   uniqueFieldKey,
 } from "@/lib/lead-sheet/field-key"
-import { assertAllBuiltinsPresent } from "@/lib/lead-sheet/validate"
+import { assertRequiredBuiltinsPresent } from "@/lib/lead-sheet/validate"
 import {
   columnVisibilityKey,
   hiddenCustomFieldKeys,
@@ -421,10 +421,8 @@ export async function reorderTemplateColumns(
     .filter((c) => c.kind === "builtin")
     .map((c) => (c.kind === "builtin" ? c.builtinKey : ""))
 
-  if (config.template.isSystemDefault) {
-    const validationError = assertAllBuiltinsPresent(builtins)
-    if (validationError) throw new Error(validationError)
-  }
+  const validationError = assertRequiredBuiltinsPresent(builtins)
+  if (validationError) throw new TemplateEditError(validationError)
 
   await applyColumnOrder(supabase, templateId, orderedColumnIds)
 
@@ -450,10 +448,7 @@ async function requireTemplate(
   return config
 }
 
-/**
- * Adds a field from the library to a template. Templates never create fields; the Standard
- * template's field set is fixed.
- */
+/** Adds a field from the library to a template (including the Standard template). */
 export async function addFieldToTemplate(
   supabase: SupabaseClient,
   templateId: string,
@@ -461,9 +456,6 @@ export async function addFieldToTemplate(
   afterColumnId: string | null
 ): Promise<ResolvedLeadSheetConfig> {
   const config = await requireTemplate(supabase, templateId)
-  if (config.template.isSystemDefault) {
-    throw new TemplateEditError("The Standard template's fields cannot be changed")
-  }
 
   let insertIndex = config.columns.length
   if (afterColumnId) {
@@ -521,9 +513,6 @@ export async function removeColumnFromTemplate(
   columnId: string
 ): Promise<ResolvedLeadSheetConfig> {
   const config = await requireTemplate(supabase, templateId)
-  if (config.template.isSystemDefault) {
-    throw new TemplateEditError("The Standard template's fields cannot be changed")
-  }
   const col = config.columns.find((c) => c.id === columnId)
   if (!col) throw new Error("Column not found")
   if (col.kind === "builtin" && isLockedBuiltinKey(col.builtinKey)) {

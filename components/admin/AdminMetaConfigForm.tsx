@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { FormEvent, useCallback, useState, type ReactNode } from "react"
+import { FormEvent, useCallback, useEffect, useState, type ReactNode } from "react"
 import {
   AppWindowIcon,
   CircleDotIcon,
@@ -154,6 +154,7 @@ export function AdminMetaConfigForm({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [partnerSelection, setPartnerSelection] = useState<MetaPartnerAccountSelection>(null)
+  const [savedEnabled, setSavedEnabled] = useState(() => toMetaConfig(initialConfig).enabled)
 
   const dismissMessage = useCallback(() => setMessage(null), [])
   const dismissError = useCallback(() => setError(null), [])
@@ -176,6 +177,7 @@ export function AdminMetaConfigForm({
     const data = (await response.json()) as { config?: MetaConfig & { organizationId?: string } }
     const next = toMetaConfig(data.config)
     setConfig(next)
+    setSavedEnabled(next.enabled)
     return next
   }
 
@@ -188,11 +190,17 @@ export function AdminMetaConfigForm({
     [slug, initialConfig]
   )
 
+  useEffect(() => {
+    if (initialConfig === undefined) return
+    setSavedEnabled(toMetaConfig(initialConfig).enabled)
+  }, [initialConfig])
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setSaving(true)
     setError(null)
     setMessage(null)
+    const enabledBeforeSave = savedEnabled
 
     try {
       const response = await fetch(`/api/admin/organizations/${slug}/meta`, {
@@ -206,7 +214,10 @@ export function AdminMetaConfigForm({
         onboard?: { adAccountDiscovered?: boolean; pageIdDiscovered?: boolean }
       }
       if (!response.ok) throw new Error(data.error ?? t("errorSaveMeta"))
-      if (data.config) setConfig(toMetaConfig(data.config))
+      if (data.config) {
+        setConfig(toMetaConfig(data.config))
+        setSavedEnabled(Boolean(data.config.enabled))
+      }
 
       let message = t("metaSetupSaved")
       if (data.onboard?.adAccountDiscovered) {
@@ -216,6 +227,9 @@ export function AdminMetaConfigForm({
         message += t("onboardPageFound")
       } else if (data.config?.enabled && !data.config.metaPageId?.trim()) {
         message += t("onboardAddPageId")
+      }
+      if (data.config && data.config.enabled !== enabledBeforeSave) {
+        message += ` ${data.config.enabled ? t("metaHubEnabledFromSettings") : t("metaHubDisabledFromSettings")}`
       }
       setMessage(message.trim())
       onSaved?.()

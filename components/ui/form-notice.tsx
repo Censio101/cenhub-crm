@@ -1,14 +1,20 @@
 "use client"
 
 import { useCallback } from "react"
-import { AlertCircleIcon, CheckCircle2Icon, TriangleAlertIcon, XIcon } from "lucide-react"
+import {
+  AlertCircleIcon,
+  CheckCircle2Icon,
+  InfoIcon,
+  TriangleAlertIcon,
+  XIcon,
+} from "lucide-react"
 
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { cn } from "cn"
 
 type FormNoticeProps = {
   message: string
-  tone?: "error" | "success" | "warning"
+  tone?: "error" | "success" | "warning" | "info"
   onDismiss: () => void
   autoDismissMs?: number
   dismissLabel?: string
@@ -36,6 +42,12 @@ const toneStyles = {
     progress: "bg-amber-500/35",
     dismiss: "text-amber-800 hover:bg-amber-100/80",
   },
+  info: {
+    box: "border-[#1877F2]/30 bg-[#1877F2]/8 text-[#0d3d7a] shadow-[0_1px_2px_rgba(24,119,242,0.08)]",
+    icon: "text-[#1877F2]",
+    progress: "bg-[#1877F2]/35",
+    dismiss: "text-[#0d3d7a] hover:bg-[#1877F2]/10",
+  },
 } as const
 
 function ToneIcon({ tone }: { tone: FormNoticeProps["tone"] }) {
@@ -46,6 +58,9 @@ function ToneIcon({ tone }: { tone: FormNoticeProps["tone"] }) {
   if (tone === "warning") {
     return <TriangleAlertIcon className={className} aria-hidden="true" />
   }
+  if (tone === "info") {
+    return <InfoIcon className={className} aria-hidden="true" />
+  }
   return <AlertCircleIcon className={className} aria-hidden="true" />
 }
 
@@ -55,15 +70,20 @@ type FormNoticeStackProps = {
   error?: string | null
   success?: string | null
   warning?: string | null
+  info?: string | null
   onDismissError?: () => void
   onDismissSuccess?: () => void
   onDismissWarning?: () => void
+  onDismissInfo?: () => void
   dismissLabel?: string
   size?: "sm" | "md"
   className?: string
   successAutoDismissMs?: number
   errorAutoDismissMs?: number
   warningAutoDismissMs?: number
+  infoAutoDismissMs?: number
+  /** When true, progress uses blue info styling and a spinner. */
+  progressAsInfo?: boolean
 }
 
 /** Shared placement for form success, error, and warning messages. */
@@ -72,17 +92,21 @@ export function FormNoticeStack({
   error,
   success,
   warning,
+  info,
   onDismissError,
   onDismissSuccess,
   onDismissWarning,
+  onDismissInfo,
   dismissLabel = "Dismiss",
   size = "md",
   className,
   successAutoDismissMs = 5000,
   errorAutoDismissMs = 6000,
   warningAutoDismissMs = 0,
+  infoAutoDismissMs = 0,
+  progressAsInfo = false,
 }: FormNoticeStackProps) {
-  const hasAny = Boolean(progress || error || success || warning)
+  const hasAny = Boolean(progress || error || success || warning || info)
   if (!hasAny) return null
 
   return (
@@ -95,7 +119,7 @@ export function FormNoticeStack({
       {progress ? (
         <FormNotice
           message={progress}
-          tone="warning"
+          tone={progressAsInfo ? "info" : "warning"}
           size={size}
           autoDismissMs={0}
           dismissible={false}
@@ -131,6 +155,17 @@ export function FormNoticeStack({
           dismissLabel={dismissLabel}
           dismissible={warningAutoDismissMs > 0}
           onDismiss={onDismissWarning ?? (() => undefined)}
+        />
+      ) : null}
+      {info ? (
+        <FormNotice
+          message={info}
+          tone="info"
+          size={size}
+          autoDismissMs={infoAutoDismissMs}
+          dismissLabel={dismissLabel}
+          dismissible={infoAutoDismissMs > 0}
+          onDismiss={onDismissInfo ?? (() => undefined)}
         />
       ) : null}
     </div>

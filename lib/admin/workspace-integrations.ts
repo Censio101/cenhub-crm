@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import { DEFAULT_CRM_SITE_URL } from "@/lib/site/default-site-url"
+
 const SETTINGS_ID = "default"
 
 const DEFAULT_FROM_EMAIL = "kontakt@censio.dk"
 const DEFAULT_FROM_NAME = "Censio"
-const DEFAULT_SITE_URL = "https://cenhub-crm.vercel.app"
+const DEFAULT_SITE_URL = DEFAULT_CRM_SITE_URL
 const DEFAULT_MAILGUN_API_BASE = "https://api.mailgun.net"
 const DEFAULT_AUTH_CALLBACK_PATH = "/auth/callback"
 

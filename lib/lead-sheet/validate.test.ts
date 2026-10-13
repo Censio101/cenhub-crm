@@ -3,10 +3,25 @@ import { describe, expect, it } from "vitest"
 import { mergeCustomFields } from "@/lib/lead-sheet/apply-custom-fields-patch"
 import {
   assertAllBuiltinsPresent,
+  assertRequiredBuiltinsPresent,
   sanitizeCustomFieldsPatch,
   validateCustomFieldValue,
 } from "@/lib/lead-sheet/validate"
-import { BUILTIN_COLUMN_KEYS, type LeadSheetCustomFieldDef } from "@/lib/lead-sheet/types"
+import {
+  BUILTIN_COLUMN_KEYS,
+  LOCKED_BUILTIN_KEYS,
+  type LeadSheetCustomFieldDef,
+} from "@/lib/lead-sheet/types"
+
+describe("assertRequiredBuiltinsPresent", () => {
+  it("accepts locked builtins only", () => {
+    expect(assertRequiredBuiltinsPresent(LOCKED_BUILTIN_KEYS)).toBeNull()
+  })
+
+  it("rejects when a locked builtin is missing", () => {
+    expect(assertRequiredBuiltinsPresent(LOCKED_BUILTIN_KEYS.slice(0, 3))).toMatch(/Missing required/)
+  })
+})
 
 describe("assertAllBuiltinsPresent", () => {
   it("accepts full builtin set", () => {

@@ -35,6 +35,7 @@ import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
 import { LeadSheetNoteCell } from "@/components/leads/LeadSheetNoteCell"
 import { LeadCardList } from "@/components/leads/LeadCardList"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
+import { LeadStatusTableCell } from "@/components/leads/LeadStatusTableCell"
 import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
 import { useLeadSelectOptions } from "@/components/leads/useLeadSelectOptions"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -81,11 +82,8 @@ import {
   filterDashboardLeads,
   formatLeadServices,
   getLeadServiceIds,
-  getLeadStatusCellClass,
-  getLeadStatusClass,
   getWonLeadCellClass,
   getWonLeadRowClass,
-  isLeadStatusId,
   type Lead,
   type LeadPipelineStats,
   type LeadSegmentId,
@@ -703,27 +701,13 @@ export function LeadsTable({
         )
       case "status":
         return (
-          <TableCell
-            key={col.id}
-            data-lead-status-cell=""
-            className={cn("min-w-[13.5rem] p-0", getLeadStatusCellClass(lead.status))}
-          >
-            <div className="flex h-12 items-stretch">
-              <CellSelect
-                value={lead.status}
-                label={t("leadSheetColStatus")}
-                placeholder={t("leadSheetColStatus")}
-                options={statuses}
-                className="h-full min-h-0 w-full rounded-none border-0 bg-transparent px-3 text-[0.9375rem] font-semibold text-current shadow-none hover:bg-transparent focus:bg-transparent focus-visible:border-transparent focus-visible:ring-0 data-[size=sm]:h-full data-[size=sm]:rounded-none dark:bg-transparent dark:hover:bg-transparent [&_svg]:hidden"
-                optionClassName={getLeadStatusClass}
-                onChange={(status) =>
-                  onUpdate(lead.id, {
-                    status: isLeadStatusId(status) ? status : lead.status,
-                  })
-                }
-              />
-            </div>
-          </TableCell>
+          <LeadStatusTableCell
+            key={`${lead.id}-${col.id}`}
+            status={lead.status}
+            label={t("leadSheetColStatus")}
+            options={statuses}
+            onStatusChange={(status) => onUpdate(lead.id, { status })}
+          />
         )
       case "salesPrice":
         return (

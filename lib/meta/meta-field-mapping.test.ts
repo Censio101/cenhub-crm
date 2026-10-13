@@ -25,19 +25,18 @@ describe("applyMetaFieldMapping", () => {
     expect(result.metaExtra.custom_question).toBe("yes")
   })
 
-  it("does not alias-guess when explicit mapping is saved", () => {
+  it("fills empty mapped slots from default aliases when saved keys mismatch Meta", () => {
     const result = applyMetaFieldMapping(
       [
-        { name: "full_name", values: ["Jane Doe"] },
-        { name: "email", values: ["jane@example.com"] },
+        { name: "fulde_navn", values: ["Jane Doe"] },
+        { name: "e-mail", values: ["jane@example.com"] },
       ],
-      { fullName: "full_name" },
+      { fullName: "full_name", email: "email", phone: "phone" },
       "ad-123"
     )
 
     expect(result.fullName).toBe("Jane Doe")
-    expect(result.email).toBe("")
-    expect(result.metaExtra.email).toBe("jane@example.com")
+    expect(result.email).toBe("jane@example.com")
   })
 })
 

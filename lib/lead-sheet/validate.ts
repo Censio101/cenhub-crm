@@ -5,6 +5,7 @@ import {
 } from "@/lib/lead-sheet/image-link"
 import {
   BUILTIN_COLUMN_KEYS,
+  LOCKED_BUILTIN_KEYS,
   type BuiltinColumnKey,
   type CustomFieldType,
   type LeadSheetCustomFieldDef,
@@ -20,6 +21,17 @@ export function assertAllBuiltinsPresent(builtinKeys: readonly string[]): string
   }
   if (set.size !== BUILTIN_COLUMN_KEYS.length) {
     return "Duplicate or unknown built-in column keys"
+  }
+  return null
+}
+
+/** Standard template must keep identity, pipeline, and dashboard metric columns. */
+export function assertRequiredBuiltinsPresent(builtinKeys: readonly string[]): string | null {
+  const set = new Set(builtinKeys)
+  for (const key of LOCKED_BUILTIN_KEYS) {
+    if (!set.has(key)) {
+      return `Missing required column: ${key}`
+    }
   }
   return null
 }

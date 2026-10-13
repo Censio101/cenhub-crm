@@ -773,6 +773,24 @@ export const en: Messages = {
 
   metaHubTitle: "Meta clients",
   metaHubCount: "{enabled} active · {total} clients",
+  metaHubSwitchingToActive: "Enabling {name}… moving to Enabled clients",
+  metaHubSwitchingToNeedsSetup: "Disabling {name}… moving to Need setup",
+  metaHubMovedToActive: "{name} is now under Enabled clients",
+  metaHubMovedToNeedsSetup: "{name} is now under Need setup",
+  metaHubMovedToActiveHint: "They left this tab because Meta was turned on for the client.",
+  metaHubMovedToNeedsSetupHint: "They left this tab because Meta was turned off for the client.",
+  metaHubShowEnabledTab: "Open Enabled tab",
+  metaHubShowNeedsSetupTab: "Open Need setup tab",
+  metaHubEnabledFromSettings: "Meta is enabled — find this client under Enabled in the Meta & clients hub.",
+  metaHubDisabledFromSettings:
+    "Meta is disabled — find this client under Need setup in the Meta & clients hub.",
+  metaHubBatchMovedToEnabled:
+    "{count} clients enabled — they are now under the Enabled tab. Configure each in Client settings when you are ready.",
+  metaHubBatchMovedToNeedsSetup:
+    "{count} clients disabled — they are now under Need setup.",
+  metaHubStayOnTabHint: "You can keep enabling clients here; open the other tab when you want to review them.",
+  metaHubPartnerEnabledProfileHint:
+    "New client enabled from Business Manager — add company details when you are ready (optional link below).",
   searchClientPlaceholder: "Search clients…",
   filterAll: "All",
   filterActive: "Active",
@@ -1728,6 +1746,8 @@ export const en: Messages = {
   leadSheetsEditorEditDetails: "Edit details",
   leadSheetsEditorColumnsReorderPaused: "Clear the search to reorder columns",
   leadSheetsEditStandardColumns: "Edit columns",
+  leadSheetsStandardEditorColumnsHint:
+    "Drag to reorder. Add custom fields after any row, or remove optional standard columns. Name, contact, status, and metric columns stay required.",
   leadSheetsEditorIndustriesHint:
     "Tap a row to assign or unassign. Assigned industries show as pills above.",
   leadSheetsEditorIndustriesAssigned: "Assigned",

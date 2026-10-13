@@ -774,6 +774,26 @@ const daMessages = {
 
   metaHubTitle: "Meta klienter",
   metaHubCount: "{enabled} aktive · {total} klienter",
+  metaHubSwitchingToActive: "Aktiverer {name}… flyttes til Aktiveret",
+  metaHubSwitchingToNeedsSetup: "Deaktiverer {name}… flyttes til Skal sættes op",
+  metaHubMovedToActive: "{name} ligger nu under Aktiveret",
+  metaHubMovedToNeedsSetup: "{name} ligger nu under Skal sættes op",
+  metaHubMovedToActiveHint: "Klienten forsvandt fra denne fane, fordi Meta blev slået til.",
+  metaHubMovedToNeedsSetupHint: "Klienten forsvandt fra denne fane, fordi Meta blev slået fra.",
+  metaHubShowEnabledTab: "Åbn fanen Aktiveret",
+  metaHubShowNeedsSetupTab: "Åbn fanen Skal sættes op",
+  metaHubEnabledFromSettings:
+    "Meta er aktiveret — find klienten under Aktiveret i Meta & klienter-hubben.",
+  metaHubDisabledFromSettings:
+    "Meta er deaktiveret — find klienten under Skal sættes op i Meta & klienter-hubben.",
+  metaHubBatchMovedToEnabled:
+    "{count} klienter aktiveret — de ligger nu under fanen Aktiveret. Konfigurer hver under Klientindstillinger når du er klar.",
+  metaHubBatchMovedToNeedsSetup:
+    "{count} klienter deaktiveret — de ligger nu under Skal sættes op.",
+  metaHubStayOnTabHint:
+    "Du kan blive her og aktivere flere; åbn den anden fane når du vil gennemgå dem.",
+  metaHubPartnerEnabledProfileHint:
+    "Ny klient aktiveret fra Business Manager — tilføj virksomhedsoplysninger når du er klar (valgfrit link nedenfor).",
   searchClientPlaceholder: "Søg klient…",
   filterAll: "Alle",
   filterActive: "Aktive",
@@ -1734,6 +1754,8 @@ const daMessages = {
   leadSheetsEditorEditDetails: "Rediger detaljer",
   leadSheetsEditorColumnsReorderPaused: "Ryd søgningen for at flytte kolonner",
   leadSheetsEditStandardColumns: "Rediger kolonner",
+  leadSheetsStandardEditorColumnsHint:
+    "Træk for at sortere. Tilføj brugerdefinerede felter efter en række, eller fjern valgfrie standardkolonner. Navn, kontakt, status og metric-kolonner skal blive.",
   leadSheetsEditorIndustriesHint:
     "Tryk på en række for at tildele eller fjerne. Tildelte brancher vises som chips ovenfor.",
   leadSheetsEditorIndustriesAssigned: "Tildelt",

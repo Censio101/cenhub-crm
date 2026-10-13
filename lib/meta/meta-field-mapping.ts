@@ -91,13 +91,27 @@ function readWithAliases(fields: MetaFieldData[], keys: string[]): string {
 }
 
 const DEFAULT_ALIASES: Record<string, string[]> = {
-  fullName: ["full_name", "navn", "name", "fornavn"],
+  fullName: ["full_name", "fulde_navn", "navn", "name", "fornavn"],
   email: ["email", "e-mail", "mail", "work_email"],
   phone: ["phone_number", "phone", "telefon", "mobile_phone"],
   companyName: ["company_name", "virksomhed", "company"],
-  address: ["street_address", "address", "adresse", "hvad_er_din_fulde_adresse"],
+  address: ["street_address", "address", "vejnavn", "adresse", "hvad_er_din_fulde_adresse"],
   zipCode: ["zip_code", "post_code", "postnummer", "postnr", "hvad_er_dit_postnummer"],
   city: ["city", "by", "hvilken_by_bor_du_i?"],
+}
+
+function fillEmptyMappedFromDefaultAliases(
+  fields: MetaFieldData[],
+  result: MetaMappedLeadFields
+): void {
+  const defaults = defaultMapped(fields)
+  if (!result.fullName.trim()) result.fullName = defaults.fullName
+  if (!result.email.trim()) result.email = defaults.email
+  if (!result.phone.trim()) result.phone = defaults.phone
+  if (!result.companyName.trim()) result.companyName = defaults.companyName
+  if (!result.address.trim()) result.address = defaults.address
+  if (!result.zipCode.trim()) result.zipCode = defaults.zipCode
+  if (!result.city.trim()) result.city = defaults.city
 }
 
 function defaultMapped(
@@ -175,6 +189,10 @@ export function applyMetaFieldMapping(
         result.metaExtra[canonical] = value
         break
     }
+  }
+
+  if (hasExplicitMapping) {
+    fillEmptyMappedFromDefaultAliases(fields, result)
   }
 
   for (const field of fields) {

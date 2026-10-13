@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import type { MetaInstantLeadPreviewRow } from "@/components/admin/meta-instant-forms/types"
+import { normalizeMetaLeadDisplayFields } from "@/lib/meta/meta-lead-field-display"
 
 export type MetaLeadsPreviewCacheMeta = {
   daysBack: number
@@ -64,7 +65,7 @@ export async function listMetaLeadsPreviewFromCache(
     metaFormId: row.meta_form_id,
     formName: row.form_name,
     createdTime: row.created_time,
-    fields: (row.fields ?? {}) as Record<string, string>,
+    fields: normalizeMetaLeadDisplayFields((row.fields ?? {}) as Record<string, string>),
   }))
 
   return { rows, total }

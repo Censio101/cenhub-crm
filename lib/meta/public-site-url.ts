@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = "https://cenhub-crm.vercel.app"
+import { DEFAULT_CRM_SITE_URL } from "@/lib/site/default-site-url"
 
 /** Public base URL for Meta webhooks and copy-paste in admin UI. */
 export function resolvePublicSiteUrl(request?: Request): string {
@@ -20,5 +20,5 @@ export function resolvePublicSiteUrl(request?: Request): string {
     return "http://localhost:3000"
   }
 
-  return DEFAULT_SITE_URL
+  return DEFAULT_CRM_SITE_URL
 }

@@ -479,7 +479,7 @@ export function AdminIntegrationsPanel() {
                     className={adminFieldClass}
                     value={siteUrl}
                     onChange={(event) => setSiteUrl(event.target.value)}
-                    placeholder="https://crm.censio.dk"
+                    placeholder="https://www.cenhub.dk"
                   />
                 </label>
 
