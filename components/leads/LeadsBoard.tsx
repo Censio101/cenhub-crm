@@ -14,6 +14,7 @@ import {
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { useClientNavigation } from "@/components/client/ClientNavigationProvider"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
 import { LeadsBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
 import { AddLeadDialog, EditLeadDialog } from "@/components/leads/AddLeadDialog"
@@ -857,6 +858,7 @@ export function LeadsTable({
 export function LeadsBoard() {
   const { enabledServices, loaded: servicesLoaded } = useCompanyServices()
   const { t } = useLanguage()
+  const { animateBoardEnter, markWorkspaceWarm } = useClientNavigation()
   const { view, pending, onPresetChange, onCustomRange: onSheetCustomRange } =
     useSheetViewState("/leads")
   const dateIsAllTime = view.preset === "all_time"
@@ -874,6 +876,11 @@ export function LeadsBoard() {
     deleteLead,
     reload,
   } = useLeads()
+
+  useEffect(() => {
+    if (!loading) markWorkspaceWarm()
+  }, [loading, markWorkspaceWarm])
+
   const leadDateSpan = useMemo(() => {
     let earliest: string | null = null
     let latest: string | null = null
@@ -1033,7 +1040,11 @@ export function LeadsBoard() {
       {loading ? (
         <LeadsBoardSkeleton />
       ) : (
-        <ClientBoardEnter className="flex flex-col gap-6" pending={pending}>
+        <ClientBoardEnter
+          className="flex flex-col gap-6"
+          pending={pending}
+          animateEnter={animateBoardEnter}
+        >
       {!sheetFocusOpen ? <LeadPipelineBar stats={pipelineStats} /> : null}
 
       <LeadSheetFocusShell open={sheetFocusOpen} onClose={() => setSheetFocusOpen(false)}>

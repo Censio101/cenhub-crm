@@ -1,11 +1,11 @@
 import { Suspense } from "react"
 
 import { PerformanceDashboard } from "@/components/performance/PerformanceDashboard"
-import { ClientPageBootstrapSpinner } from "@/components/client/ClientPageBootstrapSpinner"
+import { ClientRouteFallback } from "@/components/client/ClientRouteFallback"
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<ClientPageBootstrapSpinner />}>
+    <Suspense fallback={<ClientRouteFallback />}>
       <PerformanceDashboard />
     </Suspense>
   )

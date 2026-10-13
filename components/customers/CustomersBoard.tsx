@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { XIcon } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { useClientNavigation } from "@/components/client/ClientNavigationProvider"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
 import { CustomersBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
 import { CustomersSheetFilterBar } from "@/components/customers/CustomersSheetFilterBar"
@@ -93,6 +94,7 @@ function countLabel(count: number, one: string, many: string) {
 
 export function CustomersBoard() {
   const { t } = useLanguage()
+  const { animateBoardEnter, markWorkspaceWarm } = useClientNavigation()
   const { enabledServices, loaded: servicesLoaded } = useCompanyServices()
   const { view, pending, onPresetChange, onCustomRange: onSheetCustomRange } =
     useSheetViewState("/kunder")
@@ -101,6 +103,11 @@ export function CustomersBoard() {
   const { customers, organizationName, loading, error, reload } = useCustomers()
   // Customers mirror won leads; the lead record is what the edit popup changes.
   const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead } = useLeads()
+
+  useEffect(() => {
+    if (!loading) markWorkspaceWarm()
+  }, [loading, markWorkspaceWarm])
+
   const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
   const [sheetService, setSheetService] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">("all")
@@ -237,7 +244,11 @@ export function CustomersBoard() {
         {loading ? (
           <CustomersBoardSkeleton />
         ) : (
-          <ClientBoardEnter className="flex flex-col gap-4" pending={pending}>
+          <ClientBoardEnter
+            className="flex flex-col gap-4"
+            pending={pending}
+            animateEnter={animateBoardEnter}
+          >
             {!sheetFocusOpen ? (
             <section aria-label={t("customersOverviewAria")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

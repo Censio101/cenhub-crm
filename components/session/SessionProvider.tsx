@@ -135,8 +135,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       // Supabase can briefly report no user during refresh; confirm with the server before wiping CRM session.
       const verifyBackground = options?.silent ?? true
+      let didSetLoading = false
       if (!verifyBackground) {
         setLoading(true)
+        didSetLoading = true
       }
       try {
         const response = await fetch("/api/auth/me", {
@@ -153,7 +155,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (isStale()) return
         applyMePayload(data)
       } finally {
-        if (!isStale()) {
+        if (!isStale() || didSetLoading) {
           setLoading(false)
         }
       }
@@ -161,8 +163,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
 
     const background = options?.silent ?? sessionResolvedRef.current
+    let didSetLoading = false
     if (!background) {
       setLoading(true)
+      didSetLoading = true
     }
     try {
       const response = await fetch("/api/auth/me", {
@@ -183,8 +187,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       applyMePayload(data)
     } finally {
-      // Only the latest fetch settles `loading`; an older one must not end it early.
-      if (!isStale()) {
+      // Latest fetch clears loading; stale fetches that turned loading on must not leave it stuck.
+      if (!isStale() || didSetLoading) {
         setLoading(false)
       }
     }

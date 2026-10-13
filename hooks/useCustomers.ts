@@ -51,7 +51,7 @@ export function useCustomers() {
 
   const loadCustomers = useCallback(async () => {
     const isCurrent = guard.begin()
-    const showLoading = !hasCustomersCache()
+    const showLoading = !hasCustomersCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
@@ -96,7 +96,7 @@ export function useCustomers() {
     } finally {
       if (isCurrent()) setLoading(false)
     }
-  }, [guard])
+  }, [activeSlug, guard])
 
   useAsyncEffect(() => {
     void loadCustomers()

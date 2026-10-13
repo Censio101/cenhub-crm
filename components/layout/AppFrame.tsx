@@ -14,6 +14,7 @@ import {
   isGuestShellPath,
   isPublicSignupPath,
 } from "@/lib/layout/app-paths"
+import { ClientNavigationProvider } from "@/components/client/ClientNavigationProvider"
 import { cn } from "cn"
 
 export function AppFrame({ children }: { children: React.ReactNode }) {
@@ -63,7 +64,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
           isAdminRoute ? "min-h-0 p-0" : "px-4 py-8 sm:px-6 lg:px-8 xl:px-10"
         )}
       >
-        {children}
+        <ClientNavigationProvider>{children}</ClientNavigationProvider>
       </main>
     </div>
   )

@@ -2,8 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Suspense } from "react"
-import { usePathname } from "next/navigation"
+import { Suspense, useEffect } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { ContactRoundIcon, LayoutDashboardIcon, UsersIcon } from "lucide-react"
 
 import { ClientLogoMark } from "@/components/organization/ClientLogoMark"
@@ -39,6 +39,7 @@ const censioLogoClass =
 
 export function AppTopbarShell() {
   const pathname = usePathname()
+  const router = useRouter()
   const { t } = useLanguage()
   const { organization, role, loading: orgLoading } = useActiveOrganization()
   const { mustPickClient, resolvingActiveClient, useAdminShell, isClientRole } =
@@ -98,6 +99,15 @@ export function AppTopbarShell() {
     navItems.length > 0 ||
     (reserveDashboardNav && !sessionReady) ||
     showAdminHeaderNav
+
+  useEffect(() => {
+    if (!showClientDashboardNav) return
+    router.prefetch("/")
+    router.prefetch("/leads")
+    router.prefetch("/kunder")
+    router.prefetch("/virksomhed")
+    router.prefetch("/konto")
+  }, [router, showClientDashboardNav])
 
   const homeHref = isAdmin && isClientManagePath(pathname)
     ? "/admin/clients"

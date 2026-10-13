@@ -12,6 +12,8 @@ import {
   UserRoundIcon,
 } from "lucide-react"
 
+import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { useClientNavigation } from "@/components/client/ClientNavigationProvider"
 import { ProfileAvatarUpload } from "@/components/account/ProfileAvatarUpload"
 import {
   getMatchingPasswordState,
@@ -67,6 +69,7 @@ function PanelHeading({ title, description }: { title: string; description: stri
 }
 
 export function MinKontoBoard() {
+  const { animateSettingsEnter } = useClientNavigation()
   const { t, locale, setLocale } = useLanguage()
   const { user, role, organization, reload } = useSession()
   const { configured, user: authUser } = useSupabaseSession()
@@ -231,6 +234,7 @@ export function MinKontoBoard() {
   ]
 
   return (
+    <ClientBoardEnter animateEnter={animateSettingsEnter}>
     <div className="mx-auto w-full max-w-5xl">
       {/* Hero */}
       <section className="overflow-hidden rounded-3xl border border-[#e8e0d8] bg-white shadow-[0_2px_10px_rgba(26,18,8,0.05)]">
@@ -504,5 +508,6 @@ export function MinKontoBoard() {
         </div>
       </div>
     </div>
+    </ClientBoardEnter>
   )
 }

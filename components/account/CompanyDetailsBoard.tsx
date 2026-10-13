@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button"
 import { useAutoDismiss } from "@/hooks/useAutoDismiss"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useAdminClientPickerGate } from "@/hooks/useAdminClientPickerGate"
+import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { useClientNavigation } from "@/components/client/ClientNavigationProvider"
 import { ClientPageBootstrapSpinner } from "@/components/client/ClientPageBootstrapSpinner"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
 import { isOnboardingContactEmailValid } from "@/lib/onboarding/application-input"
@@ -116,6 +118,7 @@ const REQUIRED_TOTAL = 7
 
 export function CompanyDetailsBoard() {
   const { t } = useLanguage()
+  const { animateSettingsEnter } = useClientNavigation()
   const { mustPickClient, resolvingActiveClient } = useAdminClientPickerGate()
   const {
     organization,
@@ -237,7 +240,7 @@ export function CompanyDetailsBoard() {
     return <SelectClientEmptyState />
   }
 
-  if (orgLoading) {
+  if (orgLoading && !organization) {
     return <CompanyDetailsPageSkeleton />
   }
 
@@ -273,7 +276,8 @@ export function CompanyDetailsBoard() {
   ]
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <ClientBoardEnter animateEnter={animateSettingsEnter}>
+      <div className="mx-auto w-full max-w-5xl" aria-busy={orgLoading || undefined}>
       {/* Hero */}
       <section className="overflow-hidden rounded-3xl border border-[#e8e0d8] bg-white shadow-[0_2px_10px_rgba(26,18,8,0.05)]">
         <div className="relative overflow-hidden bg-[linear-gradient(120deg,#2a1608_0%,#833b08_55%,#e4660c_130%)] px-5 py-5 sm:px-8 sm:py-6">
@@ -562,5 +566,6 @@ export function CompanyDetailsBoard() {
         </div>
       </form>
     </div>
+    </ClientBoardEnter>
   )
 }

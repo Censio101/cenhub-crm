@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { useClientNavigation } from "@/components/client/ClientNavigationProvider"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
 import { DashboardMetricsSkeleton } from "@/components/client/ClientBoardSkeletons"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -35,6 +36,7 @@ export function PerformanceDashboard() {
   const router = useRouter()
   const { locale, t } = useLanguage()
   const { role } = useActiveOrganization()
+  const { animateBoardEnter, markWorkspaceWarm } = useClientNavigation()
   const {
     leads,
     adSpendByMonth,
@@ -71,6 +73,10 @@ export function PerformanceDashboard() {
   // "Select client" is handled by the route gate; every other error is a failed load.
   const loadError = error && error !== "leadsSelectClient" ? error : null
   const [chartYear, setChartYear] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!dataLoading) markWorkspaceWarm()
+  }, [dataLoading, markWorkspaceWarm])
 
   const data = useMemo(() => {
     if (dataLoading) return null
@@ -175,7 +181,11 @@ export function PerformanceDashboard() {
         ) : data == null || (loadError && leads.length === 0) ? (
           <DashboardErrorState onRetry={() => (loadError ? void reload() : router.refresh())} />
         ) : (
-          <ClientBoardEnter className="flex w-full flex-col gap-8" pending={pending}>
+          <ClientBoardEnter
+            className="flex w-full flex-col gap-8"
+            pending={pending}
+            animateEnter={animateBoardEnter}
+          >
             {pending ? (
               <span className="sr-only">{t("dashboardUpdating")}</span>
             ) : null}

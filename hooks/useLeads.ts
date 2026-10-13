@@ -98,7 +98,7 @@ export function useLeads() {
 
   const loadLeads = useCallback(async () => {
     const isCurrent = guard.begin()
-    const showLoading = !hasLeadsCache()
+    const showLoading = !hasLeadsCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
@@ -146,7 +146,7 @@ export function useLeads() {
     } finally {
       if (isCurrent()) setLoading(false)
     }
-  }, [guard])
+  }, [activeSlug, guard])
 
   useAsyncEffect(() => {
     void loadLeads()

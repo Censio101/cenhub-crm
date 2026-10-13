@@ -1,11 +1,11 @@
 import { Suspense } from "react"
 
 import { LeadsBoard } from "@/components/leads/LeadsBoard"
-import { ClientPageBootstrapSpinner } from "@/components/client/ClientPageBootstrapSpinner"
+import { ClientRouteFallback } from "@/components/client/ClientRouteFallback"
 
 export default function LeadsPage() {
   return (
-    <Suspense fallback={<ClientPageBootstrapSpinner />}>
+    <Suspense fallback={<ClientRouteFallback />}>
       <LeadsBoard />
     </Suspense>
   )

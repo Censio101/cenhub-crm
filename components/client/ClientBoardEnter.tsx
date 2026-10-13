@@ -15,16 +15,19 @@ export function ClientBoardEnter({
   children,
   className,
   pending = false,
+  animateEnter = true,
 }: {
   children: ReactNode
   className?: string
   pending?: boolean
+  animateEnter?: boolean
 }) {
   return (
     <div
       className={cn(
-        "relative motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150 motion-safe:ease-out",
-        "transition-opacity duration-200",
+        "relative transition-opacity duration-200",
+        animateEnter &&
+          "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150 motion-safe:ease-out",
         pending && "opacity-60",
         className
       )}

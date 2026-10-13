@@ -120,10 +120,40 @@ export function emitCustomersRefresh() {
   }
 }
 
+const WORKSPACE_WARM_KEY = "crm-client-workspace-warm"
+
+export function isClientWorkspaceWarm(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    return sessionStorage.getItem(WORKSPACE_WARM_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+export function markClientWorkspaceWarm() {
+  if (typeof window === "undefined") return
+  try {
+    sessionStorage.setItem(WORKSPACE_WARM_KEY, "1")
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function clearClientWorkspaceWarm() {
+  if (typeof window === "undefined") return
+  try {
+    sessionStorage.removeItem(WORKSPACE_WARM_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 export function clearClientCaches() {
   leadsCache = null
   customersCache = null
   adSpendCache = null
+  clearClientWorkspaceWarm()
   clearInFlightRequests()
 }
 

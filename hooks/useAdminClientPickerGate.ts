@@ -11,14 +11,15 @@ export function useAdminClientPickerGate() {
     useActiveOrganization()
 
   const isClientRole = role === "client_admin" || role === "client_user"
-  const sessionPending =
-    sessionLoading || (role === null && !isClientRole && !organization)
+
+  /** Only while /api/auth/me (or auth bootstrap) is in flight — not when role is still null after a failed/cancelled fetch. */
+  const sessionPending = sessionLoading
 
   const mustPickClient =
-    role === "censio_admin" && !organization && !sessionPending
+    role === "censio_admin" && !organization && !sessionLoading
 
   /** Admin on client routes before /api/auth/me restores active org from cookie. */
-  const resolvingActiveClient = sessionPending && !organization && !isClientRole
+  const resolvingActiveClient = sessionLoading && !organization && !isClientRole
 
   const useAdminShell =
     role === "censio_admin" ||

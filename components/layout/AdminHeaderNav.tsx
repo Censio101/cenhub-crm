@@ -63,7 +63,12 @@ export function AdminHeaderNav() {
     router.prefetch("/admin/overview")
     router.prefetch("/admin/clients")
     router.prefetch("/")
-  }, [router])
+    if (onClientDashboard) {
+      router.prefetch("/leads")
+      router.prefetch("/kunder")
+      router.prefetch("/virksomhed")
+    }
+  }, [onClientDashboard, router])
 
   async function openDashboard() {
     setOpeningDashboard(true)

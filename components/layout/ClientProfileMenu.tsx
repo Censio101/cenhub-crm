@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Building2Icon,
   CheckIcon,
@@ -53,6 +53,12 @@ export function ClientProfileMenu({ menuReady, sessionLoading }: ClientProfileMe
   const { t } = useLanguage()
   const pathname = usePathname() ?? ""
   const router = useRouter()
+
+  useEffect(() => {
+    if (!menuReady) return
+    router.prefetch("/virksomhed")
+    router.prefetch("/konto")
+  }, [menuReady, router])
   const companyActive = pathname === "/virksomhed" || pathname.startsWith("/virksomhed/")
   const accountActive = pathname === "/konto" || pathname.startsWith("/konto/")
   const { user } = useSession()

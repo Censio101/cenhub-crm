@@ -72,7 +72,7 @@ export function useDashboardData(): DashboardDataState {
 
   const load = useCallback(async () => {
     const isCurrent = guard.begin()
-    const showLoading = !hasLeadsCache()
+    const showLoading = !hasLeadsCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
@@ -126,9 +126,11 @@ export function useDashboardData(): DashboardDataState {
       // Keep whatever was already on screen; only surface the error.
       setError("leadsLoadError")
     } finally {
-      if (isCurrent()) setLoading(false)
+      if (isCurrent() || showLoading) {
+        setLoading(false)
+      }
     }
-  }, [guard])
+  }, [activeSlug, guard])
 
   useAsyncEffect(() => {
     void load()
