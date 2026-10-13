@@ -5,30 +5,25 @@ import type { ReactNode } from "react"
 import { cn } from "cn"
 
 /**
- * Wraps client board content that replaces loading skeletons.
- *
- * - Enter: a very short opacity-only fade (no movement), skipped for reduced-motion users.
- * - `pending`: while filters/range change, the current numbers stay visible but slightly dimmed
- *   with a thin progress line above them — instead of falling back to skeletons.
+ * Wraps board content after load. Filter changes dim in place — no route-style motion here.
  */
 export function ClientBoardEnter({
   children,
   className,
   pending = false,
-  animateEnter = true,
+  animateEnter: _animateEnter = false,
 }: {
   children: ReactNode
   className?: string
   pending?: boolean
+  /** Reserved; route motion lives on ClientCorePageShell body only. */
   animateEnter?: boolean
 }) {
   return (
     <div
       className={cn(
-        "relative transition-opacity duration-200",
-        animateEnter &&
-          "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150 motion-safe:ease-out",
-        pending && "opacity-60",
+        "relative",
+        pending && "opacity-[0.72] transition-opacity duration-100 ease-out",
         className
       )}
       aria-busy={pending || undefined}
@@ -36,9 +31,9 @@ export function ClientBoardEnter({
       {pending ? (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 -top-3 h-0.5 overflow-hidden rounded-full bg-primary/10"
+          className="pointer-events-none absolute inset-x-0 -top-3 h-px overflow-hidden bg-primary/10"
         >
-          <span className="client-progress-bar block h-full w-1/3 rounded-full bg-primary/70" />
+          <span className="client-progress-bar block h-full w-1/4 rounded-full bg-primary/50" />
         </span>
       ) : null}
       {children}

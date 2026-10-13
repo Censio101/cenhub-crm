@@ -5,9 +5,10 @@ import { useEffect, useMemo, useState } from "react"
 
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { ClientCorePageShell } from "@/components/client/ClientCorePageShell"
 import { useClientNavigation } from "@/components/client/ClientNavigationProvider"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
-import { DashboardMetricsSkeleton } from "@/components/client/ClientBoardSkeletons"
+import { ClientBoardLoadingState } from "@/components/client/ClientBoardLoadingState"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { DashboardHeader } from "@/components/performance/DashboardHeader"
 import {
@@ -173,16 +174,14 @@ export function PerformanceDashboard() {
 
   return (
     <AdminClientRouteGate>
-      <div className="flex w-full flex-col gap-8">
-        {header}
-
+      <ClientCorePageShell header={header} bodyClassName="gap-8">
         {dataLoading ? (
-          <DashboardMetricsSkeleton />
+          <ClientBoardLoadingState variant="dashboard" />
         ) : data == null || (loadError && leads.length === 0) ? (
           <DashboardErrorState onRetry={() => (loadError ? void reload() : router.refresh())} />
         ) : (
           <ClientBoardEnter
-            className="flex w-full flex-col gap-8"
+            className="client-core-settle-stack flex w-full flex-col gap-8"
             pending={pending}
             animateEnter={animateBoardEnter}
           >
@@ -241,7 +240,7 @@ export function PerformanceDashboard() {
             />
           </ClientBoardEnter>
         )}
-      </div>
+      </ClientCorePageShell>
     </AdminClientRouteGate>
   )
 }

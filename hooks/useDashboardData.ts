@@ -126,7 +126,7 @@ export function useDashboardData(): DashboardDataState {
       // Keep whatever was already on screen; only surface the error.
       setError("leadsLoadError")
     } finally {
-      if (isCurrent() || showLoading) {
+      if (isCurrent() && showLoading) {
         setLoading(false)
       }
     }

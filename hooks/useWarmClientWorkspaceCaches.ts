@@ -6,8 +6,10 @@ import { useEffect, useRef } from "react"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
 import {
+  getAdSpendCache,
   hasCustomersCache,
   hasLeadsCache,
+  setAdSpendCache,
   setCustomersCache,
 } from "@/lib/data/client-cache"
 import { fetchJsonDeduped } from "@/lib/data/in-flight"
@@ -26,34 +28,56 @@ type CustomersResponse = {
   error?: string
 }
 
-/** Prefetch customers in the background so Kunder opens without a cold skeleton. */
+type AdSpendPayload = {
+  adSpendByMonth?: Record<string, number>
+  source?: "synced" | "demo" | "pending"
+  metaEnabled?: boolean
+  metaLastSyncedAt?: string | null
+}
+
+/** Prefetch customers + dashboard ad spend in the background on client core routes. */
 export function useWarmClientWorkspaceCaches() {
   const pathname = usePathname() ?? ""
   const { organization } = useActiveOrganization()
   const activeSlug = organization?.slug ?? null
-  const inflight = useRef(false)
+  const customersInflight = useRef(false)
+  const adSpendInflight = useRef(false)
 
   useEffect(() => {
     if (!isClientCorePath(pathname)) return
     if (!hasLeadsCache(activeSlug)) return
-    if (hasCustomersCache(activeSlug)) return
-    if (inflight.current) return
 
-    inflight.current = true
-    void (async () => {
-      try {
-        const result = await fetchJsonDeduped<CustomersResponse>("/api/customers")
-        const data = result.data
-        if (!result.ok || !data || data.error === NO_ACTIVE_ORGANIZATION_ERROR) return
-        setCustomersCache({
-          customers: data.customers,
-          source: data.source,
-          organizationName: data.organization?.name ?? null,
-          organizationSlug: data.organization?.slug ?? null,
-        })
-      } finally {
-        inflight.current = false
-      }
-    })()
+    if (!hasCustomersCache(activeSlug) && !customersInflight.current) {
+      customersInflight.current = true
+      void (async () => {
+        try {
+          const result = await fetchJsonDeduped<CustomersResponse>("/api/customers")
+          const data = result.data
+          if (!result.ok || !data || data.error === NO_ACTIVE_ORGANIZATION_ERROR) return
+          setCustomersCache({
+            customers: data.customers,
+            source: data.source,
+            organizationName: data.organization?.name ?? null,
+            organizationSlug: data.organization?.slug ?? null,
+          })
+        } finally {
+          customersInflight.current = false
+        }
+      })()
+    }
+
+    if (getAdSpendCache(activeSlug) === null && !adSpendInflight.current) {
+      adSpendInflight.current = true
+      void (async () => {
+        try {
+          const result = await fetchJsonDeduped<AdSpendPayload>("/api/metrics/ad-spend")
+          const data = result.data
+          if (!result.ok || !data) return
+          setAdSpendCache(data.adSpendByMonth ?? {}, activeSlug)
+        } finally {
+          adSpendInflight.current = false
+        }
+      })()
+    }
   }, [pathname, activeSlug])
 }

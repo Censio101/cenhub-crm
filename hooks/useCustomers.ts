@@ -94,7 +94,7 @@ export function useCustomers() {
       // Keep the customers already on screen; only surface the error (with a retry in the UI).
       setError("customersLoadError")
     } finally {
-      if (isCurrent()) setLoading(false)
+      if (isCurrent() && showLoading) setLoading(false)
     }
   }, [activeSlug, guard])
 

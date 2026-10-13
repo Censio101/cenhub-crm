@@ -144,7 +144,7 @@ export function useLeads() {
       // Keep the leads already on screen; only surface the error (with a retry in the UI).
       setError("leadsLoadError")
     } finally {
-      if (isCurrent()) setLoading(false)
+      if (isCurrent() && showLoading) setLoading(false)
     }
   }, [activeSlug, guard])
 

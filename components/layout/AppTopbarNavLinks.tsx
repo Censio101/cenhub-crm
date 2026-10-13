@@ -13,27 +13,35 @@ export type AppTopbarNavItem = {
 
 export function AppTopbarNavLinks({
   pathname,
+  pendingHref = null,
+  onNavigate,
   items,
 }: {
   pathname: string
+  pendingHref?: string | null
+  onNavigate?: (href: string) => void
   items: AppTopbarNavItem[]
 }) {
+  const activePath = pendingHref ?? pathname
+
   return (
     <>
       {items.map((item) => {
         const active =
           item.href === "/"
-            ? pathname === "/"
-            : pathname.startsWith(item.href)
+            ? activePath === "/"
+            : activePath.startsWith(item.href)
         const Icon = item.icon
 
         return (
           <Link
             key={item.href}
             href={item.href}
+            prefetch
+            onClick={() => onNavigate?.(item.href)}
             aria-label={item.label}
             className={cn(
-              "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
+              "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-[color,border-color] duration-75 sm:px-3",
               "border-b-2 focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none",
               active
                 ? "border-primary text-white"

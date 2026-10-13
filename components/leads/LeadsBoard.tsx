@@ -14,9 +14,10 @@ import {
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
+import { ClientCorePageShell } from "@/components/client/ClientCorePageShell"
 import { useClientNavigation } from "@/components/client/ClientNavigationProvider"
 import { LoadErrorNotice } from "@/components/client/LoadErrorNotice"
-import { LeadsBoardSkeleton } from "@/components/client/ClientBoardSkeletons"
+import { ClientBoardLoadingState } from "@/components/client/ClientBoardLoadingState"
 import { AddLeadDialog, EditLeadDialog } from "@/components/leads/AddLeadDialog"
 import { LeadSheetSortableHeader } from "@/components/leads/LeadSheetSortableHeader"
 import { LeadSheetFilterBar } from "@/components/leads/LeadSheetFilterBar"
@@ -1008,40 +1009,42 @@ export function LeadsBoard() {
     downloadCsv("leads.csv", toCsv(headers, rows))
   }
 
+  const pageHeader = (
+    <header className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="text-xl font-medium tracking-tight sm:text-2xl">{t("leadSheetPageTitle")}</h1>
+        {error === "leadsLoadError" ? (
+          <LoadErrorNotice
+            className="mt-2"
+            message={t(error)}
+            onRetry={() => void reload()}
+          />
+        ) : error ? (
+          <p className="mt-1 text-sm text-amber-700">{t(error)}</p>
+        ) : null}
+      </div>
+      <AddLeadDialog
+        columns={leadSheet.columns}
+        existingLeads={leads}
+        onCreate={(lead) => createLead(lead)}
+        trigger={
+          <Button size="sm" className="shrink-0">
+            <PlusIcon />
+            {t("leadSheetAddLead")}
+          </Button>
+        }
+      />
+    </header>
+  )
+
   return (
     <AdminClientRouteGate>
-    <div className="flex min-h-[calc(100dvh-9rem)] w-full flex-col gap-4">
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl font-medium tracking-tight sm:text-2xl">{t("leadSheetPageTitle")}</h1>
-          {error === "leadsLoadError" ? (
-            <LoadErrorNotice
-              className="mt-2"
-              message={t(error)}
-              onRetry={() => void reload()}
-            />
-          ) : error ? (
-            <p className="mt-1 text-sm text-amber-700">{t(error)}</p>
-          ) : null}
-        </div>
-        <AddLeadDialog
-          columns={leadSheet.columns}
-          existingLeads={leads}
-          onCreate={(lead) => createLead(lead)}
-          trigger={
-            <Button size="sm" className="shrink-0">
-              <PlusIcon />
-              {t("leadSheetAddLead")}
-            </Button>
-          }
-        />
-      </header>
-
+    <ClientCorePageShell header={pageHeader} bodyClassName="gap-6">
       {loading ? (
-        <LeadsBoardSkeleton />
+        <ClientBoardLoadingState variant="leads" />
       ) : (
         <ClientBoardEnter
-          className="flex flex-col gap-6"
+          className="client-core-settle-stack flex min-h-0 flex-1 flex-col gap-6"
           pending={pending}
           animateEnter={animateBoardEnter}
         >
@@ -1207,7 +1210,7 @@ export function LeadsBoard() {
       ) : null}
         </ClientBoardEnter>
       )}
-    </div>
+    </ClientCorePageShell>
     </AdminClientRouteGate>
   )
 }

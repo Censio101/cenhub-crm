@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { ContactRoundIcon, LayoutDashboardIcon, UsersIcon } from "lucide-react"
 
@@ -39,6 +39,7 @@ const censioLogoClass =
 
 export function AppTopbarShell() {
   const pathname = usePathname()
+  const [navPendingHref, setNavPendingHref] = useState<string | null>(null)
   const router = useRouter()
   const { t } = useLanguage()
   const { organization, role, loading: orgLoading } = useActiveOrganization()
@@ -99,6 +100,10 @@ export function AppTopbarShell() {
     navItems.length > 0 ||
     (reserveDashboardNav && !sessionReady) ||
     showAdminHeaderNav
+
+  useEffect(() => {
+    setNavPendingHref(null)
+  }, [pathname])
 
   useEffect(() => {
     if (!showClientDashboardNav) return
@@ -170,7 +175,12 @@ export function AppTopbarShell() {
           ) : null}
           {navItems.length > 0 ? (
             <Suspense fallback={<AppTopbarNavSkeleton />}>
-              <AppTopbarNavLinks pathname={pathname} items={navItems} />
+              <AppTopbarNavLinks
+                pathname={pathname}
+                pendingHref={navPendingHref}
+                onNavigate={setNavPendingHref}
+                items={navItems}
+              />
             </Suspense>
           ) : showAdminHeaderNav ? null : (
             <AppTopbarNavSkeleton />

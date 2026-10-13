@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -20,6 +21,7 @@ import {
   isClientWorkspaceWarm,
   markClientWorkspaceWarm,
 } from "@/lib/data/client-cache"
+import { shouldSettleClientCoreNavigation } from "@/lib/layout/client-navigation-ack"
 import {
   shouldAnimateBoardEnter,
   shouldAnimateSettingsEnter,
@@ -61,22 +63,19 @@ export function ClientNavigationProvider({ children }: { children: ReactNode }) 
   const { organization } = useActiveOrganization()
   const activeSlug = organization?.slug ?? null
 
-  const [navState, setNavState] = useState(() => {
-    const initial = getNavigationZone(pathname)
-    return { zone: initial, previous: null as NavigationZone | null }
-  })
-
+  const zone = getNavigationZone(pathname)
+  const prevZoneRef = useRef(zone)
+  const zoneChanged = prevZoneRef.current !== zone
   useEffect(() => {
-    setNavState((current) => {
-      const nextZone = getNavigationZone(pathname)
-      if (current.zone === nextZone) return current
-      return { zone: nextZone, previous: current.zone }
-    })
+    prevZoneRef.current = zone
+  }, [zone])
+
+  const prevPathRef = useRef(pathname)
+  const previousPath = prevPathRef.current
+  useEffect(() => {
+    prevPathRef.current = pathname
   }, [pathname])
 
-  const zone = navState.zone
-  const previousZone = navState.previous
-  const zoneChanged = previousZone !== null && previousZone !== zone
   const [workspaceWarm, setWorkspaceWarm] = useState(() => isClientWorkspaceWarm())
 
   useEffect(() => {
@@ -108,12 +107,12 @@ export function ClientNavigationProvider({ children }: { children: ReactNode }) 
   const boardCtx = useMemo(
     () => ({
       pathname,
-      previousZone,
+      previousZone: zoneChanged ? prevZoneRef.current : null,
       workspaceWarm,
       hasLeadsCache: hasLeadsCache(activeSlug),
       hasCustomersCache: hasCustomersCache(activeSlug),
     }),
-    [pathname, previousZone, workspaceWarm, activeSlug]
+    [pathname, zoneChanged, workspaceWarm, activeSlug]
   )
 
   const value = useMemo(
@@ -128,9 +127,16 @@ export function ClientNavigationProvider({ children }: { children: ReactNode }) 
     [zone, zoneChanged, workspaceWarm, boardCtx]
   )
 
+  const settleMotion = shouldSettleClientCoreNavigation(
+    previousPath,
+    pathname,
+    zoneChanged,
+    activeSlug
+  )
+
   return (
     <ClientNavigationContext.Provider value={value}>
-      <MainContentTransition zone={zone} zoneChanged={zoneChanged}>
+      <MainContentTransition pathname={pathname} zoneFade={zoneChanged} settle={settleMotion}>
         {children}
       </MainContentTransition>
     </ClientNavigationContext.Provider>

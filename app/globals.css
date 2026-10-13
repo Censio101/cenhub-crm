@@ -178,8 +178,29 @@
   animation: client-progress 1.2s ease-in-out infinite;
 }
 
+/*
+ * Client core nav (dashboard / leads / kunder): enterprise-quiet.
+ * One opacity pass on the body only — no scale, stagger, or sliding blocks (reads as “demo UI”).
+ */
+@keyframes client-core-content-in {
+  from {
+    opacity: 0.985;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.client-core-settle-active .client-core-settle-body {
+  animation: client-core-content-in 165ms ease-out both;
+}
+
 /* Respect "reduce motion": no shimmer sweep, a much slower spinner. */
 @media (prefers-reduced-motion: reduce) {
+  .client-core-settle-active .client-core-settle-body {
+    animation: none;
+  }
+
   .client-progress-bar {
     animation: none;
     width: 100%;
