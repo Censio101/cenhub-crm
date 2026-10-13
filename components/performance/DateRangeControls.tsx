@@ -53,6 +53,14 @@ import type { ComparisonMode, DatePreset, DateRange } from "@/lib/performance/ty
 
 const COMPARISON_MODES: ComparisonMode[] = ["previous_period", "previous_year", "custom"]
 
+/** Bounded presets offered when all time blocks peer comparison. */
+const COMPARISON_QUICK_PRESETS: DatePreset[] = [
+  "last_30_days",
+  "this_month",
+  "ytd",
+  "last_12_months",
+]
+
 function comparisonRangeIsReal(range: DateRange | null): range is DateRange {
   return range != null && range.start.getFullYear() >= 2000
 }
@@ -125,6 +133,7 @@ function DashboardCompareMenu({
   onDraft,
   onComparisonChange,
   onCustomRange,
+  onPresetForComparison,
 }: {
   preset: DatePreset
   range: DateRange
@@ -144,28 +153,27 @@ function DashboardCompareMenu({
     customRange?: DateRange | null
   }) => void
   onCustomRange: (range: DateRange) => void
+  onPresetForComparison: (preset: DatePreset) => void
 }) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const real = comparisonRangeIsReal(comparisonRange)
   const showCustomCalendar = comparisonEnabled && comparisonMode === "custom"
-  const triggerLabel = !comparisonAvailable
-    ? t("filterCompareUnavailableShort")
+  const triggerLabel = comparisonEnabled ? t("filterCompareChange") : t("filterCompareOff")
+  const triggerTitle = !comparisonAvailable
+    ? t("filterCompareAllTimeHint")
     : comparisonEnabled
       ? t("filterCompareChange")
       : t("filterCompareOff")
-  const triggerTitle = comparisonEnabled ? t("filterCompareChange") : t("filterCompareOff")
 
   return (
     <Popover modal={false} open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        disabled={!comparisonAvailable}
         aria-label={t("filterComparePeriod")}
         title={triggerTitle}
         className={cn(
           "group dashboard-chip inline-flex h-9 shrink-0 items-center justify-between gap-2 px-3 sm:min-w-[10.5rem]",
-          !comparisonEnabled && "text-muted-foreground",
-          !comparisonAvailable && "cursor-not-allowed opacity-80"
+          !comparisonEnabled && "text-muted-foreground"
         )}
       >
         <GitCompareIcon className="size-4 shrink-0 opacity-80" aria-hidden />
@@ -176,6 +184,33 @@ function DashboardCompareMenu({
         />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(100vw-2rem,20rem)] rounded-lg p-1.5 shadow-md">
+        {!comparisonAvailable ? (
+          <div className="space-y-3 px-2.5 py-2">
+            <p className="text-sm font-medium text-foreground">{t("filterCompareAllTimeTitle")}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t("filterCompareAllTimeBody")}
+            </p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("filterCompareAllTimePickLabel")}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {COMPARISON_QUICK_PRESETS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={compareRowClass}
+                  onClick={() => {
+                    onPresetForComparison(id)
+                    setOpen(false)
+                  }}
+                >
+                  {t(DATE_PRESET_MESSAGE_KEYS[id])}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
         {comparisonEnabled ? (
           <>
             <button
@@ -242,6 +277,8 @@ function DashboardCompareMenu({
             />
           </div>
         ) : null}
+          </>
+        )}
       </PopoverContent>
     </Popover>
   )
@@ -265,6 +302,7 @@ export function DateRangeControls({
   comparisonMode,
   comparisonRange,
   onPresetChange,
+  onPresetForComparison,
   onCustomRange,
   onComparisonChange,
   service,
@@ -284,6 +322,7 @@ export function DateRangeControls({
   comparisonMode: ComparisonMode
   comparisonRange: DateRange | null
   onPresetChange: (preset: DatePreset) => void
+  onPresetForComparison: (preset: DatePreset) => void
   onCustomRange: (range: DateRange, target: "current" | "comparison") => void
   onComparisonChange: (next: {
     enabled: boolean
@@ -548,6 +587,7 @@ export function DateRangeControls({
             onDraft={setComparisonDraft}
             onComparisonChange={onComparisonChange}
             onCustomRange={(next) => onCustomRange(next, "comparison")}
+            onPresetForComparison={onPresetForComparison}
           />
         </div>
       ) : null}

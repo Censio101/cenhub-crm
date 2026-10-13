@@ -38,6 +38,7 @@ export function OverviewBoard() {
     view,
     pending,
     onPresetChange,
+    onPresetForComparison,
     onCustomRange,
     onComparisonChange,
     onServiceChange,
@@ -107,6 +108,7 @@ export function OverviewBoard() {
           comparisonMode={view.comparisonMode}
           comparisonRange={view.comparisonRange}
           onPresetChange={onPresetChange}
+          onPresetForComparison={onPresetForComparison}
           onCustomRange={onCustomRange}
           onComparisonChange={onComparisonChange}
           service={view.service}

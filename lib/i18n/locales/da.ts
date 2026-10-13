@@ -1104,6 +1104,11 @@ const daMessages = {
   filterCompareDisable: "Slå sammenligning fra",
   filterCompareComparedTo: "Sammenlignes med",
   filterCompareUnavailableShort: "Sammenligning ikke tilgængelig",
+  filterCompareAllTimeTitle: "Sammenlign en afgrænset periode",
+  filterCompareAllTimeBody:
+    "Hele perioden viser hele jeres historik i nøgletal. For at se udvikling mod forrige periode eller år, vælg en afgrænset periode nedenfor — så slår vi sammenligning til for dig.",
+  filterCompareAllTimePickLabel: "Hurtige perioder med sammenligning",
+  filterCompareAllTimeHint: "Åbn for at sammenligne — vælg først en periode",
   compareCustom: "Tilpasset sammenligningsperiode",
   dashboardFunnelMeta: "Meta annonce funnel",
   dashboardFunnelWebsite: "Hjemmeside funnel",

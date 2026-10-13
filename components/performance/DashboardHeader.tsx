@@ -24,6 +24,7 @@ export function DashboardHeader({
   comparisonMode,
   comparisonRange,
   onPresetChange,
+  onPresetForComparison,
   onCustomRange,
   onComparisonChange,
   service,
@@ -41,6 +42,7 @@ export function DashboardHeader({
   comparisonMode: ComparisonMode
   comparisonRange: DateRange | null
   onPresetChange: (preset: DatePreset) => void
+  onPresetForComparison: (preset: DatePreset) => void
   onCustomRange: (range: DateRange, target: "current" | "comparison") => void
   onComparisonChange: (next: {
     enabled: boolean
@@ -105,6 +107,7 @@ export function DashboardHeader({
         comparisonMode={comparisonMode}
         comparisonRange={comparisonRange}
         onPresetChange={onPresetChange}
+        onPresetForComparison={onPresetForComparison}
         onCustomRange={onCustomRange}
         onComparisonChange={onComparisonChange}
         service={service}

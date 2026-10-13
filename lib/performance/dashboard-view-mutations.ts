@@ -39,6 +39,28 @@ export function comparisonBaseRange(
   return { start, end: range.end }
 }
 
+/** Switch off all time (or similar) and turn on previous-period comparison in one URL update. */
+export function applyPresetWithComparison(
+  view: DashboardViewState,
+  preset: DatePreset,
+  anchorStart?: Date | null
+): DashboardViewState {
+  const range = resolvePreset(preset)
+  const compareOk = isDashboardComparisonAvailable(preset, range, anchorStart)
+  if (!compareOk) {
+    return applyPresetChange(view, preset, anchorStart)
+  }
+  const base = comparisonBaseRange(range, preset, anchorStart)
+  return {
+    ...view,
+    preset,
+    range,
+    comparisonEnabled: true,
+    comparisonMode: "previous_period",
+    comparisonRange: base ? resolveComparisonRange(base, "previous_period", null) : null,
+  }
+}
+
 export function applyPresetChange(
   view: DashboardViewState,
   preset: DatePreset,

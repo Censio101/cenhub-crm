@@ -57,6 +57,7 @@ export function PerformanceDashboard() {
     view,
     pending,
     onPresetChange,
+    onPresetForComparison,
     onCustomRange,
     onComparisonChange,
     onServiceChange,
@@ -159,6 +160,7 @@ export function PerformanceDashboard() {
       comparisonMode={view.comparisonMode}
       comparisonRange={view.comparisonRange}
       onPresetChange={onPresetChange}
+      onPresetForComparison={onPresetForComparison}
       onCustomRange={onCustomRange}
       onComparisonChange={onComparisonChange}
       service={view.service}

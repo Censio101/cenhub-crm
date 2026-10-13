@@ -1101,6 +1101,11 @@ export const en: Messages = {
   filterCompareDisable: "Turn off comparison",
   filterCompareComparedTo: "Compared to",
   filterCompareUnavailableShort: "Comparison unavailable",
+  filterCompareAllTimeTitle: "Compare a fixed period",
+  filterCompareAllTimeBody:
+    "All time shows your full history in the KPIs. To see change vs a previous period or year, pick a bounded range below — we’ll turn on comparison for you.",
+  filterCompareAllTimePickLabel: "Quick ranges with comparison",
+  filterCompareAllTimeHint: "Open to compare — pick a date range first",
   compareCustom: "Custom comparison period",
   dashboardFunnelMeta: "Meta ads funnel",
   dashboardFunnelWebsite: "Website funnel",

@@ -8,6 +8,7 @@ import {
   applyComparisonChange,
   applyCustomRangeChange,
   applyPresetChange,
+  applyPresetWithComparison,
 } from "@/lib/performance/dashboard-view-mutations"
 import type { ComparisonMode, DatePreset, DateRange, MetricId } from "@/lib/performance/types"
 import {
@@ -45,6 +46,12 @@ export function useDashboardViewState(basePath: string, comparisonAnchorStart?: 
 
   const onPresetChange = useCallback(
     (preset: DatePreset) => replaceState(applyPresetChange(view, preset, comparisonAnchorStart)),
+    [comparisonAnchorStart, replaceState, view]
+  )
+
+  const onPresetForComparison = useCallback(
+    (preset: DatePreset) =>
+      replaceState(applyPresetWithComparison(view, preset, comparisonAnchorStart)),
     [comparisonAnchorStart, replaceState, view]
   )
 
@@ -95,6 +102,7 @@ export function useDashboardViewState(basePath: string, comparisonAnchorStart?: 
     pending,
     replaceState,
     onPresetChange,
+    onPresetForComparison,
     onCustomRange,
     onComparisonChange,
     onServiceChange,
