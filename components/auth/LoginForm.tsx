@@ -234,12 +234,24 @@ export function LoginForm() {
           <CardDescription>{t("loginDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-5" onSubmit={handlePasswordLogin}>
-            <label className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-75 grid gap-2 text-sm">
+          <form
+            className="grid gap-5"
+            method="post"
+            action="/login"
+            onSubmit={handlePasswordLogin}
+          >
+            <label
+              htmlFor="login-email"
+              className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-75 grid gap-2 text-sm"
+            >
               <span className="font-medium text-muted-foreground">{t("email")}</span>
               <input
+                id="login-email"
+                name="email"
                 type="email"
-                autoComplete="email"
+                inputMode="email"
+                autoComplete="username email"
+                spellCheck={false}
                 required
                 value={email}
                 onChange={(event) => {
@@ -251,10 +263,15 @@ export function LoginForm() {
                 disabled={loginBusy || loading}
               />
             </label>
-            <label className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-150 grid gap-2 text-sm">
+            <label
+              htmlFor="login-password"
+              className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-500 motion-safe:delay-150 grid gap-2 text-sm"
+            >
               <span className="font-medium text-muted-foreground">{t("password")}</span>
               <div className="relative">
                 <input
+                  id="login-password"
+                  name="password"
                   type={passwordVisible ? "text" : "password"}
                   autoComplete="current-password"
                   required
