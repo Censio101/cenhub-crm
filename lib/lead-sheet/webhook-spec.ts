@@ -50,6 +50,12 @@ export const STANDARD_WEBHOOK_FIELDS: {
   { key: "externalId", type: "externalid", required: "no" },
 ]
 
+/** Label shown in funnel Map fields (mapping target key unchanged in saved JSON). */
+export function webhookStandardFieldMapLabel(key: string): string {
+  if (key === "segment") return "businesstype"
+  return key
+}
+
 function toSpec(def: LeadSheetCustomFieldDef): WebhookCustomFieldSpec {
   return {
     key: def.fieldKey,
@@ -121,6 +127,57 @@ export function buildWebhookServiceSpecs(
     nameEn: service.nameEn,
     aliases: aliasLists.get(service.id) ?? [],
   }))
+}
+
+/** Example body for mapping mode (Make/Facebook-style names — mapped in the admin UI). */
+export const MAPPING_INBOUND_EXAMPLE: Record<string, unknown> = {
+  lead_id: "make-example-001",
+  created_time: "2026-03-24T14:30:00+01:00",
+  contact: {
+    full_name: "Jane Doe",
+    email: "jane@example.com",
+    phone_number: "+45 20123456",
+  },
+  address: {
+    street: "Main St 1",
+    postcode: "2100",
+    city: "Copenhagen",
+  },
+  interested_services: ["Roofing", "Plumbing"],
+  notes: "Optional free text",
+}
+
+/**
+ * Mapping-mode sample JSON: nested Make/form-style paths for standard lead fields and
+ * client service slugs. Lead-sheet-only columns (e.g. quality set in the CRM) are omitted.
+ */
+export function buildMappingInboundExample(
+  services: readonly ClientService[]
+): Record<string, unknown> {
+  const interested_services =
+    services.length > 0
+      ? services.slice(0, Math.min(2, services.length)).map((service) => service.id)
+      : (MAPPING_INBOUND_EXAMPLE.interested_services as string[])
+  return {
+    lead_id: "make-example-001",
+    created_time: "2026-03-24T14:30:00+01:00",
+    contact: {
+      full_name: "Jane Doe",
+      email: "jane@example.com",
+      phone_number: "+45 20123456",
+      company_name: "Example ApS",
+    },
+    address: {
+      street: "Main St 1",
+      postcode: "2100",
+      city: "Copenhagen",
+    },
+    interested_services,
+    businesstype: "b2c",
+    platform: "website",
+    meta_ad_id: "120330000000000",
+    notes: "Optional free text",
+  }
 }
 
 /** Standard webhook example using this client's enabled service slugs. */

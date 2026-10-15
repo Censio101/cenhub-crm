@@ -5,6 +5,7 @@ import { AlertTriangleIcon, Loader2Icon, SparklesIcon, Trash2Icon } from "lucide
 
 import { adminOutlineButtonClass } from "@/components/admin/admin-ui-styles"
 import { FunnelTestPanel } from "@/components/admin/funnels/FunnelTestPanel"
+import { WebhookServicesReference } from "@/components/admin/funnels/WebhookServicesReference"
 import { fieldTypeLabelKey } from "@/components/admin/lead-sheets/field-type-meta"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
@@ -23,10 +24,10 @@ import {
 } from "@/lib/lead-sheet/mapping-review"
 import {
   STANDARD_WEBHOOK_FIELDS,
+  webhookStandardFieldMapLabel,
   type WebhookCustomFieldSpec,
   type WebhookServiceSpec,
 } from "@/lib/lead-sheet/webhook-spec"
-import { serviceName } from "@/lib/services/types"
 import { flattenPayloadPaths, suggestMappings, type PayloadPath } from "@/lib/leads/payload-paths"
 import { getByPath } from "@/lib/leads/source-path"
 
@@ -76,7 +77,7 @@ export function FunnelFieldMapper({
   webhookServices = [],
   onSaved,
 }: Props) {
-  const { t, locale } = useLanguage()
+  const { t } = useLanguage()
   const [draft, setDraft] = useState<Mapping>(() => ({ ...savedMapping }))
   const [manual, setManual] = useState<ReadonlySet<string>>(() => new Set())
   const [saving, setSaving] = useState(false)
@@ -99,18 +100,13 @@ export function FunnelFieldMapper({
         names: [] as string[],
       })),
       { target: "serviceIds", custom: null, names: [] as string[] },
-      ...webhookServices.map((service) => ({
-        target: `${FUNNEL_SERVICE_TARGET_PREFIX}${service.id}`,
-        custom: null as WebhookCustomFieldSpec | null,
-        names: [service.id, service.nameDa, service.nameEn],
-      })),
       ...customFields.map((field) => ({
         target: `${FUNNEL_TARGET_PREFIX}${field.key}`,
         custom: field,
         names: [field.key, field.label],
       })),
     ],
-    [customFields, webhookServices]
+    [customFields]
   )
 
   const customKeys = useMemo(() => customFields.map((f) => f.key), [customFields])
@@ -333,33 +329,25 @@ export function FunnelFieldMapper({
       ) : null}
 
       <div className="space-y-2.5">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("webhookStandardFields")}
-        </p>
+        <p className="text-xs font-medium text-muted-foreground">{t("webhookStandardFields")}</p>
         {STANDARD_WEBHOOK_FIELDS.filter((field) => field.key !== "serviceIds").map((field) =>
-          row(field.key, field.key, undefined, RECOMMENDED.has(field.key))
+          row(
+            field.key,
+            webhookStandardFieldMapLabel(field.key),
+            undefined,
+            RECOMMENDED.has(field.key)
+          )
         )}
       </div>
 
       <div className="space-y-2.5 rounded-xl border border-[#e8e0d8] bg-[#faf8f6] p-3.5">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("funnelOwnServicesSection")}
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{t("funnelOwnServicesSectionHint")}</p>
-        </div>
-        {row("serviceIds", "serviceIds", t("funnelOwnServiceIdsListHint"))}
-        {webhookServices.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("webhookServicesEmpty")}</p>
-        ) : (
-          webhookServices.map((service) =>
-            row(
-              `${FUNNEL_SERVICE_TARGET_PREFIX}${service.id}`,
-              service.id,
-              serviceName(service, locale)
-            )
-          )
-        )}
+        <p className="text-xs font-medium text-muted-foreground">{t("funnelOwnServicesSection")}</p>
+        {row("serviceIds", "serviceIds")}
+        <WebhookServicesReference
+          services={webhookServices}
+          flat
+          introKey="funnelMappingServicesIntro"
+        />
       </div>
 
       {customFields.length > 0 ? (

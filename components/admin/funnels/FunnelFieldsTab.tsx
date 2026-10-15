@@ -2,6 +2,7 @@
 
 import { FunnelFieldMapper } from "@/components/admin/funnels/FunnelFieldMapper"
 import { FunnelFormatSelector } from "@/components/admin/funnels/FunnelFormatSelector"
+import { FunnelMakeHttpSample } from "@/components/admin/funnels/FunnelMakeHttpSample"
 import { FunnelPayloadDoc } from "@/components/admin/funnels/FunnelPayloadDoc"
 import { FunnelSampleStep } from "@/components/admin/funnels/FunnelSampleStep"
 import type { FunnelDto, FunnelFormat } from "@/components/admin/funnels/types"
@@ -9,10 +10,13 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 
 export type { FunnelFormat }
 import type { useFunnelSample } from "@/hooks/useFunnelSample"
-import type {
-  WebhookCustomFieldSpec,
-  WebhookLeadSheetInfo,
-  WebhookServiceSpec,
+import {
+  buildExamplePayload,
+  buildMappingInboundExample,
+  buildStandardInboundExample,
+  type WebhookCustomFieldSpec,
+  type WebhookLeadSheetInfo,
+  type WebhookServiceSpec,
 } from "@/lib/lead-sheet/webhook-spec"
 import type { ClientService } from "@/lib/services/types"
 import { cn } from "cn"
@@ -64,6 +68,12 @@ export function FunnelFieldsTab({
   const { t } = useLanguage()
   const { state } = sampleApi
   const sectionClass = "rounded-xl border border-[#e8e0d8] bg-white p-4 shadow-sm sm:p-5"
+  const customFieldSpecs = leadSheet?.customFields ?? []
+  const fixedPayload = buildExamplePayload(
+    buildStandardInboundExample(enabledServices),
+    customFieldSpecs
+  )
+  const mappingPayload = buildMappingInboundExample(enabledServices)
 
   return (
     <div className="space-y-3">
@@ -77,6 +87,15 @@ export function FunnelFieldsTab({
 
       {format === "ours" ? (
         <div className={cn(sectionClass, "space-y-4")}>
+          <FunnelMakeHttpSample
+            funnelId={funnel.id}
+            variant="fixed"
+            url={url}
+            secret={funnel.webhookSecret}
+            payload={fixedPayload}
+            copiedKey={copiedKey}
+            onCopy={onCopy}
+          />
           <FunnelPayloadDoc
             funnelId={funnel.id}
             url={url}
@@ -86,6 +105,7 @@ export function FunnelFieldsTab({
             webhookServices={webhookServices}
             copiedKey={copiedKey}
             onCopy={onCopy}
+            referenceOnly
           />
         </div>
       ) : sampleLoading ? (
@@ -99,19 +119,35 @@ export function FunnelFieldsTab({
         </div>
       ) : (
         <>
-          <section className={sectionClass}>
-            <FunnelSampleStep
-              state={state}
-              enabled={funnel.enabled}
-              fieldCount={fieldCount}
-              truncated={truncated}
-              actionError={sampleApi.actionError}
-              onListen={() => void sampleApi.listen()}
-              onStop={() => void sampleApi.stop()}
-              onClear={() => void sampleApi.clear()}
-            />
+          <section className={cn(sectionClass, "divide-y divide-[#ece4da] space-y-0")}>
+            <div className="pb-3.5 sm:pb-4">
+              <FunnelMakeHttpSample
+                funnelId={funnel.id}
+                variant="mapping"
+                url={url}
+                secret={funnel.webhookSecret}
+                payload={mappingPayload}
+                copiedKey={copiedKey}
+                onCopy={onCopy}
+                embedded
+              />
+            </div>
+            <div className="pt-3.5 sm:pt-4">
+              <FunnelSampleStep
+                state={state}
+                enabled={funnel.enabled}
+                fieldCount={fieldCount}
+                truncated={truncated}
+                actionError={sampleApi.actionError}
+                onListen={() => void sampleApi.listen()}
+                onStop={() => void sampleApi.stop()}
+                onClear={() => void sampleApi.clear()}
+                embedded
+              />
+            </div>
           </section>
           <section className={sectionClass}>
+            <h3 className="mb-4 text-sm font-semibold text-foreground">{t("funnelSectionMappingPlain")}</h3>
             <FunnelFieldMapper
               key={`${funnel.id}:${JSON.stringify(funnel.fieldMapping)}`}
               slug={slug}

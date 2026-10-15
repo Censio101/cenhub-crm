@@ -1,4 +1,5 @@
 import type { WorkspaceIntegrationsPublic } from "@/lib/admin/workspace-integrations"
+import type { MailgunDeliverySettings } from "@/lib/email/mailgun-delivery-settings"
 
 export type SendMailInput = {
   to: string
@@ -8,14 +9,10 @@ export type SendMailInput = {
   replyTo?: string
 }
 
-export async function sendMailWithIntegrations(
-  settings: WorkspaceIntegrationsPublic,
+export async function sendMailWithMailgunSettings(
+  settings: MailgunDeliverySettings,
   input: SendMailInput
 ): Promise<void> {
-  if (!settings.mailgunApiKey || !settings.mailgunDomain) {
-    throw new Error("Mailgun is not configured")
-  }
-
   const from = `${settings.mailFromName} <${settings.mailFrom}>`
   const body = new URLSearchParams({
     from,
@@ -49,4 +46,25 @@ export async function sendMailWithIntegrations(
         : `Mailgun request failed (${response.status})`
     )
   }
+}
+
+export async function sendMailWithIntegrations(
+  settings: WorkspaceIntegrationsPublic,
+  input: SendMailInput
+): Promise<void> {
+  if (!settings.mailgunApiKey || !settings.mailgunDomain) {
+    throw new Error("Mailgun is not configured")
+  }
+
+  await sendMailWithMailgunSettings(
+    {
+      mailgunApiKey: settings.mailgunApiKey,
+      mailgunDomain: settings.mailgunDomain,
+      mailgunApiBase: settings.mailgunApiBase,
+      mailFrom: settings.mailFrom,
+      mailFromName: settings.mailFromName,
+      source: "workspace",
+    },
+    input
+  )
 }

@@ -43,6 +43,15 @@ vi.mock("@/lib/db/lead-sheet-repository", () => ({
   resolveLeadSheetForOrganization: mocks.resolveLeadSheetForOrganization,
   listCustomFieldDefs: mocks.listCustomFieldDefs,
 }))
+vi.mock("@/lib/leads/notify-new-lead", () => ({
+  notifyNewLeadFromFunnelWebhook: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock("@/lib/db/organizations-repository", () => ({
+  getOrganizationById: vi.fn().mockResolvedValue({
+    id: "org1",
+    primary_contact_email: "client@test.dk",
+  }),
+}))
 
 import { POST } from "@/app/api/webhooks/funnels/[funnelId]/route"
 

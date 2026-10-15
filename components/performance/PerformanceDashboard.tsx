@@ -138,11 +138,6 @@ export function PerformanceDashboard() {
     [leads, measuredRange]
   )
 
-  const showChartYearHint =
-    view.preset !== "ytd" &&
-    view.preset !== "last_12_months" &&
-    view.preset !== "all_time"
-
   const chartCurrentLabel = data != null ? String(data.year.year) : String(measuredRange.end.getFullYear())
   const chartComparisonLabel =
     view.comparisonEnabled &&
@@ -225,7 +220,6 @@ export function PerformanceDashboard() {
                   chartYear={data.year.year}
                   onChartYearChange={setChartYear}
                   onMetricChange={onMetricChange}
-                  showYearScopeHint={showChartYearHint}
                 />
                 <LeadPipelineBar
                   stats={pipelineStats}

@@ -12,6 +12,7 @@ import {
   WrenchIcon,
   FunnelIcon,
   LayoutGridIcon,
+  MailIcon,
   Settings2Icon,
   SheetIcon,
   TagsIcon,
@@ -91,6 +92,7 @@ export function ClientManageSidebar() {
     router.prefetch(adminClientSettingsSectionPath(slug, "funnels"))
     router.prefetch(adminClientSettingsSectionPath(slug, "import"))
     router.prefetch(adminClientSettingsSectionPath(slug, "services"))
+    router.prefetch(adminClientSettingsSectionPath(slug, "email"))
     router.prefetch(adminClientSettingsSectionPath(slug, "settings"))
   }, [router, slug])
 
@@ -162,6 +164,12 @@ export function ClientManageSidebar() {
       labelKey: "clientNavImport",
       icon: FileUpIcon,
       active: section === "import",
+    },
+    {
+      href: adminClientSettingsSectionPath(slug, "email"),
+      labelKey: "clientNavEmail",
+      icon: MailIcon,
+      active: section === "email",
     },
     {
       href: adminClientSettingsSectionPath(slug, "settings"),

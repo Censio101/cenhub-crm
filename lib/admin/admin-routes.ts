@@ -22,6 +22,7 @@ export type AdminClientSection =
   | "funnels"
   | "import"
   | "services"
+  | "email"
   | "settings"
 
 export function parseAdminClientSlug(pathname: string): string | null {
@@ -97,6 +98,12 @@ function sectionSuffix(pathname: string, slug: string): AdminClientSection | nul
   }
   if (pathname.startsWith(`${canonicalBase}/meta`) || pathname.startsWith(`${legacyBase}/meta`)) {
     return "meta"
+  }
+  if (
+    pathname.startsWith(`${canonicalBase}/email`) ||
+    pathname.startsWith(`${legacyBase}/email`)
+  ) {
+    return "email"
   }
   if (
     pathname.startsWith(`${canonicalBase}/settings`) ||

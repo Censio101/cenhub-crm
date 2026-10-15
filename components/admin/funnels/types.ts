@@ -6,7 +6,7 @@ export type FunnelDto = {
   slug: string
   platform: "website" | "landing" | "manual"
   enabled: boolean
-  /** `ours`: the sender uses our names (mapping ignored). `own`: the saved mapping applies. */
+  /** `ours`: fixed Censio field names. `own`: mapping mode (saved paths apply). */
   dataFormat: "ours" | "own"
   fieldMapping: Record<string, string>
   webhookSecret: string

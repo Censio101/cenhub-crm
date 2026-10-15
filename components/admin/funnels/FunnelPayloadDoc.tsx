@@ -29,6 +29,8 @@ type Props = {
   webhookServices: readonly WebhookServiceSpec[]
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
+  /** Hide JSON/cURL when the Make bar above already provides copy + setup guide. */
+  referenceOnly?: boolean
 }
 
 const thClass = "px-3 py-2 text-left font-medium text-muted-foreground"
@@ -75,6 +77,7 @@ export function FunnelPayloadDoc({
   webhookServices,
   copiedKey,
   onCopy,
+  referenceOnly = false,
 }: Props) {
   const { t } = useLanguage()
   const customFields: WebhookCustomFieldSpec[] = leadSheet?.customFields ?? []
@@ -87,43 +90,49 @@ export function FunnelPayloadDoc({
 
   return (
     <section className="space-y-3 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium text-foreground">{t("funnelCanonicalDoc")}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={adminOutlineButtonClass}
-            onClick={() => onCopy(jsonKey, json)}
-          >
-            {copiedKey === jsonKey ? (
-              <CheckIcon className="size-4 text-emerald-600" aria-hidden />
-            ) : (
-              <CopyIcon className="size-4" aria-hidden />
-            )}
-            {copiedKey === jsonKey ? t("funnelCopied") : t("funnelCopyJson")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={adminOutlineButtonClass}
-            onClick={() => onCopy(curlKey, curl)}
-          >
-            {copiedKey === curlKey ? (
-              <CheckIcon className="size-4 text-emerald-600" aria-hidden />
-            ) : (
-              <CopyIcon className="size-4" aria-hidden />
-            )}
-            {copiedKey === curlKey ? t("funnelCopied") : t("webhookCopyCurl")}
-          </Button>
-        </div>
-      </div>
+      {referenceOnly ? (
+        <p className="font-medium text-foreground">{t("funnelPayloadFieldReference")}</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium text-foreground">{t("funnelCanonicalDoc")}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={adminOutlineButtonClass}
+                onClick={() => onCopy(jsonKey, json)}
+              >
+                {copiedKey === jsonKey ? (
+                  <CheckIcon className="size-4 text-emerald-600" aria-hidden />
+                ) : (
+                  <CopyIcon className="size-4" aria-hidden />
+                )}
+                {copiedKey === jsonKey ? t("funnelCopied") : t("funnelCopyJson")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={adminOutlineButtonClass}
+                onClick={() => onCopy(curlKey, curl)}
+              >
+                {copiedKey === curlKey ? (
+                  <CheckIcon className="size-4 text-emerald-600" aria-hidden />
+                ) : (
+                  <CopyIcon className="size-4" aria-hidden />
+                )}
+                {copiedKey === curlKey ? t("funnelCopied") : t("webhookCopyCurl")}
+              </Button>
+            </div>
+          </div>
 
-      <pre className="max-h-72 overflow-auto rounded-lg border border-[#e8e0d8] bg-[#faf8f5] p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
-        {json}
-      </pre>
+          <pre className="max-h-72 overflow-auto rounded-lg border border-[#e8e0d8] bg-[#faf8f5] p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+            {json}
+          </pre>
+        </>
+      )}
       {customFields.length === 0 ? null : (
         <CollapsibleSection title={t("webhookSheetFields")} defaultOpen>
           <FieldsTable>

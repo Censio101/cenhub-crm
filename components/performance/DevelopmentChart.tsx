@@ -50,7 +50,6 @@ export function DevelopmentChart({
   chartYear,
   onChartYearChange,
   onMetricChange,
-  showYearScopeHint = false,
 }: {
   data: PerformanceDashboardData
   metricId: MetricId
@@ -61,7 +60,6 @@ export function DevelopmentChart({
   chartYear: number
   onChartYearChange: (year: number) => void
   onMetricChange: (metricId: MetricId) => void
-  showYearScopeHint?: boolean
 }) {
   const { locale, t } = useLanguage()
   const metric = localizeMetric(getMetric(metricId), t)
@@ -80,16 +78,9 @@ export function DevelopmentChart({
           <h2 className="text-lg font-medium tracking-tight text-[var(--text-primary)]">
             {t("dashboardChartTitle")}
           </h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {compareActive
-              ? comparisonLabel
-                ? t("dashboardChartCompareSubtitle")
-                : t("kpiNoCompareData")
-              : t("dashboardChartSubtitle")}
-          </p>
-          {showYearScopeHint ? (
-            <p className="mt-1 text-xs text-[var(--text-secondary)]">
-              {t("dashboardChartYearScopeHint")}
+          {compareActive ? (
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              {comparisonLabel ? t("dashboardChartCompareSubtitle") : t("kpiNoCompareData")}
             </p>
           ) : null}
         </div>

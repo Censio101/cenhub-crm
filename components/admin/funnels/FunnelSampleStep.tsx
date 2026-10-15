@@ -19,6 +19,8 @@ type Props = {
   onListen: () => void
   onStop: () => void
   onClear: () => void
+  /** Flat row inside a shared section — no nested bordered card. */
+  embedded?: boolean
 }
 
 /** Seconds left until `endsAt`, counted down once a second. */

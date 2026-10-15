@@ -25,9 +25,10 @@ export function FunnelFormatSelector({ format, onChooseFormat }: Props) {
     id: FunnelFormat
     icon: typeof FileJsonIcon
     label: string
+    hint: string
   }[] = [
-    { id: "ours", icon: FileJsonIcon, label: t("funnelFormatOurs") },
-    { id: "own", icon: ShuffleIcon, label: t("funnelFormatOwn") },
+    { id: "ours", icon: FileJsonIcon, label: t("funnelFormatOurs"), hint: t("funnelFormatOursHint") },
+    { id: "own", icon: ShuffleIcon, label: t("funnelFormatOwn"), hint: t("funnelFormatOwnHint") },
   ]
 
   const current = options.find((o) => o.id === format) ?? options[0]
@@ -102,7 +103,10 @@ export function FunnelFormatSelector({ format, onChooseFormat }: Props) {
                     >
                       <Icon className="size-4" aria-hidden />
                     </span>
-                    <span className="min-w-0 flex-1 text-sm font-medium">{option.label}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">{option.label}</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{option.hint}</span>
+                    </span>
                     {selected ? (
                       <CheckIcon className="size-4 shrink-0 text-primary" aria-hidden />
                     ) : null}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { createLead, findLeadIdByLegacyId } from "@/lib/db/leads-repository"
+import { getOrganizationById } from "@/lib/db/organizations-repository"
 import {
   captureFunnelSample,
   getLeadFunnelById,
@@ -14,6 +15,7 @@ import {
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
+import { notifyNewLeadFromFunnelWebhook } from "@/lib/leads/notify-new-lead"
 import { buildInboundLead, parseInbound } from "@/lib/leads/process-inbound"
 import { readWebhookBody } from "@/lib/leads/read-webhook-body"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -119,6 +121,22 @@ export async function POST(request: Request, context: RouteContext) {
       }
       throw insertError
     }
+
+    void getOrganizationById(admin, funnel.organization_id)
+      .then((org) => {
+        if (!org) return
+        return notifyNewLeadFromFunnelWebhook(admin, {
+          organizationId: funnel.organization_id,
+          primaryContactEmail: org.primary_contact_email ?? null,
+          funnelId: funnel.id,
+          funnelName: funnel.name,
+          lead: created,
+        })
+      })
+      .catch((notifyError) => {
+        console.error("lead notify email failed", funnelId, notifyError)
+      })
+
     return NextResponse.json(
       { ok: true, leadId: created.id, ...(warnings.length > 0 ? { warnings } : {}) },
       { status: 201 }

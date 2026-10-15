@@ -138,7 +138,7 @@ const STANDARD_ALIASES: Record<string, string[]> = {
     "mobil",
   ],
   leadDate: ["leaddate", "date", "createdat", "created", "submittedat", "timestamp", "dato"],
-  segment: ["segment", "customertype", "type"],
+  segment: ["businesstype", "business_type", "segment", "customertype", "type"],
   serviceIds: ["serviceids", "services", "service", "ydelser", "ydelse"],
   platform: ["platform", "channel", "source"],
   companyName: ["companyname", "company", "organization", "organisation", "firma", "virksomhed"],
