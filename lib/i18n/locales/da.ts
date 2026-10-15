@@ -1279,6 +1279,13 @@ const daMessages = {
   webhookColRequired: "Påkrævet",
   webhookRecommended: "Anbefalet",
   webhookOptional: "Valgfri",
+  webhookServicesTitle: "Kundens ydelser (serviceIds)",
+  webhookServicesIntro:
+    "Send én eller flere slugs i serviceIds. Eksterne betegnelser mappes under Ydelser → Indgående ydelsesmapping.",
+  webhookServicesEmpty: "Ingen ydelser valgt for denne kunde endnu.",
+  webhookServicesColId: "Slug",
+  webhookServicesColName: "Navn",
+  webhookServicesColAliases: "Mappede betegnelser",
   webhookFieldKeyCopy: "Kopiér webhook-feltnøgle",
   webhookStaleTitle: "Lead-arket er ændret — gennemgå dine webhooks",
   webhookStaleBody:
