@@ -152,12 +152,13 @@ export function parseImportSegment(value: CellValue | undefined): LeadSegmentId 
  */
 export function parseImportServices(
   value: CellValue | undefined,
-  services: readonly ClientService[]
+  services: readonly ClientService[],
+  serviceAliasMap?: ReadonlyMap<string, string>
 ): {
   ids: string[]
   unknown: string[]
 } {
-  return matchServices(splitServiceText(cellText(value, 400)), services)
+  return matchServices(splitServiceText(cellText(value, 400)), services, serviceAliasMap)
 }
 
 export function normalizeEmail(value: CellValue | undefined): string {

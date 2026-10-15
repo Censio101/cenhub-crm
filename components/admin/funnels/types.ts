@@ -1,3 +1,5 @@
+export type FunnelFormat = "ours" | "own"
+
 export type FunnelDto = {
   id: string
   name: string

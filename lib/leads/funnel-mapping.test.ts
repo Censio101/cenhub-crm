@@ -20,6 +20,7 @@ describe("isValidMappingTarget", () => {
     expect(isValidMappingTarget("fullName")).toBe(true)
     expect(isValidMappingTarget("externalId")).toBe(true)
     expect(isValidMappingTarget("customFields.house_size")).toBe(true)
+    expect(isValidMappingTarget("serviceIds.tagdaekning")).toBe(true)
   })
   it("rejects unknown targets and bad custom keys", () => {
     expect(isValidMappingTarget("status")).toBe(false)

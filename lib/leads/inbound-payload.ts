@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 
+import { funnelServiceTargetSlug } from "@/lib/lead-sheet/mapping-review"
 import type { LeadSource } from "@/lib/db/types"
 import {
   isLeadPlatformId,
@@ -39,6 +40,35 @@ export const CUSTOM_FIELD_TARGET_PREFIX = "customFields."
 
 export { escapePathSegment, getByPath, splitSourcePath }
 
+function asString(value: unknown): string {
+  if (value == null) return ""
+  if (typeof value === "string") return value.trim()
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+  return ""
+}
+
+/** True when a mapped path means this service was chosen on the sender's form. */
+function servicePathSelected(value: unknown): boolean {
+  if (value === true) return true
+  if (value === false || value == null) return false
+  if (typeof value === "number") return value !== 0 && !Number.isNaN(value)
+  if (typeof value === "string") {
+    const trimmed = value.trim().toLowerCase()
+    if (!trimmed) return false
+    if (["0", "false", "no", "nej", "off"].includes(trimmed)) return false
+    return true
+  }
+  return false
+}
+
+function serviceIdsFromMappedValue(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(asString).filter(Boolean)
+  if (typeof value === "string") return splitServiceText(value)
+  return []
+}
+
 export function applyFieldMapping(
   payload: Record<string, unknown>,
   mapping: FieldMapping
@@ -47,7 +77,18 @@ export function applyFieldMapping(
     return payload
   }
   const out: Record<string, unknown> = { ...payload }
+  const toggledSlugs: string[] = []
+
   for (const [canonical, path] of Object.entries(mapping)) {
+    const serviceSlug = funnelServiceTargetSlug(canonical)
+    if (serviceSlug) {
+      const value = getByPath(payload, path)
+      if (value !== undefined && servicePathSelected(value)) {
+        toggledSlugs.push(serviceSlug)
+      }
+      continue
+    }
+
     const value = getByPath(payload, path)
     if (value === undefined) continue
 
@@ -65,16 +106,13 @@ export function applyFieldMapping(
 
     out[canonical] = value
   }
-  return out
-}
 
-function asString(value: unknown): string {
-  if (value == null) return ""
-  if (typeof value === "string") return value.trim()
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value)
+  if (toggledSlugs.length > 0) {
+    const fromList = serviceIdsFromMappedValue(out.serviceIds)
+    out.serviceIds = [...new Set([...fromList, ...toggledSlugs])]
   }
-  return ""
+
+  return out
 }
 
 /** The day from date or date-time text (see `parseLeadDateTime`); null when unreadable. */

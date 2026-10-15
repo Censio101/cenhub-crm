@@ -1,4 +1,5 @@
 import { isValidFieldKey } from "@/lib/lead-sheet/field-key"
+import { funnelServiceTargetSlug } from "@/lib/lead-sheet/mapping-review"
 import { STANDARD_WEBHOOK_FIELDS } from "@/lib/lead-sheet/webhook-spec"
 import { CUSTOM_FIELD_TARGET_PREFIX, type FieldMapping } from "@/lib/leads/inbound-payload"
 import { splitSourcePath } from "@/lib/leads/source-path"
@@ -22,6 +23,8 @@ export function isValidSourcePath(path: string): boolean {
 
 export function isValidMappingTarget(target: string): boolean {
   if (STANDARD_MAPPING_TARGETS.includes(target)) return true
+  const serviceSlug = funnelServiceTargetSlug(target)
+  if (serviceSlug) return isValidFieldKey(serviceSlug)
   if (!target.startsWith(CUSTOM_FIELD_TARGET_PREFIX)) return false
   return isValidFieldKey(target.slice(CUSTOM_FIELD_TARGET_PREFIX.length))
 }

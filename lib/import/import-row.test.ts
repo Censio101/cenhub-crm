@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { ClientService } from "@/lib/services/types"
+import { foldServiceMatchKey } from "@/lib/services/fold-match-key"
 import { buildImportLead } from "@/lib/import/import-row"
 import { readMapped } from "@/lib/import/read-mapped"
 import type { ImportOptions } from "@/lib/import/types"
@@ -117,6 +118,23 @@ describe("buildImportLead", () => {
     expect(result.warnings.map((w) => w.field).sort()).toEqual(
       ["date", "email", "salesPrice", "serviceIds", "status"].sort()
     )
+  })
+
+  it("resolves services via org alias map", () => {
+    const aliasToSlug = new Map([[foldServiceMatchKey("Tag arbejde"), "tagdaekning"]])
+    const result = buildImportLead({
+      row: { Fornavn: "Jane", Mail: "j@x.dk", Ydelse: "Tag arbejde" },
+      mapping: { fullName: ["Fornavn"], email: ["Mail"], serviceIds: ["Ydelse"] },
+      options,
+      customFieldDefs: [],
+      services: SERVICES_FIXTURE,
+      serviceAliasMap: aliasToSlug,
+      today: "2026-09-30",
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.lead.serviceIds).toEqual(["tagdaekning"])
+    expect(result.warnings).toEqual([])
   })
 
   it("does not warn about a date when no date column is mapped", () => {

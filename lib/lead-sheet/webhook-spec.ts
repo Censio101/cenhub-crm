@@ -3,6 +3,8 @@ import type {
   LeadSheetCustomFieldDef,
   ResolvedLeadSheetConfig,
 } from "@/lib/lead-sheet/types"
+import type { ClientService } from "@/lib/services/types"
+import { CANONICAL_INBOUND_EXAMPLE } from "@/lib/leads/inbound-payload"
 
 /** A custom lead-sheet column as the webhook expects it (inside `customFields`). */
 export type WebhookCustomFieldSpec = {
@@ -90,6 +92,47 @@ export function exampleValueForField(field: WebhookCustomFieldSpec): unknown {
     default:
       return "Example text"
   }
+}
+
+/** Enabled client services and inbound aliases for webhook `serviceIds`. */
+export type WebhookServiceSpec = {
+  /** Service slug stored on leads (`serviceIds`). */
+  id: string
+  nameDa: string
+  nameEn: string
+  aliases: string[]
+}
+
+export function buildWebhookServiceSpecs(
+  services: readonly ClientService[],
+  aliases: readonly { alias: string; serviceSlug: string }[]
+): WebhookServiceSpec[] {
+  const bySlug = new Map(services.map((s) => [s.id, s]))
+  const aliasLists = new Map<string, string[]>()
+  for (const row of aliases) {
+    if (!bySlug.has(row.serviceSlug)) continue
+    const list = aliasLists.get(row.serviceSlug) ?? []
+    list.push(row.alias)
+    aliasLists.set(row.serviceSlug, list)
+  }
+  return services.map((service) => ({
+    id: service.id,
+    nameDa: service.nameDa,
+    nameEn: service.nameEn,
+    aliases: aliasLists.get(service.id) ?? [],
+  }))
+}
+
+/** Standard webhook example using this client's enabled service slugs. */
+export function buildStandardInboundExample(
+  services: readonly ClientService[]
+): Record<string, unknown> {
+  const base = CANONICAL_INBOUND_EXAMPLE as Record<string, unknown>
+  const serviceIds =
+    services.length > 0
+      ? services.slice(0, Math.min(2, services.length)).map((s) => s.id)
+      : (base.serviceIds as string[] | undefined)
+  return { ...base, serviceIds }
 }
 
 /** Standard example body plus a `customFields` object matching the active lead sheet. */

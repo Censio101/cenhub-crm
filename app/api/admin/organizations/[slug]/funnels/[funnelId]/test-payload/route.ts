@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/lead-sheet-repository"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
+import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
 import { processInbound } from "@/lib/leads/process-inbound"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -75,6 +76,7 @@ export async function POST(request: Request, context: RouteContext) {
         return sheet ? listCustomFieldDefs(sheet) : []
       },
       loadServices: () => resolveOrganizationServices(admin, organization.id),
+      loadServiceAliasMap: () => getOrganizationServiceAliasMap(admin, organization.id),
     })
 
     if (!result.ok) {

@@ -66,10 +66,15 @@ export function buildInboundLead(input: {
   customFieldDefs: LeadSheetCustomFieldDef[]
   /** The client's services; incoming values are matched against these (slug or name). */
   services: readonly ClientService[]
+  serviceAliasMap?: ReadonlyMap<string, string>
   platform: string
 }): BuiltInbound {
   const { parsed } = input
-  const matched = matchServices(parsed.canonical.serviceIds ?? [], input.services)
+  const matched = matchServices(
+    parsed.canonical.serviceIds ?? [],
+    input.services,
+    input.serviceAliasMap
+  )
   const serviceWarnings: WebhookFieldWarning[] =
     matched.unknown.length > 0
       ? [
@@ -105,18 +110,21 @@ export async function processInbound(input: {
   platform: string
   loadCustomFieldDefs: () => Promise<LeadSheetCustomFieldDef[]>
   loadServices: () => Promise<ClientService[]>
+  loadServiceAliasMap?: () => Promise<ReadonlyMap<string, string>>
 }): Promise<ProcessedInbound> {
   const parsed = parseInbound(input.body, input.fieldMapping)
   if (!parsed.ok) return parsed
 
-  const [customFieldDefs, services] = await Promise.all([
+  const [customFieldDefs, services, serviceAliasMap] = await Promise.all([
     input.loadCustomFieldDefs(),
     input.loadServices(),
+    input.loadServiceAliasMap?.() ?? Promise.resolve(undefined),
   ])
   const built = buildInboundLead({
     parsed,
     customFieldDefs,
     services,
+    serviceAliasMap,
     platform: input.platform,
   })
   return { ok: true, externalId: parsed.canonical.externalId ?? null, ...built }

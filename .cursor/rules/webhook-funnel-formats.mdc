@@ -1,0 +1,30 @@
+---
+description: Two webhook formats (ours vs funnel page) and where service mapping belongs
+globs: components/admin/funnels/**,components/admin/import/**,lib/leads/**,lib/lead-sheet/webhook-spec.ts,app/api/webhooks/funnels/**
+alwaysApply: false
+---
+
+# Webhook funnel formats (do not mix concepts)
+
+Admin webhooks (`/admin/clients/{slug}/funnels`) have two **data formats** on the Fields tab. New UI must respect the split.
+
+## Our webhook format (`dataFormat: "ours"`)
+
+- Show **documentation only**: example JSON/cURL, standard fields table, **client service slugs** (`WebhookServicesReference`).
+- The **sender** must post Censio field names and put **slugs** in `serviceIds`.
+- **No** sample listener, **no** field mapper, **no** path mapping on this tab.
+
+## Funnel page format (`dataFormat: "own"`)
+
+- **Listen for a sample**, then **map JSON paths → lead sheet targets** in `FunnelFieldMapper` (same row pattern as `fullName`, `email`, `customFields.*`).
+- **Services block** inside the mapper only:
+  - Optional **`serviceIds`** row when all services arrive in one list/text field.
+  - **One row per enabled client service**: target `serviceIds.<slug>`, path picker from the sample (backend merges truthy paths into `serviceIds` in `applyFieldMapping`).
+- Do **not** add Import-style “map distinct values to service” UI, org-wide alias editors, or duplicate slug reference tables on this tab. Those live under **Services → Inbound service mapping** and **Import → Map services**.
+
+## Shared elsewhere
+
+- **Inbound service aliases** (external label → slug): org-wide; used by webhooks, import, and matching in `matchServices`. Configure on the Services admin panel, not as a second funnel Fields workflow.
+- **Import** maps spreadsheet **column values** to services after column mapping; persist via the same alias API but keep UX separate from funnel path mapping.
+
+When extending funnels, ask: “Is this telling the sender our format, or mapping their sample paths?” Put each feature in exactly one of those buckets.

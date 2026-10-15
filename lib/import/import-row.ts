@@ -44,6 +44,7 @@ export function buildImportLead(input: {
   customFieldDefs: LeadSheetCustomFieldDef[]
   /** The client's services; the cell is matched against these. */
   services: readonly ClientService[]
+  serviceAliasMap?: ReadonlyMap<string, string>
   /** The day used for rows without a date. */
   today: string
 }): BuiltImportLead {
@@ -108,7 +109,11 @@ export function buildImportLead(input: {
   }
 
   // Services
-  const serviceMatch = parseImportServices(read("serviceIds"), input.services)
+  const serviceMatch = parseImportServices(
+    read("serviceIds"),
+    input.services,
+    input.serviceAliasMap
+  )
   if (serviceMatch.unknown.length > 0) {
     warnings.push({
       field: "serviceIds",

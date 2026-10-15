@@ -97,4 +97,24 @@ describe("applyFieldMapping", () => {
     const out = applyFieldMapping({ a: 1 }, { "customFields.x": "nope", "customFields.": "a" })
     expect(out.customFields).toBeUndefined()
   })
+
+  it("builds serviceIds from per-service paths when the sample value is truthy", () => {
+    const out = applyFieldMapping(
+      { solar: true, roof: "no", bath: "yes" },
+      {
+        "serviceIds.solpanel": "solar",
+        "serviceIds.tagdaekning": "roof",
+        "serviceIds.badevaerelse": "bath",
+      }
+    )
+    expect(out.serviceIds).toEqual(["solpanel", "badevaerelse"])
+  })
+
+  it("merges a combined serviceIds path with per-service paths", () => {
+    const out = applyFieldMapping(
+      { all: ["vvs"], solar: true },
+      { serviceIds: "all", "serviceIds.solpanel": "solar" }
+    )
+    expect(out.serviceIds).toEqual(["vvs", "solpanel"])
+  })
 })

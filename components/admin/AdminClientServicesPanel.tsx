@@ -41,7 +41,13 @@ import { adminFormNoticeDefaults } from "@/lib/admin/form-notice-defaults"
 import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
 import { businessCategoryLabel } from "@/lib/lead-sheet/business-category-label"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
-import { SERVICE_NAME_MAX, serviceName, type Service } from "@/lib/services/types"
+import { ServiceInboundAliasesPanel } from "@/components/admin/services/ServiceInboundAliasesPanel"
+import {
+  SERVICE_NAME_MAX,
+  serviceName,
+  type ClientService,
+  type Service,
+} from "@/lib/services/types"
 import { defaultRank, sortByDefaultRank } from "@/lib/services/resolve"
 import { cn } from "cn"
 

@@ -1,13 +1,17 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { PlusIcon, SparklesIcon, XIcon } from "lucide-react"
+import { Fragment, useMemo, useRef, useState } from "react"
+import { Loader2Icon, PlusIcon, SparklesIcon, XIcon } from "lucide-react"
 
 import {
   adminOutlineButtonClass,
   adminSelectTriggerClass,
 } from "@/components/admin/admin-ui-styles"
 import { ImportQuickPreview } from "@/components/admin/import/ImportQuickPreview"
+import {
+  ImportServiceValueMap,
+  type ImportServiceMapHandle,
+} from "@/components/admin/import/ImportServiceValueMap"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,13 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { IMPORT_STANDARD_TARGETS, type ImportTarget } from "@/lib/import/column-mapping"
+import { IMPORT_STANDARD_TARGETS } from "@/lib/import/column-mapping"
 import { cellText } from "@/lib/import/parse-values"
 import type { ColumnMapping, ImportOptions, ImportRowInput } from "@/lib/import/types"
 import type { MessageKey } from "@/lib/i18n"
 import { builtinColumnLabelKey } from "@/lib/lead-sheet/lead-labels"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import { LEAD_STATUSES, type LeadPlatformId, type LeadStatusId } from "@/lib/leads"
+import type { ClientService, Service } from "@/lib/services/types"
 
 const NONE = "__none__"
 
@@ -40,6 +45,8 @@ type Props = {
   onOptions: (options: ImportOptions) => void
   customTargets: CustomTarget[]
   sheetColumns: LeadSheetTemplateColumn[]
+  enabledServices: readonly ClientService[]
+  serviceCatalog: readonly Pick<Service, "id" | "slug" | "nameDa" | "nameEn">[]
   onBack: () => void
   onContinue: () => void
 }
@@ -63,26 +70,30 @@ export function ImportMapStep({
   onOptions,
   customTargets,
   sheetColumns,
+  enabledServices,
+  serviceCatalog,
   onBack,
   onContinue,
 }: Props) {
   const { t } = useLanguage()
   const [combining, setCombining] = useState(false)
+  const [continuing, setContinuing] = useState(false)
+  const serviceMapRef = useRef<ImportServiceMapHandle>(null)
   const mappedCount = Object.keys(mapping).length
   const canContinue = Boolean(
     mapping.fullName?.length || mapping.email?.length || mapping.phone?.length
   )
 
-  const targets = useMemo<(ImportTarget & { label: string })[]>(
-    () => [
-      ...IMPORT_STANDARD_TARGETS.map((target) => ({
-        target,
-        label: t(builtinColumnLabelKey(target === "serviceIds" ? "serviceIds" : target)),
-      })),
-      ...customTargets.map((custom) => ({ target: custom.target, label: custom.label })),
-    ],
-    [customTargets, t]
-  )
+  const targets = useMemo(() => {
+    const labelFor = (target: (typeof IMPORT_STANDARD_TARGETS)[number]) =>
+      t(builtinColumnLabelKey(target))
+    const standardWithoutServices = IMPORT_STANDARD_TARGETS.filter(
+      (target) => target !== "serviceIds"
+    ).map((target) => ({ target, label: labelFor(target) }))
+    const custom = customTargets.map((row) => ({ target: row.target, label: row.label }))
+    const services = [{ target: "serviceIds" as const, label: labelFor("serviceIds") }]
+    return [...standardWithoutServices, ...custom, ...services]
+  }, [customTargets, t])
 
   function setColumn(target: string, index: number, header: string | null) {
     const current = [...(mapping[target] ?? [])]
@@ -165,51 +176,59 @@ export function ImportMapStep({
           const isName = target === "fullName"
           const showSecond = isName && (columns.length > 1 || combining)
           return (
-            <div
-              key={target}
-              className="grid gap-1.5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-start sm:gap-3"
-            >
-              <p className="flex items-center gap-1.5 pt-1.5 text-sm font-medium">
-                {label}
-                {isName ? (
-                  <span className="rounded bg-primary/10 px-1 py-px text-[10px] font-medium text-primary">
-                    {t("importNeedOne")}
-                  </span>
-                ) : null}
-              </p>
-              <div className="min-w-0 space-y-1.5">
-                {columnSelect(target, 0, label)}
-                {showSecond ? (
-                  <div className="flex items-center gap-2">
-                    <div className="min-w-0 flex-1">{columnSelect(target, 1, label)}</div>
-                    <Button
+            <Fragment key={target}>
+              <div className="grid gap-1.5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-start sm:gap-3">
+                <p className="flex items-center gap-1.5 pt-1.5 text-sm font-medium">
+                  {label}
+                  {isName ? (
+                    <span className="rounded bg-primary/10 px-1 py-px text-[10px] font-medium text-primary">
+                      {t("importNeedOne")}
+                    </span>
+                  ) : null}
+                </p>
+                <div className="min-w-0 space-y-1.5">
+                  {columnSelect(target, 0, label)}
+                  {showSecond ? (
+                    <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">{columnSelect(target, 1, label)}</div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={t("importRemoveColumn")}
+                        onClick={() => {
+                          setCombining(false)
+                          setColumn(target, 1, null)
+                        }}
+                      >
+                        <XIcon className="size-4" />
+                      </Button>
+                    </div>
+                  ) : isName && columns.length === 1 ? (
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t("importRemoveColumn")}
-                      onClick={() => {
-                        setCombining(false)
-                        setColumn(target, 1, null)
-                      }}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
+                      onClick={() => setCombining(true)}
                     >
-                      <XIcon className="size-4" />
-                    </Button>
-                  </div>
-                ) : isName && columns.length === 1 ? (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
-                    onClick={() => setCombining(true)}
-                  >
-                    <PlusIcon className="size-3" aria-hidden />
-                    {t("importCombineName")}
-                  </button>
-                ) : null}
+                      <PlusIcon className="size-3" aria-hidden />
+                      {t("importCombineName")}
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            </Fragment>
           )
         })}
       </div>
+
+      <ImportServiceValueMap
+        ref={serviceMapRef}
+        slug={slug}
+        rows={rows}
+        mapping={mapping}
+        catalog={[...serviceCatalog]}
+        enabledServices={enabledServices}
+      />
 
       <section className="space-y-3 rounded-2xl border border-[#e8e0d8] bg-[#faf8f6] p-4">
         <h4 className="text-sm font-semibold">{t("importOptions")}</h4>
@@ -311,8 +330,29 @@ export function ImportMapStep({
               {t("importMappedCount").replace("{count}", String(mappedCount))}
             </span>
           )}
-          <Button type="button" disabled={!canContinue} onClick={onContinue}>
-            {t("importRunTest")}
+          <Button
+            type="button"
+            disabled={!canContinue || continuing}
+            onClick={() => {
+              setContinuing(true)
+              void (async () => {
+                try {
+                  const ok = (await serviceMapRef.current?.saveIfDirty()) ?? true
+                  if (ok) onContinue()
+                } finally {
+                  setContinuing(false)
+                }
+              })()
+            }}
+          >
+            {continuing ? (
+              <>
+                <Loader2Icon className="size-4 animate-spin" aria-hidden />
+                {t("importRunTest")}
+              </>
+            ) : (
+              t("importRunTest")
+            )}
           </Button>
         </div>
       </div>

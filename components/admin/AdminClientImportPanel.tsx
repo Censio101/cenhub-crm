@@ -35,6 +35,7 @@ import { sheetTable } from "@/lib/import/sheet-table"
 import type { ColumnMapping, ImportOptions } from "@/lib/import/types"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
+import type { ClientService, Service } from "@/lib/services/types"
 
 const STEP_ORDER: ImportStep[] = ["upload", "map", "test", "import"]
 
@@ -59,6 +60,10 @@ export function AdminClientImportPanel() {
   const [mapping, setMapping] = useState<ColumnMapping>({})
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_OPTIONS)
   const [resolved, setResolved] = useState<ResolvedLeadSheetConfig | null>(null)
+  const [enabledServices, setEnabledServices] = useState<ClientService[]>([])
+  const [serviceCatalog, setServiceCatalog] = useState<
+    Pick<Service, "id" | "slug" | "nameDa" | "nameEn">[]
+  >([])
   const [history, setHistory] = useState<LeadImportRecord[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [test, setTest] = useState<TestState>(IDLE_TEST)
@@ -88,10 +93,22 @@ export function AdminClientImportPanel() {
   useAsyncEffect(
     async (signal) => {
       try {
-        const response = await fetch(`/api/admin/organizations/${slug}/lead-sheet`)
-        if (!response.ok) throw new Error("sheet")
-        const data = (await response.json()) as { resolved: ResolvedLeadSheetConfig | null }
-        if (!signal.cancelled) setResolved(data.resolved)
+        const [sheetRes, servicesRes] = await Promise.all([
+          fetch(`/api/admin/organizations/${slug}/lead-sheet`),
+          fetch(`/api/admin/organizations/${slug}/services`),
+        ])
+        if (!sheetRes.ok || !servicesRes.ok) throw new Error("load")
+        const sheetData = (await sheetRes.json()) as { resolved: ResolvedLeadSheetConfig | null }
+        const servicesData = (await servicesRes.json()) as {
+          services: ClientService[]
+          catalog: Service[]
+          manual: Service[]
+        }
+        if (!signal.cancelled) {
+          setResolved(sheetData.resolved)
+          setEnabledServices(servicesData.services ?? [])
+          setServiceCatalog([...(servicesData.catalog ?? []), ...(servicesData.manual ?? [])])
+        }
       } catch {
         if (!signal.cancelled) setError(t("funnelsLoadError"))
       }
@@ -412,6 +429,8 @@ export function AdminClientImportPanel() {
             onOptions={setOptions}
             customTargets={customTargets}
             sheetColumns={sheetColumns}
+            enabledServices={enabledServices}
+            serviceCatalog={serviceCatalog}
             onBack={() => goTo("upload")}
             onContinue={() => void startTest()}
           />

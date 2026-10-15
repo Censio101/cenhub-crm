@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   resolveLeadSheetForOrganization: vi.fn(),
   listCustomFieldDefs: vi.fn(),
   resolveOrganizationServices: vi.fn(),
+  getOrganizationServiceAliasMap: vi.fn(),
   funnel: {
     id: "f1",
     organization_id: "org1",
@@ -27,6 +28,9 @@ vi.mock("@/lib/db/lead-funnels-repository", () => ({
 }))
 vi.mock("@/lib/db/services-repository", () => ({
   resolveOrganizationServices: mocks.resolveOrganizationServices,
+}))
+vi.mock("@/lib/db/service-aliases-repository", () => ({
+  getOrganizationServiceAliasMap: mocks.getOrganizationServiceAliasMap,
 }))
 vi.mock("@/lib/db/lead-sheet-repository", () => ({
   resolveLeadSheetForOrganization: mocks.resolveLeadSheetForOrganization,
@@ -52,6 +56,7 @@ beforeEach(() => {
   mocks.funnel.field_mapping = {}
   mocks.resolveLeadSheetForOrganization.mockResolvedValue({})
   mocks.resolveOrganizationServices.mockResolvedValue([])
+  mocks.getOrganizationServiceAliasMap.mockResolvedValue(new Map())
   mocks.listCustomFieldDefs.mockReturnValue([
     {
       id: "1",

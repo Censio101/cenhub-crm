@@ -5,14 +5,20 @@ import { FlaskConicalIcon, PlugIcon, ShuffleIcon, Trash2Icon } from "lucide-reac
 
 import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
 import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
-import { FunnelFieldsTab, type FunnelFormat } from "@/components/admin/funnels/FunnelFieldsTab"
+import { FunnelFieldsTab } from "@/components/admin/funnels/FunnelFieldsTab"
+import type { FunnelFormat } from "@/components/admin/funnels/types"
 import { FunnelSetupTab } from "@/components/admin/funnels/FunnelSetupTab"
 import { FunnelTestTab } from "@/components/admin/funnels/FunnelTestTab"
 import type { FunnelDto } from "@/components/admin/funnels/types"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { useFunnelSample } from "@/hooks/useFunnelSample"
-import { STANDARD_WEBHOOK_FIELDS, type WebhookLeadSheetInfo } from "@/lib/lead-sheet/webhook-spec"
+import {
+  STANDARD_WEBHOOK_FIELDS,
+  type WebhookLeadSheetInfo,
+  type WebhookServiceSpec,
+} from "@/lib/lead-sheet/webhook-spec"
+import type { ClientService } from "@/lib/services/types"
 import { flattenPayloadPaths } from "@/lib/leads/payload-paths"
 import { cn } from "cn"
 
@@ -23,6 +29,7 @@ type Props = {
   funnel: FunnelDto
   url: string
   leadSheet: WebhookLeadSheetInfo | null
+  webhookServices: readonly WebhookServiceSpec[]
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
   onRegenerateSecret: () => void
@@ -49,6 +56,7 @@ export function FunnelDetail({
   funnel,
   url,
   leadSheet,
+  webhookServices,
   copiedKey,
   onCopy,
   onRegenerateSecret,
@@ -59,6 +67,17 @@ export function FunnelDetail({
   const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>("connect")
   const customFields = useMemo(() => leadSheet?.customFields ?? [], [leadSheet])
+  const enabledServices = useMemo<ClientService[]>(
+    () =>
+      webhookServices.map((service) => ({
+        id: service.id,
+        nameDa: service.nameDa,
+        nameEn: service.nameEn,
+        source: "manual",
+        categoryNames: [],
+      })),
+    [webhookServices]
+  )
   const mappedCount = Object.values(funnel.fieldMapping).filter((v) => v.trim()).length
 
   // The chosen format is saved on the webhook, so it stays as it was left. Switching never
@@ -184,6 +203,7 @@ export function FunnelDetail({
               funnel={funnel}
               url={url}
               customFields={customFields}
+              enabledServices={enabledServices}
               copiedKey={copiedKey}
               onCopy={onCopy}
               onRegenerateSecret={onRegenerateSecret}
@@ -195,6 +215,8 @@ export function FunnelDetail({
               url={url}
               leadSheet={leadSheet}
               customFields={customFields}
+              enabledServices={enabledServices}
+              webhookServices={webhookServices}
               format={format}
               onChooseFormat={(next) => void chooseFormat(next)}
               formatError={formatError}
@@ -212,6 +234,7 @@ export function FunnelDetail({
               funnel={funnel}
               format={format}
               customFields={customFields}
+              enabledServices={enabledServices}
               sample={state.sample}
               sampleLoading={sampleLoading}
             />

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { FormNoticeStack } from "@/components/ui/form-notice"
 import { adminFormNoticeDefaults } from "@/lib/admin/form-notice-defaults"
 import { FUNNEL_TARGET_PREFIX, findDanglingCustomTargets } from "@/lib/lead-sheet/mapping-review"
-import type { WebhookLeadSheetInfo } from "@/lib/lead-sheet/webhook-spec"
+import type { WebhookLeadSheetInfo, WebhookServiceSpec } from "@/lib/lead-sheet/webhook-spec"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 import { cn } from "cn"
 
@@ -41,6 +41,7 @@ export function AdminClientFunnelsPanel() {
   const { t } = useLanguage()
   const [funnels, setFunnels] = useState<FunnelDto[]>([])
   const [leadSheet, setLeadSheet] = useState<WebhookLeadSheetInfo | null>(null)
+  const [webhookServices, setWebhookServices] = useState<WebhookServiceSpec[]>([])
   const [staleSince, setStaleSince] = useState<string | null>(null)
   const [acknowledging, setAcknowledging] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -78,10 +79,12 @@ export function AdminClientFunnelsPanel() {
         const data = (await response.json()) as {
           funnels: FunnelDto[]
           leadSheet: WebhookLeadSheetInfo | null
+          webhookServices?: WebhookServiceSpec[]
           webhookStaleSince?: string | null
         }
         setFunnels(data.funnels)
         setLeadSheet(data.leadSheet ?? null)
+        setWebhookServices(data.webhookServices ?? [])
         setStaleSince(data.webhookStaleSince ?? null)
       } catch {
         if (!options?.silent) setError(t("funnelsLoadError"))
@@ -321,6 +324,7 @@ export function AdminClientFunnelsPanel() {
               funnel={selected}
               url={webhookUrl(selected.id)}
               leadSheet={leadSheet}
+              webhookServices={webhookServices}
               copiedKey={copiedKey}
               onCopy={(key, value) => void copyText(key, value)}
               onRegenerateSecret={() => void regenerateSecret(selected.id)}

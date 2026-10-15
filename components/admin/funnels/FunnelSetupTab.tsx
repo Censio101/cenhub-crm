@@ -15,18 +15,20 @@ import { adminOutlineButtonClass } from "@/components/admin/admin-ui-styles"
 import type { FunnelDto } from "@/components/admin/funnels/types"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
-import { CANONICAL_INBOUND_EXAMPLE } from "@/lib/leads/inbound-payload"
 import {
   buildCurlExample,
   buildExamplePayload,
+  buildStandardInboundExample,
   type WebhookCustomFieldSpec,
 } from "@/lib/lead-sheet/webhook-spec"
+import type { ClientService } from "@/lib/services/types"
 import { cn } from "cn"
 
 type Props = {
   funnel: FunnelDto
   url: string
   customFields: WebhookCustomFieldSpec[]
+  enabledServices: readonly ClientService[]
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
   onRegenerateSecret: () => void
@@ -48,6 +50,7 @@ export function FunnelSetupTab({
   funnel,
   url,
   customFields,
+  enabledServices,
   copiedKey,
   onCopy,
   onRegenerateSecret,
@@ -60,7 +63,7 @@ export function FunnelSetupTab({
   const curl = buildCurlExample(
     url,
     funnel.webhookSecret,
-    buildExamplePayload(CANONICAL_INBOUND_EXAMPLE as Record<string, unknown>, customFields)
+    buildExamplePayload(buildStandardInboundExample(enabledServices), customFields)
   )
 
   return (

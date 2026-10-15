@@ -15,8 +15,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { FUNNEL_TARGET_PREFIX, findDanglingCustomTargets } from "@/lib/lead-sheet/mapping-review"
-import { STANDARD_WEBHOOK_FIELDS, type WebhookCustomFieldSpec } from "@/lib/lead-sheet/webhook-spec"
+import {
+  FUNNEL_SERVICE_TARGET_PREFIX,
+  FUNNEL_TARGET_PREFIX,
+  findDanglingCustomTargets,
+  findDanglingServiceTargets,
+} from "@/lib/lead-sheet/mapping-review"
+import {
+  STANDARD_WEBHOOK_FIELDS,
+  type WebhookCustomFieldSpec,
+  type WebhookServiceSpec,
+} from "@/lib/lead-sheet/webhook-spec"
+import { serviceName } from "@/lib/services/types"
 import { flattenPayloadPaths, suggestMappings, type PayloadPath } from "@/lib/leads/payload-paths"
 import { getByPath } from "@/lib/leads/source-path"
 
@@ -29,6 +39,7 @@ type Props = {
   customFields: WebhookCustomFieldSpec[]
   /** The captured body, or null when there is none yet (paths can still be typed). */
   sample: Record<string, unknown> | null
+  webhookServices?: readonly WebhookServiceSpec[]
   onSaved: (mapping: Mapping) => void
 }
 
@@ -62,9 +73,10 @@ export function FunnelFieldMapper({
   savedMapping,
   customFields,
   sample,
+  webhookServices = [],
   onSaved,
 }: Props) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const [draft, setDraft] = useState<Mapping>(() => ({ ...savedMapping }))
   const [manual, setManual] = useState<ReadonlySet<string>>(() => new Set())
   const [saving, setSaving] = useState(false)
@@ -77,21 +89,38 @@ export function FunnelFieldMapper({
   )
   const pathByKey = useMemo(() => new Map(paths.map((entry) => [entry.path, entry])), [paths])
 
+  const serviceSlugs = useMemo(() => webhookServices.map((service) => service.id), [webhookServices])
+
   const targets = useMemo(
     () => [
-      ...STANDARD_WEBHOOK_FIELDS.map((field) => ({ target: field.key, custom: null })),
+      ...STANDARD_WEBHOOK_FIELDS.filter((field) => field.key !== "serviceIds").map((field) => ({
+        target: field.key,
+        custom: null as WebhookCustomFieldSpec | null,
+        names: [] as string[],
+      })),
+      { target: "serviceIds", custom: null, names: [] as string[] },
+      ...webhookServices.map((service) => ({
+        target: `${FUNNEL_SERVICE_TARGET_PREFIX}${service.id}`,
+        custom: null as WebhookCustomFieldSpec | null,
+        names: [service.id, service.nameDa, service.nameEn],
+      })),
       ...customFields.map((field) => ({
         target: `${FUNNEL_TARGET_PREFIX}${field.key}`,
         custom: field,
+        names: [field.key, field.label],
       })),
     ],
-    [customFields]
+    [customFields, webhookServices]
   )
 
   const customKeys = useMemo(() => customFields.map((f) => f.key), [customFields])
   const danglingKeys = useMemo(
     () => findDanglingCustomTargets(draft, FUNNEL_TARGET_PREFIX, customKeys),
     [draft, customKeys]
+  )
+  const danglingServiceSlugs = useMemo(
+    () => findDanglingServiceTargets(draft, serviceSlugs),
+    [draft, serviceSlugs]
   )
   const dirty = !sameMapping(draft, savedMapping)
   const endpoint = `/api/admin/organizations/${slug}/funnels/${funnelId}`
@@ -114,9 +143,9 @@ export function FunnelFieldMapper({
   function autoMatch() {
     const suggestions = suggestMappings(
       paths,
-      targets.map(({ target, custom }) => ({
+      targets.map(({ target, custom, names }) => ({
         target,
-        names: custom ? [custom.key, custom.label] : [],
+        names: custom ? [custom.key, custom.label] : names,
       }))
     )
     setDraft((current) => {
@@ -307,8 +336,29 @@ export function FunnelFieldMapper({
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           {t("webhookStandardFields")}
         </p>
-        {STANDARD_WEBHOOK_FIELDS.map((field) =>
+        {STANDARD_WEBHOOK_FIELDS.filter((field) => field.key !== "serviceIds").map((field) =>
           row(field.key, field.key, undefined, RECOMMENDED.has(field.key))
+        )}
+      </div>
+
+      <div className="space-y-2.5 rounded-xl border border-[#e8e0d8] bg-[#faf8f6] p-3.5">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("funnelOwnServicesSection")}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("funnelOwnServicesSectionHint")}</p>
+        </div>
+        {row("serviceIds", "serviceIds", t("funnelOwnServiceIdsListHint"))}
+        {webhookServices.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t("webhookServicesEmpty")}</p>
+        ) : (
+          webhookServices.map((service) =>
+            row(
+              `${FUNNEL_SERVICE_TARGET_PREFIX}${service.id}`,
+              service.id,
+              serviceName(service, locale)
+            )
+          )
         )}
       </div>
 
@@ -327,7 +377,7 @@ export function FunnelFieldMapper({
         </div>
       ) : null}
 
-      {danglingKeys.length > 0 ? (
+      {danglingKeys.length > 0 || danglingServiceSlugs.length > 0 ? (
         <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-amber-950">
             <AlertTriangleIcon className="size-4 text-amber-700" aria-hidden />
@@ -336,6 +386,26 @@ export function FunnelFieldMapper({
           <ul className="space-y-1.5">
             {danglingKeys.map((key) => {
               const target = `${FUNNEL_TARGET_PREFIX}${key}`
+              return (
+                <li key={target} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate font-mono text-xs text-amber-950">
+                    {target} ← {draft[target]}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 border-amber-400 bg-white"
+                    onClick={() => removeTarget(target)}
+                  >
+                    <Trash2Icon className="size-4" />
+                    {t("funnelMappingRemove")}
+                  </Button>
+                </li>
+              )
+            })}
+            {danglingServiceSlugs.map((slug) => {
+              const target = `${FUNNEL_SERVICE_TARGET_PREFIX}${slug}`
               return (
                 <li key={target} className="flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate font-mono text-xs text-amber-950">

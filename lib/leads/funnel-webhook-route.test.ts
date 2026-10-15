@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   resolveLeadSheetForOrganization: vi.fn(),
   listCustomFieldDefs: vi.fn(),
   resolveOrganizationServices: vi.fn(),
+  getOrganizationServiceAliasMap: vi.fn(),
   captureFunnelSample: vi.fn(),
   recordFunnelSampleError: vi.fn(),
   funnel: {
@@ -34,6 +35,9 @@ vi.mock("@/lib/db/leads-repository", () => ({
 }))
 vi.mock("@/lib/db/services-repository", () => ({
   resolveOrganizationServices: mocks.resolveOrganizationServices,
+}))
+vi.mock("@/lib/db/service-aliases-repository", () => ({
+  getOrganizationServiceAliasMap: mocks.getOrganizationServiceAliasMap,
 }))
 vi.mock("@/lib/db/lead-sheet-repository", () => ({
   resolveLeadSheetForOrganization: mocks.resolveLeadSheetForOrganization,
@@ -67,6 +71,7 @@ beforeEach(() => {
   mocks.findLeadIdByLegacyId.mockResolvedValue(null)
   mocks.resolveLeadSheetForOrganization.mockResolvedValue(null)
   mocks.listCustomFieldDefs.mockReturnValue([])
+  mocks.getOrganizationServiceAliasMap.mockResolvedValue(new Map())
   mocks.resolveOrganizationServices.mockResolvedValue([
     {
       id: "tagdaekning",

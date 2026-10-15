@@ -12,6 +12,7 @@ import {
   resolveLeadSheetForOrganization,
 } from "@/lib/db/lead-sheet-repository"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
+import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
 import { buildInboundLead, parseInbound } from "@/lib/leads/process-inbound"
 import { readWebhookBody } from "@/lib/leads/read-webhook-body"
@@ -94,14 +95,16 @@ export async function POST(request: Request, context: RouteContext) {
 
     // Custom columns come from the client's *current* lead sheet, so the accepted
     // payload changes automatically when the template is switched.
-    const [leadSheet, services] = await Promise.all([
+    const [leadSheet, services, serviceAliasMap] = await Promise.all([
       resolveLeadSheetForOrganization(admin, funnel.organization_id),
       resolveOrganizationServices(admin, funnel.organization_id),
+      getOrganizationServiceAliasMap(admin, funnel.organization_id),
     ])
     const { lead, warnings } = buildInboundLead({
       parsed,
       customFieldDefs: leadSheet ? listCustomFieldDefs(leadSheet) : [],
       services,
+      serviceAliasMap,
       platform: funnel.platform,
     })
 

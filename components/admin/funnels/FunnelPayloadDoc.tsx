@@ -7,14 +7,17 @@ import { fieldTypeLabelKey } from "@/components/admin/lead-sheets/field-type-met
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import type { MessageKey } from "@/lib/i18n"
-import { CANONICAL_INBOUND_EXAMPLE } from "@/lib/leads/inbound-payload"
+import { WebhookServicesReference } from "@/components/admin/funnels/WebhookServicesReference"
 import {
   STANDARD_WEBHOOK_FIELDS,
   buildCurlExample,
   buildExamplePayload,
+  buildStandardInboundExample,
   type WebhookCustomFieldSpec,
   type WebhookLeadSheetInfo,
+  type WebhookServiceSpec,
 } from "@/lib/lead-sheet/webhook-spec"
+import type { ClientService } from "@/lib/services/types"
 import { cn } from "cn"
 
 type Props = {
@@ -22,6 +25,8 @@ type Props = {
   url: string
   secret: string
   leadSheet: WebhookLeadSheetInfo | null
+  enabledServices: readonly ClientService[]
+  webhookServices: readonly WebhookServiceSpec[]
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
 }
@@ -61,13 +66,20 @@ function FieldsTable({ children }: { children: React.ReactNode }) {
 }
 
 /** Expected webhook body for one funnel, generated from the client's active lead sheet. */
-export function FunnelPayloadDoc({ funnelId, url, secret, leadSheet, copiedKey, onCopy }: Props) {
+export function FunnelPayloadDoc({
+  funnelId,
+  url,
+  secret,
+  leadSheet,
+  enabledServices,
+  webhookServices,
+  copiedKey,
+  onCopy,
+}: Props) {
   const { t } = useLanguage()
   const customFields: WebhookCustomFieldSpec[] = leadSheet?.customFields ?? []
-  const payload = buildExamplePayload(
-    CANONICAL_INBOUND_EXAMPLE as Record<string, unknown>,
-    customFields
-  )
+  const standard = buildStandardInboundExample(enabledServices)
+  const payload = buildExamplePayload(standard, customFields)
   const json = JSON.stringify(payload, null, 2)
   const curl = buildCurlExample(url, secret, payload)
   const jsonKey = `${funnelId}-json`
@@ -140,6 +152,8 @@ export function FunnelPayloadDoc({ funnelId, url, secret, leadSheet, copiedKey, 
           </FieldsTable>
         </CollapsibleSection>
       )}
+
+      <WebhookServicesReference services={webhookServices} defaultOpen />
 
       <CollapsibleSection title={t("webhookStandardFields")}>
         <div>

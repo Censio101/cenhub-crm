@@ -12,6 +12,15 @@ export const META_TARGET_PREFIX = "custom:"
 /** Prefix of a custom column target for webhook funnel mappings. */
 export const FUNNEL_TARGET_PREFIX = "customFields."
 
+/** One enabled client service on the funnel mapper (`serviceIds.<slug>`). */
+export const FUNNEL_SERVICE_TARGET_PREFIX = "serviceIds."
+
+export function funnelServiceTargetSlug(target: string): string | null {
+  if (!target.startsWith(FUNNEL_SERVICE_TARGET_PREFIX)) return null
+  const slug = target.slice(FUNNEL_SERVICE_TARGET_PREFIX.length)
+  return slug.length > 0 ? slug : null
+}
+
 type ColumnRef = { key: string }
 
 function hasSource(source: unknown): boolean {
@@ -35,6 +44,21 @@ export function findDanglingCustomTargets(
     if (!target.startsWith(prefix) || !hasSource(source)) continue
     const key = target.slice(prefix.length)
     if (key && !valid.has(key)) dangling.push(key)
+  }
+  return dangling
+}
+
+/** Service slugs a mapping still targets but the client no longer offers. */
+export function findDanglingServiceTargets(
+  mapping: TargetMapping,
+  validSlugs: Iterable<string>
+): string[] {
+  const valid = new Set(validSlugs)
+  const dangling: string[] = []
+  for (const [target, source] of Object.entries(mapping)) {
+    const slug = funnelServiceTargetSlug(target)
+    if (!slug || !hasSource(source)) continue
+    if (!valid.has(slug)) dangling.push(slug)
   }
   return dangling
 }

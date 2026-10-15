@@ -5,14 +5,19 @@ import { useMemo } from "react"
 import { FunnelTestPanel } from "@/components/admin/funnels/FunnelTestPanel"
 import type { FunnelFormat } from "@/components/admin/funnels/FunnelFieldsTab"
 import type { FunnelDto } from "@/components/admin/funnels/types"
-import { buildExamplePayload, type WebhookCustomFieldSpec } from "@/lib/lead-sheet/webhook-spec"
-import { CANONICAL_INBOUND_EXAMPLE } from "@/lib/leads/inbound-payload"
+import {
+  buildExamplePayload,
+  buildStandardInboundExample,
+  type WebhookCustomFieldSpec,
+} from "@/lib/lead-sheet/webhook-spec"
+import type { ClientService } from "@/lib/services/types"
 
 type Props = {
   slug: string
   funnel: FunnelDto
   format: FunnelFormat
   customFields: WebhookCustomFieldSpec[]
+  enabledServices: readonly ClientService[]
   sample: Record<string, unknown> | null
   sampleLoading: boolean
 }
@@ -23,12 +28,13 @@ export function FunnelTestTab({
   funnel,
   format,
   customFields,
+  enabledServices,
   sample,
   sampleLoading,
 }: Props) {
   const example = useMemo(
-    () => buildExamplePayload(CANONICAL_INBOUND_EXAMPLE as Record<string, unknown>, customFields),
-    [customFields]
+    () => buildExamplePayload(buildStandardInboundExample(enabledServices), customFields),
+    [customFields, enabledServices]
   )
 
   return (
