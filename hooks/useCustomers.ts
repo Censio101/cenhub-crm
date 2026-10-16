@@ -31,7 +31,8 @@ type CustomersResponse = {
 }
 
 export function useCustomers() {
-  const { organization } = useActiveOrganization()
+  const { organization, needsClientSelection: adminMustPickClient, sessionReady } =
+    useActiveOrganization()
   const activeSlug = organization?.slug ?? null
   const [customers, setCustomers] = useState<Customer[]>(
     () => getCustomersCache(activeSlug)?.customers ?? []
@@ -51,6 +52,18 @@ export function useCustomers() {
 
   const loadCustomers = useCallback(async () => {
     const isCurrent = guard.begin()
+    if (!sessionReady) {
+      if (isCurrent()) setLoading(true)
+      return
+    }
+    if (adminMustPickClient) {
+      if (isCurrent()) {
+        setLoading(false)
+        setError(null)
+        setNeedsClientSelection(true)
+      }
+      return
+    }
     const showLoading = !hasCustomersCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
@@ -96,7 +109,7 @@ export function useCustomers() {
     } finally {
       if (isCurrent() && showLoading) setLoading(false)
     }
-  }, [activeSlug, guard])
+  }, [activeSlug, guard, adminMustPickClient, sessionReady])
 
   useAsyncEffect(() => {
     void loadCustomers()

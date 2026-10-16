@@ -100,17 +100,18 @@ function toHubClient(
 export async function listInAppClientsForPicker(supabase: SupabaseClient): Promise<{
   clients: HubClient[]
 }> {
-  const metaClients = await listMetaClients(supabase)
-  const { data: organizations, error } = await supabase
-    .from("organizations")
-    .select("*")
-    .order("name", { ascending: true })
+  const [metaClients, organizationsResult, templateResult] = await Promise.all([
+    listMetaClients(supabase),
+    supabase.from("organizations").select("*").order("name", { ascending: true }),
+    supabase
+      .from("lead_sheet_templates")
+      .select("id, name, is_system_default, organization_id"),
+  ])
 
+  const { data: organizations, error } = organizationsResult
   if (error) throw error
 
-  const { data: templateRows, error: templateError } = await supabase
-    .from("lead_sheet_templates")
-    .select("id, name, is_system_default, organization_id")
+  const { data: templateRows, error: templateError } = templateResult
   if (templateError) throw templateError
 
   const templates = (templateRows ?? []) as Array<{

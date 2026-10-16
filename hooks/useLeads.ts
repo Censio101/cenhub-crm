@@ -73,7 +73,8 @@ async function fetchLeadSheetConfig(): Promise<ResolvedLeadSheetConfig> {
 }
 
 export function useLeads() {
-  const { organization } = useActiveOrganization()
+  const { organization, needsClientSelection: adminMustPickClient, sessionReady } =
+    useActiveOrganization()
   const activeSlug = organization?.slug ?? null
   const [leads, setLeads] = useState<Lead[]>(() => getLeadsCache(activeSlug)?.leads ?? [])
   const [leadSheet, setLeadSheet] = useState<ResolvedLeadSheetConfig>(() =>
@@ -100,6 +101,18 @@ export function useLeads() {
 
   const loadLeads = useCallback(async () => {
     const isCurrent = guard.begin()
+    if (!sessionReady) {
+      if (isCurrent()) setLoading(true)
+      return
+    }
+    if (adminMustPickClient) {
+      if (isCurrent()) {
+        setLoading(false)
+        setError(null)
+        setNeedsClientSelection(true)
+      }
+      return
+    }
     const showLoading = !hasLeadsCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
@@ -148,7 +161,7 @@ export function useLeads() {
     } finally {
       if (isCurrent() && showLoading) setLoading(false)
     }
-  }, [activeSlug, guard])
+  }, [activeSlug, guard, adminMustPickClient, sessionReady])
 
   useAsyncEffect(() => {
     void loadLeads()

@@ -1,9 +1,14 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useSyncExternalStore } from "react"
 
 import { listPickerOrganizations, type PickerOrganization } from "@/lib/admin/client-picker"
-import type { HubClient } from "@/lib/admin/hub-clients"
+import {
+  ensureAdminPickerListLoaded,
+  getAdminPickerListSnapshot,
+  resetAdminPickerList,
+  subscribeAdminPickerList,
+} from "@/lib/data/admin-picker-list"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type UseAdminOrganizationListResult = {
@@ -13,54 +18,31 @@ type UseAdminOrganizationListResult = {
   reload: () => Promise<void>
 }
 
-const MAX_ATTEMPTS = 3
-
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-/** Fetch the picker list, retrying transient failures so a blip never looks like "no clients". */
-async function fetchPickerClients(): Promise<HubClient[] | null> {
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetch("/api/admin/organizations/picker", {
-        cache: "no-store",
-        credentials: "include",
-      })
-      if (response.ok) {
-        const data = (await response.json()) as { clients?: HubClient[] }
-        return data.clients ?? []
-      }
-    } catch {
-      // retry below
-    }
-    if (attempt < MAX_ATTEMPTS) await wait(400 * attempt)
-  }
-  return null
-}
-
 export function useAdminOrganizationList(): UseAdminOrganizationListResult {
-  const [clients, setClients] = useState<HubClient[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const reload = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const result = await fetchPickerClients()
-    if (result) {
-      setClients(result)
-    } else {
-      setError("fetch_failed")
-    }
-    setLoading(false)
-  }, [])
+  const snapshot = useSyncExternalStore(
+    subscribeAdminPickerList,
+    getAdminPickerListSnapshot,
+    getAdminPickerListSnapshot
+  )
 
   useAsyncEffect(() => {
-    void reload()
-  }, [reload])
+    void ensureAdminPickerListLoaded()
+  }, [])
 
-  const pickerOrganizations = useMemo(() => listPickerOrganizations(clients), [clients])
+  const reload = useCallback(async () => {
+    resetAdminPickerList()
+    await ensureAdminPickerListLoaded()
+  }, [])
 
-  return { pickerOrganizations, loading, error, reload }
+  const pickerOrganizations = useMemo(
+    () => listPickerOrganizations(snapshot.clients),
+    [snapshot.clients]
+  )
+
+  return {
+    pickerOrganizations,
+    loading: !snapshot.loaded,
+    error: snapshot.error ? "fetch_failed" : null,
+    reload,
+  }
 }

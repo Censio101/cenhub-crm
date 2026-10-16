@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation"
 
+import { AdminPickerPrefetch } from "@/components/admin/AdminPickerPrefetch"
 import { ClientContextBar } from "@/components/admin/ClientContextBar"
 import { ClientContextBarSkeleton } from "@/components/admin/ClientContextBarSkeleton"
 import { LocaleSync } from "@/components/i18n/LocaleSync"
@@ -54,6 +55,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
     >
       <AuthHashErrorHandler />
       <LocaleSync />
+      <AdminPickerPrefetch />
       <AppTopbar />
       {showClientContextBarSkeleton ? <ClientContextBarSkeleton /> : null}
       {showClientContextBar ? <ClientContextBar /> : null}

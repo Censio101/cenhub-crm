@@ -50,7 +50,8 @@ type AdSpendPayload = {
 }
 
 export function useDashboardData(): DashboardDataState {
-  const { organization } = useActiveOrganization()
+  const { organization, needsClientSelection: adminMustPickClient, sessionReady } =
+    useActiveOrganization()
   const activeSlug = organization?.slug ?? null
 
   const [leads, setLeads] = useState<Lead[]>(() => getLeadsCache(activeSlug)?.leads ?? [])
@@ -72,6 +73,18 @@ export function useDashboardData(): DashboardDataState {
 
   const load = useCallback(async () => {
     const isCurrent = guard.begin()
+    if (!sessionReady) {
+      if (isCurrent()) setLoading(true)
+      return
+    }
+    if (adminMustPickClient) {
+      if (isCurrent()) {
+        setLoading(false)
+        setError(null)
+        setNeedsClientSelection(true)
+      }
+      return
+    }
     const showLoading = !hasLeadsCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
@@ -130,7 +143,7 @@ export function useDashboardData(): DashboardDataState {
         setLoading(false)
       }
     }
-  }, [activeSlug, guard])
+  }, [activeSlug, guard, adminMustPickClient, sessionReady])
 
   useAsyncEffect(() => {
     void load()

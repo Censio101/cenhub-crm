@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react"
 
+import { resetAdminPickerList } from "@/lib/data/admin-picker-list"
 import { clearClientCaches, emitClientOrgChanged } from "@/lib/data/client-cache"
 import type { UserRole } from "@/lib/db/types"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
@@ -59,6 +60,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const sessionResolvedRef = useRef(false)
   /** Only the most recently started session fetch may write state (stale responses are dropped). */
   const reloadSeqRef = useRef(0)
+  const reloadInFlightRef = useRef<Promise<void> | null>(null)
 
   useEffect(() => {
     if (!isBrowserSupabaseConfigured()) return
@@ -75,6 +77,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const reload = useCallback(async (options?: SessionReloadOptions) => {
+    if (reloadInFlightRef.current) {
+      await reloadInFlightRef.current
+      return
+    }
+
+    const run = (async () => {
     const seq = ++reloadSeqRef.current
     const isStale = () => seq !== reloadSeqRef.current
 
@@ -93,6 +101,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setOrganization(null)
       setRole(null)
       setIsAdminViewingClient(false)
+      resetAdminPickerList()
     }
 
     type MePayload = {
@@ -202,6 +211,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (!isStale() || didSetLoading) {
         setLoading(false)
       }
+    }
+    })()
+
+    reloadInFlightRef.current = run
+    try {
+      await run
+    } finally {
+      if (reloadInFlightRef.current === run) reloadInFlightRef.current = null
     }
   }, [configured, isAuthenticated, authLoading, authUser?.email, authUser?.id])
 
