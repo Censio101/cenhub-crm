@@ -12,6 +12,7 @@ export function serializeFunnel(row: LeadFunnelRow) {
     enabled: row.enabled,
     dataFormat: row.data_format,
     fieldMapping: row.field_mapping ?? {},
+    webhookFieldTargets: row.webhook_field_targets ?? null,
     webhookSecret: row.webhook_secret,
     hasSample: row.sample_payload !== null,
     sampleReceivedAt: row.sample_received_at,

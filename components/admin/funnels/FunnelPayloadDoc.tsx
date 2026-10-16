@@ -12,7 +12,7 @@ import {
   STANDARD_WEBHOOK_FIELDS,
   buildCurlExample,
   buildExamplePayload,
-  buildStandardInboundExample,
+  buildFilteredStandardInboundExample,
   type WebhookCustomFieldSpec,
   type WebhookLeadSheetInfo,
   type WebhookServiceSpec,
@@ -25,6 +25,8 @@ type Props = {
   url: string
   secret: string
   leadSheet: WebhookLeadSheetInfo | null
+  standardFieldKeys: readonly string[]
+  customFields: readonly WebhookCustomFieldSpec[]
   enabledServices: readonly ClientService[]
   webhookServices: readonly WebhookServiceSpec[]
   copiedKey: string | null
@@ -73,6 +75,8 @@ export function FunnelPayloadDoc({
   url,
   secret,
   leadSheet,
+  standardFieldKeys,
+  customFields,
   enabledServices,
   webhookServices,
   copiedKey,
@@ -80,9 +84,8 @@ export function FunnelPayloadDoc({
   referenceOnly = false,
 }: Props) {
   const { t } = useLanguage()
-  const customFields: WebhookCustomFieldSpec[] = leadSheet?.customFields ?? []
-  const standard = buildStandardInboundExample(enabledServices)
-  const payload = buildExamplePayload(standard, customFields)
+  const standard = buildFilteredStandardInboundExample(enabledServices, standardFieldKeys)
+  const payload = buildExamplePayload(standard, [...customFields])
   const json = JSON.stringify(payload, null, 2)
   const curl = buildCurlExample(url, secret, payload)
   const jsonKey = `${funnelId}-json`
@@ -175,7 +178,8 @@ export function FunnelPayloadDoc({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#efe7de]">
-              {STANDARD_WEBHOOK_FIELDS.map((field) => (
+              {STANDARD_WEBHOOK_FIELDS.filter((field) => standardFieldKeys.includes(field.key)).map(
+                (field) => (
                 <tr key={field.key}>
                   <td className={cn(tdClass, "font-mono text-[12px] text-foreground")}>
                     {field.key}

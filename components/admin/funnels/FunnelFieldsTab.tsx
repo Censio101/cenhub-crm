@@ -12,8 +12,8 @@ export type { FunnelFormat }
 import type { useFunnelSample } from "@/hooks/useFunnelSample"
 import {
   buildExamplePayload,
+  buildFilteredStandardInboundExample,
   buildMappingInboundExample,
-  buildStandardInboundExample,
   type WebhookCustomFieldSpec,
   type WebhookLeadSheetInfo,
   type WebhookServiceSpec,
@@ -27,6 +27,7 @@ type Props = {
   url: string
   leadSheet: WebhookLeadSheetInfo | null
   customFields: WebhookCustomFieldSpec[]
+  standardFieldKeys: readonly string[]
   enabledServices: readonly ClientService[]
   webhookServices: readonly WebhookServiceSpec[]
   format: FunnelFormat
@@ -52,6 +53,7 @@ export function FunnelFieldsTab({
   url,
   leadSheet,
   customFields,
+  standardFieldKeys,
   enabledServices,
   webhookServices,
   format,
@@ -68,10 +70,9 @@ export function FunnelFieldsTab({
   const { t } = useLanguage()
   const { state } = sampleApi
   const sectionClass = "rounded-xl border border-[#e8e0d8] bg-white p-4 shadow-sm sm:p-5"
-  const customFieldSpecs = leadSheet?.customFields ?? []
   const fixedPayload = buildExamplePayload(
-    buildStandardInboundExample(enabledServices),
-    customFieldSpecs
+    buildFilteredStandardInboundExample(enabledServices, standardFieldKeys),
+    customFields
   )
   const mappingPayload = buildMappingInboundExample(enabledServices)
 
@@ -101,6 +102,8 @@ export function FunnelFieldsTab({
             url={url}
             secret={funnel.webhookSecret}
             leadSheet={leadSheet}
+            standardFieldKeys={standardFieldKeys}
+            customFields={customFields}
             enabledServices={enabledServices}
             webhookServices={webhookServices}
             copiedKey={copiedKey}
@@ -154,6 +157,7 @@ export function FunnelFieldsTab({
               funnelId={funnel.id}
               savedMapping={funnel.fieldMapping}
               customFields={customFields}
+              standardFieldKeys={standardFieldKeys}
               sample={state.sample}
               webhookServices={webhookServices}
               onSaved={onMappingSaved}

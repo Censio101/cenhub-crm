@@ -8,10 +8,9 @@ import {
   isFunnelListening,
   recordFunnelSampleError,
 } from "@/lib/db/lead-funnels-repository"
-import {
-  listCustomFieldDefs,
-  resolveLeadSheetForOrganization,
-} from "@/lib/db/lead-sheet-repository"
+import { resolveLeadSheetForOrganization } from "@/lib/db/lead-sheet-repository"
+import { buildWebhookLeadSheetInfo } from "@/lib/lead-sheet/webhook-spec"
+import { customFieldDefsForFunnel } from "@/lib/lead-sheet/webhook-fields"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
@@ -102,9 +101,13 @@ export async function POST(request: Request, context: RouteContext) {
       resolveOrganizationServices(admin, funnel.organization_id),
       getOrganizationServiceAliasMap(admin, funnel.organization_id),
     ])
+    const sheetInfo = leadSheet ? buildWebhookLeadSheetInfo(leadSheet) : null
     const { lead, warnings } = buildInboundLead({
       parsed,
-      customFieldDefs: leadSheet ? listCustomFieldDefs(leadSheet) : [],
+      customFieldDefs:
+        leadSheet && sheetInfo
+          ? customFieldDefsForFunnel(leadSheet, sheetInfo, funnel.webhook_field_targets)
+          : [],
       services,
       serviceAliasMap,
       platform: funnel.platform,

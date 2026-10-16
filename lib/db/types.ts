@@ -89,6 +89,8 @@ export type LeadFunnelRow = {
   sample_received_at: string | null
   /** Why the last request could not be used as a sample. */
   sample_error: string | null
+  /** Subset of sheet-eligible mapping targets; null = all eligible. */
+  webhook_field_targets: string[] | null
   created_at: string
   updated_at: string
 }

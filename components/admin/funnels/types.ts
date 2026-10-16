@@ -9,6 +9,8 @@ export type FunnelDto = {
   /** `ours`: fixed Censio field names. `own`: mapping mode (saved paths apply). */
   dataFormat: "ours" | "own"
   fieldMapping: Record<string, string>
+  /** Subset of sheet-eligible targets; null = all eligible from the lead sheet. */
+  webhookFieldTargets: string[] | null
   webhookSecret: string
   hasSample: boolean
   sampleReceivedAt: string | null

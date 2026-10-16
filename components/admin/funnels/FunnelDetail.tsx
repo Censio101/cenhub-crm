@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { FlaskConicalIcon, PencilIcon, PlugIcon, ShuffleIcon, Trash2Icon } from "lucide-react"
+import { FlaskConicalIcon, ListChecksIcon, PencilIcon, PlugIcon, ShuffleIcon, Trash2Icon } from "lucide-react"
 
 import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
 import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
@@ -9,15 +9,13 @@ import { FunnelFieldsTab } from "@/components/admin/funnels/FunnelFieldsTab"
 import type { FunnelFormat } from "@/components/admin/funnels/types"
 import { FunnelSetupTab } from "@/components/admin/funnels/FunnelSetupTab"
 import { FunnelTestTab } from "@/components/admin/funnels/FunnelTestTab"
+import { FunnelWebhookFieldsDialog } from "@/components/admin/funnels/FunnelWebhookFieldsDialog"
 import type { FunnelDto } from "@/components/admin/funnels/types"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { useFunnelSample } from "@/hooks/useFunnelSample"
-import {
-  STANDARD_WEBHOOK_FIELDS,
-  type WebhookLeadSheetInfo,
-  type WebhookServiceSpec,
-} from "@/lib/lead-sheet/webhook-spec"
+import { effectiveWebhookFields } from "@/lib/lead-sheet/webhook-fields"
+import type { WebhookLeadSheetInfo, WebhookServiceSpec } from "@/lib/lead-sheet/webhook-spec"
 import type { ClientService } from "@/lib/services/types"
 import { flattenPayloadPaths } from "@/lib/leads/payload-paths"
 import { cn } from "cn"
@@ -68,7 +66,16 @@ export function FunnelDetail({
 }: Props) {
   const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>("connect")
-  const customFields = useMemo(() => leadSheet?.customFields ?? [], [leadSheet])
+  const [webhookFieldsOpen, setWebhookFieldsOpen] = useState(false)
+  const effective = useMemo(
+    () =>
+      leadSheet
+        ? effectiveWebhookFields(leadSheet, funnel.webhookFieldTargets)
+        : { standardFieldKeys: [], customFields: [], includeServiceIds: false },
+    [leadSheet, funnel.webhookFieldTargets]
+  )
+  const customFields = effective.customFields
+  const standardFieldKeys = effective.standardFieldKeys
   const enabledServices = useMemo<ClientService[]>(
     () =>
       webhookServices.map((service) => ({
@@ -96,7 +103,23 @@ export function FunnelDetail({
   // Until the sample has loaded, what the page list already knows is used, so nothing flickers.
   const sampleLoading = !state.loaded && (funnel.hasSample || funnel.listeningSeconds !== null)
   const listening = state.loaded ? state.listeningEndsAt !== null : funnel.listeningSeconds !== null
-  const totalTargets = STANDARD_WEBHOOK_FIELDS.length + customFields.length
+  const totalTargets = standardFieldKeys.length + customFields.length
+
+  async function saveWebhookFieldTargets(targets: string[] | null): Promise<string | null> {
+    try {
+      const response = await fetch(`/api/admin/organizations/${slug}/funnels/${funnel.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhookFieldTargets: targets }),
+      })
+      if (!response.ok) throw new Error("fields")
+      onFunnelChange({ webhookFieldTargets: targets })
+      setWebhookFieldsOpen(false)
+      return null
+    } catch {
+      return t("funnelsLoadError")
+    }
+  }
 
   async function chooseFormat(next: FunnelFormat) {
     if (next === format) return
@@ -167,6 +190,19 @@ export function FunnelDetail({
             </button>
           </label>
 
+          {leadSheet ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 border-[#d3c3b2] bg-white"
+              onClick={() => setWebhookFieldsOpen(true)}
+            >
+              <ListChecksIcon className="size-3.5" aria-hidden />
+              {t("funnelWebhookFieldsButton")}
+            </Button>
+          ) : null}
+
           <Button
             type="button"
             variant="outline"
@@ -217,6 +253,7 @@ export function FunnelDetail({
               funnel={funnel}
               url={url}
               customFields={customFields}
+              standardFieldKeys={standardFieldKeys}
               enabledServices={enabledServices}
               copiedKey={copiedKey}
               onCopy={onCopy}
@@ -229,6 +266,7 @@ export function FunnelDetail({
               url={url}
               leadSheet={leadSheet}
               customFields={customFields}
+              standardFieldKeys={standardFieldKeys}
               enabledServices={enabledServices}
               webhookServices={webhookServices}
               format={format}
@@ -248,6 +286,7 @@ export function FunnelDetail({
               funnel={funnel}
               format={format}
               customFields={customFields}
+              standardFieldKeys={standardFieldKeys}
               enabledServices={enabledServices}
               sample={state.sample}
               sampleLoading={sampleLoading}
@@ -255,6 +294,15 @@ export function FunnelDetail({
           )}
         </div>
       </div>
+
+      {webhookFieldsOpen && leadSheet ? (
+        <FunnelWebhookFieldsDialog
+          leadSheet={leadSheet}
+          initialTargets={funnel.webhookFieldTargets}
+          onSave={saveWebhookFieldTargets}
+          onClose={() => setWebhookFieldsOpen(false)}
+        />
+      ) : null}
     </section>
   )
 }

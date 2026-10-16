@@ -53,6 +53,7 @@ type ColumnRow = {
   builtin_key: string | null
   custom_field_id: string | null
   hidden_for_client: boolean
+  webhook_included: boolean
   /** Embedded library field (custom columns only). */
   lead_sheet_custom_fields?: CustomFieldRow | null
 }
@@ -234,6 +235,7 @@ export async function getLeadSheetTemplateById(
         kind: "builtin",
         builtinKey: row.builtin_key,
         hiddenForClient: row.hidden_for_client,
+        webhookIncluded: row.webhook_included,
       })
     } else if (row.kind === "custom" && row.lead_sheet_custom_fields) {
       columns.push({
@@ -242,6 +244,7 @@ export async function getLeadSheetTemplateById(
         kind: "custom",
         customField: mapCustomField(row.lead_sheet_custom_fields),
         hiddenForClient: row.hidden_for_client,
+        webhookIncluded: row.webhook_included,
       })
     }
   }

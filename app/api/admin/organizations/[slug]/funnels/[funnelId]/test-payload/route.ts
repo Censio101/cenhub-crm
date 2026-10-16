@@ -2,10 +2,9 @@ import { NextResponse } from "next/server"
 
 import { adminErrorResponse, requireCensioAdmin } from "@/lib/auth/require-censio-admin"
 import { getLeadFunnelById } from "@/lib/db/lead-funnels-repository"
-import {
-  listCustomFieldDefs,
-  resolveLeadSheetForOrganization,
-} from "@/lib/db/lead-sheet-repository"
+import { resolveLeadSheetForOrganization } from "@/lib/db/lead-sheet-repository"
+import { buildWebhookLeadSheetInfo } from "@/lib/lead-sheet/webhook-spec"
+import { customFieldDefsForFunnel } from "@/lib/lead-sheet/webhook-fields"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
@@ -73,7 +72,10 @@ export async function POST(request: Request, context: RouteContext) {
       platform: funnel.platform,
       loadCustomFieldDefs: async () => {
         const sheet = await resolveLeadSheetForOrganization(admin, organization.id)
-        return sheet ? listCustomFieldDefs(sheet) : []
+        const sheetInfo = sheet ? buildWebhookLeadSheetInfo(sheet) : null
+        return sheet && sheetInfo
+          ? customFieldDefsForFunnel(sheet, sheetInfo, funnel.webhook_field_targets)
+          : []
       },
       loadServices: () => resolveOrganizationServices(admin, organization.id),
       loadServiceAliasMap: () => getOrganizationServiceAliasMap(admin, organization.id),

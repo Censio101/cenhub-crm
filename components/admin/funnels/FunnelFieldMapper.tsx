@@ -38,6 +38,7 @@ type Props = {
   funnelId: string
   savedMapping: Mapping
   customFields: WebhookCustomFieldSpec[]
+  standardFieldKeys: readonly string[]
   /** The captured body, or null when there is none yet (paths can still be typed). */
   sample: Record<string, unknown> | null
   webhookServices?: readonly WebhookServiceSpec[]
@@ -73,6 +74,7 @@ export function FunnelFieldMapper({
   funnelId,
   savedMapping,
   customFields,
+  standardFieldKeys,
   sample,
   webhookServices = [],
   onSaved,
@@ -92,21 +94,27 @@ export function FunnelFieldMapper({
 
   const serviceSlugs = useMemo(() => webhookServices.map((service) => service.id), [webhookServices])
 
+  const allowedStandard = useMemo(() => new Set(standardFieldKeys), [standardFieldKeys])
+
   const targets = useMemo(
     () => [
-      ...STANDARD_WEBHOOK_FIELDS.filter((field) => field.key !== "serviceIds").map((field) => ({
+      ...STANDARD_WEBHOOK_FIELDS.filter(
+        (field) => field.key !== "serviceIds" && allowedStandard.has(field.key)
+      ).map((field) => ({
         target: field.key,
         custom: null as WebhookCustomFieldSpec | null,
         names: [] as string[],
       })),
-      { target: "serviceIds", custom: null, names: [] as string[] },
+      ...(allowedStandard.has("serviceIds")
+        ? [{ target: "serviceIds", custom: null, names: [] as string[] }]
+        : []),
       ...customFields.map((field) => ({
         target: `${FUNNEL_TARGET_PREFIX}${field.key}`,
         custom: field,
         names: [field.key, field.label],
       })),
     ],
-    [customFields]
+    [allowedStandard, customFields]
   )
 
   const customKeys = useMemo(() => customFields.map((f) => f.key), [customFields])
@@ -330,7 +338,9 @@ export function FunnelFieldMapper({
 
       <div className="space-y-2.5">
         <p className="text-xs font-medium text-muted-foreground">{t("webhookStandardFields")}</p>
-        {STANDARD_WEBHOOK_FIELDS.filter((field) => field.key !== "serviceIds").map((field) =>
+        {STANDARD_WEBHOOK_FIELDS.filter(
+          (field) => field.key !== "serviceIds" && allowedStandard.has(field.key)
+        ).map((field) =>
           row(
             field.key,
             webhookStandardFieldMapLabel(field.key),
@@ -340,6 +350,7 @@ export function FunnelFieldMapper({
         )}
       </div>
 
+      {allowedStandard.has("serviceIds") ? (
       <div className="space-y-2.5 rounded-xl border border-[#e8e0d8] bg-[#faf8f6] p-3.5">
         <p className="text-xs font-medium text-muted-foreground">{t("funnelOwnServicesSection")}</p>
         {row("serviceIds", "serviceIds")}
@@ -349,6 +360,7 @@ export function FunnelFieldMapper({
           introKey="funnelMappingServicesIntro"
         />
       </div>
+      ) : null}
 
       {customFields.length > 0 ? (
         <div className="space-y-2.5">

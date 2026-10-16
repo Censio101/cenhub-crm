@@ -7,7 +7,7 @@ import type { FunnelFormat } from "@/components/admin/funnels/FunnelFieldsTab"
 import type { FunnelDto } from "@/components/admin/funnels/types"
 import {
   buildExamplePayload,
-  buildStandardInboundExample,
+  buildFilteredStandardInboundExample,
   type WebhookCustomFieldSpec,
 } from "@/lib/lead-sheet/webhook-spec"
 import type { ClientService } from "@/lib/services/types"
@@ -17,6 +17,7 @@ type Props = {
   funnel: FunnelDto
   format: FunnelFormat
   customFields: WebhookCustomFieldSpec[]
+  standardFieldKeys: readonly string[]
   enabledServices: readonly ClientService[]
   sample: Record<string, unknown> | null
   sampleLoading: boolean
@@ -28,13 +29,18 @@ export function FunnelTestTab({
   funnel,
   format,
   customFields,
+  standardFieldKeys,
   enabledServices,
   sample,
   sampleLoading,
 }: Props) {
   const example = useMemo(
-    () => buildExamplePayload(buildStandardInboundExample(enabledServices), customFields),
-    [customFields, enabledServices]
+    () =>
+      buildExamplePayload(
+        buildFilteredStandardInboundExample(enabledServices, standardFieldKeys),
+        customFields
+      ),
+    [customFields, enabledServices, standardFieldKeys]
   )
 
   return (

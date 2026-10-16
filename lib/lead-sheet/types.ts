@@ -51,6 +51,8 @@ export type LeadSheetTemplateColumn =
       builtinKey: BuiltinColumnKey
       /** The template hides this column from the client dashboard (data is still collected). */
       hiddenForClient?: boolean
+      /** When false, omit from webhook docs, mapping, and inbound custom field handling. */
+      webhookIncluded?: boolean
     }
   | {
       id: string
@@ -59,6 +61,8 @@ export type LeadSheetTemplateColumn =
       customField: LeadSheetCustomFieldDef
       /** The template hides this column from the client dashboard (data is still collected). */
       hiddenForClient?: boolean
+      /** When false, omit from webhook docs, mapping, and inbound custom field handling. */
+      webhookIncluded?: boolean
     }
 
 /** A field in the library: built-in (fixed, locked) or custom (created by an admin). */

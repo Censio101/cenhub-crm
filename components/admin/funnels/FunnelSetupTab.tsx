@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import {
   buildCurlExample,
   buildExamplePayload,
-  buildStandardInboundExample,
+  buildFilteredStandardInboundExample,
   type WebhookCustomFieldSpec,
 } from "@/lib/lead-sheet/webhook-spec"
 import type { ClientService } from "@/lib/services/types"
@@ -28,6 +28,7 @@ type Props = {
   funnel: FunnelDto
   url: string
   customFields: WebhookCustomFieldSpec[]
+  standardFieldKeys: readonly string[]
   enabledServices: readonly ClientService[]
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
@@ -50,6 +51,7 @@ export function FunnelSetupTab({
   funnel,
   url,
   customFields,
+  standardFieldKeys,
   enabledServices,
   copiedKey,
   onCopy,
@@ -63,7 +65,10 @@ export function FunnelSetupTab({
   const curl = buildCurlExample(
     url,
     funnel.webhookSecret,
-    buildExamplePayload(buildStandardInboundExample(enabledServices), customFields)
+    buildExamplePayload(
+      buildFilteredStandardInboundExample(enabledServices, standardFieldKeys),
+      customFields
+    )
   )
 
   return (

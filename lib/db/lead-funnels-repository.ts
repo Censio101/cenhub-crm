@@ -76,6 +76,7 @@ export async function updateLeadFunnel(
     enabled: boolean
     webhookSecret: string
     dataFormat: LeadFunnelRow["data_format"]
+    webhookFieldTargets: string[] | null
   }>
 ): Promise<LeadFunnelRow> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
@@ -89,6 +90,12 @@ export async function updateLeadFunnel(
     row.data_format = patch.dataFormat
     // Going back to our own names stops a running wait; the saved sample and mapping stay.
     if (patch.dataFormat === "ours") row.sample_listening_until = null
+  }
+  if (patch.webhookFieldTargets !== undefined) {
+    row.webhook_field_targets =
+      patch.webhookFieldTargets && patch.webhookFieldTargets.length > 0
+        ? patch.webhookFieldTargets
+        : null
   }
 
   const { data, error } = await supabase

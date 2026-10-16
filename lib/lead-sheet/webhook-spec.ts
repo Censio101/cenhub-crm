@@ -1,3 +1,7 @@
+import {
+  sheetEligibleCustomWebhookFields,
+  sheetEligibleStandardWebhookKeys,
+} from "@/lib/lead-sheet/webhook-fields"
 import type {
   CustomFieldType,
   LeadSheetCustomFieldDef,
@@ -22,6 +26,8 @@ export type WebhookLeadSheetInfo = {
   isSystemDefault: boolean
   /** True when the sheet belongs to this client only (a "unique" sheet). */
   isClientOwned: boolean
+  /** Standard top-level keys enabled on this client's sheet (before funnel subset). */
+  standardFieldKeys: string[]
   customFields: WebhookCustomFieldSpec[]
 }
 
@@ -75,10 +81,24 @@ export function buildWebhookLeadSheetInfo(
     templateName: config.template.name,
     isSystemDefault: config.template.isSystemDefault,
     isClientOwned: config.template.organizationId !== null,
-    customFields: config.columns.flatMap((col) =>
-      col.kind === "custom" ? [toSpec(col.customField)] : []
-    ),
+    standardFieldKeys: sheetEligibleStandardWebhookKeys(config.columns),
+    customFields: sheetEligibleCustomWebhookFields(config.columns),
   }
+}
+
+/** Example JSON using only selected standard keys and custom fields. */
+export function buildFilteredStandardInboundExample(
+  services: readonly ClientService[],
+  standardFieldKeys: readonly string[]
+): Record<string, unknown> {
+  const full = buildStandardInboundExample(services)
+  const allowed = new Set(standardFieldKeys)
+  const out: Record<string, unknown> = {}
+  for (const key of standardFieldKeys) {
+    if (key in full) out[key] = full[key]
+  }
+  if (!allowed.has("serviceIds") && "serviceIds" in out) delete out.serviceIds
+  return out
 }
 
 export function exampleValueForField(field: WebhookCustomFieldSpec): unknown {
