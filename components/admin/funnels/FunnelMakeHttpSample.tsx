@@ -110,22 +110,70 @@ type GuideNameValueRow = {
   copyLabel?: string
 }
 
+function GuideRequestUrlBlock({
+  method,
+  url,
+  urlCopyValue,
+  copiedKey,
+  onCopy,
+  copyKeyPrefix,
+}: {
+  method: string
+  url: string
+  urlCopyValue: string
+  copiedKey: string | null
+  onCopy: (key: string, value: string) => void
+  copyKeyPrefix: string
+}) {
+  const { t } = useLanguage()
+
+  return (
+    <div className="space-y-2 rounded-lg border border-primary/25 bg-[#f9f5ef]/80 px-3 py-2.5">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
+        <span className="font-semibold text-foreground">{t("funnelMakeGuideRequestMethod")}</span>
+        <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium text-primary">
+          {method}
+        </span>
+        <span className="w-full text-muted-foreground">{t("funnelMakeGuideRequestMethodHint")}</span>
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs font-semibold text-foreground">{t("funnelMakeGuideRequestUrl")}</p>
+        <div className="flex items-start gap-2">
+          <p className="min-w-0 flex-1 break-all font-mono text-[11px] text-foreground">{url}</p>
+          <GuideCopyIconButton
+            copyKey={`${copyKeyPrefix}-url`}
+            value={urlCopyValue}
+            disabled={!urlCopyValue}
+            copiedKey={copiedKey}
+            onCopy={onCopy}
+            label={t("funnelCopyWebhook")}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function GuideNameValueTable({
   rows,
   copiedKey,
   onCopy,
+  headerNameLabel,
+  headerValueLabel,
 }: {
   rows: GuideNameValueRow[]
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
+  headerNameLabel: string
+  headerValueLabel: string
 }) {
   const { t } = useLanguage()
 
   return (
     <div className="overflow-hidden rounded-lg border border-primary/25">
       <div className="grid grid-cols-[minmax(7rem,0.9fr)_minmax(0,1.4fr)_auto] gap-2 border-b border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-        <span>{t("funnelMakeGuideHeaderColName")}</span>
-        <span>{t("funnelMakeGuideHeaderColValue")}</span>
+        <span>{headerNameLabel}</span>
+        <span>{headerValueLabel}</span>
         <span className="sr-only">{t("portalCopy")}</span>
       </div>
       <ul className="divide-y divide-primary/10">
@@ -250,20 +298,13 @@ function MakeSetupGuide({
               <p className="text-sm font-semibold text-foreground">{step.title}</p>
               <p className="text-xs leading-relaxed text-muted-foreground">{step.body}</p>
               {"method" in step && "url" in step ? (
-                <GuideNameValueTable
+                <GuideRequestUrlBlock
+                  method={step.method}
+                  url={step.url}
+                  urlCopyValue={step.urlCopyValue}
                   copiedKey={copiedKey}
                   onCopy={onCopy}
-                  rows={[
-                    { name: t("funnelMakeGuideMethodLabel"), value: step.method },
-                    {
-                      name: "URL",
-                      value: step.url,
-                      copyKey: `${copyKeyPrefix}-url`,
-                      copyValue: step.urlCopyValue,
-                      copyDisabled: !step.urlCopyValue,
-                      copyLabel: t("funnelCopyWebhook"),
-                    },
-                  ]}
+                  copyKeyPrefix={copyKeyPrefix}
                 />
               ) : null}
               {"json" in step && step.json ? (
@@ -285,6 +326,8 @@ function MakeSetupGuide({
               ) : null}
               {"headers" in step && step.headers ? (
                 <GuideNameValueTable
+                  headerNameLabel={t("funnelMakeGuideHeaderNameCol")}
+                  headerValueLabel={t("funnelMakeGuideHeaderValueCol")}
                   copiedKey={copiedKey}
                   onCopy={onCopy}
                   rows={step.headers.map((row) => ({
