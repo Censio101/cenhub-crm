@@ -1378,15 +1378,12 @@ export const en: Messages = {
   funnelMakeGuideStep2Title: "Authentication",
   funnelMakeGuideStep2Body: "Select No authentication. Set Bearer in Headers.",
   funnelMakeGuideStep3Title: "Method and URL",
-  funnelMakeGuideStep3Body:
-    "Use the same URL as on the Connect tab. In Make these are separate fields — not header rows.",
+  funnelMakeGuideStep3Body: "Same URL as Connect.",
   funnelMakeGuideRequestMethod: "Method",
-  funnelMakeGuideRequestMethodHint: "In Make: choose POST in the Method dropdown (not a header).",
   funnelMakeGuideRequestUrl: "URL",
   funnelMakeGuideMethodLabel: "Method",
   funnelMakeGuideStep4Title: "Headers",
-  funnelMakeGuideStep4Body:
-    "Add two header rows in Make. Left column = header name (e.g. Content-Type). Right column = header value (e.g. application/json). Copy buttons paste the value column only.",
+  funnelMakeGuideStep4Body: "Two rows. Copy = value only.",
   funnelMakeGuideHeaderNameCol: "Header name",
   funnelMakeGuideHeaderValueCol: "Header value",
   funnelMakeGuideHeaderColName: "Name",

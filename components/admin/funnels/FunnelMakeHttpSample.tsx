@@ -134,7 +134,6 @@ function GuideRequestUrlBlock({
         <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-medium text-primary">
           {method}
         </span>
-        <span className="w-full text-muted-foreground">{t("funnelMakeGuideRequestMethodHint")}</span>
       </div>
       <div className="space-y-1">
         <p className="text-xs font-semibold text-foreground">{t("funnelMakeGuideRequestUrl")}</p>
@@ -296,7 +295,9 @@ function MakeSetupGuide({
             </span>
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="text-sm font-semibold text-foreground">{step.title}</p>
-              <p className="text-xs leading-relaxed text-muted-foreground">{step.body}</p>
+              {step.body.trim() ? (
+                <p className="text-xs leading-relaxed text-muted-foreground">{step.body}</p>
+              ) : null}
               {"method" in step && "url" in step ? (
                 <GuideRequestUrlBlock
                   method={step.method}

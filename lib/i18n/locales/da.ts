@@ -1385,15 +1385,12 @@ const daMessages = {
   funnelMakeGuideStep2Title: "Godkendelse",
   funnelMakeGuideStep2Body: "Vælg No authentication. Sæt Bearer under Headers.",
   funnelMakeGuideStep3Title: "Metode og URL",
-  funnelMakeGuideStep3Body:
-    "Brug samme URL som på fanen Forbind. I Make er det separate felter — ikke header-rækker.",
+  funnelMakeGuideStep3Body: "Samme URL som Forbind.",
   funnelMakeGuideRequestMethod: "Metode",
-  funnelMakeGuideRequestMethodHint: "I Make: vælg POST i Method (ikke en header).",
   funnelMakeGuideRequestUrl: "URL",
   funnelMakeGuideMethodLabel: "Metode",
   funnelMakeGuideStep4Title: "Headers",
-  funnelMakeGuideStep4Body:
-    "Tilføj to header-rækker i Make. Venstre = header-navn (fx Content-Type). Højre = header-værdi (fx application/json). Kopi indsætter kun værdi-kolonnen.",
+  funnelMakeGuideStep4Body: "To rækker. Kopi = kun værdi.",
   funnelMakeGuideHeaderNameCol: "Header-navn",
   funnelMakeGuideHeaderValueCol: "Header-værdi",
   funnelMakeGuideHeaderColName: "Name",
