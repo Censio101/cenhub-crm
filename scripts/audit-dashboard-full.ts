@@ -2,7 +2,7 @@
  * Full dashboard audit: presets, filters, KPI↔bucket consistency, URL state, year table.
  * Run: npx tsx scripts/audit-dashboard-full.ts
  */
-import { appendFileSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 function loadEnvLocal() {
@@ -44,21 +44,17 @@ import {
 import type { DatePreset } from "../lib/performance/types"
 import { createAdminClient } from "../lib/supabase/admin"
 
-const LOG_PATH = resolve(process.cwd(), ".cursor/debug-138f58.log")
-
 type Check = { id: string; ok: boolean; detail: string }
 
 function logAudit(checks: Check[], meta: Record<string, unknown>) {
-  const line = JSON.stringify({
-    sessionId: "138f58",
-    runId: "dashboard-audit",
-    hypothesisId: "audit",
-    location: "scripts/audit-dashboard-full.ts",
+  const payload = {
     message: "dashboard full audit",
-    data: { checks, pass: checks.every((c) => c.ok), ...meta },
+    pass: checks.every((c) => c.ok),
+    checks,
+    ...meta,
     timestamp: Date.now(),
-  })
-  appendFileSync(LOG_PATH, `${line}\n`)
+  }
+  console.log(JSON.stringify(payload))
 }
 
 function near(a: number, b: number, eps = 0.02): boolean {
