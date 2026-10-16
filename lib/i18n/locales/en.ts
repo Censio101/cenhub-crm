@@ -1291,6 +1291,8 @@ export const en: Messages = {
     'Canonical field names → path in payload, e.g. {"email":"contact.email"}.',
   funnelSave: "Save",
   funnelSaved: "Webhook saved.",
+  funnelRename: "Rename",
+  funnelRenameTitle: "Rename webhook",
   funnelDelete: "Delete",
   funnelDeleted: "Webhook deleted.",
   funnelCanonicalDoc: "Expected JSON",

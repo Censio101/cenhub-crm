@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { FlaskConicalIcon, PlugIcon, ShuffleIcon, Trash2Icon } from "lucide-react"
+import { FlaskConicalIcon, PencilIcon, PlugIcon, ShuffleIcon, Trash2Icon } from "lucide-react"
 
 import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
 import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
@@ -35,6 +35,7 @@ type Props = {
   onRegenerateSecret: () => void
   onFunnelChange: (patch: Partial<FunnelDto>) => void
   onToggleEnabled: (enabled: boolean) => void
+  onRename: () => void
   onDelete: () => void
 }
 
@@ -62,6 +63,7 @@ export function FunnelDetail({
   onRegenerateSecret,
   onFunnelChange,
   onToggleEnabled,
+  onRename,
   onDelete,
 }: Props) {
   const { t } = useLanguage()
@@ -143,38 +145,50 @@ export function FunnelDetail({
           </p>
         </div>
 
-        <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium">
-          {t("funnelEnabled")}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={funnel.enabled}
-            onClick={() => onToggleEnabled(!funnel.enabled)}
-            className={cn(
-              "relative h-6 w-10 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:outline-none",
-              funnel.enabled ? "bg-primary" : "bg-[#d9cfc3]"
-            )}
-          >
-            <span
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium">
+            {t("funnelEnabled")}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={funnel.enabled}
+              onClick={() => onToggleEnabled(!funnel.enabled)}
               className={cn(
-                "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform",
-                funnel.enabled && "translate-x-4"
+                "relative h-6 w-10 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:outline-none",
+                funnel.enabled ? "bg-primary" : "bg-[#d9cfc3]"
               )}
-            />
-          </button>
-        </label>
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                  funnel.enabled && "translate-x-4"
+                )}
+              />
+            </button>
+          </label>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground hover:bg-red-50 hover:text-red-700"
-          title={t("funnelDelete")}
-          aria-label={t("funnelDelete")}
-          onClick={onDelete}
-        >
-          <Trash2Icon className="size-4" />
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 border-[#d3c3b2] bg-white"
+            onClick={onRename}
+          >
+            <PencilIcon className="size-3.5" aria-hidden />
+            {t("funnelRename")}
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 border-red-200 bg-white text-red-800 hover:bg-red-50"
+            onClick={onDelete}
+          >
+            <Trash2Icon className="size-3.5" aria-hidden />
+            {t("funnelDelete")}
+          </Button>
+        </div>
       </header>
 
       <div className="space-y-5 px-4 py-5 sm:px-6">

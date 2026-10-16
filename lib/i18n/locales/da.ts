@@ -1298,6 +1298,8 @@ const daMessages = {
   funnelFieldMappingHint: 'Kanoniske feltnavne → sti i payload, fx {"email":"contact.email"}.',
   funnelSave: "Gem",
   funnelSaved: "Webhook gemt.",
+  funnelRename: "Omdøb",
+  funnelRenameTitle: "Omdøb webhook",
   funnelDelete: "Slet",
   funnelDeleted: "Webhook slettet.",
   funnelCanonicalDoc: "Forventet JSON",

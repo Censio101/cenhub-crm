@@ -102,7 +102,10 @@ export async function listInAppClientsForPicker(supabase: SupabaseClient): Promi
 }> {
   const [metaClients, organizationsResult, templateResult] = await Promise.all([
     listMetaClients(supabase),
-    supabase.from("organizations").select("*").order("name", { ascending: true }),
+    supabase
+      .from("organizations")
+      .select("id, lead_sheet_template_id, webhook_payload_stale_since, lead_sheet_changed_at")
+      .order("name", { ascending: true }),
     supabase
       .from("lead_sheet_templates")
       .select("id, name, is_system_default, organization_id"),

@@ -8,6 +8,7 @@ import { adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { FunnelDetail } from "@/components/admin/funnels/FunnelDetail"
 import { FunnelSheetBanner, FunnelStaleNotice } from "@/components/admin/funnels/FunnelSheetBanner"
+import { FunnelRenameDialog } from "@/components/admin/funnels/FunnelRenameDialog"
 import { NewFunnelDialog } from "@/components/admin/funnels/NewFunnelDialog"
 import type { FunnelDto } from "@/components/admin/funnels/types"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -50,6 +51,7 @@ export function AdminClientFunnelsPanel() {
   const [showCreate, setShowCreate] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FunnelDto | null>(null)
+  const [renameTarget, setRenameTarget] = useState<FunnelDto | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const copiedTimerRef = useRef<number | null>(null)
@@ -166,6 +168,25 @@ export function AdminClientFunnelsPanel() {
       setError(t("funnelsLoadError"))
     } finally {
       setAcknowledging(false)
+    }
+  }
+
+  async function renameFunnel(funnelId: string, name: string): Promise<string | null> {
+    const previous = funnels.find((row) => row.id === funnelId)
+    patchFunnel(funnelId, { name })
+    try {
+      const response = await fetch(`/api/admin/organizations/${slug}/funnels/${funnelId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      })
+      if (!response.ok) throw new Error("rename")
+      setNotice(t("funnelSaved"))
+      setRenameTarget(null)
+      return null
+    } catch {
+      if (previous) patchFunnel(funnelId, { name: previous.name })
+      return t("funnelsLoadError")
     }
   }
 
@@ -330,6 +351,7 @@ export function AdminClientFunnelsPanel() {
               onRegenerateSecret={() => void regenerateSecret(selected.id)}
               onFunnelChange={(patch) => patchFunnel(selected.id, patch)}
               onToggleEnabled={(enabled) => void toggleEnabled(selected.id, enabled)}
+              onRename={() => setRenameTarget(selected)}
               onDelete={() => setDeleteTarget(selected)}
             />
           ) : null}
@@ -338,6 +360,14 @@ export function AdminClientFunnelsPanel() {
 
       {showCreate ? (
         <NewFunnelDialog onCreate={createFunnel} onClose={() => setShowCreate(false)} />
+      ) : null}
+
+      {renameTarget ? (
+        <FunnelRenameDialog
+          initialName={renameTarget.name}
+          onClose={() => setRenameTarget(null)}
+          onSave={(name) => renameFunnel(renameTarget.id, name)}
+        />
       ) : null}
 
       {deleteTarget ? (

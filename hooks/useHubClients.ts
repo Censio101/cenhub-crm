@@ -1,8 +1,14 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useSyncExternalStore } from "react"
 
 import type { HubClient } from "@/lib/admin/hub-clients"
+import {
+  ensureAdminPickerListLoaded,
+  getAdminPickerListSnapshot,
+  resetAdminPickerList,
+  subscribeAdminPickerList,
+} from "@/lib/data/admin-picker-list"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type UseHubClientsResult = {
@@ -12,34 +18,27 @@ type UseHubClientsResult = {
   reload: () => Promise<void>
 }
 
+/** Client directory list — shares the deduped picker fetch with prefetch and scope bar. */
 export function useHubClients(): UseHubClientsResult {
-  const [clients, setClients] = useState<HubClient[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const reload = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch("/api/admin/organizations/picker", { cache: "no-store" })
-      if (!response.ok) {
-        setError("fetch_failed")
-        setClients([])
-        return
-      }
-      const data = (await response.json()) as { clients?: HubClient[] }
-      setClients(data.clients ?? [])
-    } catch {
-      setError("fetch_failed")
-      setClients([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const snapshot = useSyncExternalStore(
+    subscribeAdminPickerList,
+    getAdminPickerListSnapshot,
+    getAdminPickerListSnapshot
+  )
 
   useAsyncEffect(() => {
-    void reload()
-  }, [reload])
+    void ensureAdminPickerListLoaded()
+  }, [])
 
-  return { clients, loading, error, reload }
+  const reload = useCallback(async () => {
+    resetAdminPickerList()
+    await ensureAdminPickerListLoaded()
+  }, [])
+
+  return {
+    clients: snapshot.clients,
+    loading: !snapshot.loaded,
+    error: snapshot.error ? "fetch_failed" : null,
+    reload,
+  }
 }
