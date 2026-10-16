@@ -58,9 +58,10 @@ export async function processImportChunk(input: {
 }): Promise<ImportChunkResponse> {
   const { supabase, organizationId, rows, mapping, options, dryRun } = input
 
-  const [sheet, services] = await Promise.all([
+  const [sheet, services, serviceAliasMap] = await Promise.all([
     resolveLeadSheetForOrganization(supabase, organizationId),
     resolveOrganizationServices(supabase, organizationId),
+    getOrganizationServiceAliasMap(supabase, organizationId),
   ])
   const customFieldDefs = sheet ? listCustomFieldDefs(sheet) : []
   const today = nowLeadDateTime().date
@@ -73,6 +74,7 @@ export async function processImportChunk(input: {
       options,
       customFieldDefs,
       services,
+      serviceAliasMap,
       today,
     }),
   }))

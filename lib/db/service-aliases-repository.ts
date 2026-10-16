@@ -12,6 +12,7 @@ export type ServiceInboundAlias = {
 type AliasRow = {
   id: string
   alias: string
+  alias_normalized: string
   service_id: string
   services: { slug: string } | { slug: string }[] | null
 }
@@ -39,7 +40,7 @@ export async function listOrganizationServiceAliases(
 ): Promise<ServiceInboundAlias[]> {
   const { data, error } = await supabase
     .from("organization_service_aliases")
-    .select("id, alias, service_id, services(slug)")
+    .select("id, alias, alias_normalized, service_id, services(slug)")
     .eq("organization_id", organizationId)
     .order("alias")
   if (error) throw error
@@ -56,11 +57,20 @@ export async function getOrganizationServiceAliasMap(
   supabase: SupabaseClient,
   organizationId: string
 ): Promise<Map<string, string>> {
-  const rows = await listOrganizationServiceAliases(supabase, organizationId)
+  const { data, error } = await supabase
+    .from("organization_service_aliases")
+    .select("alias, alias_normalized, service_id, services(slug)")
+    .eq("organization_id", organizationId)
+  if (error) throw error
   const map = new Map<string, string>()
-  for (const row of rows) {
-    if (!row.serviceSlug) continue
-    map.set(foldServiceMatchKey(row.alias), row.serviceSlug)
+  for (const row of (data ?? []) as AliasRow[]) {
+    const slug = slugFromRow(row)
+    if (!slug) continue
+    const norm =
+      typeof row.alias_normalized === "string" && row.alias_normalized.trim()
+        ? row.alias_normalized.trim()
+        : foldServiceMatchKey(row.alias)
+    if (norm) map.set(norm, slug)
   }
   return map
 }
