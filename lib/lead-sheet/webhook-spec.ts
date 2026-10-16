@@ -174,30 +174,60 @@ export const MAPPING_INBOUND_EXAMPLE: Record<string, unknown> = {
 export function buildMappingInboundExample(
   services: readonly ClientService[]
 ): Record<string, unknown> {
-  const interested_services =
-    services.length > 0
-      ? services.slice(0, Math.min(2, services.length)).map((service) => service.id)
-      : (MAPPING_INBOUND_EXAMPLE.interested_services as string[])
-  return {
-    lead_id: "make-example-001",
-    created_time: "2026-03-24T14:30:00+01:00",
-    contact: {
-      full_name: "Jane Doe",
-      email: "jane@example.com",
-      phone_number: "+45 20123456",
-      company_name: "Example ApS",
-    },
-    address: {
-      street: "Main St 1",
-      postcode: "2100",
-      city: "Copenhagen",
-    },
-    interested_services,
-    businesstype: "b2c",
-    platform: "website",
-    meta_ad_id: "120330000000000",
-    notes: "Optional free text",
+  return buildFilteredMappingInboundExample(
+    services,
+    STANDARD_WEBHOOK_FIELDS.map((field) => field.key),
+    []
+  )
+}
+
+/**
+ * Make/mapping-mode sample JSON — only paths for webhook fields selected for this funnel.
+ * Custom columns appear as top-level keys (map them to customFields.* in the Fields tab).
+ */
+export function buildFilteredMappingInboundExample(
+  services: readonly ClientService[],
+  standardFieldKeys: readonly string[],
+  customFields: readonly WebhookCustomFieldSpec[]
+): Record<string, unknown> {
+  const keys = new Set(standardFieldKeys)
+  const out: Record<string, unknown> = {}
+
+  if (keys.has("externalId")) {
+    out.lead_id = "make-example-001"
   }
+  if (keys.has("leadDate")) {
+    out.created_time = "2026-03-24T14:30:00+01:00"
+  }
+
+  const contact: Record<string, unknown> = {}
+  if (keys.has("fullName")) contact.full_name = "Jane Doe"
+  if (keys.has("email")) contact.email = "jane@example.com"
+  if (keys.has("phone")) contact.phone_number = "+45 20123456"
+  if (keys.has("companyName")) contact.company_name = "Example ApS"
+  if (Object.keys(contact).length > 0) out.contact = contact
+
+  const address: Record<string, unknown> = {}
+  if (keys.has("address")) address.street = "Main St 1"
+  if (keys.has("zipCode")) address.postcode = "2100"
+  if (keys.has("city")) address.city = "Copenhagen"
+  if (Object.keys(address).length > 0) out.address = address
+
+  if (keys.has("serviceIds")) {
+    out.interested_services =
+      services.length > 0
+        ? services.slice(0, Math.min(2, services.length)).map((service) => service.id)
+        : (MAPPING_INBOUND_EXAMPLE.interested_services as string[])
+  }
+  if (keys.has("segment")) out.businesstype = "b2c"
+  if (keys.has("platform")) out.platform = "website"
+  if (keys.has("metaAdId")) out.meta_ad_id = "120330000000000"
+
+  for (const field of customFields) {
+    out[field.key] = exampleValueForField(field)
+  }
+
+  return out
 }
 
 /** Standard webhook example using this client's enabled service slugs. */

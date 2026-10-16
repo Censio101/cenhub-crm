@@ -13,7 +13,7 @@ import type { useFunnelSample } from "@/hooks/useFunnelSample"
 import {
   buildExamplePayload,
   buildFilteredStandardInboundExample,
-  buildMappingInboundExample,
+  buildFilteredMappingInboundExample,
   type WebhookCustomFieldSpec,
   type WebhookLeadSheetInfo,
   type WebhookServiceSpec,
@@ -74,7 +74,11 @@ export function FunnelFieldsTab({
     buildFilteredStandardInboundExample(enabledServices, standardFieldKeys),
     customFields
   )
-  const mappingPayload = buildMappingInboundExample(enabledServices)
+  const mappingPayload = buildFilteredMappingInboundExample(
+    enabledServices,
+    standardFieldKeys,
+    customFields
+  )
 
   return (
     <div className="space-y-3">
