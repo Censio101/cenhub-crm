@@ -103,7 +103,9 @@ export function CustomersBoard() {
   const resetDate = useCallback(() => onPresetChange("all_time"), [onPresetChange])
   const { customers, organizationName, loading, error, reload } = useCustomers()
   // Customers mirror won leads; the lead record is what the edit popup changes.
-  const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead } = useLeads()
+  const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead } = useLeads({
+    liveSync: true,
+  })
 
   useEffect(() => {
     if (!loading) markWorkspaceWarm()

@@ -860,7 +860,7 @@ export function LeadsBoard() {
     createLead,
     deleteLead,
     reload,
-  } = useLeads()
+  } = useLeads({ liveSync: true })
 
   useEffect(() => {
     if (!loading) markWorkspaceWarm()

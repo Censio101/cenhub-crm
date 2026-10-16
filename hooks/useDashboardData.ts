@@ -10,6 +10,8 @@ import {
   CLIENT_ORG_CHANGED_EVENT,
   getAdSpendCache,
   getLeadsCache,
+  hasFreshAdSpendCache,
+  hasFreshLeadsCache,
   hasLeadsCache,
   setAdSpendCache,
   setLeadsCache,
@@ -89,6 +91,20 @@ export function useDashboardData(): DashboardDataState {
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
+
+    const freshLeads = hasFreshLeadsCache(activeSlug)
+    const freshAdSpend = hasFreshAdSpendCache(activeSlug)
+    if (freshLeads && freshAdSpend) {
+      const cached = getLeadsCache(activeSlug)!
+      const adSpend = getAdSpendCache(activeSlug) ?? {}
+      if (isCurrent()) {
+        setLeads(cached.leads)
+        setSource(cached.source)
+        setAdSpendByMonth(adSpend)
+        setLoading(false)
+      }
+      return
+    }
 
     try {
       const [leadsResult, adSpendResult] = await Promise.all([

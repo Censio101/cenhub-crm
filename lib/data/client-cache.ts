@@ -8,6 +8,7 @@ type LeadsCacheEntry = {
   source: "mock" | "supabase"
   organizationSlug?: string | null
   leadSheet?: ResolvedLeadSheetConfig | null
+  cachedAt?: number
 }
 
 type CustomersCacheEntry = {
@@ -15,12 +16,17 @@ type CustomersCacheEntry = {
   source: "mock" | "supabase"
   organizationName: string | null
   organizationSlug?: string | null
+  cachedAt?: number
 }
 
 type AdSpendCacheEntry = {
   adSpendByMonth: Record<string, number>
   organizationSlug?: string | null
+  cachedAt?: number
 }
+
+/** Reuse in-memory workspace data when switching dashboard ↔ leads ↔ customers. */
+export const WORKSPACE_CACHE_TTL_MS = 120_000
 
 let leadsCache: LeadsCacheEntry | null = null
 let customersCache: CustomersCacheEntry | null = null
@@ -50,7 +56,7 @@ export function getLeadsCache(expectedSlug?: string | null): LeadsCacheEntry | n
 }
 
 export function setLeadsCache(entry: LeadsCacheEntry) {
-  leadsCache = entry
+  leadsCache = { ...entry, cachedAt: Date.now() }
 }
 
 /** Updates the cached leads after a local edit while keeping the entry's client slug. */
@@ -74,11 +80,38 @@ export function setAdSpendCache(
   adSpendByMonth: Record<string, number>,
   organizationSlug?: string | null
 ) {
-  adSpendCache = { adSpendByMonth, organizationSlug }
+  adSpendCache = { adSpendByMonth, organizationSlug, cachedAt: Date.now() }
 }
 
 export function hasLeadsCache(expectedSlug?: string | null): boolean {
   return getLeadsCache(expectedSlug) !== null
+}
+
+export function hasFreshLeadsCache(
+  expectedSlug?: string | null,
+  maxAgeMs = WORKSPACE_CACHE_TTL_MS
+): boolean {
+  const entry = getLeadsCache(expectedSlug)
+  if (!entry?.cachedAt) return false
+  return Date.now() - entry.cachedAt <= maxAgeMs
+}
+
+export function hasFreshCustomersCache(
+  expectedSlug?: string | null,
+  maxAgeMs = WORKSPACE_CACHE_TTL_MS
+): boolean {
+  const entry = getCustomersCache(expectedSlug)
+  if (!entry?.cachedAt) return false
+  return Date.now() - entry.cachedAt <= maxAgeMs
+}
+
+export function hasFreshAdSpendCache(
+  expectedSlug?: string | null,
+  maxAgeMs = WORKSPACE_CACHE_TTL_MS
+): boolean {
+  const entry = adSpendCache
+  if (!entry?.cachedAt || !cacheMatchesSlug(entry.organizationSlug, expectedSlug)) return false
+  return Date.now() - entry.cachedAt <= maxAgeMs
 }
 
 export function getCustomersCache(
@@ -95,7 +128,7 @@ export function getCustomersCache(
 }
 
 export function setCustomersCache(entry: CustomersCacheEntry) {
-  customersCache = entry
+  customersCache = { ...entry, cachedAt: Date.now() }
 }
 
 export function hasCustomersCache(expectedSlug?: string | null): boolean {

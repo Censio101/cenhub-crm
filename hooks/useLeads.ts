@@ -8,6 +8,7 @@ import type { MessageKey } from "@/lib/i18n"
 import {
   CLIENT_ORG_CHANGED_EVENT,
   getLeadsCache,
+  hasFreshLeadsCache,
   hasLeadsCache,
   emitCustomersRefresh,
   emitLeadsUpdated,
@@ -21,7 +22,15 @@ import { fetchCompanyConfig, leadSheetOrDefault } from "@/lib/data/company-confi
 import { buildDefaultLeadSheetConfig } from "@/lib/lead-sheet/default-config"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 import type { Lead } from "@/lib/leads"
+import { useLeadsLiveSync } from "@/hooks/useLeadsLiveSync"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
+
+export type LoadLeadsOptions = {
+  /** Bypass the short-lived tab-switch cache (live sync, manual retry). */
+  force?: boolean
+  /** Refetch without toggling the sheet loading skeleton. */
+  silent?: boolean
+}
 
 type LeadsResponse = {
   leads: Lead[]
@@ -72,14 +81,16 @@ async function fetchLeadSheetConfig(): Promise<ResolvedLeadSheetConfig> {
   return (await fetchLeadSheetConfigOrNull()) ?? buildDefaultLeadSheetConfig()
 }
 
-export function useLeads() {
+export function useLeads(options?: { liveSync?: boolean }) {
+  const liveSync = options?.liveSync === true
   const { organization, needsClientSelection: adminMustPickClient, sessionReady } =
     useActiveOrganization()
   const activeSlug = organization?.slug ?? null
   const [leads, setLeads] = useState<Lead[]>(() => getLeadsCache(activeSlug)?.leads ?? [])
-  const [leadSheet, setLeadSheet] = useState<ResolvedLeadSheetConfig>(() =>
-    buildDefaultLeadSheetConfig()
-  )
+  const [leadSheet, setLeadSheet] = useState<ResolvedLeadSheetConfig>(() => {
+    const cached = getLeadsCache(activeSlug)
+    return cached?.leadSheet ?? buildDefaultLeadSheetConfig()
+  })
   const [loading, setLoading] = useState(() => !hasLeadsCache(activeSlug))
   const [error, setError] = useState<MessageKey | null>(null)
   const [needsClientSelection, setNeedsClientSelection] = useState(false)
@@ -99,10 +110,10 @@ export function useLeads() {
 
   useEffect(() => () => guard.dispose(), [guard])
 
-  const loadLeads = useCallback(async () => {
+  const loadLeads = useCallback(async (opts?: LoadLeadsOptions) => {
     const isCurrent = guard.begin()
     if (!sessionReady) {
-      if (isCurrent()) setLoading(true)
+      if (isCurrent() && !opts?.silent) setLoading(true)
       return
     }
     if (adminMustPickClient) {
@@ -113,10 +124,48 @@ export function useLeads() {
       }
       return
     }
-    const showLoading = !hasLeadsCache(activeSlug)
+    const showLoading = !opts?.silent && !hasLeadsCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
+
+    const cached = getLeadsCache(activeSlug)
+    const freshLeads = hasFreshLeadsCache(activeSlug)
+    if (!opts?.force && freshLeads && cached) {
+      if (cached.leadSheet) {
+        if (isCurrent()) {
+          setLeads(cached.leads)
+          setDataSource(cached.source)
+          setLeadSheet(cached.leadSheet)
+          setLoading(false)
+        }
+        return
+      }
+      if (isCurrent()) {
+        setLeads(cached.leads)
+        setDataSource(cached.source)
+        setLoading(false)
+      }
+      try {
+        const sheet = await fetchLeadSheetConfig()
+        if (!isCurrent()) return
+        lastSheetFetchRef.current = Date.now()
+        setLeadSheet(sheet)
+        setLeadsCache({
+          leads: cached.leads,
+          source: cached.source,
+          organizationSlug: cached.organizationSlug ?? activeSlug,
+          leadSheet: sheet,
+        })
+      } catch (loadError) {
+        if (!isCurrent()) return
+        console.error(loadError)
+        setError("leadsLoadError")
+      } finally {
+        if (isCurrent() && showLoading) setLoading(false)
+      }
+      return
+    }
 
     try {
       const result = await fetchJsonDeduped<LeadsResponse>("/api/leads")
@@ -139,20 +188,31 @@ export function useLeads() {
 
       setLeads(data.leads)
       setDataSource(data.source)
-      setLeadsCache({
-        leads: data.leads,
-        source: data.source,
-        organizationSlug: data.organization?.slug ?? null,
-      })
-
       if (data.source === "supabase") {
-        const sheet = await fetchLeadSheetConfig()
+        const sheet =
+          opts?.silent && cached?.leadSheet
+            ? cached.leadSheet
+            : await fetchLeadSheetConfig()
         if (!isCurrent()) return
-        lastSheetFetchRef.current = Date.now()
+        if (!opts?.silent || !cached?.leadSheet) {
+          lastSheetFetchRef.current = Date.now()
+        }
         setLeadSheet(sheet)
+        setLeadsCache({
+          leads: data.leads,
+          source: data.source,
+          organizationSlug: data.organization?.slug ?? null,
+          leadSheet: sheet,
+        })
       } else {
+        setLeadsCache({
+          leads: data.leads,
+          source: data.source,
+          organizationSlug: data.organization?.slug ?? null,
+        })
         setLeadSheet(buildDefaultLeadSheetConfig())
       }
+      emitLeadsUpdated()
     } catch (loadError) {
       if (!isCurrent()) return
       console.error(loadError)
@@ -166,6 +226,18 @@ export function useLeads() {
   useAsyncEffect(() => {
     void loadLeads()
   }, [loadLeads])
+
+  const loadLeadsRef = useRef(loadLeads)
+  loadLeadsRef.current = loadLeads
+
+  useLeadsLiveSync(
+    organization?.id,
+    liveSync && dataSource === "supabase" && !adminMustPickClient && sessionReady,
+    () => {
+      if (inflightSaves.current > 0 || pendingData.current.size > 0) return
+      void loadLeadsRef.current({ force: true, silent: true })
+    }
+  )
 
   // An admin may change the client's lead sheet while this page stays open in a tab.
   // Re-check when the tab is used again (at most once a minute) so columns stay current.
