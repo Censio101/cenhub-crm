@@ -80,19 +80,9 @@ export function LeadSheetReadOnlyFullNameCell({
   const name = lead.fullName.trim()
   return (
     <TableCell className={className} style={style}>
-      <div className="flex min-w-0 items-center gap-1.5 px-1">
-        <span
-          title={name || undefined}
-          className={cn(readOnlyClass, "min-w-0 flex-1 truncate px-0")}
-        >
-          {name || "–"}
-        </span>
-        {lead.source === "meta" ? (
-          <span className="shrink-0 rounded-full bg-[#1877F2]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1877F2]">
-            Meta
-          </span>
-        ) : null}
-      </div>
+      <LeadSheetReadOnlyText title={name || undefined} className="px-1.5">
+        {name || "–"}
+      </LeadSheetReadOnlyText>
     </TableCell>
   )
 }

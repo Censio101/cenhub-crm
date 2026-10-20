@@ -82,11 +82,6 @@ export function LeadSheetLeadQuickView({
       >
         <div className="border-b border-border px-3 py-2">
           <p className="text-sm font-semibold leading-snug text-foreground">{title}</p>
-          {lead.source === "meta" ? (
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1877F2]">
-              Meta
-            </p>
-          ) : null}
         </div>
         <dl className="max-h-[min(22rem,55vh)] overflow-y-auto px-3 py-2">
           {rows.length === 0 ? (
