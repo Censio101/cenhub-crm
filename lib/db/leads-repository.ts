@@ -115,6 +115,22 @@ export async function deleteLeadById(
   if (error) throw error
 }
 
+export async function deleteLeadsByIds(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadIds: readonly string[]
+): Promise<number> {
+  if (leadIds.length === 0) return 0
+  const { error, count } = await supabase
+    .from("leads")
+    .delete({ count: "exact" })
+    .eq("organization_id", organizationId)
+    .in("id", [...leadIds])
+
+  if (error) throw error
+  return count ?? leadIds.length
+}
+
 export function usesDatabaseLeads(): boolean {
   return isSupabaseConfigured()
 }

@@ -21,8 +21,9 @@ export function LeadStatusTableCell({
   return (
     <TableCell
       data-lead-status-cell=""
+      data-lead-sheet-no-pan="true"
       className={cn(
-        "min-w-[13.5rem] p-0 transition-[background-color,color] duration-200 ease-out",
+        "min-w-0 max-w-full p-0 transition-[background-color,color] duration-200 ease-out",
         getLeadStatusCellClass(status)
       )}
     >

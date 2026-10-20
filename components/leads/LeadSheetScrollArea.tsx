@@ -13,6 +13,8 @@ type Props = {
   /** Applied to the outer flex column (scroll + toolbar). */
   className?: string
   scrollClassName?: string
+  /** Far-left control (e.g. admin ⋮ menu), before row count and status. */
+  toolbarLeading?: ReactNode
   /** Shown at the start of the toolbar (row count, save status, …). */
   toolbarStart?: ReactNode
   /** Shown just before the pan hint and arrows (export, …). */
@@ -25,6 +27,7 @@ export function LeadSheetScrollArea({
   children,
   className,
   scrollClassName,
+  toolbarLeading,
   toolbarStart,
   toolbarEnd,
 }: Props) {
@@ -73,9 +76,16 @@ export function LeadSheetScrollArea({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-[#f7f7f5] px-4 py-2 sm:px-6">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">{toolbarStart}</div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-stretch justify-between gap-3 border-b border-border bg-[#f7f7f5]">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-3 sm:pl-4">
+          {toolbarLeading ? (
+            <div className="flex shrink-0 items-center border-r border-[#e4ddd4] pr-3">
+              {toolbarLeading}
+            </div>
+          ) : null}
+          {toolbarStart}
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2 py-2 pr-3 sm:pr-4">
           {toolbarEnd}
           <span className="hidden cursor-grab items-center gap-1.5 text-[11px] font-medium text-muted-foreground md:inline-flex">
             <GripHorizontalIcon className="size-3.5" aria-hidden="true" />
@@ -114,10 +124,11 @@ export function LeadSheetScrollArea({
           // hands over to the page once the sheet reaches its end.
           "lead-sheet-scroll min-h-0 flex-1 overflow-auto overscroll-x-contain overscroll-y-auto",
           sheetPanning ? "cursor-grabbing select-none" : "cursor-grab",
-          // Rows inherit grab (not pointer) so panning is obvious; controls keep their own cursors.
           "[&_tbody_tr]:cursor-grab",
           "[&_thead_tr]:cursor-grab",
-          "[&_input:not(:disabled)]:cursor-text",
+          "[&_[data-lead-sheet-bulk-select-cell]]:cursor-pointer",
+          "[&_input:not(:disabled):not([type=checkbox])]:cursor-text",
+          "[&_input[type=checkbox]]:cursor-pointer",
           "[&_textarea]:cursor-text",
           "[&_button]:cursor-pointer",
           "[&_a]:cursor-pointer",

@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { TableCell } from "@/components/ui/table"
@@ -15,13 +15,22 @@ export function LeadSheetReadOnlyText({
   className,
   children,
   mono,
+  title,
 }: {
   className?: string
   children: ReactNode
   mono?: boolean
+  /** Full value on hover when the cell truncates. */
+  title?: string
 }) {
+  const hoverTitle =
+    title ??
+    (typeof children === "string" && children.trim() && children !== "–" ? children : undefined)
   return (
-    <span className={cn(readOnlyClass, "block truncate px-1.5", mono && "font-mono text-[0.8125rem]", className)}>
+    <span
+      title={hoverTitle}
+      className={cn(readOnlyClass, "block truncate px-1.5", mono && "font-mono text-[0.8125rem]", className)}
+    >
       {children || "–"}
     </span>
   )
@@ -30,12 +39,14 @@ export function LeadSheetReadOnlyText({
 export function LeadSheetReadOnlyDateCell({
   lead,
   className,
+  style,
 }: {
   lead: Lead
   className?: string
+  style?: CSSProperties
 }) {
   return (
-    <TableCell className={className}>
+    <TableCell className={className} style={style}>
       <LeadSheetReadOnlyText>{formatLeadDateTime(lead.date, lead.time)}</LeadSheetReadOnlyText>
     </TableCell>
   )
@@ -60,15 +71,21 @@ export function LeadSheetReadOnlyWonDateCell({
 export function LeadSheetReadOnlyFullNameCell({
   lead,
   className,
+  style,
 }: {
   lead: Lead
   className?: string
+  style?: CSSProperties
 }) {
+  const name = lead.fullName.trim()
   return (
-    <TableCell className={className}>
+    <TableCell className={className} style={style}>
       <div className="flex min-w-0 items-center gap-1.5 px-1">
-        <span className={cn(readOnlyClass, "min-w-0 flex-1 truncate px-0")}>
-          {lead.fullName.trim() || "–"}
+        <span
+          title={name || undefined}
+          className={cn(readOnlyClass, "min-w-0 flex-1 truncate px-0")}
+        >
+          {name || "–"}
         </span>
         {lead.source === "meta" ? (
           <span className="shrink-0 rounded-full bg-[#1877F2]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1877F2]">
@@ -87,9 +104,10 @@ export function LeadSheetReadOnlyEmailCell({ lead, className }: { lead: Lead; cl
       {email ? (
         <a
           href={`mailto:${email}`}
+          title={email}
           className={cn(
             readOnlyClass,
-            "text-foreground no-underline hover:text-primary hover:underline"
+            "block truncate text-foreground no-underline hover:text-primary hover:underline"
           )}
         >
           {email}
@@ -108,9 +126,10 @@ export function LeadSheetReadOnlyPhoneCell({ lead, className }: { lead: Lead; cl
       {phone ? (
         <a
           href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+          title={phone}
           className={cn(
             readOnlyClass,
-            "text-foreground no-underline hover:text-primary hover:underline"
+            "block truncate text-foreground no-underline hover:text-primary hover:underline"
           )}
         >
           {phone}

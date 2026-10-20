@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import {
   CheckIcon,
@@ -34,7 +34,11 @@ import {
 import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
 import { LeadSheetNoteCell } from "@/components/leads/LeadSheetNoteCell"
 import { LeadCardList } from "@/components/leads/LeadCardList"
+import { LeadSheetBulkSelectionBar } from "@/components/leads/LeadSheetBulkSelectionBar"
+import { LeadSheetToolbarMenu } from "@/components/leads/LeadSheetToolbarMenu"
+import { LeadSheetLeadQuickView } from "@/components/leads/LeadSheetLeadQuickView"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
+import { LeadSheetViewControls } from "@/components/leads/LeadSheetViewControls"
 import { LeadStatusTableCell } from "@/components/leads/LeadStatusTableCell"
 import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
 import { useLeadSelectOptions } from "@/components/leads/useLeadSelectOptions"
@@ -42,6 +46,11 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { useSheetViewState } from "@/hooks/useSheetViewState"
 import type { FunnelId } from "@/lib/performance/funnels"
 import type { DateRange } from "@/lib/performance/types"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import {
+  useLeadSheetColumnLayout,
+  type LeadSheetColumnLayout,
+} from "@/hooks/useLeadSheetColumnLayout"
 import { useLeads } from "@/hooks/useLeads"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { Button } from "@/components/ui/button"
@@ -108,6 +117,12 @@ const cellInputClass =
 
 const leadHeaderCellClass =
   "sticky top-0 z-[2] h-11 border-b border-r border-white/15 bg-[#3f3a36] px-3 text-xs font-medium text-white"
+
+/** Pinned sheet columns must stack above scrolling cells (open dropdown triggers use z-[6]). */
+const SHEET_Z_PINNED_BODY = "z-[20]"
+const SHEET_Z_PINNED_BODY_EDGE = "z-[21]"
+const SHEET_Z_PINNED_HEADER = "z-[30]"
+const SHEET_Z_PINNED_HEADER_EDGE = "z-[31]"
 
 function parseMoney(value: string): number | null {
   const digits = value.replace(/[^\d]/g, "")
@@ -212,6 +227,12 @@ function CellSelect<T extends string>({
   )
 }
 
+const SHEET_DROPDOWN_TRIGGER_CLASS =
+  "relative flex h-8 w-full min-w-0 max-w-full items-center justify-between gap-1.5 rounded-full border border-[#e4ddd4] bg-white px-2.5 text-left text-[13px] shadow-[0_1px_2px_rgba(26,18,8,0.06)] outline-none transition-[border-color,box-shadow] hover:border-[#d3c3b2] hover:bg-white hover:shadow-[0_1px_3px_rgba(26,18,8,0.08)] data-[popup-open]:border-primary/35 data-[popup-open]:bg-white data-[popup-open]:shadow-[0_2px_6px_rgba(26,18,8,0.1)] focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+
+const SHEET_DROPDOWN_PANEL_CLASS =
+  "z-[80] w-52 rounded-xl border border-[#e4ddd4] bg-white p-1 shadow-[0_8px_22px_rgba(26,18,8,0.12)]"
+
 /** Single-select custom column: popover picker (no inline text field). */
 function LeadSheetSelectCell({
   value,
@@ -235,26 +256,21 @@ function LeadSheetSelectCell({
     (value ? value : null)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        aria-label={label}
-        disabled={disabled}
-        className={cn(
-          "flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border-0 bg-transparent px-1.5 text-left text-sm outline-none hover:bg-white focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-ring",
-          disabled && "cursor-not-allowed opacity-60"
-        )}
-      >
-        <span className={cn("truncate", !display && "text-muted-foreground")}>
-          {display ?? placeholder}
-        </span>
-        <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
-      </PopoverTrigger>
-      <PopoverContent align="start" alignOffset={0} className="z-[80] w-56 gap-0 p-0">
-        <PopoverHeader className="border-b border-border px-3 py-2.5">
-          <PopoverTitle className="text-sm font-semibold">{label}</PopoverTitle>
-          <PopoverDescription className="text-xs">{t("leadSheetSelectPopupHint")}</PopoverDescription>
-        </PopoverHeader>
-        <ul className="max-h-56 overflow-y-auto p-1" role="listbox" aria-label={label}>
+    <div className="w-full min-w-0 max-w-full py-0.5" data-lead-sheet-no-pan="true">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          aria-label={label}
+          disabled={disabled}
+          data-lead-sheet-dropdown=""
+          className={cn(SHEET_DROPDOWN_TRIGGER_CLASS, disabled && "cursor-not-allowed opacity-60")}
+        >
+          <span className={cn("min-w-0 flex-1 truncate", !display && "text-muted-foreground")}>
+            {display ?? placeholder}
+          </span>
+          <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
+        </PopoverTrigger>
+        <PopoverContent align="start" alignOffset={4} className={SHEET_DROPDOWN_PANEL_CLASS}>
+          <ul className="max-h-52 overflow-y-auto" role="listbox" aria-label={label}>
           {options.length === 0 ? (
             <li className="px-2 py-2 text-sm text-muted-foreground">{t("leadSheetSelectEmpty")}</li>
           ) : (
@@ -267,7 +283,7 @@ function LeadSheetSelectCell({
                     role="option"
                     aria-selected={selected}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent",
+                      "flex w-full items-center gap-2 rounded-full px-2.5 py-1.5 text-left text-sm hover:bg-[#f7f3ee]",
                       selected && "bg-primary/10 font-medium text-primary"
                     )}
                     onClick={() => {
@@ -291,9 +307,10 @@ function LeadSheetSelectCell({
               )
             })
           )}
-        </ul>
-      </PopoverContent>
-    </Popover>
+          </ul>
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 }
 
@@ -325,21 +342,20 @@ function ServiceMultiSelect({
   }
 
   return (
-    <Popover>
-      <PopoverTrigger
-        aria-label={label}
-        disabled={disabled}
-        className={cn(
-          "flex h-8 w-full min-w-[10.5rem] items-center justify-between gap-1 rounded-md border border-[#e4ddd4] bg-white px-2 text-left text-sm shadow-[0_1px_2px_rgba(26,18,8,0.04)] outline-none hover:border-[#d3c3b2] hover:bg-white focus-visible:border-primary/40 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary/15",
-          disabled && "cursor-not-allowed opacity-60"
-        )}
-      >
-        <span className={cn("truncate", !summary && "text-muted-foreground")}>
-          {summary || "Service"}
-        </span>
-        <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
-      </PopoverTrigger>
-      <PopoverContent align="start" alignOffset={0} className="z-[80] w-56 gap-0.5 bg-white p-1">
+    <div className="w-full min-w-0 max-w-full py-0.5" data-lead-sheet-no-pan="true">
+      <Popover>
+        <PopoverTrigger
+          aria-label={label}
+          disabled={disabled}
+          data-lead-sheet-dropdown=""
+          className={cn(SHEET_DROPDOWN_TRIGGER_CLASS, disabled && "cursor-not-allowed opacity-60")}
+        >
+          <span className={cn("min-w-0 flex-1 truncate", !summary && "text-muted-foreground")}>
+            {summary || "Service"}
+          </span>
+          <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
+        </PopoverTrigger>
+        <PopoverContent align="start" alignOffset={4} className={cn(SHEET_DROPDOWN_PANEL_CLASS, "gap-0.5")}>
         {options.length === 0 ? (
           <p className="px-2 py-1.5 text-sm text-muted-foreground">{t("leadSheetNoServices")}</p>
         ) : (
@@ -351,7 +367,7 @@ function ServiceMultiSelect({
                 type="button"
                 role="menuitemcheckbox"
                 aria-checked={checked}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                className="flex w-full items-center gap-2 rounded-full px-2.5 py-1.5 text-left text-sm hover:bg-[#f7f3ee]"
                 onClick={() => toggle(service.id)}
               >
                 <span
@@ -369,8 +385,9 @@ function ServiceMultiSelect({
             )
           })
         )}
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 }
 
@@ -485,6 +502,75 @@ function FooterStat({
   )
 }
 
+const ACTIONS_COL_PX = 108
+const SELECT_COL_PX = 44
+
+export type LeadSheetBulkSelection = {
+  selectedIds: ReadonlySet<string>
+  onToggle: (leadId: string) => void
+  onToggleAllVisible: (select: boolean) => void
+}
+
+function columnBoxStyle(
+  columnLayout: LeadSheetColumnLayout | undefined,
+  col: LeadSheetTemplateColumn,
+  colIndex: number,
+  selectOffset: number
+): { style?: CSSProperties } {
+  if (!columnLayout) return {}
+  const w = columnLayout.widthForColumn(col)
+  const left = columnLayout.stickyLeftPx(colIndex)
+  return {
+    style: {
+      width: w,
+      minWidth: w,
+      maxWidth: w,
+      ...(left !== undefined ? { left: left + selectOffset } : {}),
+    },
+  }
+}
+
+function LeadSheetSelectAllCheckbox({
+  leads,
+  selectedIds,
+  onToggleAllVisible,
+}: {
+  leads: readonly Lead[]
+  selectedIds: ReadonlySet<string>
+  onToggleAllVisible: (select: boolean) => void
+}) {
+  const { t } = useLanguage()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const allSelected =
+    leads.length > 0 && leads.every((lead) => selectedIds.has(lead.id))
+  const someSelected = leads.some((lead) => selectedIds.has(lead.id))
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = someSelected && !allSelected
+    }
+  }, [allSelected, someSelected])
+
+  return (
+    <input
+      ref={inputRef}
+      type="checkbox"
+      className="size-3.5 cursor-pointer accent-primary"
+      aria-label={t("leadSheetSelectAll")}
+      checked={allSelected}
+      onChange={(e) => onToggleAllVisible(e.target.checked)}
+    />
+  )
+}
+
+const bulkSelectColumnAttrs = {
+  "data-lead-sheet-no-pan": "true",
+  "data-lead-sheet-bulk-select-cell": "true",
+} as const
+
+const bulkSelectHitTargetClass =
+  "flex h-12 w-full cursor-pointer items-center px-2 select-none"
+
 export function LeadsTable({
   columns,
   leads,
@@ -495,8 +581,14 @@ export function LeadsTable({
   onEdit,
   onDelete,
   separatePinnedColumns = false,
+  columnLayout,
+  detailColumns,
+  bulkSelection,
 }: {
   columns: LeadSheetTemplateColumn[]
+  /** Full template columns for the read-only quick-view popup (defaults to visible columns). */
+  detailColumns?: readonly LeadSheetTemplateColumn[]
+  bulkSelection?: LeadSheetBulkSelection
   leads: Lead[]
   emptyText: string
   sheetSort: SheetSortState
@@ -506,31 +598,51 @@ export function LeadsTable({
   onDelete: (id: string) => void
   /** Customer sheet: the two frozen columns read as fixed, and the rest as the scrolling area. */
   separatePinnedColumns?: boolean
+  columnLayout?: LeadSheetColumnLayout
 }) {
   const { t } = useLanguage()
   const { statuses } = useLeadSelectOptions()
-  const colSpan = columns.length + 1
+  const selectOffset = bulkSelection ? SELECT_COL_PX : 0
+  const colSpan = columns.length + 1 + (bulkSelection ? 1 : 0)
+  const quickViewColumns = detailColumns ?? columns
 
   function headerLabel(col: LeadSheetTemplateColumn) {
     return columnDisplayLabel(col, t)
   }
 
+  function stickyCellClass(colIndex: number) {
+    if (columnLayout) {
+      return cn(
+        "px-2",
+        colIndex <= 1 && cn("sticky bg-card", SHEET_Z_PINNED_BODY),
+        colIndex === 1 && "border-r border-border"
+      )
+    }
+    return colIndex === 0
+      ? cn("sticky left-0 w-36 min-w-36 px-2 bg-card", SHEET_Z_PINNED_BODY)
+      : colIndex === 1
+        ? cn("sticky left-36 min-w-44 border-r border-border px-2 bg-card", SHEET_Z_PINNED_BODY)
+        : "px-2"
+  }
+
+  function cellBox(col: LeadSheetTemplateColumn, colIndex: number) {
+    return columnBoxStyle(columnLayout, col, colIndex, selectOffset)
+  }
+
   function renderColumnCell(lead: Lead, col: LeadSheetTemplateColumn, colIndex: number) {
     const priceCue = missingPriceCellClass(lead, col)
+    const box = cellBox(col, colIndex)
 
     // Sticky first two columns follow template order (not always date + name).
-    const stickyFirst =
-      colIndex === 0
-        ? "sticky left-0 z-[1] w-36 min-w-36 px-2"
-        : colIndex === 1
-          ? "sticky left-36 z-[1] min-w-44 border-r border-border px-2"
-          : "px-2"
+    const stickyFirst = stickyCellClass(colIndex)
 
     const stickyBg = cn(
       stickyFirst,
-      getWonLeadCellClass(lead.status) || (colIndex <= 1 ? "bg-card" : ""),
+      getWonLeadCellClass(lead.status) || (colIndex <= 1 && !columnLayout ? "bg-card" : ""),
       priceCue
     )
+    const stickyLayout =
+      columnLayout && colIndex <= 1 && box.style ? { style: box.style } : {}
 
     if (col.kind === "custom") {
       const key = col.customField.fieldKey
@@ -586,7 +698,7 @@ export function LeadsTable({
           cellOptions.push({ id: current, label: `${current} (${t("leadSheetSelectRemoved")})` })
         }
         return (
-          <TableCell key={col.id} className={cn("px-1", priceCue)}>
+          <TableCell key={col.id} className={cn("min-w-0 max-w-full px-1", priceCue)}>
             <LeadSheetSelectCell
               value={current}
               label={col.customField.label}
@@ -620,11 +732,21 @@ export function LeadsTable({
     switch (col.builtinKey) {
       case "date":
         return (
-          <LeadSheetReadOnlyDateCell key={col.id} lead={lead} className={stickyBg} />
+          <LeadSheetReadOnlyDateCell
+            key={col.id}
+            lead={lead}
+            className={stickyBg}
+            style={stickyLayout.style}
+          />
         )
       case "fullName":
         return (
-          <LeadSheetReadOnlyFullNameCell key={col.id} lead={lead} className={stickyBg} />
+          <LeadSheetReadOnlyFullNameCell
+            key={col.id}
+            lead={lead}
+            className={stickyBg}
+            style={stickyLayout.style}
+          />
         )
       case "email":
         return <LeadSheetReadOnlyEmailCell key={col.id} lead={lead} className={priceCue} />
@@ -668,7 +790,7 @@ export function LeadsTable({
         )
       case "serviceIds":
         return (
-          <TableCell key={col.id} className={cn("px-1", priceCue)}>
+          <TableCell key={col.id} className={cn("min-w-0 max-w-full px-1", priceCue)}>
             <ServiceMultiSelect
               value={getLeadServiceIds(lead)}
               label={t("leadSheetColServiceIds")}
@@ -745,45 +867,115 @@ export function LeadsTable({
     }
   }
 
+  const tableMinWidth = columnLayout
+    ? columns.reduce((sum, col) => sum + columnLayout.widthForColumn(col), 0) +
+        ACTIONS_COL_PX +
+        selectOffset
+    : undefined
+
   return (
     <Table
       containerClassName="overflow-visible"
-      className="min-w-[96rem] border-separate border-spacing-0"
+      className={cn(
+        "border-separate border-spacing-0",
+        columnLayout &&
+          "table-fixed [&_td]:!min-w-0 [&_th]:!min-w-0 [&_td]:overflow-visible [&_th]:overflow-visible [&_[data-popup-open]]:relative [&_[data-popup-open]]:z-[6]",
+        !columnLayout && "min-w-[96rem]"
+      )}
+      style={tableMinWidth ? { minWidth: tableMinWidth } : undefined}
     >
+      {columnLayout ? (
+        <colgroup>
+          {bulkSelection ? (
+            <col style={{ width: SELECT_COL_PX, minWidth: SELECT_COL_PX }} />
+          ) : null}
+          {columns.map((col) => {
+            const w = columnLayout.widthForColumn(col)
+            return <col key={col.id} style={{ width: w, minWidth: w }} />
+          })}
+          <col style={{ width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX }} />
+        </colgroup>
+      ) : null}
       <TableHeader>
         <TableRow className="hover:bg-transparent">
+          {bulkSelection ? (
+            <TableHead
+              {...bulkSelectColumnAttrs}
+              className={cn(
+                leadHeaderCellClass,
+                cn(
+                  "sticky left-0 w-11 min-w-11 cursor-pointer p-0",
+                  SHEET_Z_PINNED_HEADER_EDGE
+                ),
+                columnLayout && "border-r border-white/15"
+              )}
+            >
+              <label className="flex h-11 w-full cursor-pointer items-center px-2 select-none">
+                <LeadSheetSelectAllCheckbox
+                  leads={leads}
+                  selectedIds={bulkSelection.selectedIds}
+                  onToggleAllVisible={bulkSelection.onToggleAllVisible}
+                />
+              </label>
+            </TableHead>
+          ) : null}
           {columns.map((col, index) => {
             const label = headerLabel(col)
             const sortable = isColumnSortable(col)
+            const box = cellBox(col, index)
+            const headInner = sortable ? (
+              <LeadSheetSortableHeader
+                columnId={col.id}
+                label={label}
+                sort={sheetSort}
+                onSort={onSheetSort}
+              />
+            ) : (
+              <span className="block truncate">{label}</span>
+            )
             return (
               <TableHead
                 key={col.id}
                 className={cn(
                   leadHeaderCellClass,
-                  index === 0 && "sticky left-0 z-[3] w-36 min-w-36",
-                  index === 1 && "sticky left-36 z-[3] min-w-44"
+                  columnLayout
+                    ? cn(
+                        "px-2",
+                        index <= 1 && cn("sticky", SHEET_Z_PINNED_HEADER),
+                        index === 1 && "border-r border-white/15"
+                      )
+                    : cn(
+                        bulkSelection &&
+                          index === 0 &&
+                          cn("sticky left-11 w-36 min-w-36", SHEET_Z_PINNED_HEADER),
+                        bulkSelection &&
+                          index === 1 &&
+                          cn("sticky left-[calc(2.75rem+9rem)] min-w-44", SHEET_Z_PINNED_HEADER),
+                        !bulkSelection &&
+                          index === 0 &&
+                          cn("sticky left-0 w-36 min-w-36", SHEET_Z_PINNED_HEADER),
+                        !bulkSelection &&
+                          index === 1 &&
+                          cn("sticky left-36 min-w-44", SHEET_Z_PINNED_HEADER)
+                      )
                 )}
+                style={columnLayout ? box.style : undefined}
+                title={label}
               >
-                {sortable ? (
-                  <LeadSheetSortableHeader
-                    columnId={col.id}
-                    label={label}
-                    sort={sheetSort}
-                    onSort={onSheetSort}
-                  />
-                ) : (
-                  label
-                )}
+                {headInner}
               </TableHead>
             )
           })}
           <TableHead
             className={cn(
               leadHeaderCellClass,
-              "sticky right-0 z-[3] w-[4.75rem] min-w-[4.75rem] border-r-0 border-l px-1 text-center"
+              cn(
+                "sticky right-0 w-[6.75rem] min-w-[6.75rem] border-r-0 border-l px-1 text-center",
+                SHEET_Z_PINNED_HEADER
+              )
             )}
           >
-            <span className="sr-only">{t("leadSheetEditLead")}</span>
+            <span className="sr-only">{t("leadSheetRowActions")}</span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -803,18 +995,46 @@ export function LeadsTable({
               key={lead.id}
               className={
                 separatePinnedColumns
-                  ? "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(-n+2)]:bg-[#e8f3eb] [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(-n+2)]:bg-[#dceee1] [&:hover>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
+                  ? bulkSelection
+                    ? "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(2)]:bg-[#e8f3eb] [&>td:nth-child(3)]:bg-[#e8f3eb] [&>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(2)]:bg-[#dceee1] [&:hover>td:nth-child(3)]:bg-[#dceee1] [&:hover>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
+                    : "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(-n+2)]:bg-[#e8f3eb] [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(-n+2)]:bg-[#dceee1] [&:hover>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
                   : getWonLeadRowClass(lead.status)
               }
             >
+              {bulkSelection ? (
+                <TableCell
+                  {...bulkSelectColumnAttrs}
+                  className={cn(
+                    cn(
+                      "sticky left-0 w-11 min-w-11 cursor-pointer border-r border-[#eee7de] bg-card p-0",
+                      SHEET_Z_PINNED_BODY_EDGE
+                    ),
+                    getWonLeadCellClass(lead.status)
+                  )}
+                >
+                  <label className={bulkSelectHitTargetClass}>
+                    <input
+                      type="checkbox"
+                      className="size-3.5 cursor-pointer accent-primary"
+                      aria-label={t("leadSheetSelectRow")}
+                      checked={bulkSelection.selectedIds.has(lead.id)}
+                      onChange={() => bulkSelection.onToggle(lead.id)}
+                    />
+                  </label>
+                </TableCell>
+              ) : null}
               {columns.map((col, colIndex) => renderColumnCell(lead, col, colIndex))}
               <TableCell
                 className={cn(
-                  "sticky right-0 z-[1] w-[4.75rem] min-w-[4.75rem] border-l border-border bg-card px-1",
+                  cn(
+                    "sticky right-0 w-[6.75rem] min-w-[6.75rem] border-l border-border bg-card px-0.5",
+                    SHEET_Z_PINNED_BODY
+                  ),
                   getWonLeadCellClass(lead.status)
                 )}
               >
-                <div className="flex items-center justify-center gap-0.5">
+                <div className="flex items-center justify-center gap-0">
+                  <LeadSheetLeadQuickView lead={lead} columns={quickViewColumns} />
                   <Button
                     type="button"
                     variant="ghost"
@@ -859,8 +1079,35 @@ export function LeadsBoard() {
     saveLead,
     createLead,
     deleteLead,
+    deleteLeadsBulk,
     reload,
   } = useLeads({ liveSync: true })
+
+  const { organization, role } = useActiveOrganization()
+  const canBulkDeleteLeads = role === "censio_admin"
+
+  const [selectedLeadIds, setSelectedLeadIds] = useState(() => new Set<string>())
+  const [bulkSelectMode, setBulkSelectMode] = useState(false)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+
+  const toggleLeadSelected = useCallback((leadId: string) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(leadId)) next.delete(leadId)
+      else next.add(leadId)
+      return next
+    })
+  }, [])
+
+  const clearLeadSelection = useCallback(() => {
+    setSelectedLeadIds(new Set())
+  }, [])
+
+  const exitBulkSelectMode = useCallback(() => {
+    setBulkSelectMode(false)
+    clearLeadSelection()
+    setBulkDeleteOpen(false)
+  }, [clearLeadSelection])
 
   useEffect(() => {
     if (!loading) markWorkspaceWarm()
@@ -927,6 +1174,58 @@ export function LeadsBoard() {
     return sortLeadsWithSheetState(searched, leadSheet.columns, sheetSort, enabledServices)
   }, [enabledServices, inFilters, leadSheet.columns, search, sheetSort])
 
+  const toggleAllVisibleLeads = useCallback(
+    (select: boolean) => {
+      setSelectedLeadIds((prev) => {
+        const next = new Set(prev)
+        for (const lead of filtered) {
+          if (select) next.add(lead.id)
+          else next.delete(lead.id)
+        }
+        return next
+      })
+    },
+    [filtered]
+  )
+
+  const bulkSelection = useMemo(
+    (): LeadSheetBulkSelection => ({
+      selectedIds: selectedLeadIds,
+      onToggle: toggleLeadSelected,
+      onToggleAllVisible: toggleAllVisibleLeads,
+    }),
+    [selectedLeadIds, toggleAllVisibleLeads, toggleLeadSelected]
+  )
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = [...selectedLeadIds]
+    await deleteLeadsBulk(ids)
+    exitBulkSelectMode()
+  }, [deleteLeadsBulk, exitBulkSelectMode, selectedLeadIds])
+  const columnLayout = useLeadSheetColumnLayout({
+    page: "leads",
+    organizationId: organization?.id,
+    columns: leadSheet.columns,
+    leads: filtered,
+    enabledServices,
+    t,
+  })
+
+  const sheetViewToolbar = (
+    <LeadSheetViewControls
+      displayMode={columnLayout.displayMode}
+      onDisplayModeChange={columnLayout.setDisplayMode}
+    />
+  )
+
+  const sheetToolbarLeading =
+    canBulkDeleteLeads && !bulkSelectMode ? (
+      <LeadSheetToolbarMenu onBulkSelect={() => setBulkSelectMode(true)} />
+    ) : null
+
+  const bulkSelectionForTable =
+    canBulkDeleteLeads && bulkSelectMode ? bulkSelection : undefined
+
   const handleSheetSort = useCallback((columnId: string, direction: SheetSortDirection | null) => {
     setSheetSort(direction ? { columnId, direction } : null)
   }, [])
@@ -936,7 +1235,9 @@ export function LeadsBoard() {
     if (defaultSortApplied.current || leadSheet.columns.length === 0) return
     defaultSortApplied.current = true
     const dateId = findDefaultDateColumnId(leadSheet.columns)
-    if (dateId) setSheetSort({ columnId: dateId, direction: "desc" })
+    if (dateId) {
+      queueMicrotask(() => setSheetSort({ columnId: dateId, direction: "desc" }))
+    }
   }, [leadSheet.columns])
 
   const pipelineStats = useMemo(() => computeLeadPipelineStats(filtered), [filtered])
@@ -1075,6 +1376,7 @@ export function LeadsBoard() {
           />
           <LeadSheetScrollArea
             className="min-h-0 flex-1"
+            toolbarLeading={sheetToolbarLeading}
             toolbarStart={
               <>
                 <span className="text-xs font-semibold tabular-nums text-foreground">
@@ -1084,11 +1386,21 @@ export function LeadsBoard() {
                   })}
                 </span>
                 <SaveStatusBadge status={saveStatus} />
+                {canBulkDeleteLeads && bulkSelectMode ? (
+                  <LeadSheetBulkSelectionBar
+                    selectedCount={selectedLeadIds.size}
+                    bulkDeleteOpen={bulkDeleteOpen}
+                    onBulkDeleteOpenChange={setBulkDeleteOpen}
+                    onExitMode={exitBulkSelectMode}
+                    onBulkDelete={handleBulkDelete}
+                  />
+                ) : null}
               </>
             }
+            toolbarEnd={sheetViewToolbar}
           >
             <LeadsTable
-              columns={leadSheet.columns}
+              columns={columnLayout.visibleColumns}
               leads={filtered}
               sheetSort={sheetSort}
               onSheetSort={handleSheetSort}
@@ -1098,6 +1410,9 @@ export function LeadsBoard() {
               onDelete={(id) => {
                 void deleteLead(id)
               }}
+              columnLayout={columnLayout}
+              detailColumns={leadSheet.columns}
+              bulkSelection={bulkSelectionForTable}
             />
           </LeadSheetScrollArea>
         </div>
@@ -1137,6 +1452,7 @@ export function LeadsBoard() {
         />
         <div className="hidden min-h-0 flex-1 flex-col md:flex">
           <LeadSheetScrollArea
+            toolbarLeading={sheetToolbarLeading}
             toolbarStart={
               <>
                 <span className="text-xs font-semibold tabular-nums text-foreground">
@@ -1146,11 +1462,21 @@ export function LeadsBoard() {
                   })}
                 </span>
                 <SaveStatusBadge status={saveStatus} />
+                {canBulkDeleteLeads && bulkSelectMode ? (
+                  <LeadSheetBulkSelectionBar
+                    selectedCount={selectedLeadIds.size}
+                    bulkDeleteOpen={bulkDeleteOpen}
+                    onBulkDeleteOpenChange={setBulkDeleteOpen}
+                    onExitMode={exitBulkSelectMode}
+                    onBulkDelete={handleBulkDelete}
+                  />
+                ) : null}
               </>
             }
+            toolbarEnd={sheetViewToolbar}
           >
             <LeadsTable
-              columns={leadSheet.columns}
+              columns={columnLayout.visibleColumns}
               leads={filtered}
               sheetSort={sheetSort}
               onSheetSort={handleSheetSort}
@@ -1160,6 +1486,9 @@ export function LeadsBoard() {
               onDelete={(id) => {
                 void deleteLead(id)
               }}
+              columnLayout={columnLayout}
+              detailColumns={leadSheet.columns}
+              bulkSelection={bulkSelectionForTable}
             />
           </LeadSheetScrollArea>
           <LeadPipelineFooter stats={pipelineStats} />

@@ -527,6 +527,37 @@ export function useLeads(options?: { liveSync?: boolean }) {
     [dataSource, loadLeads]
   )
 
+  const deleteLeadsBulk = useCallback(
+    async (ids: readonly string[]) => {
+      if (ids.length === 0) return
+      const remove = new Set(ids)
+      setLeads((current) => {
+        const next = current.filter((lead) => !remove.has(lead.id))
+        replaceCachedLeads(next, dataSource)
+        return next
+      })
+
+      if (dataSource === "mock") return
+
+      try {
+        const response = await fetch("/api/leads/bulk-delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        })
+        if (!response.ok) {
+          throw new Error("leadsDeleteError")
+        }
+        emitCustomersRefresh()
+      } catch (deleteError) {
+        console.error(deleteError)
+        setError("leadsDeleteError")
+        await loadLeads()
+      }
+    },
+    [dataSource, loadLeads]
+  )
+
   return {
     leads,
     leadSheet,
@@ -539,6 +570,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
     saveLead,
     createLead,
     deleteLead,
+    deleteLeadsBulk,
     reload: loadLeads,
   }
 }

@@ -14,13 +14,18 @@ import { CustomersSheetFilterBar } from "@/components/customers/CustomersSheetFi
 import { EditLeadDialog } from "@/components/leads/AddLeadDialog"
 import { LeadCardList } from "@/components/leads/LeadCardList"
 import { LeadSheetFocusShell } from "@/components/leads/LeadSheetFocusShell"
-import { LeadsTable } from "@/components/leads/LeadsBoard"
+import { LeadsTable, type LeadSheetBulkSelection } from "@/components/leads/LeadsBoard"
+import { LeadSheetBulkSelectionBar } from "@/components/leads/LeadSheetBulkSelectionBar"
+import { LeadSheetToolbarMenu } from "@/components/leads/LeadSheetToolbarMenu"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
+import { LeadSheetViewControls } from "@/components/leads/LeadSheetViewControls"
 import { SaveStatusBadge } from "@/components/leads/SaveStatusBadge"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { useSheetViewState } from "@/hooks/useSheetViewState"
+import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useCustomers } from "@/hooks/useCustomers"
+import { useLeadSheetColumnLayout } from "@/hooks/useLeadSheetColumnLayout"
 import { useLeads } from "@/hooks/useLeads"
 import {
   filterDashboardCustomers,
@@ -103,9 +108,36 @@ export function CustomersBoard() {
   const resetDate = useCallback(() => onPresetChange("all_time"), [onPresetChange])
   const { customers, organizationName, loading, error, reload } = useCustomers()
   // Customers mirror won leads; the lead record is what the edit popup changes.
-  const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead } = useLeads({
-    liveSync: true,
-  })
+  const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead, deleteLeadsBulk } =
+    useLeads({
+      liveSync: true,
+    })
+
+  const { organization, role } = useActiveOrganization()
+  const canBulkDeleteLeads = role === "censio_admin"
+
+  const [selectedLeadIds, setSelectedLeadIds] = useState(() => new Set<string>())
+  const [bulkSelectMode, setBulkSelectMode] = useState(false)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+
+  const toggleLeadSelected = useCallback((leadId: string) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(leadId)) next.delete(leadId)
+      else next.add(leadId)
+      return next
+    })
+  }, [])
+
+  const clearLeadSelection = useCallback(() => {
+    setSelectedLeadIds(new Set())
+  }, [])
+
+  const exitBulkSelectMode = useCallback(() => {
+    setBulkSelectMode(false)
+    clearLeadSelection()
+    setBulkDeleteOpen(false)
+  }, [clearLeadSelection])
 
   useEffect(() => {
     if (!loading) markWorkspaceWarm()
@@ -171,6 +203,57 @@ export function CustomersBoard() {
     const rows = filtered.map((customer) => leadForCustomer(customer, leadsById))
     return sortLeadsWithSheetState(rows, leadSheet.columns, activeSheetSort, enabledServices)
   }, [activeSheetSort, enabledServices, filtered, leadSheet.columns, leadsById])
+
+  const toggleAllVisibleLeads = useCallback(
+    (select: boolean) => {
+      setSelectedLeadIds((prev) => {
+        const next = new Set(prev)
+        for (const lead of shownLeads) {
+          if (select) next.add(lead.id)
+          else next.delete(lead.id)
+        }
+        return next
+      })
+    },
+    [shownLeads]
+  )
+
+  const bulkSelection = useMemo(
+    (): LeadSheetBulkSelection => ({
+      selectedIds: selectedLeadIds,
+      onToggle: toggleLeadSelected,
+      onToggleAllVisible: toggleAllVisibleLeads,
+    }),
+    [selectedLeadIds, toggleAllVisibleLeads, toggleLeadSelected]
+  )
+
+  const handleBulkDelete = useCallback(async () => {
+    await deleteLeadsBulk([...selectedLeadIds])
+    exitBulkSelectMode()
+  }, [deleteLeadsBulk, exitBulkSelectMode, selectedLeadIds])
+  const columnLayout = useLeadSheetColumnLayout({
+    page: "customers",
+    organizationId: organization?.id,
+    columns: leadSheet.columns,
+    leads: shownLeads,
+    enabledServices,
+    t,
+  })
+
+  const sheetViewToolbar = (
+    <LeadSheetViewControls
+      displayMode={columnLayout.displayMode}
+      onDisplayModeChange={columnLayout.setDisplayMode}
+    />
+  )
+
+  const sheetToolbarLeading =
+    canBulkDeleteLeads && !bulkSelectMode ? (
+      <LeadSheetToolbarMenu onBulkSelect={() => setBulkSelectMode(true)} />
+    ) : null
+
+  const bulkSelectionForTable =
+    canBulkDeleteLeads && bulkSelectMode ? bulkSelection : undefined
 
   const handleSheetSort = useCallback((columnId: string, direction: SheetSortDirection | null) => {
     setSheetSort(direction ? { columnId, direction } : null)
@@ -323,6 +406,7 @@ export function CustomersBoard() {
                 />
                 <LeadSheetScrollArea
                   className="min-h-0 flex-1"
+                  toolbarLeading={sheetToolbarLeading}
                   toolbarStart={
                     <>
                       <span className="text-xs font-semibold tabular-nums text-foreground">
@@ -332,11 +416,21 @@ export function CustomersBoard() {
                         })}
                       </span>
                       <SaveStatusBadge status={saveStatus} />
+                      {canBulkDeleteLeads && bulkSelectMode ? (
+                        <LeadSheetBulkSelectionBar
+                          selectedCount={selectedLeadIds.size}
+                          bulkDeleteOpen={bulkDeleteOpen}
+                          onBulkDeleteOpenChange={setBulkDeleteOpen}
+                          onExitMode={exitBulkSelectMode}
+                          onBulkDelete={handleBulkDelete}
+                        />
+                      ) : null}
                     </>
                   }
+                  toolbarEnd={sheetViewToolbar}
                 >
                   <LeadsTable
-                    columns={leadSheet.columns}
+                    columns={columnLayout.visibleColumns}
                     leads={shownLeads}
                     sheetSort={activeSheetSort}
                     onSheetSort={handleSheetSort}
@@ -347,6 +441,9 @@ export function CustomersBoard() {
                       void deleteLead(id)
                     }}
                     separatePinnedColumns
+                    columnLayout={columnLayout}
+                    detailColumns={leadSheet.columns}
+                    bulkSelection={bulkSelectionForTable}
                   />
                 </LeadSheetScrollArea>
               </div>
@@ -383,6 +480,7 @@ export function CustomersBoard() {
               />
               <div className="hidden min-h-0 flex-1 flex-col md:flex">
               <LeadSheetScrollArea
+                toolbarLeading={sheetToolbarLeading}
                 toolbarStart={
                   <>
                     <span className="text-xs font-semibold tabular-nums text-foreground">
@@ -392,11 +490,21 @@ export function CustomersBoard() {
                       })}
                     </span>
                     <SaveStatusBadge status={saveStatus} />
+                    {canBulkDeleteLeads && bulkSelectMode ? (
+                      <LeadSheetBulkSelectionBar
+                        selectedCount={selectedLeadIds.size}
+                        bulkDeleteOpen={bulkDeleteOpen}
+                        onBulkDeleteOpenChange={setBulkDeleteOpen}
+                        onExitMode={exitBulkSelectMode}
+                        onBulkDelete={handleBulkDelete}
+                      />
+                    ) : null}
                   </>
                 }
+                toolbarEnd={sheetViewToolbar}
               >
                 <LeadsTable
-                  columns={leadSheet.columns}
+                  columns={columnLayout.visibleColumns}
                   leads={shownLeads}
                   sheetSort={activeSheetSort}
                   onSheetSort={handleSheetSort}
@@ -407,6 +515,9 @@ export function CustomersBoard() {
                     void deleteLead(id)
                   }}
                   separatePinnedColumns
+                  columnLayout={columnLayout}
+                  detailColumns={leadSheet.columns}
+                  bulkSelection={bulkSelectionForTable}
                 />
               </LeadSheetScrollArea>
               </div>

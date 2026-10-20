@@ -29,7 +29,7 @@ function isPanBlockedTarget(target: EventTarget | null): boolean {
   }
   if (
     target.closest(
-      'select, [role="combobox"], [role="listbox"], [role="menu"], [data-lead-sheet-no-pan="true"]'
+      'select, [role="combobox"], [role="listbox"], [role="menu"], [data-lead-sheet-no-pan="true"], [data-lead-sheet-bulk-select-cell="true"]'
     )
   ) {
     return true
