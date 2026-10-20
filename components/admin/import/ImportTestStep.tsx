@@ -162,13 +162,34 @@ export function ImportTestStep({
               </Button>
             </div>
           ) : summary.toImport > 0 ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
-              <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-emerald-600" aria-hidden />
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
+                <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-emerald-600" aria-hidden />
+                <div>
+                  <p className="text-sm font-semibold text-emerald-950">
+                    {t("importReady").replace("{count}", summary.toImport.toLocaleString("da-DK"))}
+                  </p>
+                  <p className="text-xs text-emerald-900">{t("importReadyHint")}</p>
+                </div>
+              </div>
+              {summary.skipped.duplicate_existing > 0 ? (
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3.5">
+                  <AlertTriangleIcon className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
+                  <p className="text-sm text-amber-950">
+                    {t("importExistingNotUpdated").replace(
+                      "{count}",
+                      summary.skipped.duplicate_existing.toLocaleString("da-DK")
+                    )}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : summary.skipped.duplicate_existing > 0 ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3.5">
+              <AlertTriangleIcon className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
               <div>
-                <p className="text-sm font-semibold text-emerald-950">
-                  {t("importReady").replace("{count}", summary.toImport.toLocaleString("da-DK"))}
-                </p>
-                <p className="text-xs text-emerald-900">{t("importReadyHint")}</p>
+                <p className="text-sm font-semibold text-amber-950">{t("importAllAlreadyInCrm")}</p>
+                <p className="text-xs text-amber-900">{t("importAllAlreadyInCrmHint")}</p>
               </div>
             </div>
           ) : (

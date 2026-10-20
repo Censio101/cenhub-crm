@@ -100,6 +100,14 @@ export function ImportRunStep({ run, onUndo, onAnother }: Props) {
               .replace("{skipped}", skipped.toLocaleString("da-DK"))
               .replace("{warnings}", (summary?.withWarnings ?? 0).toLocaleString("da-DK"))}
           </p>
+          {(summary?.skipped.duplicate_existing ?? 0) > 0 ? (
+            <p className="mt-2 text-sm text-amber-900">
+              {t("importExistingNotUpdated").replace(
+                "{count}",
+                summary!.skipped.duplicate_existing.toLocaleString("da-DK")
+              )}
+            </p>
+          ) : null}
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

@@ -271,6 +271,11 @@ const daMessages = {
   importTestStale: "Du har ændret knytning eller indstillinger. Kør testen igen før import.",
   importReady: "Klar til at importere {count} leads",
   importReadyHint: "Intet er gemt endnu. Tjek leadsene nedenfor, og importér derefter.",
+  importExistingNotUpdated:
+    "{count} rækker matcher leads, der allerede findes i CRM'et, og springes over. Import opdaterer aldrig eksisterende leads — den tilføjer kun nye kontakter. Rediger i leadarket eller fortryd en tidligere import, hvis data skal rettes.",
+  importAllAlreadyInCrm: "Alle rækker findes allerede i CRM'et",
+  importAllAlreadyInCrmHint:
+    "At importere det samme ark igen opdaterer eller overskriver ikke leads. Slå kun “Spring dubletter over” fra, hvis du bevidst vil have en ekstra kopi af en kontakt.",
   importNothing: "Intet lead kan importeres med denne knytning",
   importNothingHint: "Gå tilbage og knyt mindst en kolonne med navn, e-mail eller telefon.",
   importStatWillImport: "Importeres",

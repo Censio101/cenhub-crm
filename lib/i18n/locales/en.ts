@@ -270,6 +270,11 @@ export const en: Messages = {
   importTestStale: "You changed the mapping or options. Run the test again before importing.",
   importReady: "Ready to import {count} leads",
   importReadyHint: "Nothing has been saved yet. Check the leads below, then import.",
+  importExistingNotUpdated:
+    "{count} rows match leads already in the CRM and will be skipped. Import never updates existing leads — it only adds new contacts. Edit leads in the sheet or undo a past import if you need to fix data.",
+  importAllAlreadyInCrm: "Every row is already in the CRM",
+  importAllAlreadyInCrmHint:
+    "Re-importing the same sheet does not refresh or overwrite leads. Turn off “Skip duplicates” only if you intentionally want a second copy of a contact.",
   importNothing: "No lead can be imported with this mapping",
   importNothingHint: "Go back and map at least a name, email or phone column.",
   importStatWillImport: "Will import",
