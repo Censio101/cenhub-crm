@@ -27,21 +27,41 @@ export function contactKeys(email: CellValue | undefined, phone: CellValue | und
 }
 
 /**
- * Marks rows whose email or phone already appeared earlier in the file, so the server can skip
- * them. The first row with a contact is kept.
+ * Marks duplicate contacts within the file. When two rows share email or phone, the row with a
+ * mapped service value is kept (so a bare Meta row does not win over a Vinduespuds/Fliserens row).
  */
 export function markFileDuplicates<T extends { values: Record<string, CellValue> }>(
   rows: readonly T[],
   mapping: ColumnMapping
 ): (T & { fileDuplicate: boolean })[] {
-  const seen = new Set<string>()
-  return rows.map((row) => {
-    const keys = contactKeys(
+  const keyed = rows.map((row, index) => ({
+    index,
+    row,
+    keys: contactKeys(
       readMapped(row.values, mapping, "email"),
       readMapped(row.values, mapping, "phone")
-    )
-    const duplicate = keys.some((key) => seen.has(key))
-    for (const key of keys) seen.add(key)
-    return { ...row, fileDuplicate: duplicate }
+    ),
+    hasService: Boolean(cellText(readMapped(row.values, mapping, "serviceIds"), 400).trim()),
+  }))
+
+  const keeperForKey = new Map<string, number>()
+  for (const entry of keyed) {
+    for (const key of entry.keys) {
+      const prevIndex = keeperForKey.get(key)
+      if (prevIndex === undefined) {
+        keeperForKey.set(key, entry.index)
+        continue
+      }
+      const prev = keyed[prevIndex]
+      if (!prev.hasService && entry.hasService) {
+        keeperForKey.set(key, entry.index)
+      }
+    }
+  }
+
+  return keyed.map((entry) => {
+    if (entry.keys.length === 0) return { ...entry.row, fileDuplicate: false }
+    const fileDuplicate = entry.keys.some((key) => keeperForKey.get(key) !== entry.index)
+    return { ...entry.row, fileDuplicate }
   })
 }

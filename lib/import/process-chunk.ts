@@ -142,6 +142,9 @@ export async function processImportChunk(input: {
     }
 
     accepted.push(result.lead)
+    if (options.skipDuplicates) {
+      for (const key of keys) existing.add(key)
+    }
     results.push({
       rowNumber: row.rowNumber,
       outcome: "import",

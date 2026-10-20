@@ -15,6 +15,10 @@ import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
 import { notifyNewLeadFromFunnelWebhook } from "@/lib/leads/notify-new-lead"
+import {
+  mergeFunnelWebhookIntoExistingMetaLead,
+  metaLeadgenLegacyId,
+} from "@/lib/leads/funnel-webhook-meta-merge"
 import { buildInboundLead, parseInbound } from "@/lib/leads/process-inbound"
 import { readWebhookBody } from "@/lib/leads/read-webhook-body"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -102,7 +106,7 @@ export async function POST(request: Request, context: RouteContext) {
       getOrganizationServiceAliasMap(admin, funnel.organization_id),
     ])
     const sheetInfo = leadSheet ? buildWebhookLeadSheetInfo(leadSheet) : null
-    const { lead, warnings } = buildInboundLead({
+    const built = buildInboundLead({
       parsed,
       customFieldDefs:
         leadSheet && sheetInfo
@@ -112,10 +116,34 @@ export async function POST(request: Request, context: RouteContext) {
       serviceAliasMap,
       platform: funnel.platform,
     })
+    const { lead, warnings } = built
+
+    const metaLegacyId =
+      metaLeadgenLegacyId(parsed.canonical.externalId) ??
+      metaLeadgenLegacyId(parsed.canonical.metaAdId)
+    if (metaLegacyId) {
+      const existingMetaLeadId = await findLeadIdByLegacyId(
+        admin,
+        funnel.organization_id,
+        metaLegacyId
+      )
+      if (existingMetaLeadId) {
+        await mergeFunnelWebhookIntoExistingMetaLead(
+          admin,
+          funnel.organization_id,
+          existingMetaLeadId,
+          lead,
+          built.customFields
+        )
+        return duplicateResponse(existingMetaLeadId)
+      }
+    }
 
     let created
     try {
-      created = await createLead(admin, funnel.organization_id, lead, { legacyId })
+      created = await createLead(admin, funnel.organization_id, lead, {
+        legacyId: legacyId ?? metaLegacyId,
+      })
     } catch (insertError) {
       // Two identical requests can race past the check above; the unique index decides.
       if (legacyId && (insertError as { code?: string } | null)?.code === "23505") {

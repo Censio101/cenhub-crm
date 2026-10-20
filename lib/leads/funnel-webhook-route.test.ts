@@ -46,6 +46,13 @@ vi.mock("@/lib/db/lead-sheet-repository", () => ({
 vi.mock("@/lib/leads/notify-new-lead", () => ({
   notifyNewLeadFromFunnelWebhook: vi.fn().mockResolvedValue(undefined),
 }))
+vi.mock("@/lib/leads/funnel-webhook-meta-merge", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/leads/funnel-webhook-meta-merge")>()
+  return {
+    ...actual,
+    mergeFunnelWebhookIntoExistingMetaLead: vi.fn().mockResolvedValue(true),
+  }
+})
 vi.mock("@/lib/db/organizations-repository", () => ({
   getOrganizationById: vi.fn().mockResolvedValue({
     id: "org1",
@@ -136,6 +143,22 @@ describe("funnel webhook", () => {
     expect(mocks.createLead).not.toHaveBeenCalled()
   })
 
+  it("merges into an existing Meta lead when metaAdId is the Meta leadgen id", async () => {
+    mocks.findLeadIdByLegacyId.mockResolvedValueOnce("lead-from-meta")
+    const res = await post({
+      ...base,
+      metaAdId: "120330000000000",
+      serviceIds: ["vinduespuds"],
+    })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      ok: true,
+      leadId: "lead-from-meta",
+      duplicate: true,
+    })
+    expect(mocks.createLead).not.toHaveBeenCalled()
+  })
+
   it("resolves a concurrent duplicate through the unique index", async () => {
     mocks.findLeadIdByLegacyId.mockResolvedValueOnce(null).mockResolvedValueOnce("lead-winner")
     mocks.createLead.mockRejectedValueOnce({ code: "23505", message: "duplicate key" })
@@ -151,17 +174,19 @@ describe("funnel webhook", () => {
   })
 
   it("saves custom columns from the client's sheet and reports skipped ones", async () => {
-    mocks.resolveLeadSheetForOrganization.mockResolvedValue({})
-    mocks.listCustomFieldDefs.mockReturnValue([
-      {
-        id: "1",
-        fieldKey: "budget",
-        label: "Budget",
-        fieldType: "number",
-        required: false,
-        config: {},
-      },
-    ])
+    const budgetDef = {
+      id: "1",
+      fieldKey: "budget",
+      label: "Budget",
+      fieldType: "number" as const,
+      required: false,
+      config: {},
+    }
+    mocks.resolveLeadSheetForOrganization.mockResolvedValue({
+      template: { id: "t1", name: "Test", isSystemDefault: true, organizationId: null },
+      columns: [{ kind: "custom" as const, customField: budgetDef }],
+    })
+    mocks.listCustomFieldDefs.mockReturnValue([budgetDef])
     const res = await post({
       ...base,
       customFields: { budget: "5 000", unknown_key: "x" },

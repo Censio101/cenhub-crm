@@ -32,4 +32,13 @@ describe("markFileDuplicates", () => {
       false,
     ])
   })
+
+  it("prefers the row with a service when the same contact appears twice", () => {
+    const mapping = { email: ["Mail"], serviceIds: ["Service"] }
+    const rows = [
+      { rowNumber: 5, values: { Mail: "j@x.dk", Service: "" } },
+      { rowNumber: 6, values: { Mail: "j@x.dk", Service: "Vinduespuds" } },
+    ]
+    expect(markFileDuplicates(rows, mapping).map((r) => r.fileDuplicate)).toEqual([true, false])
+  })
 })

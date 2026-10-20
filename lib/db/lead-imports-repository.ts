@@ -7,6 +7,9 @@ import type { Lead } from "@/lib/leads"
 
 export type LeadImportStatus = "running" | "done" | "undone"
 
+/** How many import batches we keep per client (older rows are deleted; leads stay). */
+export const LEAD_IMPORT_HISTORY_RETAIN = 3
+
 export type LeadImportRecord = {
   id: string
   organizationId: string
@@ -81,11 +84,37 @@ export async function getLeadImport(
   return data ? mapImport(data as ImportRow) : null
 }
 
+/** Drops import batch rows beyond the newest `retain` (leads.import_id is set null via FK). */
+export async function pruneLeadImportHistory(
+  supabase: SupabaseClient,
+  organizationId: string,
+  retain = LEAD_IMPORT_HISTORY_RETAIN
+): Promise<number> {
+  if (retain < 1) return 0
+  const { data, error } = await supabase
+    .from("lead_imports")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  const rows = (data ?? []) as { id: string }[]
+  if (rows.length <= retain) return 0
+  const dropIds = rows.slice(retain).map((row) => row.id)
+  const { error: deleteError } = await supabase
+    .from("lead_imports")
+    .delete()
+    .in("id", dropIds)
+    .eq("organization_id", organizationId)
+  if (deleteError) throw deleteError
+  return dropIds.length
+}
+
 export async function listLeadImports(
   supabase: SupabaseClient,
   organizationId: string,
-  limit = 20
+  limit = LEAD_IMPORT_HISTORY_RETAIN
 ): Promise<LeadImportRecord[]> {
+  await pruneLeadImportHistory(supabase, organizationId, limit)
   const { data, error } = await supabase
     .from("lead_imports")
     .select("*")
@@ -124,6 +153,7 @@ export async function finishLeadImport(
     .select("*")
     .single()
   if (error) throw error
+  await pruneLeadImportHistory(supabase, organizationId)
   return mapImport(data as ImportRow)
 }
 
