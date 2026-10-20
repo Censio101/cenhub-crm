@@ -11,6 +11,7 @@ const options: ImportOptions = {
   defaultStatus: "new_waiting_call",
   defaultPlatform: "website",
   skipDuplicates: true,
+  fillExistingFromImport: true,
 }
 
 const budget: LeadSheetCustomFieldDef = {

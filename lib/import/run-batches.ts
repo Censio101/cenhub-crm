@@ -30,6 +30,7 @@ export type ImportPreviewRow = {
 export type ImportRunSummary = {
   total: number
   toImport: number
+  updated: number
   skipped: Record<ImportSkipReason, number>
   withWarnings: number
   inserted: number
@@ -42,6 +43,7 @@ export function emptySummary(): ImportRunSummary {
   return {
     total: 0,
     toImport: 0,
+    updated: 0,
     skipped: { no_contact: 0, duplicate_existing: 0, duplicate_file: 0 },
     withWarnings: 0,
     inserted: 0,
@@ -80,6 +82,10 @@ export function addResults(
           messages: [],
         })
       }
+      continue
+    }
+    if (result.outcome === "update") {
+      next.updated += 1
       continue
     }
     next.toImport += 1

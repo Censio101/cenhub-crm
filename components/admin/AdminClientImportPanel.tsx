@@ -43,6 +43,7 @@ const DEFAULT_OPTIONS: ImportOptions = {
   defaultStatus: "new_waiting_call",
   defaultPlatform: "",
   skipDuplicates: true,
+  fillExistingFromImport: true,
 }
 
 const IDLE_TEST: TestState = { status: "idle", done: 0, total: 0, summary: null, error: null }

@@ -1,4 +1,8 @@
-import { findExistingContactKeys, insertImportedLeads } from "@/lib/db/lead-imports-repository"
+import {
+  findExistingContactKeys,
+  findExistingLeadIdsByContactKeys,
+  insertImportedLeads,
+} from "@/lib/db/lead-imports-repository"
 import {
   listCustomFieldDefs,
   resolveLeadSheetForOrganization,
@@ -7,6 +11,7 @@ import { contactKeys } from "@/lib/import/dedupe"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
 import { buildImportLead } from "@/lib/import/import-row"
+import { mergeImportRowIntoExistingLead } from "@/lib/import/merge-into-existing-lead"
 import { readMapped } from "@/lib/import/read-mapped"
 import type {
   ColumnMapping,
@@ -81,6 +86,7 @@ export async function processImportChunk(input: {
 
   // Which contacts are already leads of this client (one query for the whole batch).
   const existing = new Set<string>()
+  let existingLeadIds = new Map<string, string>()
   if (options.skipDuplicates) {
     const emails: string[] = []
     const phones: string[] = []
@@ -94,11 +100,19 @@ export async function processImportChunk(input: {
         else phones.push(key.slice(2))
       }
     }
+    const uniqueEmails = [...new Set(emails)]
+    const uniquePhones = [...new Set(phones)]
     const found = await findExistingContactKeys(supabase, organizationId, {
-      emails: [...new Set(emails)],
-      phones: [...new Set(phones)],
+      emails: uniqueEmails,
+      phones: uniquePhones,
     })
     for (const key of found) existing.add(key)
+    if (options.fillExistingFromImport) {
+      existingLeadIds = await findExistingLeadIdsByContactKeys(supabase, organizationId, {
+        emails: uniqueEmails,
+        phones: uniquePhones,
+      })
+    }
   }
 
   const results: ImportRowResult[] = []
@@ -131,6 +145,32 @@ export async function processImportChunk(input: {
       readMapped(row.values, mapping, "phone")
     )
     if (options.skipDuplicates && keys.some((key) => existing.has(key))) {
+      let leadId: string | undefined
+      for (const key of keys) {
+        const hit = existingLeadIds.get(key)
+        if (hit) {
+          leadId = hit
+          break
+        }
+      }
+      if (options.fillExistingFromImport && leadId) {
+        const merged = await mergeImportRowIntoExistingLead(
+          supabase,
+          organizationId,
+          leadId,
+          result.lead,
+          { dryRun }
+        )
+        if (merged) {
+          results.push({
+            rowNumber: row.rowNumber,
+            outcome: "update",
+            warnings: result.warnings,
+            changes: result.changes,
+          })
+          continue
+        }
+      }
       results.push({
         rowNumber: row.rowNumber,
         outcome: "skip",
@@ -157,6 +197,7 @@ export async function processImportChunk(input: {
 
   if (dryRun) return { results }
 
+  if (accepted.length === 0) return { results, inserted: 0 }
   if (!input.importId) throw new Error("An import id is required to save leads")
   const inserted = await insertImportedLeads(supabase, organizationId, input.importId, accepted)
   return { results, inserted }

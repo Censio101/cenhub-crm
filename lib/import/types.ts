@@ -16,6 +16,8 @@ export type ImportOptions = {
   defaultPlatform: LeadPlatformId | ""
   /** Skip rows whose email or phone is already a lead of this client, or repeats in the file. */
   skipDuplicates: boolean
+  /** When skipping an existing contact, fill empty service / address / custom fields from the file. */
+  fillExistingFromImport: boolean
 }
 
 export type ImportRowInput = {
@@ -35,7 +37,7 @@ export type ImportSkipReason = "no_contact" | "duplicate_existing" | "duplicate_
 
 export type ImportRowResult = {
   rowNumber: number
-  outcome: "import" | "skip"
+  outcome: "import" | "skip" | "update"
   reason?: ImportSkipReason
   warnings: ImportWarning[]
   changes: ImportChange[]

@@ -70,7 +70,7 @@ export function parseImportRequest(
   }
 
   if (!isRecord(body.options)) return { ok: false, error: "Invalid options" }
-  const { defaultStatus, defaultPlatform, skipDuplicates } = body.options
+  const { defaultStatus, defaultPlatform, skipDuplicates, fillExistingFromImport } = body.options
   if (typeof defaultStatus !== "string" || !isLeadStatusId(defaultStatus)) {
     return { ok: false, error: "Invalid default status" }
   }
@@ -95,6 +95,7 @@ export function parseImportRequest(
         defaultStatus,
         defaultPlatform: defaultPlatform as ImportOptions["defaultPlatform"],
         skipDuplicates: skipDuplicates !== false,
+        fillExistingFromImport: fillExistingFromImport !== false,
       },
       previewCount,
     },

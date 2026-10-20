@@ -91,6 +91,7 @@ describe("importFingerprint", () => {
       defaultStatus: "new_waiting_call" as const,
       defaultPlatform: "" as const,
       skipDuplicates: true,
+      fillExistingFromImport: true,
     },
   }
 

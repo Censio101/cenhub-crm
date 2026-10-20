@@ -225,3 +225,24 @@ export async function findExistingContactKeys(
   }
   return keys
 }
+
+/** Contact key (`e:…` / `p:…`) → lead id for rows in this import batch. */
+export async function findExistingLeadIdsByContactKeys(
+  supabase: SupabaseClient,
+  organizationId: string,
+  input: { emails: string[]; phones: string[] }
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  if (input.emails.length === 0 && input.phones.length === 0) return map
+  const { data, error } = await supabase.rpc("existing_lead_contact_ids", {
+    p_org_id: organizationId,
+    p_emails: input.emails,
+    p_phones: input.phones,
+  })
+  if (error) throw error
+  for (const row of (data ?? []) as { kind: string; key: string; lead_id: string }[]) {
+    const contactKey = row.kind === "email" ? `e:${row.key}` : `p:${row.key}`
+    if (!map.has(contactKey)) map.set(contactKey, row.lead_id)
+  }
+  return map
+}
