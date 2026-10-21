@@ -254,7 +254,7 @@ async function main() {
     city: "",
     serviceIds: [] as string[],
     service: "" as const,
-    platform: "",
+    platform: "" as const,
     metaAdId: "",
     status: "new_waiting_call" as const,
     salesPrice: null,
