@@ -285,6 +285,7 @@ export function accumulateMonthly(
       ...running,
       start: bucket.start,
       end: bucket.end,
+      ...(bucket.isFuture ? { isFuture: true } : {}),
     }
   })
 }

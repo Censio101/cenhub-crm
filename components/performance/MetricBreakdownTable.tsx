@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 import { cn } from "cn"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -51,12 +53,14 @@ export function MetricBreakdownTable({
 }) {
   const { locale, t } = useLanguage()
   const localizedMetrics = metrics.map((metric) => localizeMetric(metric, t))
+  const [now] = useState(() => new Date())
   const columns = monthBuckets.map((bucket) => {
     const date = new Date(`${bucket.start}T00:00:00`)
     return {
       key: monthKey(bucket),
       label: formatMonthLabel(date, locale),
       bucket,
+      isCurrent: date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth(),
     }
   })
 
@@ -72,7 +76,14 @@ export function MetricBreakdownTable({
           {columns.map((column) => (
             <TableHead
               key={column.key}
-              className={cn(headerCellClass, "text-right")}
+              className={cn(
+                headerCellClass,
+                "text-right",
+                // Current month stands out; months that have not started fade back.
+                column.isCurrent && "bg-[#665e56]",
+                column.bucket.isFuture && "text-white/45"
+              )}
+              aria-current={column.isCurrent ? "date" : undefined}
             >
               {column.label}
             </TableHead>
@@ -104,10 +115,12 @@ export function MetricBreakdownTable({
                   key={column.key}
                   className={cn(
                     "border-b border-r border-[var(--table-grid)] px-2 py-3 text-right",
-                    valueCellClass
+                    valueCellClass,
+                    column.isCurrent && "bg-[color-mix(in_srgb,var(--positive)_6%,#ffffff)]",
+                    column.bucket.isFuture && "text-[var(--text-muted)]"
                   )}
                 >
-                  {formatMetricValue(metric.format, value)}
+                  {column.bucket.isFuture ? "–" : formatMetricValue(metric.format, value)}
                 </TableCell>
               )
             })}

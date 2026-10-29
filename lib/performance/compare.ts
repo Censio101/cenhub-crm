@@ -1,4 +1,3 @@
-import { translate } from "@/lib/i18n"
 import type { Locale } from "@/lib/i18n/types"
 
 import { formatMonthLabel } from "./format"
@@ -32,14 +31,15 @@ export function buildChartPoints(
 ): ChartPoint[] {
   const metric = getMetric(metricId)
   const aligned = alignByOffset(currentBuckets, comparisonBuckets ?? [])
+  const showYear = spansMultipleYears(currentBuckets)
 
   return aligned.map((pair, index) => {
     const current = pair.current
     const comparison = pair.comparison
     const label = current
-      ? pointLabel(current, granularity, locale)
+      ? pointLabel(current, granularity, locale, showYear)
       : comparison
-        ? pointLabel(comparison, granularity, locale)
+        ? pointLabel(comparison, granularity, locale, showYear)
         : String(index + 1)
 
     return {
@@ -51,16 +51,23 @@ export function buildChartPoints(
   })
 }
 
+function spansMultipleYears(buckets: PerformanceBucket[]): boolean {
+  if (buckets.length < 2) return false
+  return buckets[0].start.slice(0, 4) !== buckets[buckets.length - 1].start.slice(0, 4)
+}
+
 function pointLabel(
   bucket: PerformanceBucket,
   granularity: Granularity,
-  locale: Locale
+  locale: Locale,
+  showYear = false
 ): string {
   const date = new Date(`${bucket.start}T00:00:00`)
-  if (granularity === "month") return formatMonthLabel(date, locale)
-  if (granularity === "week") {
-    return translate(locale, "dashboardChartWeek", { n: Math.ceil(date.getDate() / 7) })
+  if (granularity === "month") {
+    const month = formatMonthLabel(date, locale)
+    return showYear ? `${month} ’${String(date.getFullYear()).slice(2)}` : month
   }
+  // Weeks are labelled by the Monday they start on, so labels stay unique across months.
   return `${date.getDate()}. ${formatMonthLabel(date, locale).toLowerCase()}`
 }
 

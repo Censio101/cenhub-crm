@@ -14,6 +14,7 @@ import {
   isAdminWorkspaceNavActive,
 } from "@/lib/layout/admin-profile-nav-active"
 import { isClientDashboardPath } from "@/lib/layout/app-paths"
+import { isModifiedClick } from "@/lib/layout/modified-click"
 import { cn } from "cn"
 
 function AdminHeaderLink({
@@ -104,21 +105,29 @@ export function AdminHeaderNav() {
         />
       ) : null}
       {!onClientDashboard ? (
-        <button
-          type="button"
-          disabled={openingDashboard}
-          onClick={() => void openDashboard()}
+        // A real link, so right-click / Cmd-click can open the dashboard in a new tab. A plain
+        // click first makes sure this client is the active one, then navigates.
+        <Link
+          href="/"
+          aria-disabled={openingDashboard || undefined}
+          onClick={(event) => {
+            if (isModifiedClick(event)) return
+            event.preventDefault()
+            if (openingDashboard) return
+            void openDashboard()
+          }}
           className={cn(
             "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
             "border-b-2 border-transparent text-white/70 hover:border-primary hover:text-white",
-            "focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none"
+            "focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none",
+            openingDashboard && "opacity-70"
           )}
         >
           <LayoutDashboardIcon className="size-4 shrink-0" aria-hidden="true" />
           <span className="hidden md:inline">
             {openingDashboard ? t("openingDashboard") : t("profileMenuClientDashboard")}
           </span>
-        </button>
+        </Link>
       ) : null}
     </div>
   )

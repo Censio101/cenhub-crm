@@ -1,9 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { da, enUS } from "date-fns/locale"
-import { endOfDay, startOfDay, startOfMonth, subMonths } from "date-fns"
-import type { DateRange as DayPickerRange } from "react-day-picker"
+import { startOfMonth, subMonths } from "date-fns"
 import { CalendarIcon, CalendarRangeIcon, CheckIcon, ChevronDownIcon, ChevronLeftIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -11,7 +9,7 @@ import {
   SHEET_CONTROL_CLASS,
   SHEET_CONTROL_IDLE,
 } from "@/components/leads/LeadSheetFilterMenu"
-import { Calendar } from "@/components/ui/calendar"
+import { DateRangePickerPanel } from "@/components/performance/DateRangePickerPanel"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DATE_PRESETS } from "@/lib/performance/date-ranges"
 import { DATE_PRESET_MESSAGE_KEYS } from "@/lib/performance/date-preset-i18n"
@@ -24,10 +22,6 @@ function monthFromLeadDate(value: string | null | undefined): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return null
   return startOfMonth(new Date(Number(match[1]), Number(match[2]) - 1, 1))
-}
-
-function normalizePickerRange(from: Date, to: Date): DateRange {
-  return { start: startOfDay(from), end: endOfDay(to) }
 }
 
 const rowClass =
@@ -53,10 +47,8 @@ export function LeadSheetCompactDateFilter({
   onCustomRange: (range: DateRange) => void
 }) {
   const { locale, t } = useLanguage()
-  const calendarLocale = locale === "da" ? da : enUS
   const [open, setOpen] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
-  const [draft, setDraft] = useState<DayPickerRange | undefined>()
 
   const rangeLabel = isAllTime
     ? t("datePresetAllTimeRange", { date: formatDayLabel(range.end, locale) })
@@ -77,8 +69,6 @@ export function LeadSheetCompactDateFilter({
   if (earliestMonth && calendarMonth < earliestMonth) calendarMonth = earliestMonth
 
   function openCustomCalendar() {
-    if (isAllTime) setDraft(undefined)
-    else setDraft({ from: range.start, to: range.end })
     setShowCalendar(true)
   }
 
@@ -113,21 +103,17 @@ export function LeadSheetCompactDateFilter({
               <ChevronLeftIcon className="size-4 text-muted-foreground" aria-hidden />
               {t("leadSheetFilterBack")}
             </button>
-            <Calendar
-              mode="range"
-              locale={calendarLocale}
+            <DateRangePickerPanel
+              initial={isAllTime ? null : range}
               numberOfMonths={2}
-              selected={draft}
               defaultMonth={calendarMonth}
               startMonth={earliestMonth ?? undefined}
               endMonth={focusMonth}
-              onSelect={(next) => {
-                setDraft(next)
-                if (next?.from && next.to) {
-                  onCustomRange(normalizePickerRange(next.from, next.to))
-                  close()
-                }
+              onApply={(next) => {
+                onCustomRange(next)
+                close()
               }}
+              onCancel={close}
             />
           </div>
         ) : (

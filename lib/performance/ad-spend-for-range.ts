@@ -1,6 +1,5 @@
 import {
   differenceInCalendarDays,
-  eachMonthOfInterval,
   endOfDay,
   endOfMonth,
   max,
@@ -15,12 +14,22 @@ import type { DateRange } from "./types"
 
 /** Calendar months (YYYY-MM) that overlap the dashboard date range. */
 export function monthKeysInRange(range: DateRange): string[] {
-  const start = startOfMonth(range.start)
-  const end = startOfMonth(range.end)
-  if (start > end) return []
-  return eachMonthOfInterval({ start, end }).map((month) =>
-    monthKeyFromDate(toIsoDate(month))
-  )
+  // Count year/month numbers instead of stepping Dates: stepping across decades (all time starts
+  // in 2000) can drift by an hour in time zones with past DST changes and drop the last month.
+  const keys: string[] = []
+  let year = range.start.getFullYear()
+  let month = range.start.getMonth()
+  const endYear = range.end.getFullYear()
+  const endMonth = range.end.getMonth()
+  while (year < endYear || (year === endYear && month <= endMonth)) {
+    keys.push(`${year}-${String(month + 1).padStart(2, "0")}`)
+    month += 1
+    if (month > 11) {
+      month = 0
+      year += 1
+    }
+  }
+  return keys
 }
 
 /**

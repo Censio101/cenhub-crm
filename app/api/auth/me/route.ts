@@ -7,6 +7,7 @@ import {
   resolveOrganizationLogoUrl,
 } from "@/lib/organization-logo"
 import { parseHvidbjergPartner } from "@/lib/hvidbjerg-partner"
+import { parseHiddenMetrics } from "@/lib/performance/visible-metrics"
 import { isLocale } from "@/lib/i18n"
 import type { Locale } from "@/lib/i18n/types"
 
@@ -34,6 +35,7 @@ export async function GET() {
           logoUrl: resolveOrganizationLogoUrl(ctx.organization.logo_url),
           logoBackground: parseOrganizationLogoBackground(ctx.organization.logo_background),
           profileComplete: isOrganizationProfileComplete(ctx.organization),
+          dashboardHiddenMetrics: parseHiddenMetrics(ctx.organization.dashboard_hidden_metrics),
         }
       : null,
     isDemoFallback: ctx.isDemoFallback,

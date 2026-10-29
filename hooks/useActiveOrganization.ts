@@ -3,6 +3,7 @@
 import { useSession, type SessionReloadOptions } from "@/components/session/SessionProvider"
 import type { UserRole } from "@/lib/db/types"
 import type { OrganizationLogoBackground } from "@/lib/organization-logo"
+import type { MetricId } from "@/lib/performance/types"
 
 export type ActiveOrganization = {
   id: string
@@ -13,6 +14,8 @@ export type ActiveOrganization = {
   logoBackground: OrganizationLogoBackground
   profileComplete: boolean
   hvidbjergPartner: boolean
+  /** Dashboard KPI metrics a Censio admin has hidden for this client. */
+  dashboardHiddenMetrics: MetricId[]
 }
 
 type ActiveOrganizationState = {

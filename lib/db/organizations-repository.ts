@@ -160,6 +160,7 @@ export type OrganizationDetailsPatch = Partial<
     | "primary_contact_phone"
     | "website_url"
     | "hvidbjerg_partner"
+    | "dashboard_hidden_metrics"
   >
 >
 

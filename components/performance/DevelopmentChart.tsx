@@ -28,6 +28,7 @@ import { formatAxisValue } from "@/lib/performance/format"
 import { getChartSeries } from "@/lib/performance/get-performance"
 import { localizeMetric } from "@/lib/performance/metric-i18n"
 import { chartMetrics, getMetric } from "@/lib/performance/metrics"
+import { filterVisibleMetrics } from "@/lib/performance/visible-metrics"
 import type { MetricId, PerformanceDashboardData } from "@/lib/performance/types"
 import { cn } from "cn"
 
@@ -46,25 +47,34 @@ export function DevelopmentChart({
   currentLabel,
   comparisonLabel,
   compareActive = false,
-  chartYears,
-  chartYear,
-  onChartYearChange,
+  hiddenMetrics = [],
+  periodLabel,
   onMetricChange,
 }: {
   data: PerformanceDashboardData
   metricId: MetricId
   currentLabel: string
+  /** Human-readable selected period, shown under the chart title. */
+  periodLabel: string
   comparisonLabel: string | null
   compareActive?: boolean
-  chartYears: number[]
-  chartYear: number
-  onChartYearChange: (year: number) => void
+  hiddenMetrics?: readonly MetricId[]
   onMetricChange: (metricId: MetricId) => void
 }) {
   const { locale, t } = useLanguage()
   const metric = localizeMetric(getMetric(metricId), t)
-  const points = getChartSeries(data, metricId, locale, { compare: compareActive })
-  const metrics = chartMetrics().map((item) => localizeMetric(item, t))
+  const points = getChartSeries(data, metricId, locale)
+  const isDaily = data.granularity === "day"
+  const granularityLabel = t(
+    data.granularity === "day"
+      ? "dashboardChartGranularityDay"
+      : data.granularity === "week"
+        ? "dashboardChartGranularityWeek"
+        : "dashboardChartGranularityMonth"
+  )
+  const metrics = filterVisibleMetrics(chartMetrics(), hiddenMetrics).map((item) =>
+    localizeMetric(item, t)
+  )
   const showSpend = metricId === "revenue"
   const revenueLabel = showSpend ? metric.label : currentLabel
   const showLegend = Boolean(comparisonLabel) || showSpend
@@ -78,11 +88,13 @@ export function DevelopmentChart({
           <h2 className="text-lg font-medium tracking-tight text-[var(--text-primary)]">
             {t("dashboardChartTitle")}
           </h2>
-          {compareActive ? (
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              {comparisonLabel ? t("dashboardChartCompareSubtitle") : t("kpiNoCompareData")}
-            </p>
-          ) : null}
+          {/* The chart follows the date filter, so say which period and step it is showing. */}
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {periodLabel} · {granularityLabel}
+            {compareActive
+              ? ` · ${comparisonLabel ? t("dashboardChartCompareSubtitle") : t("kpiNoCompareData")}`
+              : ""}
+          </p>
         </div>
 
         <div className="hidden flex-wrap justify-end gap-2 md:flex">
@@ -125,38 +137,10 @@ export function DevelopmentChart({
           </SelectContent>
         </Select>
       </CardHeader>
-      {!compareActive && chartYears.length > 1 ? (
-        <div
-          className="flex flex-wrap gap-1.5 px-6 pb-2"
-          role="tablist"
-          aria-label={t("dashboardChartYearTabs")}
-        >
-          {chartYears.map((year) => {
-            const selected = year === chartYear
-            return (
-              <button
-                key={year}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                className={cn(
-                  "h-8 rounded-full px-3.5 text-sm font-medium transition-colors",
-                  selected
-                    ? "bg-[#bbf7d0] text-[#166534]"
-                    : "text-[var(--text-muted)] hover:bg-[#dcfce7] hover:text-[#166534]"
-                )}
-                onClick={() => onChartYearChange(year)}
-              >
-                {year}
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
       <CardContent className="px-3 pb-6 sm:px-6">
         <div className="h-[240px] w-full sm:h-[320px] lg:h-[380px]">
           <ResponsiveContainer
-            key={`${metricId}-${compareActive ? "cmp" : chartYear}-${points.length}-${points[0]?.key ?? "none"}`}
+            key={`${metricId}-${data.granularity}-${compareActive ? "cmp" : "cur"}-${points.length}-${points[0]?.key ?? "none"}`}
             width="100%"
             height="100%"
           >
@@ -175,8 +159,10 @@ export function DevelopmentChart({
               />
               <XAxis
                 dataKey="label"
-                interval={0}
-                minTickGap={0}
+                interval={points.length > 14 ? "preserveStartEnd" : 0}
+                minTickGap={points.length > 14 ? 12 : 0}
+                // Daily points are labelled "5. jan"; the axis only needs the day number.
+                tickFormatter={(value: string) => (isDaily ? value.split(".")[0] : value)}
                 tickSize={6}
                 tickMargin={8}
                 padding={{ left: 8, right: 8 }}

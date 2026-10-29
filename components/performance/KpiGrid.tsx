@@ -6,15 +6,16 @@ import { localizeMetric } from "@/lib/performance/metric-i18n"
 import { computeDelta, getMetric } from "@/lib/performance/metrics"
 import type { MetricId } from "@/lib/performance/types"
 import type { PerformanceDashboardData } from "@/lib/performance/types"
-
-const KPI_GRID_ORDER: MetricId[] = ["revenue", "profit", "roas", "customers", "adSpend", "closeRate"]
+import { buildKpiLayout } from "@/lib/performance/visible-metrics"
 
 export function KpiGrid({
   data,
   comparisonEnabled = false,
+  hiddenMetrics = [],
 }: {
   data: PerformanceDashboardData
   comparisonEnabled?: boolean
+  hiddenMetrics?: readonly MetricId[]
 }) {
   const { t } = useLanguage()
   const compareEmpty = comparisonEnabled && data.comparison == null
@@ -34,19 +35,18 @@ export function KpiGrid({
     }
   }
 
-  const cpl = cardProps("cpl")
-  const leads = cardProps("leads")
-  const ltv = cardProps("ltv")
-  const cac = cardProps("cac")
+  const cards = buildKpiLayout(hiddenMetrics)
 
   return (
     <section aria-label={t("dashboardKpiAria")}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {KPI_GRID_ORDER.map((id) => (
-          <KpiCard key={id} {...cardProps(id)} />
-        ))}
-        <CombinedKpiCard items={[cpl, leads]} />
-        <CombinedKpiCard items={[ltv, cac]} />
+        {cards.map((card) =>
+          card.kind === "single" ? (
+            <KpiCard key={card.id} {...cardProps(card.id)} />
+          ) : (
+            <CombinedKpiCard key={card.ids.join("-")} items={card.ids.map(cardProps)} />
+          )
+        )}
       </div>
     </section>
   )

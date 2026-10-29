@@ -108,7 +108,9 @@ describe("period comparison", () => {
     const revenue = getChartSeries(data, "revenue")
     const leads = getChartSeries(data, "leads")
 
-    expect(revenue).toHaveLength(data.year.monthlyBuckets.length)
+    // Jul to Dec filter, capped at "now" (Oct): Jul, Aug, Sep, Oct.
+    expect(revenue).toHaveLength(4)
+    expect(revenue.map((point) => point.label)).toEqual(["Jul", "Aug", "Sep", "Okt"])
     expect(revenue[0]?.spend).toBeGreaterThan(0)
     expect(revenue[0]?.spend).not.toBe(revenue[0]?.current)
     expect(leads[0]?.spend).toBeUndefined()

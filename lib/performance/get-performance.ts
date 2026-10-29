@@ -1,4 +1,13 @@
-import { endOfDay, endOfWeek, startOfDay, startOfWeek } from "date-fns"
+import {
+  eachDayOfInterval,
+  eachMonthOfInterval,
+  eachWeekOfInterval,
+  endOfDay,
+  endOfMonth,
+  endOfWeek,
+  startOfDay,
+  startOfWeek,
+} from "date-fns"
 
 import type { Locale } from "@/lib/i18n/types"
 import type { Lead } from "@/lib/leads"
@@ -29,6 +38,7 @@ import type {
   PerformanceBucket,
   PerformanceDashboardData,
   PeriodResult,
+  YearOverview,
 } from "./types"
 
 function parseBucketDate(value: string): Date {
@@ -83,6 +93,84 @@ function aggregateDays(
         ...sumTotals(groupDays),
       }
     })
+}
+
+function emptyPeriodBucket(start: Date, end: Date): PerformanceBucket {
+  return { ...emptyTotals(), start: toIsoDate(start), end: toIsoDate(end) }
+}
+
+/**
+ * One bucket per day / week / month of `range` (up to `now`), so charts have no gaps on quiet
+ * days. Buckets are matched by their start date; missing periods become zero buckets.
+ */
+export function fillBucketsForRange(
+  buckets: PerformanceBucket[],
+  range: DateRange,
+  granularity: Granularity,
+  now: Date = new Date()
+): PerformanceBucket[] {
+  const cap = endOfDay(now)
+  const end = range.end > cap ? cap : range.end
+  if (end < range.start) return []
+
+  const byStart = new Map(buckets.map((bucket) => [bucket.start, bucket]))
+  const interval = { start: range.start, end }
+
+  const slots: { start: Date; end: Date }[] =
+    granularity === "day"
+      ? eachDayOfInterval(interval).map((day) => ({ start: day, end: day }))
+      : granularity === "week"
+        ? eachWeekOfInterval(interval, { weekStartsOn: 1 }).map((weekStart) => ({
+            start: weekStart,
+            end: endOfWeek(weekStart, { weekStartsOn: 1 }),
+          }))
+        : eachMonthOfInterval(interval).map((monthStart) => ({
+            start: monthStart,
+            end: endOfMonth(monthStart),
+          }))
+
+  return slots.map(
+    (slot) => byStart.get(toIsoDate(slot.start)) ?? emptyPeriodBucket(slot.start, slot.end)
+  )
+}
+
+/** Jan to Dec of `year`; months that have not started yet are flagged `isFuture`. */
+export function getYearOverview(
+  year: number,
+  filters: {
+    service?: ServiceId | null
+    funnel?: FunnelId | null
+    segment?: CustomerSegmentId | null
+  },
+  input: PerformanceInput,
+  now: Date = new Date()
+): YearOverview {
+  const range: DateRange = {
+    start: new Date(year, 0, 1),
+    end: endOfDay(new Date(year, 11, 31)),
+  }
+  const period = buildPeriod(
+    range,
+    "month",
+    filters.service,
+    filters.funnel,
+    filters.segment,
+    input
+  )
+  const byStart = new Map(period.monthlyBuckets.map((bucket) => [bucket.start, bucket]))
+
+  const monthlyBuckets = Array.from({ length: 12 }, (_, month) => {
+    const start = new Date(year, month, 1)
+    const existing = byStart.get(toIsoDate(start))
+    const bucket = existing ?? emptyPeriodBucket(start, endOfMonth(start))
+    return start > now ? { ...bucket, isFuture: true } : bucket
+  })
+
+  return {
+    year,
+    monthlyBuckets,
+    cumulativeBuckets: accumulateMonthly(monthlyBuckets),
+  }
 }
 
 function applyCustomerSegment(
@@ -272,6 +360,13 @@ export function getPerformanceDashboard(
       cumulativeBuckets: accumulateMonthly(yearPeriod.monthlyBuckets),
     },
     chartYears: chartYears.length > 0 ? chartYears : [year],
+    chart: {
+      current: fillBucketsForRange(current.buckets, query.range, granularity, now),
+      comparison:
+        comparison && query.comparison
+          ? fillBucketsForRange(comparison.buckets, query.comparison, granularity, now)
+          : null,
+    },
     status,
     granularity,
   }
@@ -280,13 +375,11 @@ export function getPerformanceDashboard(
 export function getChartSeries(
   data: PerformanceDashboardData,
   metricId: MetricId,
-  locale: Locale = "da",
-  options?: { compare?: boolean }
+  locale: Locale = "da"
 ) {
-  const compare = Boolean(options?.compare)
-  const buckets = compare ? data.current.buckets : data.year.monthlyBuckets
-  const comparisonBuckets = compare ? (data.comparison?.buckets ?? null) : null
-  const granularity = compare ? data.granularity : "month"
+  const buckets = data.chart.current
+  const comparisonBuckets = data.chart.comparison
+  const granularity = data.granularity
   const points = buildChartPoints(
     metricId,
     buckets,

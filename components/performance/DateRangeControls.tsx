@@ -1,9 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { da, enUS } from "date-fns/locale"
-import { endOfDay, startOfDay, startOfMonth, subMonths } from "date-fns"
-import type { DateRange as DayPickerRange } from "react-day-picker"
+import { startOfMonth, subMonths } from "date-fns"
 import {
   Building2Icon,
   CalendarIcon,
@@ -19,7 +17,7 @@ import { cn } from "cn"
 import { useCompanyServices } from "@/hooks/useCompanyServices"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { DateRangePickerPanel } from "@/components/performance/DateRangePickerPanel"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,12 +123,9 @@ function DashboardCompareMenu({
   comparisonEnabled,
   comparisonMode,
   comparisonRange,
-  calendarLocale,
   calendarMonth,
   earliestMonth,
   focusMonth,
-  draft,
-  onDraft,
   onComparisonChange,
   onCustomRange,
   onPresetForComparison,
@@ -141,12 +136,9 @@ function DashboardCompareMenu({
   comparisonEnabled: boolean
   comparisonMode: ComparisonMode
   comparisonRange: DateRange | null
-  calendarLocale: typeof da
   calendarMonth: Date
   earliestMonth: Date | null
   focusMonth: Date
-  draft: DayPickerRange | undefined
-  onDraft: (next: DayPickerRange | undefined) => void
   onComparisonChange: (next: {
     enabled: boolean
     mode: ComparisonMode
@@ -255,25 +247,17 @@ function DashboardCompareMenu({
         })}
         {showCustomCalendar ? (
           <div className="mt-1 border-t border-border pt-2">
-            <Calendar
-              mode="range"
-              locale={calendarLocale}
+            <DateRangePickerPanel
+              initial={real ? comparisonRange : null}
               numberOfMonths={1}
               defaultMonth={calendarMonth}
               startMonth={earliestMonth ?? undefined}
               endMonth={focusMonth}
-              selected={
-                real
-                  ? draft ?? { from: comparisonRange!.start, to: comparisonRange!.end }
-                  : draft
-              }
-              onSelect={(next) => {
-                onDraft(next)
-                if (next?.from && next.to) {
-                  onCustomRange(normalizePickerRange(next.from, next.to))
-                  setOpen(false)
-                }
+              onApply={(next) => {
+                onCustomRange(next)
+                setOpen(false)
               }}
+              onCancel={() => setOpen(false)}
             />
           </div>
         ) : null}
@@ -289,10 +273,6 @@ function monthFromLeadDate(value: string | null | undefined): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return null
   return startOfMonth(new Date(Number(match[1]), Number(match[2]) - 1, 1))
-}
-
-function normalizePickerRange(from: Date, to: Date): DateRange {
-  return { start: startOfDay(from), end: endOfDay(to) }
 }
 
 export function DateRangeControls({
@@ -343,10 +323,7 @@ export function DateRangeControls({
   latestLeadDate?: string | null
 }) {
   const { locale, t } = useLanguage()
-  const calendarLocale = locale === "da" ? da : enUS
-  const [draft, setDraft] = useState<DayPickerRange | undefined>()
   const [customOpen, setCustomOpen] = useState(false)
-  const [comparisonDraft, setComparisonDraft] = useState<DayPickerRange | undefined>()
   const { enabledServiceIds, enabledServices, loaded: servicesLoaded } = useCompanyServices()
 
   useEffect(() => {
@@ -425,13 +402,7 @@ export function DateRangeControls({
                   ))}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (isAllTime) setDraft(undefined)
-                    else setDraft({ from: range.start, to: range.end })
-                    setCustomOpen(true)
-                  }}
-                >
+                <DropdownMenuItem onClick={() => setCustomOpen(true)}>
                   {t("filterCustomPeriod")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -441,21 +412,17 @@ export function DateRangeControls({
             </PopoverTrigger>
           </div>
           <PopoverContent className="w-auto p-2" align="end">
-            <Calendar
-              mode="range"
-              locale={calendarLocale}
+            <DateRangePickerPanel
+              initial={preset === "custom" ? range : null}
               numberOfMonths={2}
-              selected={draft}
               defaultMonth={calendarMonth}
               startMonth={earliestMonth ?? undefined}
               endMonth={focusMonth}
-              onSelect={(next) => {
-                setDraft(next)
-                if (next?.from && next.to) {
-                  onCustomRange(normalizePickerRange(next.from, next.to), "current")
-                  setCustomOpen(false)
-                }
+              onApply={(next) => {
+                onCustomRange(next, "current")
+                setCustomOpen(false)
               }}
+              onCancel={() => setCustomOpen(false)}
             />
           </PopoverContent>
         </Popover>
@@ -464,7 +431,6 @@ export function DateRangeControls({
           <>
             <Select
               value={service ?? "all"}
-              disabled={!servicesLoaded}
               onValueChange={(value) => {
                 if (typeof value !== "string" || value === "all") {
                   onServiceChange(null)
@@ -479,12 +445,11 @@ export function DateRangeControls({
               >
                 <WrenchIcon className="size-4 text-muted-foreground" />
                 <SelectValue>
-                  {!servicesLoaded
-                    ? t("filterServicesLoading")
-                    : service
-                      ? (enabledServices.find((item) => item.id === service)?.label ??
-                        getServiceLabel(service))
-                      : t("filterAllServices")}
+                  {/* Never greyed out while services load: "All services" is the default anyway. */}
+                  {service
+                    ? (enabledServices.find((item) => item.id === service)?.label ??
+                      getServiceLabel(service))
+                    : t("filterAllServices")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent align="end" alignItemWithTrigger={false} className="dashboard-filter-menu">
@@ -579,12 +544,9 @@ export function DateRangeControls({
             comparisonEnabled={comparisonEnabled}
             comparisonMode={comparisonMode}
             comparisonRange={comparisonRange}
-            calendarLocale={calendarLocale}
             calendarMonth={comparisonCalendarMonth}
             earliestMonth={earliestMonth}
             focusMonth={focusMonth}
-            draft={comparisonDraft}
-            onDraft={setComparisonDraft}
             onComparisonChange={onComparisonChange}
             onCustomRange={(next) => onCustomRange(next, "comparison")}
             onPresetForComparison={onPresetForComparison}

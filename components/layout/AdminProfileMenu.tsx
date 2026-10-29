@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { isModifiedClick } from "@/lib/layout/modified-click"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import {
@@ -205,9 +206,14 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem
+                nativeButton={false}
+                render={<Link href="/" />}
                 disabled={!menuReady || openingDashboard}
                 {...activeItemProps(dashboardActive)}
-                onClick={() => {
+                onClick={(event) => {
+                  // Cmd/Ctrl/middle click keeps the browser's open-in-new-tab behaviour.
+                  if (isModifiedClick(event)) return
+                  event.preventDefault()
                   void handleOpenClientDashboard()
                 }}
               >
@@ -220,10 +226,14 @@ export function AdminProfileMenu({ menuReady, sessionLoading }: AdminProfileMenu
                 ) : null}
               </DropdownMenuItem>
               <DropdownMenuItem
+                nativeButton={false}
+                render={<Link href="/virksomhed" />}
                 disabled={!activeClientSlug}
                 title={!activeClientSlug ? t("adminTopbarCompanyDetailsDisabled") : undefined}
                 {...activeItemProps(companyActive)}
-                onClick={() => {
+                onClick={(event) => {
+                  if (isModifiedClick(event)) return
+                  event.preventDefault()
                   if (!activeClientSlug) return
                   setMenuOpen(false)
                   void openClientDashboard(activeClientSlug, setActiveOrganization, {

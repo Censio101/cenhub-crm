@@ -1,5 +1,6 @@
 "use client"
 
+import { AdminClientDashboardMetricsSection } from "@/components/admin/AdminClientDashboardMetricsSection"
 import { AdminClientDeleteSection } from "@/components/admin/AdminClientDeleteSection"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 
@@ -12,6 +13,7 @@ export function AdminClientSettingsPanel() {
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("clientNavSettings")}</h1>
         <p className="text-sm text-muted-foreground">{t("clientSettingsPageLead")}</p>
       </header>
+      <AdminClientDashboardMetricsSection />
       <AdminClientDeleteSection />
     </div>
   )

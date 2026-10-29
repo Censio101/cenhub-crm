@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo } from "react"
 
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
@@ -23,9 +23,10 @@ import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
 import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
-import { parseIsoDate } from "@/lib/performance/date-ranges"
+import { toIsoDate } from "@/lib/performance/date-ranges"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import { getLeadDataDateRange } from "@/lib/performance/from-leads"
+import { resolveAllTimeStart, resolveMeasuredRange } from "@/lib/performance/all-time"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 import { isMetaMetricsStale } from "@/lib/meta/sync-center-constants"
 import {
@@ -36,7 +37,11 @@ import { countWonLeadsMissingSalesPrice } from "@/lib/leads/won-sales-price"
 export function PerformanceDashboard() {
   const router = useRouter()
   const { locale, t } = useLanguage()
-  const { role } = useActiveOrganization()
+  const { role, organization } = useActiveOrganization()
+  const hiddenMetrics = useMemo(
+    () => organization?.dashboardHiddenMetrics ?? [],
+    [organization?.dashboardHiddenMetrics]
+  )
   const { animateBoardEnter, markWorkspaceWarm } = useClientNavigation()
   const {
     leads,
@@ -49,9 +54,10 @@ export function PerformanceDashboard() {
     reload,
   } = useDashboardData()
   const leadDateSpan = useMemo(() => getLeadDataDateRange(leads), [leads])
+  // Where this client's history begins (first lead or first ad-spend month).
   const comparisonAnchor = useMemo(
-    () => (leadDateSpan?.start ? parseIsoDate(leadDateSpan.start) : null),
-    [leadDateSpan]
+    () => resolveAllTimeStart({ leads, adSpendByMonth }),
+    [adSpendByMonth, leads]
   )
   const {
     view,
@@ -65,16 +71,13 @@ export function PerformanceDashboard() {
     onSegmentChange,
     onMetricChange,
   } = useDashboardViewState("/", comparisonAnchor)
+  // "All time" starts at the earliest lead or ad-spend month, so earlier ad budget still counts.
   const measuredRange = useMemo(
-    () =>
-      view.preset === "all_time" && comparisonAnchor
-        ? { start: comparisonAnchor, end: view.range.end }
-        : view.range,
-    [comparisonAnchor, view.preset, view.range]
+    () => resolveMeasuredRange(view.preset, view.range, { leads, adSpendByMonth }),
+    [adSpendByMonth, leads, view.preset, view.range]
   )
   // "Select client" is handled by the route gate; every other error is a failed load.
   const loadError = error && error !== "leadsSelectClient" ? error : null
-  const [chartYear, setChartYear] = useState<number | null>(null)
 
   useEffect(() => {
     if (!dataLoading) markWorkspaceWarm()
@@ -91,23 +94,13 @@ export function PerformanceDashboard() {
           funnel: view.funnel,
           segment: view.segment,
         },
-        { leads, adSpendByMonth },
-        chartYear != null ? { chartYear } : undefined
+        { leads, adSpendByMonth }
       )
       return result
     } catch {
       return null
     }
-  }, [view, leads, adSpendByMonth, dataLoading, measuredRange, chartYear])
-
-  useEffect(() => {
-    if (!data) return
-    setChartYear((prev) => {
-      if (prev != null && data.chartYears.includes(prev)) return prev
-      if (data.chartYears.includes(data.year.year)) return data.year.year
-      return data.chartYears[data.chartYears.length - 1] ?? data.year.year
-    })
-  }, [data?.chartYears, data?.year.year])
+  }, [view, leads, adSpendByMonth, dataLoading, measuredRange])
 
   const pipelineStats = useMemo(
     () =>
@@ -138,7 +131,8 @@ export function PerformanceDashboard() {
     [leads, measuredRange]
   )
 
-  const chartCurrentLabel = data != null ? String(data.year.year) : String(measuredRange.end.getFullYear())
+  // A hidden metric in the URL (old link) falls back to revenue.
+  const chartMetricId = hiddenMetrics.includes(view.metric) ? "revenue" : view.metric
   const chartComparisonLabel =
     view.comparisonEnabled &&
     view.comparisonRange &&
@@ -146,6 +140,9 @@ export function PerformanceDashboard() {
     data?.comparison
       ? formatDateRangeLabel(view.comparisonRange.start, view.comparisonRange.end, locale)
       : null
+  const chartCurrentLabel = chartComparisonLabel
+    ? formatDateRangeLabel(measuredRange.start, measuredRange.end, locale)
+    : String(measuredRange.end.getFullYear())
 
   const header = (
     <DashboardHeader
@@ -164,7 +161,7 @@ export function PerformanceDashboard() {
       onFunnelChange={onFunnelChange}
       segment={view.segment}
       onSegmentChange={onSegmentChange}
-      earliestLeadDate={leadDateSpan?.start}
+      earliestLeadDate={comparisonAnchor ? toIsoDate(comparisonAnchor) : null}
       latestLeadDate={leadDateSpan?.end}
     />
   )
@@ -204,28 +201,43 @@ export function PerformanceDashboard() {
 
             {data.status === "empty" ? (
               <>
-                <KpiGrid data={data} comparisonEnabled={view.comparisonEnabled} />
+                <KpiGrid
+                  data={data}
+                  comparisonEnabled={view.comparisonEnabled}
+                  hiddenMetrics={hiddenMetrics}
+                />
                 <DashboardEmptyState />
               </>
             ) : (
               <>
-                <KpiGrid data={data} comparisonEnabled={view.comparisonEnabled} />
+                <KpiGrid
+                  data={data}
+                  comparisonEnabled={view.comparisonEnabled}
+                  hiddenMetrics={hiddenMetrics}
+                />
                 <DevelopmentChart
                   data={data}
-                  metricId={view.metric}
+                  metricId={chartMetricId}
+                  periodLabel={formatDateRangeLabel(measuredRange.start, measuredRange.end, locale)}
+                  hiddenMetrics={hiddenMetrics}
                   currentLabel={chartCurrentLabel}
                   comparisonLabel={chartComparisonLabel}
                   compareActive={view.comparisonEnabled}
-                  chartYears={data.chartYears}
-                  chartYear={data.year.year}
-                  onChartYearChange={setChartYear}
                   onMetricChange={onMetricChange}
                 />
                 <LeadPipelineBar
                   stats={pipelineStats}
                   description={t("dashboardPipelinePeriod")}
                 />
-                <MonthlyTable data={data} />
+                <MonthlyTable
+                  leads={leads}
+                  adSpendByMonth={adSpendByMonth}
+                  service={view.service}
+                  funnel={view.funnel}
+                  segment={view.segment}
+                  years={data.chartYears}
+                  hiddenMetrics={hiddenMetrics}
+                />
               </>
             )}
 

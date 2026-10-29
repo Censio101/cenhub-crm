@@ -161,7 +161,6 @@ export function CustomersSheetFilterBar({
           ariaLabel={t("filterServiceAria")}
           active={Boolean(sheetService)}
           valueLabel={serviceValue}
-          disabled={!servicesLoaded}
         >
           <LeadSheetFilterMenuItem selected={!sheetService} onSelect={() => onSheetServiceChange(null)}>
             {t("filterAllServices")}

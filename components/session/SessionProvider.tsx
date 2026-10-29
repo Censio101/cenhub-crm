@@ -134,6 +134,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               ...org,
               logoBackground: org.logoBackground ?? "white",
               profileComplete: org.profileComplete ?? true,
+              dashboardHiddenMetrics: org.dashboardHiddenMetrics ?? [],
             }
           : null
       )
@@ -283,6 +284,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             organization?.slug === data.organization.slug
               ? (organization.hvidbjergPartner ?? false)
               : false,
+          dashboardHiddenMetrics:
+            organization?.slug === data.organization.slug
+              ? (organization.dashboardHiddenMetrics ?? [])
+              : [],
         })
         setIsAdminViewingClient(true)
       } else if (!normalized) {

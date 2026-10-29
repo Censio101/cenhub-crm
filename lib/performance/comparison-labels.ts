@@ -43,8 +43,9 @@ export function previousComparisonMessageKey(
   if (isFullCalendarMonth(range)) {
     return "comparePreviousMonth"
   }
-  const days = inclusiveRangeDays(range)
-  if (isWithinSingleCalendarMonth(range) && days <= 31) {
+  // Only month-aligned ranges (starting on the 1st) compare to the calendar month before;
+  // anything else compares to the equal-length window right before it.
+  if (isWithinSingleCalendarMonth(range) && startOfDay(range.start).getDate() === 1) {
     return "comparePreviousMonth"
   }
   return "comparePreviousPeriod"

@@ -19,6 +19,8 @@ export type PerformanceBucket = {
   quotes?: number
   service?: ServiceId
   funnel?: FunnelId
+  /** Set on zero-filled year-overview months that have not started yet (shown as a dash). */
+  isFuture?: boolean
 }
 
 export type PeriodTotals = Omit<PerformanceBucket, "start" | "end">
@@ -100,8 +102,13 @@ export type PerformanceDashboardData = {
   current: PeriodResult
   comparison: PeriodResult | null
   year: YearOverview
-  /** Years available for the development chart tabs (from leads / ad spend). */
+  /** Years available for the year pickers (from leads / ad spend). */
   chartYears: number[]
+  /** Zero-filled buckets for the development chart: one point per day / week / month of the range. */
+  chart: {
+    current: PerformanceBucket[]
+    comparison: PerformanceBucket[] | null
+  }
   status: DashboardStatus
   granularity: Granularity
 }

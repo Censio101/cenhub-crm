@@ -77,7 +77,6 @@ export function LeadSheetScopeChips({
         ariaLabel={t("filterServiceAria")}
         active={Boolean(sheetService)}
         valueLabel={serviceValue}
-        disabled={!servicesLoaded}
       >
         <LeadSheetFilterMenuItem
           selected={!sheetService}

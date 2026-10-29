@@ -77,6 +77,27 @@ export function resolveYearOverviewRange(
 export function previousPeriod(range: DateRange): DateRange {
   const currentStart = startOfDay(range.start)
   const currentEnd = startOfDay(range.end)
+
+  // A single calendar month starting on the 1st compares to the calendar month before it
+  // ("previous month"), not to a window that is merely as many days long and slides off the 1st.
+  if (
+    currentStart.getDate() === 1 &&
+    currentStart.getFullYear() === currentEnd.getFullYear() &&
+    currentStart.getMonth() === currentEnd.getMonth()
+  ) {
+    const previousStart = startOfMonth(subMonths(currentStart, 1))
+    const previousMonthEnd = endOfMonth(previousStart)
+    const isFullMonth = currentEnd.getDate() === endOfMonth(currentEnd).getDate()
+    // Month to date: the same number of elapsed days (capped at the shorter month's length).
+    const lastDay = isFullMonth
+      ? previousMonthEnd.getDate()
+      : Math.min(currentEnd.getDate(), previousMonthEnd.getDate())
+    return {
+      start: previousStart,
+      end: endOfDay(new Date(previousStart.getFullYear(), previousStart.getMonth(), lastDay)),
+    }
+  }
+
   const inclusiveDays = differenceInCalendarDays(currentEnd, currentStart) + 1
   const end = subDays(currentStart, 1)
   const start = subDays(end, inclusiveDays - 1)

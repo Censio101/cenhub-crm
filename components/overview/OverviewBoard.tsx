@@ -19,9 +19,10 @@ import { MarketingCompare } from "@/components/overview/MarketingCompare"
 import { ValueStory } from "@/components/overview/ValueStory"
 import { HvidbjergPartnerBadge } from "@/components/organization/HvidbjergPartnerBadge"
 import { formatClientDisplayName } from "@/lib/admin/format-client-display-name"
-import { parseIsoDate } from "@/lib/performance/date-ranges"
+import { toIsoDate } from "@/lib/performance/date-ranges"
 import { formatDateRangeLabel, formatDayLabel } from "@/lib/performance/format"
 import { getLeadDataDateRange } from "@/lib/performance/from-leads"
+import { resolveAllTimeStart, resolveMeasuredRange } from "@/lib/performance/all-time"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 
 export function OverviewBoard() {
@@ -31,8 +32,8 @@ export function OverviewBoard() {
   const { leads, adSpendByMonth } = useDashboardData()
   const leadDateSpan = useMemo(() => getLeadDataDateRange(leads), [leads])
   const comparisonAnchor = useMemo(
-    () => (leadDateSpan?.start ? parseIsoDate(leadDateSpan.start) : null),
-    [leadDateSpan]
+    () => resolveAllTimeStart({ leads, adSpendByMonth }),
+    [adSpendByMonth, leads]
   )
   const {
     view,
@@ -46,11 +47,8 @@ export function OverviewBoard() {
     onSegmentChange,
   } = useDashboardViewState("/overblik", comparisonAnchor)
   const measuredRange = useMemo(
-    () =>
-      view.preset === "all_time" && comparisonAnchor
-        ? { start: comparisonAnchor, end: view.range.end }
-        : view.range,
-    [comparisonAnchor, view.preset, view.range]
+    () => resolveMeasuredRange(view.preset, view.range, { leads, adSpendByMonth }),
+    [adSpendByMonth, leads, view.preset, view.range]
   )
   const clientName = organization?.name ?? (role === "censio_admin" ? "klienten" : null)
 
@@ -117,7 +115,7 @@ export function OverviewBoard() {
           onFunnelChange={onFunnelChange}
           segment={view.segment}
           onSegmentChange={onSegmentChange}
-          earliestLeadDate={leadDateSpan?.start}
+          earliestLeadDate={comparisonAnchor ? toIsoDate(comparisonAnchor) : null}
           latestLeadDate={leadDateSpan?.end}
         />
       </header>

@@ -25,6 +25,8 @@ export type OrganizationRow = {
   website_url?: string | null
   /** Hvidbjerg certified marketing program (admin-only). */
   hvidbjerg_partner?: boolean
+  /** Dashboard KPI metric ids hidden for this client (see lib/performance/visible-metrics). */
+  dashboard_hidden_metrics?: string[] | null
   created_at: string
   updated_at: string
 }
