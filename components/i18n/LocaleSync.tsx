@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { useSession } from "@/components/session/SessionProvider"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { isLocale } from "@/lib/i18n"
@@ -22,6 +23,7 @@ export function mirrorLocaleStorageKeys(locale: Locale) {
 function useProfileLocaleSync() {
   const { locale, setLocale } = useLanguage()
   const { role, loading: orgLoading } = useActiveOrganization()
+  const { user: sessionUser } = useSession()
   const { configured, user, isAuthenticated, loading: authLoading } = useSupabaseSession()
   const syncedRef = useRef<string | null>(null)
 
@@ -38,38 +40,28 @@ function useProfileLocaleSync() {
     const syncKey = `${user.id}:${role}`
     if (syncedRef.current === syncKey) return
 
-    void (async () => {
-      try {
-        const response = await fetch("/api/auth/me", { cache: "no-store" })
-        if (!response.ok) return
-        const data = (await response.json()) as { preferredLocale?: string }
-        const next =
-          data.preferredLocale && isLocale(data.preferredLocale)
-            ? data.preferredLocale
-            : "da"
-        const stored = readStoredLocale(LOCALE_STORAGE_KEY)
+    // The profile language arrives with the session (/api/auth/me), so no extra request is needed.
+    const saved = sessionUser?.preferredLocale
+    const next = saved && isLocale(saved) ? saved : "da"
+    const stored = readStoredLocale(LOCALE_STORAGE_KEY)
 
-        syncedRef.current = syncKey
+    syncedRef.current = syncKey
 
-        // User already picked a locale locally (e.g. before profile sync finished) — keep it.
-        if (stored !== next && stored !== "da") {
-          mirrorLocaleStorageKeys(stored)
-          if (stored !== locale) setLocale(stored)
-          return
-        }
+    // User already picked a locale locally (e.g. before profile sync finished) — keep it.
+    if (stored !== next && stored !== "da") {
+      mirrorLocaleStorageKeys(stored)
+      if (stored !== locale) setLocale(stored)
+      return
+    }
 
-        if (next === locale) {
-          mirrorLocaleStorageKeys(next)
-          return
-        }
+    if (next === locale) {
+      mirrorLocaleStorageKeys(next)
+      return
+    }
 
-        mirrorLocaleStorageKeys(next)
-        setLocale(next)
-      } catch {
-        // keep localStorage fallback
-      }
-    })()
-  }, [authLoading, configured, isAuthenticated, orgLoading, role, setLocale, user])
+    mirrorLocaleStorageKeys(next)
+    setLocale(next)
+  }, [authLoading, configured, isAuthenticated, locale, orgLoading, role, sessionUser, setLocale, user])
 }
 
 /** Sync profile preferred_locale into the app LanguageProvider (all signed-in areas). */

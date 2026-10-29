@@ -13,6 +13,7 @@ import {
 
 import { resetAdminPickerList } from "@/lib/data/admin-picker-list"
 import { clearClientCaches, emitClientOrgChanged } from "@/lib/data/client-cache"
+import { fetchJsonDeduped } from "@/lib/data/in-flight"
 import type { UserRole } from "@/lib/db/types"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
 import { createClient, isBrowserSupabaseConfigured } from "@/lib/supabase/client"
@@ -24,6 +25,8 @@ export type SessionUser = {
   email: string | null
   fullName: string | null
   avatarUrl: string | null
+  /** The language saved on the profile (read from the same /api/auth/me answer). */
+  preferredLocale: string | null
 }
 
 export type SessionReloadOptions = {
@@ -109,6 +112,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       email?: string | null
       fullName?: string | null
       avatarUrl?: string | null
+      preferredLocale?: string | null
       role?: UserRole | null
       organization?: ActiveOrganization | null
       isAdminViewingClient?: boolean
@@ -123,6 +127,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               email: data.email ?? authUser?.email ?? null,
               fullName: data.fullName ?? null,
               avatarUrl: data.avatarUrl ?? null,
+              preferredLocale: data.preferredLocale ?? null,
             }
           : null
       )
@@ -189,24 +194,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       didSetLoading = true
     }
     try {
-      const response = await fetch("/api/auth/me", {
-        cache: "no-store",
-        credentials: "include",
-      })
+      // Shared with the other components that read /api/auth/me at load: one request, not several.
+      const result = await fetchJsonDeduped<MePayload>("/api/auth/me")
       if (isStale()) return
-      if (!response.ok) {
+      if (!result.ok) {
         // A transient server error must not wipe a session we already resolved.
-        if (response.status === 401 || response.status === 403 || !sessionResolvedRef.current) {
+        if (result.status === 401 || result.status === 403 || !sessionResolvedRef.current) {
           clearSessionState()
           markSessionReady()
         }
         return
       }
+      if (!result.data) return
 
-      const data = (await response.json()) as MePayload
-      if (isStale()) return
-
-      applyMePayload(data)
+      applyMePayload(result.data)
     } finally {
       // Latest fetch clears loading; stale fetches that turned loading on must not leave it stuck.
       if (!isStale() || didSetLoading) {

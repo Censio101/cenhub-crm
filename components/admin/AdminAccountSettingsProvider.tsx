@@ -13,6 +13,7 @@ import {
 
 import { sanitizeStoredProfileImage } from "@/lib/auth/profile-image-sanitize"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
+import { fetchJsonDeduped } from "@/lib/data/in-flight"
 import { subscribeToStorage } from "@/lib/react/storage-store"
 import {
   clearLegacyAdminAccountSettings,
@@ -36,17 +37,17 @@ async function fetchAdminProfileFromServer(): Promise<{
   fullName: string | null
   role: string | null
 } | null> {
-  const response = await fetch("/api/auth/me", { cache: "no-store" })
-  if (!response.ok) return null
-  const data = (await response.json()) as {
+  // Same request the session provider makes at load; shared so the server is asked once.
+  const result = await fetchJsonDeduped<{
     avatarUrl?: string | null
     fullName?: string | null
     role?: string | null
-  }
+  }>("/api/auth/me")
+  if (!result.ok || !result.data) return null
   return {
-    avatarUrl: data.avatarUrl ?? null,
-    fullName: data.fullName ?? null,
-    role: data.role ?? null,
+    avatarUrl: result.data.avatarUrl ?? null,
+    fullName: result.data.fullName ?? null,
+    role: result.data.role ?? null,
   }
 }
 
