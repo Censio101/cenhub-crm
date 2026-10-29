@@ -9,9 +9,10 @@ import {
   PlugZapIcon,
   RefreshCwIcon,
   SaveIcon,
-  ScanLineIcon,
 } from "lucide-react"
 
+import { AdminMetaConversionsPanel } from "@/components/admin/AdminMetaConversionsPanel"
+import { MetaPixelSelect } from "@/components/admin/MetaPixelSelect"
 import type { MetaPartnerAccountSelection } from "@/components/admin/MetaPartnerAccountPicker"
 import {
   MetaPartnerLinkPanel,
@@ -395,10 +396,9 @@ export function AdminMetaConfigForm({
               />
             </div>
 
-            <MetaField
-              tone="violet"
-              icon={<ScanLineIcon className="size-[18px]" />}
-              label={t("metaPixelId")}
+            <MetaPixelSelect
+              slug={slug}
+              adAccountId={config.metaAdAccountId}
               value={config.metaPixelId}
               onChange={(metaPixelId) => setConfig((current) => ({ ...current, metaPixelId }))}
             />
@@ -480,6 +480,9 @@ export function AdminMetaConfigForm({
             </div>
           </form>
         )}
+        {!loading ? (
+          <AdminMetaConversionsPanel slug={slug} pixelId={config.metaPixelId} />
+        ) : null}
       </div>
     </section>
   )

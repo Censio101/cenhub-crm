@@ -50,6 +50,8 @@ async function main() {
       await admin.from("customers").delete().eq("organization_id", orgId)
       await admin.from("leads").delete().eq("organization_id", orgId)
       await admin.from("client_ad_metrics").delete().eq("organization_id", orgId)
+      await admin.from("meta_capi_events").delete().eq("organization_id", orgId)
+      await admin.from("client_meta_config").delete().eq("organization_id", orgId)
     }
     for (const userId of created.userIds) {
       await admin.from("profiles").delete().eq("id", userId)
@@ -231,6 +233,35 @@ async function main() {
       const now = (await admin.from("profiles").select("role").eq("id", userAdmin.user.id).single()).data
       results.push({ name: "ATTACK: client admin makes itself a Censio admin", blocked: now?.role !== "censio_admin" })
       await admin.from("profiles").update({ role: "client_admin" }).eq("id", userAdmin.user.id)
+    }
+
+    // The Meta conversions outbox is server-only: a client must not read or write it.
+    {
+      await admin.from("meta_capi_events").insert({
+        organization_id: orgA,
+        lead_id: leadA,
+        meta_lead_id: "123456789012345",
+        event_name: "Purchase",
+        event_time: new Date().toISOString(),
+        value: 100,
+      })
+      const { data } = await anonAdmin.from("meta_capi_events").select("id")
+      results.push({
+        name: "ATTACK: read the Meta conversions outbox (even as client admin)",
+        blocked: (data?.length ?? 0) === 0,
+      })
+      await anonAdmin.from("meta_capi_events").update({ value: 999999 }).eq("lead_id", leadA)
+      const row = (await admin.from("meta_capi_events").select("value").eq("lead_id", leadA).single()).data
+      results.push({
+        name: "ATTACK: change the value of an event queued for Meta",
+        blocked: Number(row?.value) !== 999999,
+      })
+      await anonAdmin.from("client_meta_config").update({ capi_enabled: true }).eq("organization_id", orgA)
+      const cfg = (await admin.from("client_meta_config").select("capi_enabled").eq("organization_id", orgA).maybeSingle()).data
+      results.push({
+        name: "ATTACK: switch on sending to Meta yourself",
+        blocked: cfg?.capi_enabled !== true,
+      })
     }
 
     // --- attacks (blocked = true means the attack failed, which is what we want) -------------

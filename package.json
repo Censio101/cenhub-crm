@@ -15,6 +15,7 @@
     "db:audit-dashboard-kpi": "tsx scripts/audit-dashboard-kpi-report.ts",
     "db:audit-dashboard-consistency": "tsx scripts/audit-dashboard-consistency.ts",
     "db:verify-tenant-isolation": "tsx scripts/verify-tenant-isolation.ts",
+    "db:verify-meta-conversions": "tsx scripts/verify-meta-conversions.ts",
     "db:seed-suntech-ad-metrics": "tsx scripts/seed-suntech-ad-metrics.ts",
     "db:revert-bulk-seeds": "tsx scripts/revert-bulk-seeds-keep-suntech.ts",
     "db:seed-ad-metrics": "tsx scripts/seed-demo-ad-metrics.ts",

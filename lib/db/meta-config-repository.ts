@@ -9,6 +9,8 @@ export type ClientMetaConfig = {
   metaSyncStatus: string
   metaSyncError: string | null
   metaLastSyncedAt: string | null
+  /** Send the value of won Meta leads back to Meta (Conversions API for CRM). */
+  capiEnabled: boolean
 }
 
 export type MetaConfigRow = {
@@ -22,6 +24,7 @@ export type MetaConfigRow = {
   meta_sync_error: string | null
   meta_last_synced_at: string | null
   enabled: boolean
+  capi_enabled?: boolean | null
 }
 
 function rowToConfig(data: MetaConfigRow): ClientMetaConfig {
@@ -34,6 +37,7 @@ function rowToConfig(data: MetaConfigRow): ClientMetaConfig {
     metaSyncStatus: data.meta_sync_status ?? "disabled",
     metaSyncError: data.meta_sync_error ?? null,
     metaLastSyncedAt: data.meta_last_synced_at ?? null,
+    capiEnabled: Boolean(data.capi_enabled),
   }
 }
 
