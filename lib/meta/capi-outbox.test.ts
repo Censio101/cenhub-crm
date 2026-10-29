@@ -58,7 +58,12 @@ vi.mock("@/lib/meta/conversions-api", async (importOriginal) => ({
   postCapiEvents: mocks.post,
 }))
 
-import { queueWonLeadEvent, runAfterResponse, sendQueuedCapiEvent } from "./capi-outbox"
+import {
+  queueQualifiedLeadEvent,
+  queueWonLeadEvent,
+  runAfterResponse,
+  sendQueuedCapiEvent,
+} from "./capi-outbox"
 
 function lead(partial: Partial<LeadRow> = {}): LeadRow {
   return {
@@ -151,6 +156,55 @@ describe("queueWonLeadEvent", () => {
     })
     await expect(queueWonLeadEvent(lead())).resolves.toBeUndefined()
     expect(mocks.updates.at(-1)).toMatchObject({ status: "failed", attempts: 1, last_error: "temporary" })
+  })
+})
+
+describe("queueQualifiedLeadEvent", () => {
+  it("sends one Qualified event, without a value, the first time a Meta lead qualifies", async () => {
+    await queueQualifiedLeadEvent(lead({ status: "waiting_on_client", sales_price: null }), "call_2")
+
+    expect(mocks.inserted).toHaveLength(1)
+    expect(mocks.inserted[0]).toMatchObject({
+      lead_id: "lead-1",
+      event_name: "Qualified",
+      value: null,
+      status: "pending",
+    })
+    const events = mocks.post.mock.calls[0][2]
+    expect(events[0].event_name).toBe("Qualified")
+    expect(events[0].custom_data.value).toBeUndefined()
+    expect(events[0].user_data.lead_id).toBe("123456789012345")
+  })
+
+  it("does nothing for calls, or when the lead was already qualified", async () => {
+    await queueQualifiedLeadEvent(lead({ status: "call_1" }), "new_waiting_call")
+    await queueQualifiedLeadEvent(lead({ status: "proposal_sent" }), "waiting_on_client")
+    expect(mocks.inserted).toHaveLength(0)
+    expect(mocks.post).not.toHaveBeenCalled()
+  })
+
+  it("ignores leads that did not come from Meta, are too old, or when the switch is off", async () => {
+    await queueQualifiedLeadEvent(
+      lead({ status: "awaiting_proposal", source: "website", legacy_id: "hook:f1:abc" }),
+      "call_1"
+    )
+    await queueQualifiedLeadEvent(
+      lead({
+        status: "awaiting_proposal",
+        created_at: new Date(Date.now() - 40 * 24 * 3600 * 1000).toISOString(),
+      }),
+      "call_1"
+    )
+    mocks.config = { capi_enabled: false, meta_pixel_id: "999" }
+    await queueQualifiedLeadEvent(lead({ status: "awaiting_proposal" }), "call_1")
+    expect(mocks.inserted).toHaveLength(0)
+    expect(mocks.post).not.toHaveBeenCalled()
+  })
+
+  it("never sends Qualified twice for the same lead", async () => {
+    mocks.insertError = { code: "23505", message: "duplicate key" }
+    await queueQualifiedLeadEvent(lead({ status: "won" }), "call_3")
+    expect(mocks.post).not.toHaveBeenCalled()
   })
 })
 

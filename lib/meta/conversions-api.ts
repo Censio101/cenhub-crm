@@ -8,6 +8,10 @@ import { GRAPH_VERSION } from "@/lib/meta/token"
 
 /** Event name for a won lead (a standard event that carries a value). */
 export const CAPI_WON_EVENT_NAME = "Purchase"
+/** Event name for a lead that became qualified (a stage event without a value). */
+export const CAPI_QUALIFIED_EVENT_NAME = "Qualified"
+/** A qualified signal only helps Meta within about 28 days of the lead, so older leads are skipped. */
+export const CAPI_QUALIFIED_MAX_LEAD_AGE_MS = 28 * 24 * 60 * 60 * 1000
 /** Shown in Meta as the system the lead stages come from. */
 export const CAPI_LEAD_EVENT_SOURCE = "Censio CRM"
 export const CAPI_CURRENCY = "DKK"
@@ -56,6 +60,26 @@ export function buildWonEvent(input: {
       lead_event_source: input.leadEventSource ?? CAPI_LEAD_EVENT_SOURCE,
       value: input.value,
       currency: input.currency ?? CAPI_CURRENCY,
+    },
+  }
+}
+
+/** The event for a lead that became qualified: same as a won event, but without a value. */
+export function buildQualifiedEvent(input: {
+  eventId: string
+  metaLeadId: string
+  eventTimeMs: number
+  leadEventSource?: string
+}): CapiEvent {
+  return {
+    event_name: CAPI_QUALIFIED_EVENT_NAME,
+    event_time: Math.floor(input.eventTimeMs / 1000),
+    event_id: input.eventId,
+    action_source: "system_generated",
+    user_data: { lead_id: input.metaLeadId.trim() },
+    custom_data: {
+      event_source: "crm",
+      lead_event_source: input.leadEventSource ?? CAPI_LEAD_EVENT_SOURCE,
     },
   }
 }

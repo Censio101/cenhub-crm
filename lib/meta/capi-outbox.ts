@@ -3,11 +3,15 @@ import { after } from "next/server"
 
 import { getMetaConfigRow } from "@/lib/db/meta-config-repository"
 import type { LeadRow } from "@/lib/db/types"
+import { isQualifiedStatus } from "@/lib/leads"
 import {
   CAPI_CURRENCY,
   CAPI_MAX_ATTEMPTS,
   CAPI_MAX_EVENT_AGE_MS,
+  CAPI_QUALIFIED_EVENT_NAME,
+  CAPI_QUALIFIED_MAX_LEAD_AGE_MS,
   CAPI_WON_EVENT_NAME,
+  buildQualifiedEvent,
   buildWonEvent,
   isEventExpired,
   isMetaLeadId,
@@ -94,13 +98,16 @@ export async function sendQueuedCapiEvent(
     return "expired"
   }
 
-  const event = buildWonEvent({
-    eventId: row.id,
-    metaLeadId: row.meta_lead_id,
-    eventTimeMs,
-    value: Number(row.value ?? 0),
-    currency: row.currency,
-  })
+  const event =
+    row.event_name === CAPI_QUALIFIED_EVENT_NAME
+      ? buildQualifiedEvent({ eventId: row.id, metaLeadId: row.meta_lead_id, eventTimeMs })
+      : buildWonEvent({
+          eventId: row.id,
+          metaLeadId: row.meta_lead_id,
+          eventTimeMs,
+          value: Number(row.value ?? 0),
+          currency: row.currency,
+        })
   const result: CapiSendResult = await postCapiEvents(context.pixelId, context.token, [event])
 
   if (result.ok) {
@@ -130,6 +137,53 @@ export async function sendQueuedCapiEvent(
   return "failed"
 }
 
+type MetaConfigRow = NonNullable<Awaited<ReturnType<typeof getMetaConfigRow>>>
+
+function isFromMetaForm(lead: LeadRow) {
+  return lead.source === "meta" && isMetaLeadId(lead.legacy_id)
+}
+
+/** Records one event in the outbox and tries to send it right away. */
+async function enqueueEvent(
+  admin: SupabaseClient,
+  lead: LeadRow,
+  config: MetaConfigRow,
+  input: { eventName: string; value: number | null; skipReason: CapiSkipReason | null }
+): Promise<void> {
+  const now = Date.now()
+  const eventTimeMs = resolveEventTime({
+    nowMs: now,
+    leadCreatedMs: lead.created_at ? Date.parse(lead.created_at) : null,
+  })
+
+  const { data, error } = await admin
+    .from("meta_capi_events")
+    .insert({
+      organization_id: lead.organization_id,
+      lead_id: lead.id,
+      meta_lead_id: input.skipReason === "not_from_meta" ? "" : String(lead.legacy_id).trim(),
+      event_name: input.eventName,
+      event_time: new Date(eventTimeMs).toISOString(),
+      value: input.value,
+      currency: CAPI_CURRENCY,
+      status: input.skipReason ? "skipped" : "pending",
+      skip_reason: input.skipReason,
+    })
+    .select("*")
+    .single()
+
+  // 23505 = this lead already has this event: never send twice.
+  if (error) {
+    if (error.code === "23505") return
+    throw error
+  }
+  if (input.skipReason) return
+
+  const context = await loadSendContext(admin, config.organization_id, new Map())
+  if (typeof context === "string") return
+  await sendQueuedCapiEvent(admin, data as CapiEventRow, context, now)
+}
+
 /**
  * Called when a lead is saved. If it is a Meta lead that is now Won with a sales price, queue one
  * event for Meta and try to send it right away. Does nothing when the switch is off.
@@ -143,52 +197,57 @@ export async function queueWonLeadEvent(lead: LeadRow): Promise<void> {
 
   const value = lead.sales_price
   const hasValue = value != null && Number.isFinite(Number(value)) && Number(value) > 0
-  const fromMeta = lead.source === "meta" && isMetaLeadId(lead.legacy_id)
 
   let skipReason: CapiSkipReason | null = null
-  if (!fromMeta) skipReason = "not_from_meta"
+  if (!isFromMetaForm(lead)) skipReason = "not_from_meta"
   else if (!config.meta_pixel_id?.trim()) skipReason = "no_pixel"
   // No price yet: nothing to send. The event is queued when the price is filled in.
   if (!skipReason && !hasValue) return
 
-  const now = Date.now()
-  const eventTimeMs = resolveEventTime({
-    nowMs: now,
-    leadCreatedMs: lead.created_at ? Date.parse(lead.created_at) : null,
+  await enqueueEvent(admin, lead, config, {
+    eventName: CAPI_WON_EVENT_NAME,
+    value: hasValue ? Number(value) : null,
+    skipReason,
   })
-
-  const { data, error } = await admin
-    .from("meta_capi_events")
-    .insert({
-      organization_id: lead.organization_id,
-      lead_id: lead.id,
-      meta_lead_id: fromMeta ? String(lead.legacy_id).trim() : "",
-      event_name: CAPI_WON_EVENT_NAME,
-      event_time: new Date(eventTimeMs).toISOString(),
-      value: hasValue ? Number(value) : null,
-      currency: CAPI_CURRENCY,
-      status: skipReason ? "skipped" : "pending",
-      skip_reason: skipReason,
-    })
-    .select("*")
-    .single()
-
-  // 23505 = this lead already has its won event: never send twice.
-  if (error) {
-    if (error.code === "23505") return
-    throw error
-  }
-  if (skipReason) return
-
-  const context = await loadSendContext(admin, lead.organization_id, new Map())
-  if (typeof context === "string") return
-  await sendQueuedCapiEvent(admin, data as CapiEventRow, context, now)
 }
 
-/** Fire-and-forget wrapper used from the lead save paths; never throws. */
-export function queueWonLeadEventAfterResponse(lead: LeadRow) {
-  if (lead.status !== "won") return
-  runAfterResponse(() => queueWonLeadEvent(lead))
+/**
+ * Called when a lead is saved. The first time a Meta lead reaches a qualified step, queue one
+ * "Qualified" event. `previousStatus` is the status before this save (null for a new lead), so
+ * editing an already qualified lead sends nothing. Leads that did not come from a Meta form, and
+ * leads older than 28 days (too late to help Meta), are ignored without a trace.
+ */
+export async function queueQualifiedLeadEvent(
+  lead: LeadRow,
+  previousStatus: string | null
+): Promise<void> {
+  if (!isQualifiedStatus(lead.status) || isQualifiedStatus(previousStatus)) return
+  if (!isFromMetaForm(lead)) return
+  const createdMs = lead.created_at ? Date.parse(lead.created_at) : NaN
+  if (Number.isFinite(createdMs) && Date.now() - createdMs > CAPI_QUALIFIED_MAX_LEAD_AGE_MS) return
+
+  const admin = createAdminClient()
+  const config = await getMetaConfigRow(admin, lead.organization_id)
+  if (!config?.capi_enabled || !config.meta_pixel_id?.trim()) return
+
+  await enqueueEvent(admin, lead, config, {
+    eventName: CAPI_QUALIFIED_EVENT_NAME,
+    value: null,
+    skipReason: null,
+  })
+}
+
+/**
+ * Fire-and-forget wrapper used from the lead save paths; never throws. Qualified goes first so
+ * that a lead that jumps straight to Won reports both stages in order.
+ */
+export function queueLeadStageEventsAfterResponse(lead: LeadRow, previousStatus: string | null) {
+  const mayQualify = isQualifiedStatus(lead.status) && !isQualifiedStatus(previousStatus)
+  if (lead.status !== "won" && !mayQualify) return
+  runAfterResponse(async () => {
+    await queueQualifiedLeadEvent(lead, previousStatus)
+    await queueWonLeadEvent(lead)
+  })
 }
 
 export type CapiFlushResult = {
@@ -316,14 +375,17 @@ export async function sendCapiTestEvent(
   if (!lead) return { ok: false, message: "This client has no lead from a Meta form yet." }
 
   const now = Date.now()
-  const event = buildWonEvent({
-    eventId: `test-${now}`,
+  const base = {
     metaLeadId: String(lead.legacy_id).trim(),
     eventTimeMs: resolveEventTime({ nowMs: now, leadCreatedMs: Date.parse(String(lead.created_at)) }),
-    value: 1,
-  })
-  const result = await postCapiEvents(pixelId, token, [event], { testEventCode })
+  }
+  // Both events a real lead produces: it qualifies, then it is won.
+  const events = [
+    buildQualifiedEvent({ ...base, eventId: `test-q-${now}` }),
+    buildWonEvent({ ...base, eventId: `test-w-${now}`, value: 1 }),
+  ]
+  const result = await postCapiEvents(pixelId, token, events, { testEventCode })
   return result.ok
-    ? { ok: true, message: "Test event sent. Open Events Manager > Test events to see it." }
+    ? { ok: true, message: "Test events sent (Qualified and Purchase). Open Events Manager > Test events to see them." }
     : { ok: false, message: result.error ?? "Meta rejected the test event." }
 }

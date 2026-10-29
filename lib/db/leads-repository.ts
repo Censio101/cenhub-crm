@@ -11,7 +11,7 @@ import {
 } from "@/lib/db/lead-mapper"
 import type { LeadRow } from "@/lib/db/types"
 import { MOCK_LEADS, type Lead } from "@/lib/leads"
-import { queueWonLeadEventAfterResponse } from "@/lib/meta/capi-outbox"
+import { queueLeadStageEventsAfterResponse } from "@/lib/meta/capi-outbox"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 
 export async function listLeadsForOrganization(
@@ -49,7 +49,7 @@ export async function createLead(
   if (error) throw error
   const inserted = data as LeadRow
   await syncCustomerForWonLead(inserted)
-  queueWonLeadEventAfterResponse(inserted)
+  queueLeadStageEventsAfterResponse(inserted, null)
   return leadRowToLead(inserted)
 }
 
@@ -99,8 +99,8 @@ export async function updateLeadById(
 
   const updatedRow = updated as LeadRow
   await syncCustomerForWonLead(updatedRow)
-  // A Meta lead that is now won with a price is reported back to Meta (after the response).
-  queueWonLeadEventAfterResponse(updatedRow)
+  // Meta leads that became qualified or won are reported back to Meta (after the response).
+  queueLeadStageEventsAfterResponse(updatedRow, row.status)
 
   return leadRowToLead(updatedRow)
 }

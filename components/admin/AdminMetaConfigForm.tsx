@@ -460,7 +460,7 @@ export function AdminMetaConfigForm({
                 }}
               >
                 <PlugZapIcon className="size-4" aria-hidden="true" />
-                {testing ? t("testing") : t("testConnection")}
+                {testing ? t("testing") : t("metaTestMetaConnection")}
               </Button>
               <Button
                 type="button"

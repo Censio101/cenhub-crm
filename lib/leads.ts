@@ -285,6 +285,23 @@ export function filterDashboardLeads(
   })
 }
 
+/**
+ * A lead counts as qualified once it reaches one of these steps: the client is in a real
+ * conversation with it (calls alone do not prove that). The dashboard and the "Qualified" event sent
+ * to Meta both read this list.
+ */
+export const QUALIFIED_LEAD_STATUSES = [
+  "waiting_on_client",
+  "client_waiting_on_us",
+  "awaiting_proposal",
+  "proposal_sent",
+  "won",
+] as const satisfies readonly LeadStatusId[]
+
+export function isQualifiedStatus(status: string | null | undefined): boolean {
+  return QUALIFIED_LEAD_STATUSES.some((id) => id === status)
+}
+
 export const ACTION_LEAD_STATUSES = [
   "new_waiting_call",
   "client_waiting_on_us",

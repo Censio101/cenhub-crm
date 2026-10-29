@@ -2,6 +2,7 @@ import { eachDayOfInterval, endOfMonth, startOfMonth } from "date-fns"
 
 import {
   getLeadServiceIds,
+  isQualifiedStatus,
   type Lead,
   type LeadStatusId,
 } from "@/lib/leads"
@@ -12,19 +13,6 @@ import { toIsoDate } from "./date-ranges"
 import type { PerformanceBucket } from "./types"
 
 const QUOTE_STATUSES = new Set<LeadStatusId>([
-  "awaiting_proposal",
-  "proposal_sent",
-  "won",
-])
-
-const QUALIFIED_STATUSES = new Set<LeadStatusId>([
-  "call_1",
-  "call_2",
-  "call_3",
-  "call_4",
-  "call_5",
-  "waiting_on_client",
-  "client_waiting_on_us",
   "awaiting_proposal",
   "proposal_sent",
   "won",
@@ -104,7 +92,7 @@ function addLeadContribution(
       : 0
   const ltv =
     isWon && lead.ltv != null && Number.isFinite(lead.ltv) ? lead.ltv * share : 0
-  const qualified = QUALIFIED_STATUSES.has(lead.status) ? share : 0
+  const qualified = isQualifiedStatus(lead.status) ? share : 0
   const quotes = QUOTE_STATUSES.has(lead.status) ? share : 0
 
   for (const service of serviceTargets) {
