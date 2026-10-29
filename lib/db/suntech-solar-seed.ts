@@ -370,7 +370,7 @@ export async function seedSuntechSolarDemo(
 
   for (const row of inserted ?? []) {
     if (row.status === "won") {
-      await syncCustomerForWonLead(supabase, row)
+      await syncCustomerForWonLead(row)
     }
   }
 

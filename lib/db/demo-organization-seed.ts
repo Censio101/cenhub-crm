@@ -107,7 +107,7 @@ export async function seedDemoOrganizationData(
   const rows = (inserted ?? []) as LeadRow[]
   for (const row of rows) {
     if (row.status === "won") {
-      await syncCustomerForWonLead(supabase, row)
+      await syncCustomerForWonLead(row)
     }
   }
 

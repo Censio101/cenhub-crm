@@ -47,7 +47,7 @@ export async function createLead(
 
   if (error) throw error
   const inserted = data as LeadRow
-  await syncCustomerForWonLead(supabase, inserted)
+  await syncCustomerForWonLead(inserted)
   return leadRowToLead(inserted)
 }
 
@@ -96,7 +96,7 @@ export async function updateLeadById(
   if (updateError) throw updateError
 
   const updatedRow = updated as LeadRow
-  await syncCustomerForWonLead(supabase, updatedRow)
+  await syncCustomerForWonLead(updatedRow)
 
   return leadRowToLead(updatedRow)
 }

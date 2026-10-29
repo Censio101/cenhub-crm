@@ -42,7 +42,7 @@ async function main() {
 
   let synced = 0
   for (const lead of (leads ?? []) as LeadRow[]) {
-    await syncCustomerForWonLead(supabase, lead)
+    await syncCustomerForWonLead(lead)
     synced += 1
   }
 

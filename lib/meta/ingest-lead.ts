@@ -107,7 +107,7 @@ export async function ingestMetaLead(
 
   const inserted = data as LeadRow
   if (inserted.status === "won") {
-    await syncCustomerForWonLead(supabase, inserted)
+    await syncCustomerForWonLead(inserted)
   }
 
   return { created: true, leadId: inserted.id }

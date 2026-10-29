@@ -4,6 +4,7 @@ import {
   organizationErrorResponse,
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
+import { canDeleteLeads } from "@/lib/auth/permissions"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
 import { deleteLeadById, updateLeadById, usesDatabaseLeads } from "@/lib/db/leads-repository"
 import { resolveClientDashboardSheet } from "@/lib/db/lead-sheet-repository"
@@ -84,6 +85,14 @@ export async function DELETE(_request: Request, context: RouteContext) {
     }
 
     const session = await requireOrganizationContext()
+
+    // Only a client admin (or a Censio admin) may delete; a client user can only see and fill in.
+    if (!session.isDemoFallback && !canDeleteLeads(session.role)) {
+      return NextResponse.json(
+        { error: "forbidden", message: "Only a client admin can delete leads." },
+        { status: 403 }
+      )
+    }
 
     const supabase =
       session.isDemoFallback && !session.userId

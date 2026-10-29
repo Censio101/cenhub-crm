@@ -1,6 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-
 import type { LeadRow } from "@/lib/db/types"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 function mapLeadSourceToCustomerSource(platform: string): string {
   if (platform === "meta") return "facebook"
@@ -30,10 +29,13 @@ export function customerPayloadFromLead(lead: LeadRow) {
   }
 }
 
-export async function syncCustomerForWonLead(
-  supabase: SupabaseClient,
-  lead: LeadRow
-): Promise<void> {
+/**
+ * Keeps the customer row of a lead in step with its status. Customer rows are derived data, so
+ * they are written with the server's service role (clients can only read them), no matter whose
+ * session triggered the change.
+ */
+export async function syncCustomerForWonLead(lead: LeadRow): Promise<void> {
+  const supabase = createAdminClient()
   if (lead.status !== "won") {
     await supabase.from("customers").delete().eq("lead_id", lead.id)
     return

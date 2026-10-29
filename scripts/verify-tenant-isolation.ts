@@ -93,6 +93,24 @@ async function main() {
     })
     if (profileError) throw profileError
 
+    // A second user in client A with the "client_admin" role (the only role allowed to delete).
+    const adminEmail = `zz-iso-admin-${suffix}@example.com`
+    const { data: userAdmin, error: userAdminError } = await admin.auth.admin.createUser({
+      email: adminEmail,
+      password,
+      email_confirm: true,
+    })
+    if (userAdminError || !userAdmin.user) throw userAdminError ?? new Error("createUser failed")
+    created.userIds.push(userAdmin.user.id)
+    const { error: adminProfileError } = await admin.from("profiles").insert({
+      id: userAdmin.user.id,
+      organization_id: orgA,
+      role: "client_admin",
+      email: adminEmail,
+      full_name: "Isolation Client Admin",
+    })
+    if (adminProfileError) throw adminProfileError
+
     const insertLead = async (orgId: string, name: string) => {
       const { data, error } = await admin
         .from("leads")
@@ -120,6 +138,27 @@ async function main() {
     const { error: signInError } = await anon.auth.signInWithPassword({ email: emailA, password })
     if (signInError) throw signInError
 
+    const anonAdmin = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const { error: adminSignInError } = await anonAdmin.auth.signInWithPassword({
+      email: adminEmail,
+      password,
+    })
+    if (adminSignInError) throw adminSignInError
+
+    // Leads used by the delete checks, and one customer row in client A.
+    const leadToKeep = await insertLead(orgA, "Delete me not (client user)")
+    const leadForAdmin = await insertLead(orgA, "Delete me (client admin)")
+    const { error: customerAError } = await admin.from("customers").insert({
+      organization_id: orgA,
+      lead_id: leadToKeep,
+      closed_date: "2026-01-02",
+      segment: "b2c",
+      sales_price: 500,
+    })
+    if (customerAError) throw customerAError
+
     const resetProfile = async () => {
       await admin
         .from("profiles")
@@ -133,7 +172,7 @@ async function main() {
     const ownLeads = await anon.from("leads").select("id").eq("organization_id", orgA)
     results.push({
       name: "CONTROL: client can read its own leads",
-      blocked: (ownLeads.data?.length ?? 0) === 1,
+      blocked: (ownLeads.data?.length ?? 0) >= 1,
       detail: ownLeads.error?.message,
     })
     await anon.from("profiles").update({ full_name: "Isolation A renamed" }).eq("id", userAId)
@@ -142,6 +181,57 @@ async function main() {
       name: "CONTROL: client can still edit its own name",
       blocked: renamed?.full_name === "Isolation A renamed",
     })
+
+    // --- roles: client user vs client admin --------------------------------------------------
+    {
+      await anon.from("leads").update({ status: "won", sales_price: 1234 }).eq("id", leadToKeep)
+      const row = (await admin.from("leads").select("status, sales_price").eq("id", leadToKeep).single()).data
+      results.push({
+        name: "CONTROL: client user can fill in status and sales price on its own lead",
+        blocked: row?.status === "won" && Number(row?.sales_price) === 1234,
+      })
+      await admin.from("leads").update({ status: "new_waiting_call" }).eq("id", leadToKeep)
+    }
+    {
+      await anon.from("leads").delete().eq("id", leadToKeep)
+      const row = (await admin.from("leads").select("id").eq("id", leadToKeep).maybeSingle()).data
+      results.push({ name: "ROLE: client user cannot delete its own client's lead", blocked: row != null })
+    }
+    {
+      await anon.from("customers").update({ sales_price: 1 }).eq("organization_id", orgA)
+      const row = (await admin.from("customers").select("sales_price").eq("organization_id", orgA).single()).data
+      results.push({
+        name: "ROLE: client user cannot edit customer rows directly",
+        blocked: row != null && Number(row.sales_price) !== 1,
+      })
+    }
+    {
+      await anonAdmin.from("customers").update({ sales_price: 1 }).eq("organization_id", orgA)
+      const row = (await admin.from("customers").select("sales_price").eq("organization_id", orgA).single()).data
+      results.push({
+        name: "ROLE: client admin cannot edit customer rows directly (the server keeps them in sync)",
+        blocked: row != null && Number(row.sales_price) !== 1,
+      })
+    }
+    {
+      await anonAdmin.from("leads").delete().eq("id", leadB)
+      const row = (await admin.from("leads").select("id").eq("id", leadB).maybeSingle()).data
+      results.push({ name: "ROLE: client admin cannot delete another client's lead", blocked: row != null })
+    }
+    {
+      await anonAdmin.from("leads").delete().eq("id", leadForAdmin)
+      const row = (await admin.from("leads").select("id").eq("id", leadForAdmin).maybeSingle()).data
+      results.push({
+        name: "CONTROL: client admin can delete a lead in its own client",
+        blocked: row == null,
+      })
+    }
+    {
+      await anonAdmin.from("profiles").update({ role: "censio_admin" }).eq("id", userAdmin.user.id)
+      const now = (await admin.from("profiles").select("role").eq("id", userAdmin.user.id).single()).data
+      results.push({ name: "ATTACK: client admin makes itself a Censio admin", blocked: now?.role !== "censio_admin" })
+      await admin.from("profiles").update({ role: "client_admin" }).eq("id", userAdmin.user.id)
+    }
 
     // --- attacks (blocked = true means the attack failed, which is what we want) -------------
     {

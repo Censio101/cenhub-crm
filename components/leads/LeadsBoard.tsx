@@ -47,6 +47,7 @@ import { useSheetViewState } from "@/hooks/useSheetViewState"
 import type { FunnelId } from "@/lib/performance/funnels"
 import type { DateRange } from "@/lib/performance/types"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { canDeleteLeads } from "@/lib/auth/permissions"
 import {
   useLeadSheetColumnLayout,
   type LeadSheetColumnLayout,
@@ -584,7 +585,10 @@ export function LeadsTable({
   columnLayout,
   detailColumns,
   bulkSelection,
+  canDelete = false,
 }: {
+  /** Only client admins (and Censio admins) see the delete button. */
+  canDelete?: boolean
   columns: LeadSheetTemplateColumn[]
   /** Full template columns for the read-only quick-view popup (defaults to visible columns). */
   detailColumns?: readonly LeadSheetTemplateColumn[]
@@ -1046,10 +1050,12 @@ export function LeadsTable({
                   >
                     <PencilIcon />
                   </Button>
-                  <DeleteLeadButton
-                    leadName={lead.fullName.trim()}
-                    onDelete={() => onDelete(lead.id)}
-                  />
+                  {canDelete ? (
+                    <DeleteLeadButton
+                      leadName={lead.fullName.trim()}
+                      onDelete={() => onDelete(lead.id)}
+                    />
+                  ) : null}
                 </div>
               </TableCell>
             </TableRow>
@@ -1085,6 +1091,7 @@ export function LeadsBoard() {
 
   const { organization, role } = useActiveOrganization()
   const canBulkDeleteLeads = role === "censio_admin"
+  const mayDeleteLeads = canDeleteLeads(role)
 
   const [selectedLeadIds, setSelectedLeadIds] = useState(() => new Set<string>())
   const [bulkSelectMode, setBulkSelectMode] = useState(false)
@@ -1401,6 +1408,7 @@ export function LeadsBoard() {
           >
             <LeadsTable
               columns={columnLayout.visibleColumns}
+              canDelete={mayDeleteLeads}
               leads={filtered}
               sheetSort={sheetSort}
               onSheetSort={handleSheetSort}
@@ -1477,6 +1485,7 @@ export function LeadsBoard() {
           >
             <LeadsTable
               columns={columnLayout.visibleColumns}
+              canDelete={mayDeleteLeads}
               leads={filtered}
               sheetSort={sheetSort}
               onSheetSort={handleSheetSort}

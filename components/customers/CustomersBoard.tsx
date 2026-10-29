@@ -24,6 +24,7 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { useSheetViewState } from "@/hooks/useSheetViewState"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
+import { canDeleteLeads } from "@/lib/auth/permissions"
 import { useCustomers } from "@/hooks/useCustomers"
 import { useLeadSheetColumnLayout } from "@/hooks/useLeadSheetColumnLayout"
 import { useLeads } from "@/hooks/useLeads"
@@ -115,6 +116,7 @@ export function CustomersBoard() {
 
   const { organization, role } = useActiveOrganization()
   const canBulkDeleteLeads = role === "censio_admin"
+  const mayDeleteLeads = canDeleteLeads(role)
 
   const [selectedLeadIds, setSelectedLeadIds] = useState(() => new Set<string>())
   const [bulkSelectMode, setBulkSelectMode] = useState(false)
@@ -431,6 +433,7 @@ export function CustomersBoard() {
                 >
                   <LeadsTable
                     columns={columnLayout.visibleColumns}
+                    canDelete={mayDeleteLeads}
                     leads={shownLeads}
                     sheetSort={activeSheetSort}
                     onSheetSort={handleSheetSort}
@@ -505,6 +508,7 @@ export function CustomersBoard() {
               >
                 <LeadsTable
                   columns={columnLayout.visibleColumns}
+                    canDelete={mayDeleteLeads}
                   leads={shownLeads}
                   sheetSort={activeSheetSort}
                   onSheetSort={handleSheetSort}
