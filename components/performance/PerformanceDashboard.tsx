@@ -22,7 +22,6 @@ import { MonthlyTable } from "@/components/performance/MonthlyTable"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
-import { computeLeadPipelineStats, filterDashboardLeads } from "@/lib/leads"
 import { toIsoDate } from "@/lib/performance/date-ranges"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import { getLeadDataDateRange } from "@/lib/performance/from-leads"
@@ -30,6 +29,7 @@ import { resolveAllTimeStart, resolveMeasuredRange } from "@/lib/performance/all
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 import { isMetaMetricsStale } from "@/lib/meta/sync-center-constants"
 import {
+  dashboardPipelineStats,
   filterWonLeadsByCloseDate,
 } from "@/lib/performance/won-financials"
 import { countWonLeadsMissingSalesPrice } from "@/lib/leads/won-sales-price"
@@ -104,14 +104,11 @@ export function PerformanceDashboard() {
 
   const pipelineStats = useMemo(
     () =>
-      computeLeadPipelineStats(
-        filterDashboardLeads(leads, {
-          range: measuredRange,
-          service: view.service,
-          funnel: view.funnel,
-          segment: view.segment,
-        })
-      ),
+      dashboardPipelineStats(leads, measuredRange, {
+        service: view.service,
+        funnel: view.funnel,
+        segment: view.segment,
+      }),
     [measuredRange, view, leads]
   )
 

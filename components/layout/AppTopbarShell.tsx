@@ -39,7 +39,9 @@ const censioLogoClass =
 
 export function AppTopbarShell() {
   const pathname = usePathname()
-  const [navPendingHref, setNavPendingHref] = useState<string | null>(null)
+  // A clicked link is "pending" only until the path changes; no effect needed to clear it.
+  const [navPending, setNavPending] = useState<{ href: string; fromPath: string } | null>(null)
+  const navPendingHref = navPending && navPending.fromPath === pathname ? navPending.href : null
   const router = useRouter()
   const { t } = useLanguage()
   const { organization, role, loading: orgLoading } = useActiveOrganization()
@@ -100,10 +102,6 @@ export function AppTopbarShell() {
     navItems.length > 0 ||
     (reserveDashboardNav && !sessionReady) ||
     showAdminHeaderNav
-
-  useEffect(() => {
-    setNavPendingHref(null)
-  }, [pathname])
 
   useEffect(() => {
     if (!showClientDashboardNav) return
@@ -178,7 +176,7 @@ export function AppTopbarShell() {
               <AppTopbarNavLinks
                 pathname={pathname}
                 pendingHref={navPendingHref}
-                onNavigate={setNavPendingHref}
+                onNavigate={(href) => setNavPending({ href, fromPath: pathname })}
                 items={navItems}
               />
             </Suspense>

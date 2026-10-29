@@ -7,6 +7,7 @@ import { FUNNELS, isFunnelId } from "./funnels"
 import { previousPeriod, resolvePreset, toIsoDate } from "./date-ranges"
 import { getPerformanceDashboard, getYearOverview } from "./get-performance"
 import { getMetric } from "./metrics"
+import { dashboardPipelineStats } from "./won-financials"
 import type { DatePreset, DateRange, PerformanceBucket, PeriodTotals } from "./types"
 
 /**
@@ -210,6 +211,15 @@ function checkRange(
     }
     pushIfDifferent(issues, `${scope} ${label}`, "chart profit vs KPI", kpi.profit, chart.profit, 0.05)
     pushIfDifferent(issues, `${scope} ${label}`, "chart LTV vs KPI", kpi.ltv, chart.ltv, 0.05)
+
+    const pipeline = dashboardPipelineStats(input.leads, periodRange)
+    pushIfDifferent(
+      issues,
+      `${scope} ${label}`,
+      "pipeline won vs customers closed in the period",
+      recount.customers,
+      pipeline.wonCount
+    )
   }
 
   checkPeriod("current", range, data.current.totals, data.chart.current)

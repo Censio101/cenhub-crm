@@ -1138,7 +1138,8 @@ export const en: Messages = {
   dashboardRetry: "Try again",
   dashboardPartialData: "Incomplete data — the period extends beyond available months.",
   dashboardUpdating: "Updating metrics",
-  dashboardPipelinePeriod: "Pipeline for leads created in the selected period",
+  dashboardPipelinePeriod:
+    "Open and lost are leads created in the period. Won is customers closed in the period.",
   dashboardDateBasisHint:
     "Lead count uses lead date; revenue, closed customers, and LTV use won date.",
   dashboardSecondaryAria: "Secondary insights",

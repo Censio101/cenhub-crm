@@ -39,6 +39,7 @@ vi.mock("@/lib/db/lead-sheet-repository", () => ({
 vi.mock("@/lib/db/leads-repository", () => ({ createLead: mocks.createLead }))
 
 import { POST } from "@/app/api/admin/organizations/[slug]/funnels/[funnelId]/test-payload/route"
+import { buildDefaultLeadSheetConfig } from "@/lib/lead-sheet/default-config"
 
 function call(body: unknown, slug = "acme", funnelId = "f1") {
   return POST(
@@ -51,22 +52,31 @@ function call(body: unknown, slug = "acme", funnelId = "f1") {
   )
 }
 
+const BUDGET_FIELD = {
+  id: "1",
+  fieldKey: "budget",
+  label: "Budget",
+  fieldType: "number" as const,
+  required: false,
+  config: {},
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.funnel.field_mapping = {}
-  mocks.resolveLeadSheetForOrganization.mockResolvedValue({})
+  // The route reads the client's real lead sheet: a template plus its columns, including the
+  // custom "budget" column that the webhook is allowed to fill.
+  const sheet = buildDefaultLeadSheetConfig()
+  sheet.columns.push({
+    id: "budget-col",
+    sortIndex: sheet.columns.length,
+    kind: "custom",
+    customField: BUDGET_FIELD,
+  })
+  mocks.resolveLeadSheetForOrganization.mockResolvedValue(sheet)
   mocks.resolveOrganizationServices.mockResolvedValue([])
   mocks.getOrganizationServiceAliasMap.mockResolvedValue(new Map())
-  mocks.listCustomFieldDefs.mockReturnValue([
-    {
-      id: "1",
-      fieldKey: "budget",
-      label: "Budget",
-      fieldType: "number",
-      required: false,
-      config: {},
-    },
-  ])
+  mocks.listCustomFieldDefs.mockReturnValue([BUDGET_FIELD])
 })
 
 describe("test-payload route", () => {

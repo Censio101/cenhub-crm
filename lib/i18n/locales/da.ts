@@ -1146,7 +1146,8 @@ const daMessages = {
   dashboardRetry: "Prøv igen",
   dashboardPartialData: "Ufuldstændige data – perioden rækker ud over de tilgængelige måneder.",
   dashboardUpdating: "Opdaterer nøgletal",
-  dashboardPipelinePeriod: "Pipeline for leads oprettet i den valgte periode",
+  dashboardPipelinePeriod:
+    "Åbne og tabte er leads oprettet i perioden. Vundne er kunder lukket i perioden.",
   dashboardDateBasisHint:
     "Lead-tal bruger lead-dato; omsætning, lukkede kunder og LTV bruger vundet-dato.",
   dashboardSecondaryAria: "Sekundære indsigter",
