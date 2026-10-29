@@ -13,6 +13,7 @@
     "db:audit-suntech-dashboard": "tsx scripts/audit-suntech-dashboard.ts",
     "db:audit-dashboard-full": "tsx scripts/audit-dashboard-full.ts",
     "db:audit-dashboard-kpi": "tsx scripts/audit-dashboard-kpi-report.ts",
+    "db:audit-dashboard-consistency": "tsx scripts/audit-dashboard-consistency.ts",
     "db:seed-suntech-ad-metrics": "tsx scripts/seed-suntech-ad-metrics.ts",
     "db:revert-bulk-seeds": "tsx scripts/revert-bulk-seeds-keep-suntech.ts",
     "db:seed-ad-metrics": "tsx scripts/seed-demo-ad-metrics.ts",

@@ -59,7 +59,8 @@ export function proratedMonthlySpend(
   const monthStart = startOfMonth(new Date(`${monthKey}-01T00:00:00`))
   const monthEnd = endOfMonth(monthStart)
   const overlapStart = max([startOfDay(range.start), monthStart])
-  const overlapEnd = min([endOfDay(range.end), monthEnd])
+  // Days that have not happened yet carry no spend (the row only covers up to today).
+  const overlapEnd = min([endOfDay(range.end), monthEnd, endOfDay(referenceDate)])
   if (overlapStart > overlapEnd) return 0
 
   const periodDays = metaMonthPeriodDays(monthKey, referenceDate)
@@ -69,17 +70,59 @@ export function proratedMonthlySpend(
   return spend * (overlapDays / periodDays)
 }
 
-/** Raw synced monthly spend keyed by month, prorated to the active dashboard range. */
+function monthKeyOfDay(day: Date): string {
+  return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}`
+}
+
+/**
+ * Ad spend for every calendar day of `range`, keyed by ISO date.
+ *
+ * Meta gives one number per month, so each day of a month gets an equal share of it. A completed
+ * month is split over all its days; the current month's row is month-to-date, so it is split over
+ * the days elapsed. Days after today get nothing. This does not depend on leads at all: a day
+ * without leads still has spend, and the sum over a range is exactly the ad budget for it.
+ */
+export function dailyAdSpend(
+  range: DateRange,
+  adSpendByMonth: Record<string, number>,
+  now: Date = new Date()
+): Map<string, number> {
+  const out = new Map<string, number>()
+  const today = endOfDay(now)
+  const periodDaysByMonth = new Map<string, number>()
+
+  // Step by year/month/day numbers, not by adding to a Date, so long ranges cannot drift.
+  const first = startOfDay(range.start)
+  for (
+    let day = first;
+    day <= range.end && day <= today;
+    day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)
+  ) {
+    const key = monthKeyOfDay(day)
+    const monthSpend = adSpendByMonth[key]
+    if (monthSpend == null || !Number.isFinite(monthSpend) || monthSpend <= 0) continue
+
+    let periodDays = periodDaysByMonth.get(key)
+    if (periodDays === undefined) {
+      periodDays = metaMonthPeriodDays(key, now)
+      periodDaysByMonth.set(key, periodDays)
+    }
+    if (periodDays <= 0) continue
+    out.set(toIsoDate(day), monthSpend / periodDays)
+  }
+  return out
+}
+
+/** Synced monthly spend keyed by month, limited to the days of the active dashboard range. */
 export function adSpendForRange(
   adSpendByMonth: Record<string, number>,
-  range: DateRange
+  range: DateRange,
+  now: Date = new Date()
 ): Record<string, number> {
   const out: Record<string, number> = {}
-  for (const monthKey of monthKeysInRange(range)) {
-    const raw = adSpendByMonth[monthKey]
-    if (raw == null || raw <= 0) continue
-    const prorated = proratedMonthlySpend(monthKey, raw, range)
-    if (prorated > 0) out[monthKey] = prorated
+  for (const [isoDate, amount] of dailyAdSpend(range, adSpendByMonth, now)) {
+    const key = isoDate.slice(0, 7)
+    out[key] = (out[key] ?? 0) + amount
   }
   return out
 }

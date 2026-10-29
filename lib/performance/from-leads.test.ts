@@ -9,14 +9,15 @@ import { sumTotals } from "./metrics"
 
 describe("buildDailyBucketsFromLeads", () => {
   it("derives revenue and customers from won leads", () => {
-    const buckets = buildDailyBucketsFromLeads(MOCK_LEADS, demoAdSpendByMonth())
+    const buckets = buildDailyBucketsFromLeads(MOCK_LEADS)
     const totals = sumTotals(buckets)
     const won = MOCK_LEADS.filter((lead) => lead.status === "won")
 
     expect(totals.leads).toBeGreaterThan(0)
     expect(totals.customers).toBe(won.length)
     expect(totals.revenue).toBeGreaterThan(0)
-    expect(totals.adSpend).toBeGreaterThan(0)
+    // Ad spend is a separate per-day amount, never attached to lead buckets.
+    expect(totals.adSpend).toBe(0)
   })
 
   it("powers the dashboard from lead data instead of mock charts", () => {
@@ -47,7 +48,7 @@ describe("buildDailyBucketsFromLeads", () => {
     )
 
     expect(data.current.totals.leads).toBe(0)
-    expect(data.current.totals.adSpend).toBe(22_000)
+    expect(data.current.totals.adSpend).toBeCloseTo(22_000, 6)
     expect(data.status).toBe("ok")
   })
 

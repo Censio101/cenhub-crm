@@ -5,12 +5,11 @@ import {
   type Lead,
   type LeadStatusId,
 } from "@/lib/leads"
-import { adSpendForRange } from "./ad-spend-for-range"
 import { isFunnelId, type FunnelId } from "./funnels"
 import type { ServiceId } from "./services"
 import { monthKeyFromDate } from "./demo-ad-spend"
 import { toIsoDate } from "./date-ranges"
-import type { DateRange, PerformanceBucket } from "./types"
+import type { PerformanceBucket } from "./types"
 
 const QUOTE_STATUSES = new Set<LeadStatusId>([
   "awaiting_proposal",
@@ -130,108 +129,19 @@ function addLeadContribution(
   }
 }
 
-function distributeAdSpend(
-  buckets: Map<BucketKey, PerformanceBucket>,
-  adSpendByMonth: Record<string, number>
-) {
-  const byMonth = new Map<string, PerformanceBucket[]>()
-
-  for (const bucket of buckets.values()) {
-    const monthKey = monthKeyFromDate(bucket.start)
-    const group = byMonth.get(monthKey)
-    if (group) group.push(bucket)
-    else byMonth.set(monthKey, [bucket])
-  }
-
-  for (const [monthKey, monthBuckets] of byMonth) {
-    const monthSpend = adSpendByMonth[monthKey] ?? 0
-    if (monthSpend <= 0) continue
-
-    const monthLeadWeight = monthBuckets.reduce((sum, bucket) => sum + bucket.leads, 0)
-    if (monthLeadWeight <= 0) continue
-
-    for (const bucket of monthBuckets) {
-      bucket.adSpend = (monthSpend * bucket.leads) / monthLeadWeight
-    }
-  }
-}
-
-function allocatedSpendForMonth(
-  buckets: readonly PerformanceBucket[],
-  monthKey: string
-): number {
-  return buckets
-    .filter((bucket) => monthKeyFromDate(bucket.start) === monthKey)
-    .reduce((sum, bucket) => sum + bucket.adSpend, 0)
-}
-
-/** Months with synced spend but no leads still contribute ad budget (all-funnel view). */
-function appendSpendOnlyMonthBuckets(
-  buckets: PerformanceBucket[],
-  spendByMonth: Record<string, number>
-): PerformanceBucket[] {
-  const extras: PerformanceBucket[] = []
-
-  for (const [monthKey, spend] of Object.entries(spendByMonth)) {
-    if (spend <= 0) continue
-    const allocated = allocatedSpendForMonth(buckets, monthKey)
-    const remaining = spend - allocated
-    if (remaining <= 0.005) continue
-
-    const monthStart = startOfMonth(new Date(`${monthKey}-01T00:00:00`))
-    const monthEnd = endOfMonth(monthStart)
-    extras.push({
-      start: toIsoDate(monthStart),
-      end: toIsoDate(monthEnd),
-      leads: 0,
-      customers: 0,
-      b2bCustomers: 0,
-      b2cCustomers: 0,
-      revenue: 0,
-      adSpend: remaining,
-      profit: 0,
-      ltv: 0,
-      qualified: 0,
-      quotes: 0,
-    })
-  }
-
-  if (extras.length === 0) return buckets
-  return [...buckets, ...extras].sort((left, right) =>
-    left.start.localeCompare(right.start)
-  )
-}
-
-export type BuildDailyBucketsOptions = {
-  /** When set, Meta monthly spend is prorated and months without leads still count. */
-  range?: DateRange
-}
-
-export function buildDailyBucketsFromLeads(
-  leads: readonly Lead[],
-  adSpendByMonth: Record<string, number> = {},
-  options?: BuildDailyBucketsOptions
-): PerformanceBucket[] {
+/**
+ * One bucket per day, service and funnel with the lead and customer numbers only.
+ * Ad spend is NOT attached here: it is a per-day amount that does not depend on leads, so it is
+ * added separately (see `buildSpendBuckets` in get-performance.ts).
+ */
+export function buildDailyBucketsFromLeads(leads: readonly Lead[]): PerformanceBucket[] {
   const buckets = new Map<BucketKey, PerformanceBucket>()
-  const spendByMonth = options?.range
-    ? adSpendForRange(adSpendByMonth, options.range)
-    : adSpendByMonth
 
   for (const lead of leads) {
     addLeadContribution(buckets, lead)
   }
 
-  distributeAdSpend(buckets, spendByMonth)
-
-  let result = [...buckets.values()].sort((left, right) =>
-    left.start.localeCompare(right.start)
-  )
-
-  if (options?.range) {
-    result = appendSpendOnlyMonthBuckets(result, spendByMonth)
-  }
-
-  return result
+  return [...buckets.values()].sort((left, right) => left.start.localeCompare(right.start))
 }
 
 export function getLeadDataDateRange(
