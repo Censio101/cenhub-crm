@@ -37,6 +37,7 @@ import {
 import type { MessageKey } from "@/lib/i18n"
 import { formatLeadServices, type Lead, type LeadPlatformId } from "@/lib/leads"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
+import { formProgressText } from "@/lib/lead-sheet/form-steps"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
@@ -298,6 +299,8 @@ export function CustomersBoard() {
             return lead.salesPrice == null ? "" : String(lead.salesPrice)
           case "profit":
             return lead.profit == null ? "" : String(lead.profit)
+          case "formProgress":
+            return formProgressText(lead.formStepsDone, leadSheet.template.formStepsTotal)
           default:
             return String(lead[col.builtinKey] ?? "")
         }

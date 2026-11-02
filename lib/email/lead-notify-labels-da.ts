@@ -18,6 +18,7 @@ export const LEAD_NOTIFY_BUILTIN_LABELS_DA: Record<BuiltinColumnKey, string> = {
   salesPrice: "Salgspris",
   profit: "Bundlinje",
   ltv: "LTV",
+  formProgress: "Formulartrin",
 }
 
 export function builtinLabelDa(key: BuiltinColumnKey): string {

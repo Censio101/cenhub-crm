@@ -47,6 +47,8 @@ export type LeadPatch = Partial<{
   profit: number | null
   ltv: number | null
   customFields: Record<string, unknown>
+  /** Set by the funnel webhook only; never by a client edit. */
+  formStepsDone: number | null
 }>
 
 export function leadRowToLead(row: LeadRow): Lead {
@@ -78,6 +80,7 @@ export function leadRowToLead(row: LeadRow): Lead {
     source: row.source,
     lockedFields: row.locked_fields ?? [],
     customFields: row.custom_fields ?? {},
+    formStepsDone: row.form_steps_done ?? null,
   }
 }
 
@@ -114,6 +117,7 @@ export function leadPatchToRow(
     | "profit"
     | "ltv"
     | "custom_fields"
+    | "form_steps_done"
   >
 > {
   const next: Partial<LeadRow> = {}
@@ -137,6 +141,7 @@ export function leadPatchToRow(
   if (patch.profit !== undefined) next.profit = patch.profit
   if (patch.ltv !== undefined) next.ltv = patch.ltv
   if (patch.customFields !== undefined) next.custom_fields = patch.customFields
+  if (patch.formStepsDone !== undefined) next.form_steps_done = patch.formStepsDone
 
   return next
 }
@@ -176,6 +181,7 @@ export function leadToInsertRow(
     meta_form_id: lead.metaFormId ?? null,
     meta_extra: lead.metaExtra ?? {},
     custom_fields: lead.customFields ?? {},
+    form_steps_done: lead.formStepsDone ?? null,
     import_id: null,
   }
 }

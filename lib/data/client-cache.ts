@@ -8,6 +8,8 @@ type LeadsCacheEntry = {
   source: "mock" | "supabase"
   organizationSlug?: string | null
   leadSheet?: ResolvedLeadSheetConfig | null
+  /** Partial steps total of the client's sheet (null = none). */
+  formStepsTotal?: number | null
   cachedAt?: number
 }
 
@@ -63,6 +65,7 @@ export function setLeadsCache(entry: LeadsCacheEntry) {
 export function replaceCachedLeads(leads: Lead[], source: "mock" | "supabase") {
   leadsCache = {
     leadSheet: leadsCache?.leadSheet ?? null,
+    formStepsTotal: leadsCache?.formStepsTotal,
     organizationSlug: leadsCache?.organizationSlug ?? null,
     leads,
     source,

@@ -147,6 +147,7 @@ const STANDARD_ALIASES: Record<string, string[]> = {
   city: ["city", "town", "by"],
   metaAdId: ["metaadid", "adid"],
   externalId: ["externalid", "submissionid", "responseid", "leadid", "id"],
+  stepsCompleted: ["stepscompleted", "stepsdone", "stepnumber", "step", "steps"],
 }
 
 export type MappingTarget = {

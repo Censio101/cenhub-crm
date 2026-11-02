@@ -13,6 +13,7 @@ import {
   isColumnLocked,
   visibleColumnsForClient,
 } from "@/lib/lead-sheet/client-visibility"
+import { parseFormStepsTotal } from "@/lib/lead-sheet/form-steps"
 import {
   BUILTIN_COLUMN_KEYS,
   type CustomFieldType,
@@ -34,6 +35,7 @@ type TemplateRow = {
   is_shared: boolean
   organization_id: string | null
   source_template_id: string | null
+  form_steps_total?: number | null
 }
 
 type CustomFieldRow = {
@@ -90,6 +92,7 @@ function mapTemplateSummary(
     sourceTemplateId: row.source_template_id,
     subcategoryIds,
     categoryIds,
+    formStepsTotal: parseFormStepsTotal(row.form_steps_total),
   }
 }
 
@@ -234,6 +237,9 @@ export async function getLeadSheetTemplateById(
         sortIndex: row.sort_index,
         kind: "builtin",
         builtinKey: row.builtin_key,
+        ...(row.builtin_key === "formProgress"
+          ? { formStepsTotal: parseFormStepsTotal((template as TemplateRow).form_steps_total) }
+          : {}),
         hiddenForClient: row.hidden_for_client,
         webhookIncluded: row.webhook_included,
       })
@@ -855,6 +861,7 @@ export async function duplicateLeadSheetTemplate(
       is_shared: options.isShared ?? !options.organizationId,
       organization_id: options.organizationId ?? null,
       source_template_id: sourceId,
+      form_steps_total: source.template.formStepsTotal ?? null,
     })
     .select("*")
     .single()

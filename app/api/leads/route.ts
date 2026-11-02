@@ -30,7 +30,7 @@ export async function GET() {
         ? createAdminClient()
         : await createClient()
 
-    const [allLeads, { hiddenCustomKeys }] = await Promise.all([
+    const [allLeads, { hiddenCustomKeys, visible }] = await Promise.all([
       listLeadsForOrganization(supabase, ctx.organization.id),
       resolveClientDashboardSheet(supabase, ctx.organization.id),
     ])
@@ -40,6 +40,8 @@ export async function GET() {
     return NextResponse.json({
       leads,
       source: "supabase",
+      // Partial steps: total steps of the funnel form (null when the sheet has none).
+      formStepsTotal: visible?.template.formStepsTotal ?? null,
       organization: {
         id: ctx.organization.id,
         slug: ctx.organization.slug,
@@ -102,6 +104,7 @@ export async function POST(request: Request) {
       // Hand-added leads are always "manual" and never carry Meta's locked fields.
       source: "manual",
       lockedFields: [],
+      formStepsDone: null,
       status: isLeadStatusId(input.status) ? input.status : "new_waiting_call",
       customFields: normalized.customFields,
     })

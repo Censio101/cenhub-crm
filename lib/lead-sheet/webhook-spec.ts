@@ -1,3 +1,4 @@
+import { activeSheetColumns } from "@/lib/lead-sheet/form-steps"
 import {
   sheetEligibleCustomWebhookFields,
   sheetEligibleStandardWebhookKeys,
@@ -32,7 +33,7 @@ export type WebhookLeadSheetInfo = {
 }
 
 export type StandardWebhookFieldType =
-  "text" | "datetext" | "list" | "segment" | "platform" | "externalid"
+  "text" | "datetext" | "list" | "segment" | "platform" | "externalid" | "steps"
 
 /** Fixed fields every webhook accepts, regardless of the lead sheet. */
 export const STANDARD_WEBHOOK_FIELDS: {
@@ -54,6 +55,8 @@ export const STANDARD_WEBHOOK_FIELDS: {
   { key: "city", type: "text", required: "no" },
   { key: "metaAdId", type: "text", required: "no" },
   { key: "externalId", type: "externalid", required: "no" },
+  // Only offered when the lead sheet has the "Form steps" column (partial steps).
+  { key: "stepsCompleted", type: "steps", required: "no" },
 ]
 
 /** Label shown in funnel Map fields (mapping target key unchanged in saved JSON). */
@@ -81,8 +84,8 @@ export function buildWebhookLeadSheetInfo(
     templateName: config.template.name,
     isSystemDefault: config.template.isSystemDefault,
     isClientOwned: config.template.organizationId !== null,
-    standardFieldKeys: sheetEligibleStandardWebhookKeys(config.columns),
-    customFields: sheetEligibleCustomWebhookFields(config.columns),
+    standardFieldKeys: sheetEligibleStandardWebhookKeys(activeSheetColumns(config)),
+    customFields: sheetEligibleCustomWebhookFields(activeSheetColumns(config)),
   }
 }
 
@@ -222,6 +225,7 @@ export function buildFilteredMappingInboundExample(
   if (keys.has("segment")) out.businesstype = "b2c"
   if (keys.has("platform")) out.platform = "website"
   if (keys.has("metaAdId")) out.meta_ad_id = "120330000000000"
+  if (keys.has("stepsCompleted")) out.steps_completed = 3
 
   for (const field of customFields) {
     out[field.key] = exampleValueForField(field)

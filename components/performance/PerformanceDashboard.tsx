@@ -19,6 +19,7 @@ import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
 import { DevelopmentChart } from "@/components/performance/DevelopmentChart"
 import { KpiGrid } from "@/components/performance/KpiGrid"
 import { MonthlyTable } from "@/components/performance/MonthlyTable"
+import { PartialLeadsMetric } from "@/components/performance/PartialLeadsMetric"
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { useDashboardViewState } from "@/hooks/useDashboardViewState"
 import { useDashboardData } from "@/hooks/useDashboardData"
@@ -26,6 +27,7 @@ import { toIsoDate } from "@/lib/performance/date-ranges"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import { getLeadDataDateRange } from "@/lib/performance/from-leads"
 import { resolveAllTimeStart, resolveMeasuredRange } from "@/lib/performance/all-time"
+import { partialLeadCount } from "@/lib/performance/form-completion"
 import { getPerformanceDashboard } from "@/lib/performance/get-performance"
 import { isMetaMetricsStale } from "@/lib/meta/sync-center-constants"
 import {
@@ -45,6 +47,8 @@ export function PerformanceDashboard() {
   const { animateBoardEnter, markWorkspaceWarm } = useClientNavigation()
   const {
     leads,
+    partialLeads,
+    formStepsTotal,
     adSpendByMonth,
     adSpendSource,
     metaEnabled,
@@ -110,6 +114,19 @@ export function PerformanceDashboard() {
         segment: view.segment,
       }),
     [measuredRange, view, leads]
+  )
+
+  // Stepped forms: leads that only filled the form partly get their own count.
+  const partialLeadTotal = useMemo(
+    () =>
+      formStepsTotal === null
+        ? null
+        : partialLeadCount(partialLeads, measuredRange, {
+            service: view.service,
+            funnel: view.funnel,
+            segment: view.segment,
+          }),
+    [formStepsTotal, measuredRange, partialLeads, view.funnel, view.segment, view.service]
   )
 
   const adSpendNotice = useMemo(() => {
@@ -203,6 +220,7 @@ export function PerformanceDashboard() {
                   comparisonEnabled={view.comparisonEnabled}
                   hiddenMetrics={hiddenMetrics}
                 />
+                {partialLeadTotal !== null ? <PartialLeadsMetric count={partialLeadTotal} /> : null}
                 <DashboardEmptyState />
               </>
             ) : (
@@ -212,6 +230,7 @@ export function PerformanceDashboard() {
                   comparisonEnabled={view.comparisonEnabled}
                   hiddenMetrics={hiddenMetrics}
                 />
+                {partialLeadTotal !== null ? <PartialLeadsMetric count={partialLeadTotal} /> : null}
                 <DevelopmentChart
                   data={data}
                   metricId={chartMetricId}

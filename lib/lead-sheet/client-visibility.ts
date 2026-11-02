@@ -1,3 +1,4 @@
+import { activeSheetColumns } from "@/lib/lead-sheet/form-steps"
 import {
   isLockedBuiltinKey,
   type LeadSheetTemplateColumn,
@@ -34,7 +35,10 @@ export function visibleColumnsForClient(
 ): ResolvedLeadSheetConfig {
   return {
     ...config,
-    columns: config.columns.filter((column) => !columnVisibility(column, clientHiddenKeys).hidden),
+    // The Form steps column only exists for templates that set a step total.
+    columns: activeSheetColumns(config).filter(
+      (column) => !columnVisibility(column, clientHiddenKeys).hidden
+    ),
   }
 }
 

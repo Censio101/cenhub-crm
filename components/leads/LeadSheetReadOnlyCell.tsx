@@ -156,3 +156,55 @@ export function LeadSheetReadOnlyPlainCell({
     </TableCell>
   )
 }
+
+/**
+ * Form steps of a stepped funnel form: "5 / 8" with a small bar while the lead is partial, a green
+ * "Complete" once every step is done. Leads from other sources have no step count.
+ */
+export function LeadSheetFormProgressCell({
+  lead,
+  total,
+  className,
+}: {
+  lead: Lead
+  total: number | null | undefined
+  className?: string
+}) {
+  const { t } = useLanguage()
+  const done = lead.formStepsDone
+  if (done == null || !total) {
+    return (
+      <TableCell className={className}>
+        <LeadSheetReadOnlyText>{""}</LeadSheetReadOnlyText>
+      </TableCell>
+    )
+  }
+  const complete = done >= total
+  const shown = Math.min(done, total)
+  return (
+    <TableCell className={className}>
+      <span
+        className="flex min-h-8 items-center gap-2 px-1.5 py-1.5"
+        title={`${shown} / ${total}`}
+      >
+        {complete ? (
+          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+            {t("formProgressComplete")}
+          </span>
+        ) : (
+          <>
+            <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-[#eadfd3]">
+              <span
+                className="block h-full rounded-full bg-amber-500"
+                style={{ width: `${Math.round((shown / total) * 100)}%` }}
+              />
+            </span>
+            <span className="text-xs font-semibold tabular-nums text-amber-800">
+              {shown} / {total}
+            </span>
+          </>
+        )}
+      </span>
+    </TableCell>
+  )
+}

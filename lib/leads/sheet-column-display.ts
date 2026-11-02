@@ -1,4 +1,5 @@
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
+import { formProgressText } from "@/lib/lead-sheet/form-steps"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import type { MessageKey } from "@/lib/i18n"
@@ -60,6 +61,8 @@ export function leadSheetCellDisplayText(
       return lead.profit == null ? "" : String(lead.profit)
     case "ltv":
       return lead.ltv == null ? "" : String(lead.ltv)
+    case "formProgress":
+      return formProgressText(lead.formStepsDone, col.formStepsTotal)
     default:
       return ""
   }

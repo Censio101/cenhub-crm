@@ -15,6 +15,7 @@ export const BUILTIN_COLUMN_KEYS = [
   "salesPrice",
   "profit",
   "ltv",
+  "formProgress",
 ] as const
 
 export type BuiltinColumnKey = (typeof BUILTIN_COLUMN_KEYS)[number]
@@ -49,6 +50,8 @@ export type LeadSheetTemplateColumn =
       sortIndex: number
       kind: "builtin"
       builtinKey: BuiltinColumnKey
+      /** Only on the "Form steps" column: the template's total number of form steps. */
+      formStepsTotal?: number | null
       /** The template hides this column from the client dashboard (data is still collected). */
       hiddenForClient?: boolean
       /** When false, omit from webhook docs, mapping, and inbound custom field handling. */
@@ -108,6 +111,8 @@ export type LeadSheetTemplateSummary = {
   /** @deprecated Templates use categoryIds for industry tags; kept for legacy reads. */
   subcategoryIds: string[]
   categoryIds: string[]
+  /** Partial steps: total steps of the funnel form. null = the template has no stepped form. */
+  formStepsTotal?: number | null
   columnCount?: number
   columnPreview?: LeadSheetColumnPreviewItem[]
   /** Number of clients currently on this template (only set when requested). */

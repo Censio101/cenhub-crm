@@ -35,6 +35,7 @@ import {
   TemplateDetailsDialog,
   type TemplateDetailsValues,
 } from "@/components/admin/lead-sheets/TemplateDetailsDialog"
+import { PartialStepsCard } from "@/components/admin/lead-sheets/PartialStepsCard"
 import { TemplateSummaryCard } from "@/components/admin/lead-sheets/TemplateSummaryCard"
 import { adminOutlineButtonClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
@@ -43,6 +44,7 @@ import { FormNoticeStack } from "@/components/ui/form-notice"
 import { adminFormNoticeDefaults } from "@/lib/admin/form-notice-defaults"
 import { invalidateLeadSheetsTemplatesCache } from "@/lib/data/lead-sheets-hub-cache"
 import { isColumnLocked } from "@/lib/lead-sheet/client-visibility"
+import { activeSheetColumns } from "@/lib/lead-sheet/form-steps"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
 import { formatClientNames } from "@/components/admin/lead-sheets/template-usage"
 import type {
@@ -105,7 +107,10 @@ function EditorContent({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  // The "Form steps" column only appears while the Partial steps setting is on.
+  const listedColumns = useMemo(() => activeSheetColumns(config), [config])
   const columnIds = useMemo(() => config.columns.map((c) => c.id), [config.columns])
+  const listedColumnIds = useMemo(() => listedColumns.map((c) => c.id), [listedColumns])
   const usedBuiltinKeys = useMemo(
     () => new Set(config.columns.flatMap((c) => (c.kind === "builtin" ? [c.builtinKey] : []))),
     [config.columns]
@@ -117,9 +122,9 @@ function EditorContent({
 
   const filteredColumns = useMemo(() => {
     const q = columnSearch.trim().toLowerCase()
-    if (!q) return config.columns
-    return config.columns.filter((col) => columnDisplayLabel(col, t).toLowerCase().includes(q))
-  }, [config.columns, columnSearch, t])
+    if (!q) return listedColumns
+    return listedColumns.filter((col) => columnDisplayLabel(col, t).toLowerCase().includes(q))
+  }, [listedColumns, columnSearch, t])
 
   function setRowBusy(id: string, isBusy: boolean) {
     setBusyIds((prev) => {
@@ -166,6 +171,19 @@ function EditorContent({
       invalidateLeadSheetsTemplatesCache()
       setDetailsOpen(false)
       setNotice(t("leadSheetAssignmentSaved"))
+      return null
+    } catch {
+      return t("leadSheetsLoadError")
+    }
+  }
+
+  /** Saves the Partial steps total (null = off). Returns an error message or `null`. */
+  async function savePartialSteps(next: number | null): Promise<string | null> {
+    try {
+      const data = await patchTemplate({ formStepsTotal: next })
+      applyServerConfig(data)
+      invalidateLeadSheetsTemplatesCache()
+      setNotice(t(next === null ? "partialStepsOff" : "partialStepsSaved"))
       return null
     } catch {
       return t("leadSheetsLoadError")
@@ -372,6 +390,12 @@ function EditorContent({
         onEdit={() => setDetailsOpen(true)}
       />
 
+      <PartialStepsCard
+        key={config.template.formStepsTotal ?? "off"}
+        total={config.template.formStepsTotal ?? null}
+        onSave={savePartialSteps}
+      />
+
       <FormNoticeStack
         error={error}
         success={notice}
@@ -392,7 +416,7 @@ function EditorContent({
             >
               {t("leadSheetsEditorColumns")}
               <span className="rounded-full bg-[#f3ebe3] px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-                {config.columns.length}
+                {listedColumns.length}
               </span>
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -437,9 +461,9 @@ function EditorContent({
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={columnIds} strategy={verticalListSortingStrategy}>
+              <SortableContext items={listedColumnIds} strategy={verticalListSortingStrategy}>
                 <div className="grid gap-2">
-                  {config.columns.map((col) => (
+                  {listedColumns.map((col) => (
                     <SortableLeadSheetColumnRow key={col.id} {...rowProps(col)} />
                   ))}
                 </div>

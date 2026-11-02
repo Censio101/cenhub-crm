@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
@@ -18,13 +18,19 @@ import {
 } from "@/lib/data/client-cache"
 import { fetchJsonDeduped } from "@/lib/data/in-flight"
 import { createRequestGuard } from "@/lib/data/request-guard"
+import { parseFormStepsTotal, withoutPartialLeads } from "@/lib/lead-sheet/form-steps"
 import type { Lead } from "@/lib/leads"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
 
 type AdSpendSource = "synced" | "demo" | "pending"
 
 type DashboardDataState = {
+  /** Leads the dashboard counts: partial leads of a stepped form are left out. */
   leads: Lead[]
+  /** Leads that only filled a stepped form partly (shown as their own metric). */
+  partialLeads: Lead[]
+  /** Total steps of the client's stepped form; null when the sheet has none. */
+  formStepsTotal: number | null
   adSpendByMonth: Record<string, number>
   adSpendSource: AdSpendSource
   metaEnabled: boolean
@@ -38,6 +44,7 @@ type DashboardDataState = {
 
 type LeadsPayload = {
   leads: Lead[]
+  formStepsTotal?: number | null
   source?: "mock" | "supabase"
   organization?: { slug?: string }
   error?: string
@@ -51,12 +58,21 @@ type AdSpendPayload = {
   metaLastSyncedAt?: string | null
 }
 
+function cachedFormStepsTotal(
+  entry: ReturnType<typeof getLeadsCache> | null | undefined
+): number | null {
+  return parseFormStepsTotal(entry?.formStepsTotal ?? entry?.leadSheet?.template.formStepsTotal)
+}
+
 export function useDashboardData(): DashboardDataState {
   const { organization, needsClientSelection: adminMustPickClient, sessionReady } =
     useActiveOrganization()
   const activeSlug = organization?.slug ?? null
 
-  const [leads, setLeads] = useState<Lead[]>(() => getLeadsCache(activeSlug)?.leads ?? [])
+  const [allLeads, setLeads] = useState<Lead[]>(() => getLeadsCache(activeSlug)?.leads ?? [])
+  const [formStepsTotal, setFormStepsTotal] = useState<number | null>(() =>
+    cachedFormStepsTotal(getLeadsCache(activeSlug))
+  )
   const [adSpendByMonth, setAdSpendByMonth] = useState<Record<string, number>>(
     () => getAdSpendCache(activeSlug) ?? {}
   )
@@ -99,6 +115,7 @@ export function useDashboardData(): DashboardDataState {
       const adSpend = getAdSpendCache(activeSlug) ?? {}
       if (isCurrent()) {
         setLeads(cached.leads)
+        setFormStepsTotal(cachedFormStepsTotal(cached))
         setSource(cached.source)
         setAdSpendByMonth(adSpend)
         setLoading(false)
@@ -137,7 +154,9 @@ export function useDashboardData(): DashboardDataState {
       const nextSource = leadsPayload.source === "supabase" ? "supabase" : "mock"
       const nextSlug = leadsPayload.organization?.slug ?? null
 
+      const nextFormStepsTotal = parseFormStepsTotal(leadsPayload.formStepsTotal)
       setLeads(leadsPayload.leads)
+      setFormStepsTotal(nextFormStepsTotal)
       setAdSpendByMonth(nextAdSpend)
       setAdSpendSource(adSpendResult.data?.source ?? "pending")
       setMetaEnabled(Boolean(adSpendResult.data?.metaEnabled))
@@ -145,6 +164,7 @@ export function useDashboardData(): DashboardDataState {
       setSource(nextSource)
       setLeadsCache({
         leads: leadsPayload.leads,
+        formStepsTotal: nextFormStepsTotal,
         source: nextSource,
         organizationSlug: nextSlug,
       })
@@ -180,14 +200,26 @@ export function useDashboardData(): DashboardDataState {
   useEffect(() => {
     const onLeadsUpdated = () => {
       const cached = getLeadsCache(activeSlug)
-      if (cached?.leads) setLeads(cached.leads)
+      if (cached?.leads) {
+        setLeads(cached.leads)
+        setFormStepsTotal(cachedFormStepsTotal(cached))
+      }
     }
     window.addEventListener(CLIENT_LEADS_UPDATED_EVENT, onLeadsUpdated)
     return () => window.removeEventListener(CLIENT_LEADS_UPDATED_EVENT, onLeadsUpdated)
   }, [activeSlug])
 
+  const leads = useMemo(() => withoutPartialLeads(allLeads, formStepsTotal), [allLeads, formStepsTotal])
+  const partialLeads = useMemo(() => {
+    if (formStepsTotal === null) return []
+    const complete = new Set(leads.map((lead) => lead.id))
+    return allLeads.filter((lead) => !complete.has(lead.id))
+  }, [allLeads, formStepsTotal, leads])
+
   return {
     leads,
+    partialLeads,
+    formStepsTotal,
     adSpendByMonth,
     adSpendSource,
     metaEnabled,

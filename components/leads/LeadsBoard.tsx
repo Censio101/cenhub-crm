@@ -23,6 +23,7 @@ import { LeadSheetSortableHeader } from "@/components/leads/LeadSheetSortableHea
 import { LeadSheetFilterBar } from "@/components/leads/LeadSheetFilterBar"
 import { LeadSheetFocusShell } from "@/components/leads/LeadSheetFocusShell"
 import {
+  LeadSheetFormProgressCell,
   LeadSheetReadOnlyDateCell,
   LeadSheetReadOnlyWonDateCell,
   LeadSheetReadOnlyEmailCell,
@@ -85,6 +86,8 @@ import {
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import { isServiceId, resolveServiceLabel } from "@/lib/performance/services"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
+import { formProgressText } from "@/lib/lead-sheet/form-steps"
+import { matchesFormFilter, type FormFilterValue } from "@/lib/leads/form-filter"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import {
   isQualityFieldKey,
@@ -907,6 +910,15 @@ export function LeadsTable({
             mono
           />
         )
+      case "formProgress":
+        return (
+          <LeadSheetFormProgressCell
+            key={col.id}
+            lead={lead}
+            total={col.formStepsTotal}
+            className={cn("min-w-32 px-2", priceCue)}
+          />
+        )
       case "wonDate":
         return (
           <LeadSheetReadOnlyWonDateCell
@@ -1224,6 +1236,8 @@ export function LeadsBoard() {
   const [sheetService, setSheetService] = useState<string | null>(null)
   const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
   const [sheetFunnel, setSheetFunnel] = useState<FunnelId | "all">("all")
+  const [formFilter, setFormFilter] = useState<FormFilterValue>("all")
+  const formStepsTotal = leadSheet.template.formStepsTotal ?? null
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
@@ -1241,9 +1255,10 @@ export function LeadsBoard() {
         if (sheetSegment !== "all" && lead.segment !== sheetSegment) return false
         if (!leadMatchesServiceFilter(lead, sheetService, enabledServices)) return false
         if (sheetFunnel !== "all" && lead.platform !== sheetFunnel) return false
+        if (!matchesFormFilter(lead, formStepsTotal, formFilter)) return false
         return true
       }),
-    [enabledServices, scoped, sheetFunnel, sheetSegment, sheetService]
+    [enabledServices, formFilter, formStepsTotal, scoped, sheetFunnel, sheetSegment, sheetService]
   )
 
   const statusCounts = useMemo(() => {
@@ -1346,6 +1361,7 @@ export function LeadsBoard() {
       statusFilter === "all" &&
       sheetSegment === "all" &&
       sheetFunnel === "all" &&
+      formFilter === "all" &&
       !sheetService
     ) {
       return t("leadSheetEmptyPeriod")
@@ -1353,6 +1369,7 @@ export function LeadsBoard() {
     return t("leadSheetEmptyFiltered")
   }, [
     dateIsAllTime,
+    formFilter,
     search,
     sheetFunnel,
     sheetSegment,
@@ -1383,6 +1400,8 @@ export function LeadsBoard() {
             return lead.profit == null ? "" : String(lead.profit)
           case "ltv":
             return lead.ltv == null ? "" : String(lead.ltv)
+          case "formProgress":
+            return formProgressText(lead.formStepsDone, leadSheet.template.formStepsTotal)
           default:
             return String(lead[col.builtinKey] ?? "")
         }
@@ -1470,6 +1489,9 @@ export function LeadsBoard() {
             latestLeadDate={leadDateSpan.latest}
             onResetDate={resetDate}
             onExport={exportFiltered}
+            showFormFilter={formStepsTotal !== null}
+            formFilter={formFilter}
+            onFormFilterChange={setFormFilter}
           />
           <LeadSheetScrollArea
             className="min-h-0 flex-1"
@@ -1545,6 +1567,9 @@ export function LeadsBoard() {
           latestLeadDate={leadDateSpan.latest}
           onResetDate={resetDate}
           onExport={exportFiltered}
+          showFormFilter={formStepsTotal !== null}
+          formFilter={formFilter}
+          onFormFilterChange={setFormFilter}
           focusOpen={false}
           onToggleFocus={() => setSheetFocusOpen(true)}
         />

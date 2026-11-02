@@ -8,11 +8,13 @@ import {
   SHEET_CONTROL_CLASS,
   SHEET_CONTROL_IDLE,
 } from "@/components/leads/LeadSheetFilterMenu"
+import { LeadSheetFormFilter } from "@/components/leads/LeadSheetFormFilter"
 import { LeadSheetScopeChips } from "@/components/leads/LeadSheetScopeChips"
 import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { StatusFilterGroups } from "@/components/leads/StatusFilterGroups"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import type { LeadSegmentId, LeadStatusId } from "@/lib/leads"
+import type { FormFilterValue } from "@/lib/leads/form-filter"
 import type { StatusFilterValue } from "@/lib/leads/status-filter-groups"
 import type { FunnelId } from "@/lib/performance/funnels"
 import type { NamedService } from "@/lib/performance/services"
@@ -44,6 +46,9 @@ export function LeadSheetFilterBar({
   onExport,
   focusOpen,
   onToggleFocus,
+  showFormFilter = false,
+  formFilter = "all",
+  onFormFilterChange,
 }: {
   preset: DatePreset
   range: DateRange
@@ -69,6 +74,10 @@ export function LeadSheetFilterBar({
   onExport?: () => void
   focusOpen?: boolean
   onToggleFocus?: () => void
+  /** Sheets with a stepped form (Partial steps) get a Complete / Partial filter. */
+  showFormFilter?: boolean
+  formFilter?: FormFilterValue
+  onFormFilterChange?: (next: FormFilterValue) => void
 }) {
   const { t } = useLanguage()
 
@@ -77,6 +86,7 @@ export function LeadSheetFilterBar({
     onSheetServiceChange(null)
     onSheetSegmentChange("all")
     onSheetFunnelChange("all")
+    onFormFilterChange?.("all")
     onSearchChange("")
     onResetDate()
   }
@@ -108,6 +118,9 @@ export function LeadSheetFilterBar({
         enabledServices={enabledServices}
         servicesLoaded={servicesLoaded}
       />
+      {showFormFilter && onFormFilterChange ? (
+        <LeadSheetFormFilter value={formFilter} onChange={onFormFilterChange} />
+      ) : null}
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <SheetSearchField
           value={search}
@@ -157,6 +170,8 @@ export function LeadSheetFilterBar({
       sheetFunnel={sheetFunnel}
       onSheetFunnelChange={onSheetFunnelChange}
       enabledServices={enabledServices}
+      formFilter={showFormFilter ? formFilter : "all"}
+      onFormFilterChange={onFormFilterChange}
       search={search}
       onSearchChange={onSearchChange}
       onClear={clearFilters}

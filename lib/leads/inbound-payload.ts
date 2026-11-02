@@ -30,6 +30,8 @@ export type CanonicalInboundLead = {
   city?: string
   metaAdId?: string
   externalId?: string
+  /** Steps of a stepped form completed so far (whole number, 0 or more). */
+  stepsCompleted?: number
   raw?: Record<string, unknown>
 }
 
@@ -131,6 +133,12 @@ export type ParseInboundResult =
   | { ok: true; lead: CanonicalInboundLead; warnings: InboundWarning[] }
   | { ok: false; error: string }
 
+/** A whole number of 0 or more, as a number or numeric text; anything else is ignored. */
+export function parseStepsCompleted(value: unknown): number | undefined {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value.trim()) : NaN
+  return Number.isInteger(n) && n >= 0 ? n : undefined
+}
+
 export function parseCanonicalInbound(body: Record<string, unknown>): ParseInboundResult {
   const fullName = asString(body.fullName)
   const email = asString(body.email)
@@ -193,6 +201,7 @@ export function parseCanonicalInbound(body: Record<string, unknown>): ParseInbou
       city: asString(body.city) || undefined,
       metaAdId: asString(body.metaAdId) || undefined,
       externalId: asString(body.externalId) || undefined,
+      stepsCompleted: parseStepsCompleted(body.stepsCompleted),
       raw:
         body.raw && typeof body.raw === "object"
           ? (body.raw as Record<string, unknown>)

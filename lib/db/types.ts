@@ -128,6 +128,8 @@ export type LeadRow = {
   source: LeadSource
   locked_fields: string[]
   custom_fields: Record<string, unknown>
+  /** Steps of a stepped funnel form completed so far (null = not a stepped form). */
+  form_steps_done: number | null
   /** The import that created this lead, if any (used to undo an import). */
   import_id: string | null
   created_at: string

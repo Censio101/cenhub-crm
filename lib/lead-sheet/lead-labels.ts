@@ -19,6 +19,7 @@ const BUILTIN_LABEL_KEYS: Record<BuiltinColumnKey, MessageKey> = {
   salesPrice: "leadSheetColSalesPrice",
   profit: "leadSheetColProfit",
   ltv: "leadSheetColLtv",
+  formProgress: "leadSheetColFormProgress",
 }
 
 export function builtinColumnLabelKey(key: BuiltinColumnKey): MessageKey {

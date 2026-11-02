@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 
 import { createLead, findLeadIdByLegacyId } from "@/lib/db/leads-repository"
+import { clampFormSteps, parseFormStepsTotal } from "@/lib/lead-sheet/form-steps"
+import { mergeFunnelStepIntoExistingLead } from "@/lib/leads/funnel-webhook-step-merge"
 import { getOrganizationById } from "@/lib/db/organizations-repository"
 import {
   captureFunnelSample,
@@ -52,6 +54,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const organizationId = funnel.organization_id
   const listening = isFunnelListening(funnel)
 
   const read = await readWebhookBody(request)
@@ -93,10 +96,9 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    if (legacyId) {
-      const existingId = await findLeadIdByLegacyId(admin, funnel.organization_id, legacyId)
-      if (existingId) return duplicateResponse(existingId)
-    }
+    const existingId = legacyId
+      ? await findLeadIdByLegacyId(admin, funnel.organization_id, legacyId)
+      : null
 
     // Custom columns come from the client's *current* lead sheet, so the accepted
     // payload changes automatically when the template is switched.
@@ -105,6 +107,10 @@ export async function POST(request: Request, context: RouteContext) {
       resolveOrganizationServices(admin, funnel.organization_id),
       getOrganizationServiceAliasMap(admin, funnel.organization_id),
     ])
+    // Partial steps: the sheet sets how many steps the funnel form has.
+    const formStepsTotal = parseFormStepsTotal(leadSheet?.template.formStepsTotal)
+    const stepsCompleted = parsed.canonical.stepsCompleted
+
     const sheetInfo = leadSheet ? buildWebhookLeadSheetInfo(leadSheet) : null
     const built = buildInboundLead({
       parsed,
@@ -117,6 +123,31 @@ export async function POST(request: Request, context: RouteContext) {
       platform: funnel.platform,
     })
     const { lead, warnings } = built
+
+    // The same lead arrived again. A stepped form's later steps are merged into it; anything
+    // else is a retry or double submit and changes nothing.
+    async function respondToExisting(leadId: string) {
+      if (formStepsTotal && stepsCompleted !== undefined) {
+        const updated = await mergeFunnelStepIntoExistingLead(
+          admin,
+          organizationId,
+          leadId,
+          lead,
+          built.customFields,
+          stepsCompleted,
+          formStepsTotal
+        )
+        return NextResponse.json({ ok: true, leadId, updated }, { status: 200 })
+      }
+      return duplicateResponse(leadId)
+    }
+
+    if (existingId) return await respondToExisting(existingId)
+
+    // Only a sender that reports its step is a stepped form; any other lead counts as complete.
+    if (formStepsTotal && stepsCompleted !== undefined) {
+      lead.formStepsDone = clampFormSteps(stepsCompleted, formStepsTotal)
+    }
 
     const metaLegacyId =
       metaLeadgenLegacyId(parsed.canonical.externalId) ??
@@ -147,13 +178,14 @@ export async function POST(request: Request, context: RouteContext) {
     } catch (insertError) {
       // Two identical requests can race past the check above; the unique index decides.
       if (legacyId && (insertError as { code?: string } | null)?.code === "23505") {
-        const existingId = await findLeadIdByLegacyId(admin, funnel.organization_id, legacyId)
-        if (existingId) return duplicateResponse(existingId)
+        const racedId = await findLeadIdByLegacyId(admin, funnel.organization_id, legacyId)
+        if (racedId) return await respondToExisting(racedId)
       }
       throw insertError
     }
 
-    void getOrganizationById(admin, funnel.organization_id)
+    // A stepped form creates its lead at the first step, so no "new lead" email is sent for it.
+    void (formStepsTotal ? Promise.resolve(null) : getOrganizationById(admin, funnel.organization_id))
       .then((org) => {
         if (!org) return
         return notifyNewLeadFromFunnelWebhook(admin, {

@@ -28,6 +28,7 @@ export const BUILTIN_TO_WEBHOOK_STANDARD: Partial<
   city: "city",
   serviceIds: "serviceIds",
   metaAdId: "metaAdId",
+  formProgress: "stepsCompleted",
 }
 
 /** Standard fields always offered even when there is no matching sheet column. */

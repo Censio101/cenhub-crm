@@ -6,6 +6,7 @@ import {
   listClientsUsingTemplate,
   setTemplateCategoryIds,
 } from "@/lib/db/lead-sheet-repository"
+import { isValidFormStepsTotal } from "@/lib/lead-sheet/form-steps"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -39,6 +40,8 @@ export async function PATCH(request: Request, context: Ctx) {
       isShared?: boolean
       categoryIds?: string[]
       subcategoryIds?: string[]
+      /** Partial steps: total steps of the funnel form, or null to switch it off. */
+      formStepsTotal?: number | null
     }
 
     const supabase = createAdminClient()
@@ -47,6 +50,12 @@ export async function PATCH(request: Request, context: Ctx) {
     if (body.name !== undefined) updates.name = body.name
     if (body.description !== undefined) updates.description = body.description
     if (body.isShared !== undefined) updates.is_shared = body.isShared
+    if (body.formStepsTotal !== undefined) {
+      if (body.formStepsTotal !== null && !isValidFormStepsTotal(body.formStepsTotal)) {
+        return NextResponse.json({ error: "Invalid number of steps" }, { status: 400 })
+      }
+      updates.form_steps_total = body.formStepsTotal
+    }
 
     if (Object.keys(updates).length > 0) {
       const { error } = await supabase.from("lead_sheet_templates").update(updates).eq("id", id)

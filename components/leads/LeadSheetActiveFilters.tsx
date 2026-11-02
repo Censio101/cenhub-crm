@@ -5,6 +5,7 @@ import { XIcon } from "lucide-react"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import type { LeadSegmentId, LeadStatusId } from "@/lib/leads"
+import type { FormFilterValue } from "@/lib/leads/form-filter"
 import {
   STATUS_FILTER_GROUPS,
   parseGroupUnionFilter,
@@ -74,6 +75,8 @@ export function LeadSheetActiveFilters({
   sheetFunnel,
   onSheetFunnelChange,
   enabledServices,
+  formFilter = "all",
+  onFormFilterChange,
   search,
   onSearchChange,
   onClear,
@@ -91,6 +94,8 @@ export function LeadSheetActiveFilters({
   sheetFunnel: FunnelId | "all"
   onSheetFunnelChange: (funnel: FunnelId | "all") => void
   enabledServices: readonly NamedService[]
+  formFilter?: FormFilterValue
+  onFormFilterChange?: (next: FormFilterValue) => void
   search: string
   onSearchChange: (value: string) => void
   onClear: () => void
@@ -140,6 +145,14 @@ export function LeadSheetActiveFilters({
       key: "source",
       label: t(FUNNEL_MESSAGE_KEYS[sheetFunnel]),
       onRemove: () => onSheetFunnelChange("all"),
+    })
+  }
+
+  if (formFilter !== "all" && onFormFilterChange) {
+    chips.push({
+      key: "form",
+      label: formFilter === "partial" ? t("filterFormPartial") : t("filterFormComplete"),
+      onRemove: () => onFormFilterChange("all"),
     })
   }
 

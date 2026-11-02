@@ -71,6 +71,8 @@ export type Lead = {
   source?: LeadSource
   lockedFields?: string[]
   customFields?: Record<string, unknown>
+  /** Steps of a stepped funnel form completed so far; null/undefined for all other leads. */
+  formStepsDone?: number | null
 }
 
 export function getLeadServiceIds(lead: {
