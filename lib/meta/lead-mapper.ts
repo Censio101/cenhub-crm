@@ -100,8 +100,13 @@ export function mapMetaLeadToInsertRow(
     meta_form_id: options.metaFormId ?? lead.form_id ?? null,
     meta_extra: mapped.metaExtra ?? {},
     // Answers mapped to custom columns are coerced to each column's type; invalid ones are skipped.
-    custom_fields: coerceWebhookCustomFields(mapped.customRaw, options.customFieldDefs ?? [])
-      .values,
+    // A sheet with a "meta_lead_id" column also keeps Meta's lead id there.
+    custom_fields: coerceWebhookCustomFields(
+      options.customFieldDefs?.some((def) => def.fieldKey === "meta_lead_id")
+        ? { ...mapped.customRaw, meta_lead_id: lead.id }
+        : mapped.customRaw,
+      options.customFieldDefs ?? []
+    ).values,
     import_id: null,
   }
 }
