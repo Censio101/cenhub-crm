@@ -37,6 +37,8 @@ export type MetaConfig = {
   metaPixelId: string
   metaPixelName: string
   metaPixelIsCrm: boolean
+  /** Send lead results to Meta: saved switch position. */
+  capiEnabled: boolean
   enabled: boolean
   metaSyncStatus: string
   metaSyncError: string | null
@@ -49,6 +51,7 @@ const emptyMetaConfig: MetaConfig = {
   metaPixelId: "",
   metaPixelName: "",
   metaPixelIsCrm: false,
+  capiEnabled: false,
   enabled: false,
   metaSyncStatus: "disabled",
   metaSyncError: null,
@@ -65,6 +68,7 @@ function toMetaConfig(
     metaPixelId: config.metaPixelId ?? "",
     metaPixelName: config.metaPixelName ?? "",
     metaPixelIsCrm: Boolean(config.metaPixelIsCrm),
+    capiEnabled: Boolean(config.capiEnabled),
     enabled: Boolean(config.enabled),
     metaSyncStatus: config.metaSyncStatus ?? "disabled",
     metaSyncError: config.metaSyncError ?? null,
@@ -496,7 +500,11 @@ export function AdminMetaConfigForm({
           </form>
         )}
         {!loading ? (
-          <AdminMetaConversionsPanel slug={slug} pixelId={config.metaPixelId} />
+          <AdminMetaConversionsPanel
+            slug={slug}
+            pixelId={config.metaPixelId}
+            initialEnabled={config.capiEnabled}
+          />
         ) : null}
       </div>
     </section>

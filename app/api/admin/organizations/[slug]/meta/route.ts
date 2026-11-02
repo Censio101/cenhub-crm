@@ -34,6 +34,7 @@ export async function GET(_request: Request, context: RouteContext) {
         metaPixelId: "",
         metaPixelName: "",
         metaPixelIsCrm: false,
+        capiEnabled: false,
         enabled: false,
         metaSyncStatus: "disabled",
         metaSyncError: null,

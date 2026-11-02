@@ -86,9 +86,19 @@ function Switch({
  * "Send won leads to Meta" for one client: switch, test event and the latest events.
  * `pixelId` is the pixel currently chosen in the form above (the switch needs a saved pixel).
  */
-export function AdminMetaConversionsPanel({ slug, pixelId }: { slug: string; pixelId: string }) {
+export function AdminMetaConversionsPanel({
+  slug,
+  pixelId,
+  initialEnabled = false,
+}: {
+  slug: string
+  pixelId: string
+  /** The saved switch position, known before the status loads, so the switch never flashes. */
+  initialEnabled?: boolean
+}) {
   const { t, locale } = useLanguage()
   const [state, setState] = useState<State | null>(null)
+  const [enabled, setEnabled] = useState(initialEnabled)
   const [loadError, setLoadError] = useState(false)
   const [testCode, setTestCode] = useState("")
   const [testing, setTesting] = useState(false)
@@ -123,6 +133,7 @@ export function AdminMetaConversionsPanel({ slug, pixelId }: { slug: string; pix
         const data = (await response.json()) as State
         if (signal.cancelled) return
         setState(data)
+        setEnabled(data.enabled)
         setLoadError(false)
       } catch {
         if (!signal.cancelled) setLoadError(true)
@@ -134,13 +145,13 @@ export function AdminMetaConversionsPanel({ slug, pixelId }: { slug: string; pix
   /** The switch moves at once; the server confirms in the background and the move is undone on failure. */
   async function toggle(next: boolean) {
     const request = ++toggleRequest.current
-    const previous = Boolean(state?.enabled)
+    const previous = enabled
     setNotice(null)
-    setState((current) => (current ? { ...current, enabled: next } : current))
+    setEnabled(next)
 
     const undo = (text: string) => {
       if (request !== toggleRequest.current) return
-      setState((current) => (current ? { ...current, enabled: previous } : current))
+      setEnabled(previous)
       showToast({ ok: false, text })
     }
 
@@ -185,8 +196,8 @@ export function AdminMetaConversionsPanel({ slug, pixelId }: { slug: string; pix
     }
   }
 
-  const savedPixel = state?.pixelId ?? ""
-  const canEnable = Boolean(savedPixel)
+  // Before the status loads, the pixel chosen in the form stands in for the saved one.
+  const canEnable = Boolean(state ? state.pixelId : pixelId)
 
   function formatTime(value: string) {
     const date = new Date(value)
@@ -200,7 +211,6 @@ export function AdminMetaConversionsPanel({ slug, pixelId }: { slug: string; pix
         })
   }
 
-  const enabled = Boolean(state?.enabled)
   const visibleStatuses = (["sent", "pending", "failed", "skipped", "expired"] as const).filter(
     (status) =>
       status === "sent" ||
@@ -224,19 +234,17 @@ export function AdminMetaConversionsPanel({ slug, pixelId }: { slug: string; pix
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
-          {state ? (
-            <span
-              className={cn(
-                "text-[12px] font-semibold",
-                enabled ? "text-emerald-700" : "text-muted-foreground",
-              )}
-            >
-              {enabled ? t("metaCapiOn") : t("metaCapiOff")}
-            </span>
-          ) : null}
+          <span
+            className={cn(
+              "text-[12px] font-semibold",
+              enabled ? "text-emerald-700" : "text-muted-foreground",
+            )}
+          >
+            {enabled ? t("metaCapiOn") : t("metaCapiOff")}
+          </span>
           <Switch
             checked={enabled}
-            disabled={!state || (!state.enabled && !canEnable)}
+            disabled={!enabled && !canEnable}
             onChange={(next) => void toggle(next)}
             label={t("metaCapiTitle")}
           />
@@ -253,6 +261,19 @@ export function AdminMetaConversionsPanel({ slug, pixelId }: { slug: string; pix
         <p className="border-t border-[#e8e0d8] px-4 py-2.5 text-[13px] text-red-700" role="alert">
           {t("metaCapiLoadFailed")}
         </p>
+      ) : null}
+
+      {!state && !loadError ? (
+        // Same height as the loaded content, so nothing jumps when the status arrives.
+        <div
+          className="flex items-center gap-2 border-t border-[#e8e0d8] bg-white px-4 py-3.5"
+          aria-hidden="true"
+        >
+          {[0, 1, 2].map((item) => (
+            <span key={item} className="h-[26px] w-[72px] animate-pulse rounded-full bg-[#f0ebe4]" />
+          ))}
+          <span className="ml-auto h-5 w-32 animate-pulse rounded bg-[#f0ebe4]" />
+        </div>
       ) : null}
 
       {state ? (
