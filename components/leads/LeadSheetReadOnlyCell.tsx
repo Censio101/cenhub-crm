@@ -159,7 +159,7 @@ export function LeadSheetReadOnlyPlainCell({
 
 /**
  * Form steps of a stepped funnel form: "5 / 8" with a small bar while the lead is partial, a green
- * "Complete" once every step is done. Leads from other sources have no step count.
+ * "8 / 8" once every step is done. Leads from other sources have no step count.
  */
 export function LeadSheetFormProgressCell({
   lead,
@@ -188,8 +188,11 @@ export function LeadSheetFormProgressCell({
         title={`${shown} / ${total}`}
       >
         {complete ? (
-          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-            {t("formProgressComplete")}
+          <span
+            className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-800"
+            title={t("formProgressComplete")}
+          >
+            {shown} / {total}
           </span>
         ) : (
           <>
