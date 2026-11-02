@@ -153,6 +153,8 @@ export function AppTopbarShell() {
                 src={clientLogoSrc}
                 alt={clientName ?? ""}
                 background={organization?.logoBackground ?? "transparent"}
+                padding={organization?.logoPadding}
+                radius={organization?.logoRadius}
               />
             </>
           ) : null}

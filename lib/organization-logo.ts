@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react"
+
 import { getSupabaseUrl } from "@/lib/supabase/config"
 
 export const ORGANIZATION_LOGO_BUCKET = "organization-logos"
@@ -25,6 +27,50 @@ export function isOrganizationLogoBackground(value: unknown): value is Organizat
 /** Unknown / missing values fall back to a white backdrop (safe for dark logos on dark headers). */
 export function parseOrganizationLogoBackground(value: unknown): OrganizationLogoBackground {
   return isOrganizationLogoBackground(value) ? value : "white"
+}
+
+/** Padding and corner radius of the logo chip come in 5 steps. Step 2 is the original look. */
+export const LOGO_STEP_MIN = 0
+export const LOGO_STEP_MAX = 4
+export const LOGO_STEP_DEFAULT = 2
+
+export function isLogoStep(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= LOGO_STEP_MIN &&
+    value <= LOGO_STEP_MAX
+  )
+}
+
+export function parseLogoStep(value: unknown): number {
+  return isLogoStep(value) ? value : LOGO_STEP_DEFAULT
+}
+
+export type LogoChipSize = "header" | "stage"
+
+/** [horizontal, vertical] padding in px per step. */
+const PADDING_PX: Record<LogoChipSize, ReadonlyArray<readonly [number, number]>> = {
+  header: [[0, 0], [6, 2], [12, 4], [18, 8], [24, 12]],
+  stage: [[0, 0], [12, 6], [20, 14], [28, 20], [36, 26]],
+}
+
+/** Corner radius in px per step; the last step is a pill. */
+const RADIUS_PX: Record<LogoChipSize, readonly number[]> = {
+  header: [0, 6, 12, 18, 999],
+  stage: [0, 8, 16, 24, 999],
+}
+
+export function logoChipStyle(size: LogoChipSize, padding: number, radius: number): CSSProperties {
+  const [x, y] = PADDING_PX[size][parseLogoStep(padding)]
+  return {
+    padding: `${y}px ${x}px`,
+    borderRadius: `${RADIUS_PX[size][parseLogoStep(radius)]}px`,
+  }
+}
+
+export function logoRadiusPx(size: LogoChipSize, radius: number): string {
+  return `${RADIUS_PX[size][parseLogoStep(radius)]}px`
 }
 
 export function isAllowedOrganizationLogoMime(type: string): boolean {

@@ -8,6 +8,9 @@ export type OrganizationRow = {
   name: string
   logo_url: string | null
   logo_background?: string | null
+  /** Logo chip padding and corner radius, steps 0 to 4 (2 = original look). */
+  logo_padding?: number | null
+  logo_radius?: number | null
   demo_mode: boolean
   lead_sheet_template_id?: string | null
   /** Set when the lead sheet changed while webhooks existed; cleared once reviewed. */

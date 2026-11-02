@@ -1,4 +1,8 @@
-import type { OrganizationLogoBackground } from "@/lib/organization-logo"
+import {
+  LOGO_STEP_DEFAULT,
+  logoChipStyle,
+  type OrganizationLogoBackground,
+} from "@/lib/organization-logo"
 import { cn } from "cn"
 
 const backdropClassName: Record<OrganizationLogoBackground, string> = {
@@ -16,17 +20,23 @@ export function ClientLogoMark({
   src,
   alt,
   background = "transparent",
+  padding = LOGO_STEP_DEFAULT,
+  radius = LOGO_STEP_DEFAULT,
   className,
 }: {
   src: string
   alt: string
   background?: OrganizationLogoBackground
+  /** Chip padding and corner radius, steps 0 to 4 (2 = original look). */
+  padding?: number
+  radius?: number
   className?: string
 }) {
   return (
     <span
+      style={logoChipStyle("header", padding, radius)}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-xl px-2.5 py-1 sm:px-3",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden",
         backdropClassName[background],
         className
       )}

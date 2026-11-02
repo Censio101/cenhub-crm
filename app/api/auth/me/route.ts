@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { getSessionContext } from "@/lib/auth/session-context"
 import { isOrganizationProfileComplete } from "@/lib/organization-profile"
 import {
+  parseLogoStep,
   parseOrganizationLogoBackground,
   resolveOrganizationLogoUrl,
 } from "@/lib/organization-logo"
@@ -34,6 +35,8 @@ export async function GET() {
           demoMode: ctx.organization.demo_mode,
           logoUrl: resolveOrganizationLogoUrl(ctx.organization.logo_url),
           logoBackground: parseOrganizationLogoBackground(ctx.organization.logo_background),
+          logoPadding: parseLogoStep(ctx.organization.logo_padding),
+          logoRadius: parseLogoStep(ctx.organization.logo_radius),
           profileComplete: isOrganizationProfileComplete(ctx.organization),
           dashboardHiddenMetrics: parseHiddenMetrics(ctx.organization.dashboard_hidden_metrics),
         }

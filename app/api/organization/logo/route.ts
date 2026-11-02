@@ -5,7 +5,11 @@ import {
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
 import { updateOrganizationById } from "@/lib/db/organizations-repository"
-import { isOrganizationLogoBackground, resolveOrganizationLogoUrl } from "@/lib/organization-logo"
+import {
+  isLogoStep,
+  isOrganizationLogoBackground,
+  resolveOrganizationLogoUrl,
+} from "@/lib/organization-logo"
 import {
   clearOrganizationLogo,
   uploadOrganizationLogo,
@@ -57,16 +61,42 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const body = (await request.json().catch(() => ({}))) as { background?: unknown }
-    if (!isOrganizationLogoBackground(body.background)) {
-      return NextResponse.json({ error: "Invalid background" }, { status: 400 })
+    const body = (await request.json().catch(() => ({}))) as {
+      background?: unknown
+      padding?: unknown
+      radius?: unknown
+    }
+    // Any of the three can be sent on its own; only valid values are saved.
+    const patch: { logo_background?: string; logo_padding?: number; logo_radius?: number } = {}
+    if (body.background !== undefined) {
+      if (!isOrganizationLogoBackground(body.background)) {
+        return NextResponse.json({ error: "Invalid background" }, { status: 400 })
+      }
+      patch.logo_background = body.background
+    }
+    if (body.padding !== undefined) {
+      if (!isLogoStep(body.padding)) {
+        return NextResponse.json({ error: "Invalid padding" }, { status: 400 })
+      }
+      patch.logo_padding = body.padding
+    }
+    if (body.radius !== undefined) {
+      if (!isLogoStep(body.radius)) {
+        return NextResponse.json({ error: "Invalid radius" }, { status: 400 })
+      }
+      patch.logo_radius = body.radius
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: "Nothing to update" }, { status: 400 })
     }
 
-    await updateOrganizationById(createAdminClient(), ctx.organization.id, {
-      logo_background: body.background,
-    })
+    await updateOrganizationById(createAdminClient(), ctx.organization.id, patch)
 
-    return NextResponse.json({ logoBackground: body.background })
+    return NextResponse.json({
+      logoBackground: patch.logo_background,
+      logoPadding: patch.logo_padding,
+      logoRadius: patch.logo_radius,
+    })
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)
     if (orgResponse.status !== 500) return orgResponse

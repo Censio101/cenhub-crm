@@ -149,12 +149,17 @@ export function CompanyDetailsBoard() {
   // Single source of truth: the session organization. Choices are applied to it optimistically
   // (so the banner chip, swatches and top header all update together) and saved in the background.
   const logoBackground: OrganizationLogoBackground = organization?.logoBackground ?? "white"
+  const logoPadding = organization?.logoPadding ?? 2
+  const logoRadius = organization?.logoRadius ?? 2
 
   const logoController = useCompanyLogo({
     uploadUrl: "/api/organization/logo",
     background: logoBackground,
     onLogoChange: () => void reloadOrg({ silent: true }),
+    padding: logoPadding,
+    radius: logoRadius,
     onBackgroundChange: (next) => patchOrganization({ logoBackground: next }),
+    onStyleChange: (patch) => patchOrganization(patch),
     onError: setLogoError,
   })
 
@@ -290,6 +295,8 @@ export function CompanyDetailsBoard() {
             <CompanyLogoStage
               logoUrl={organization.logoUrl}
               background={logoBackground}
+              padding={logoPadding}
+              radius={logoRadius}
               canEdit={canEdit}
               controller={logoController}
             />
@@ -302,6 +309,8 @@ export function CompanyDetailsBoard() {
                 <CompanyLogoControls
                   hasLogo={Boolean(organization.logoUrl)}
                   background={logoBackground}
+                  padding={logoPadding}
+                  radius={logoRadius}
                   controller={logoController}
                 />
               ) : null}

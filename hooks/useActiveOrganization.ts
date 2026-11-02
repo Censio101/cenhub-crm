@@ -12,6 +12,9 @@ export type ActiveOrganization = {
   demoMode: boolean
   logoUrl: string | null
   logoBackground: OrganizationLogoBackground
+  /** Logo chip padding and corner radius, steps 0 to 4. */
+  logoPadding: number
+  logoRadius: number
   profileComplete: boolean
   hvidbjergPartner: boolean
   /** Dashboard KPI metrics a Censio admin has hidden for this client. */
