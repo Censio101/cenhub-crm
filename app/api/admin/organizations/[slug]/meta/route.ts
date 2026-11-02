@@ -32,6 +32,8 @@ export async function GET(_request: Request, context: RouteContext) {
         metaAdAccountId: "",
         metaPageId: "",
         metaPixelId: "",
+        metaPixelName: "",
+        metaPixelIsCrm: false,
         enabled: false,
         metaSyncStatus: "disabled",
         metaSyncError: null,
@@ -86,6 +88,8 @@ export async function PUT(request: Request, context: RouteContext) {
       metaAdAccountId?: string
       metaPageId?: string
       metaPixelId?: string
+      metaPixelName?: string
+      metaPixelIsCrm?: boolean
       enabled?: boolean
     }
 
@@ -100,6 +104,8 @@ export async function PUT(request: Request, context: RouteContext) {
       metaAdAccountId: body.metaAdAccountId?.trim(),
       metaPageId: body.metaPageId?.trim(),
       metaPixelId: body.metaPixelId?.trim(),
+      metaPixelName: typeof body.metaPixelName === "string" ? body.metaPixelName.trim() : undefined,
+      metaPixelIsCrm: typeof body.metaPixelIsCrm === "boolean" ? body.metaPixelIsCrm : undefined,
       enabled: body.enabled,
     })
 

@@ -1,3 +1,4 @@
+import { isQualityFieldKey, qualityRank } from "@/lib/lead-sheet/quality"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import {
   formatLeadServices,
@@ -18,7 +19,11 @@ const SORTABLE_BUILTIN_KEYS = new Set(["date", "wonDate", "salesPrice", "profit"
 
 /** Only deal/date metrics and numeric custom fields — not name, status, services, etc. */
 export function isColumnSortable(col: LeadSheetTemplateColumn): boolean {
-  if (col.kind === "custom") return col.customField.fieldType === "number"
+  if (col.kind === "custom") {
+    // The quality dropdown sorts by how good the lead is.
+    if (col.customField.fieldType === "select") return isQualityFieldKey(col.customField.fieldKey)
+    return col.customField.fieldType === "number"
+  }
   return SORTABLE_BUILTIN_KEYS.has(col.builtinKey)
 }
 
@@ -47,6 +52,9 @@ function sortValueForColumn(
 ): string | number {
   if (col.kind === "custom") {
     const val = lead.customFields?.[col.customField.fieldKey]
+    if (col.customField.fieldType === "select" && isQualityFieldKey(col.customField.fieldKey)) {
+      return qualityRank(val)
+    }
     switch (col.customField.fieldType) {
       case "number":
         return typeof val === "number" ? val : Number.NaN
@@ -99,6 +107,11 @@ export function compareLeadsByColumn(
   if (typeof a === "number" && typeof b === "number") {
     const aNan = Number.isNaN(a)
     const bNan = Number.isNaN(b)
+    if ((aNan || bNan) && col.kind === "custom" && col.customField.fieldType === "select") {
+      // Unrated leads stay at the bottom in both directions.
+      if (aNan && bNan) return left.id.localeCompare(right.id)
+      return aNan ? 1 : -1
+    }
     if (aNan || bNan) {
       cmp = compareNullableNumber(Number.isNaN(a) ? null : a, Number.isNaN(b) ? null : b)
     } else {

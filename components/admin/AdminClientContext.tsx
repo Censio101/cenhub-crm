@@ -87,6 +87,8 @@ export function AdminClientProvider({ slug, children }: { slug: string; children
                 metaAdAccountId: data.metaConfig.metaAdAccountId ?? "",
                 metaPageId: data.metaConfig.metaPageId ?? "",
                 metaPixelId: data.metaConfig.metaPixelId ?? "",
+                metaPixelName: data.metaConfig.metaPixelName ?? "",
+                metaPixelIsCrm: Boolean(data.metaConfig.metaPixelIsCrm),
                 enabled: Boolean(data.metaConfig.enabled),
                 metaSyncStatus: data.metaConfig.metaSyncStatus ?? "disabled",
                 metaSyncError: data.metaConfig.metaSyncError ?? null,

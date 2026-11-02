@@ -148,7 +148,7 @@ const daMessages = {
   navAdminWorkspace: "Admin-workspace",
   navAllClients: "Alle klienter",
   adminSessionIdentity: "{name} · admin",
-  clientContextConfigureClient: "Denne klients opsætning",
+  clientContextConfigureClient: "{name} opsætning",
   adminTopbarNavAria: "Censio admin",
   adminTopbarClientSettingsMenu: "Klientindstillinger",
   adminTopbarAllClients: "Alle klienter",
@@ -2220,6 +2220,7 @@ const daMessages = {
   leadSheetImageLinkTextTooLong: "Linkteksten er for lang.",
   leadSheetImageLegacyHint:
     "Dette er et tidligere uploadet foto. Hvis du gemmer et link, erstattes det.",
+  leadSheetQualityNotRated: "Ikke vurderet",
   leadSheetSelectPlaceholder: "Vælg",
   leadSheetSelectPopupHint: "Vælg én mulighed for dette lead.",
   leadSheetSelectEmpty: "Ingen valgmuligheder er sat op for denne kolonne.",

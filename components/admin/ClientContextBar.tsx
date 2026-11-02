@@ -14,6 +14,7 @@ import { resolveContextBarClientList } from "@/lib/admin/client-picker"
 import {
   clientInitialsFromName,
   formatClientDisplayName,
+  shortClientName,
 } from "@/lib/admin/format-client-display-name"
 import { outfit } from "@/lib/fonts/app-fonts"
 import { cn } from "cn"
@@ -86,7 +87,9 @@ export function ClientContextBar() {
           className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-[#d3c3b2] bg-white px-3 py-1.5 text-sm font-medium text-black shadow-sm transition-colors hover:border-[#c4b5a6] hover:bg-[#faf8f6]"
         >
           <Settings2Icon className="size-4 shrink-0 text-black" aria-hidden="true" />
-          {t("clientContextConfigureClient")}
+          <span className="max-w-[16rem] truncate">
+            {t("clientContextConfigureClient", { name: shortClientName(organization.name) })}
+          </span>
         </Link>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
           <span className="shrink-0 text-sm font-medium text-muted-foreground">

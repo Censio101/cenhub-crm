@@ -52,12 +52,17 @@ export function MetaPixelSelect({
   slug,
   adAccountId,
   value,
+  savedName = "",
+  savedIsCrm = false,
   onChange,
 }: {
   slug: string
   adAccountId: string
   value: string
-  onChange: (pixelId: string) => void
+  /** Name and CRM flag saved with the pixel: shown at once while the list loads from Meta. */
+  savedName?: string
+  savedIsCrm?: boolean
+  onChange: (pixelId: string, pixel?: MetaPixel) => void
 }) {
   const { t } = useLanguage()
   const [pixels, setPixels] = useState<MetaPixel[]>([])
@@ -139,19 +144,25 @@ export function MetaPixelSelect({
       ) : (
         <Select
           value={value || NONE}
-          disabled={loading}
           onValueChange={(next) => {
-            if (typeof next === "string") onChange(next === NONE ? "" : next)
+            if (typeof next !== "string") return
+            const pixel = pixels.find((candidate) => candidate.id === next)
+            onChange(next === NONE ? "" : next, pixel)
           }}
         >
           <SelectTrigger className={adminSelectTriggerClass} aria-label={t("metaPixelId")}>
             <SelectValue>
-              {loading ? (
-                <span className="text-muted-foreground">{t("metaPixelLoading")}</span>
-              ) : !value ? (
-                <span className="text-muted-foreground">{t("metaPixelNone")}</span>
+              {!value ? (
+                loading ? (
+                  <span className="text-muted-foreground">{t("metaPixelLoading")}</span>
+                ) : (
+                  <span className="text-muted-foreground">{t("metaPixelNone")}</span>
+                )
               ) : selected ? (
                 <PixelLabel name={selected.name} id={selected.id} isCrm={selected.isCrm} />
+              ) : loading ? (
+                // The list is still coming from Meta: show what was saved with the pixel.
+                <PixelLabel name={savedName || value} id={savedName ? value : ""} isCrm={savedIsCrm} />
               ) : (
                 <span className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="shrink-0 font-mono text-[13px]">{value}</span>
@@ -170,7 +181,7 @@ export function MetaPixelSelect({
             <SelectItem value={NONE} className="py-2">
               <span className="text-muted-foreground">{t("metaPixelNone")}</span>
             </SelectItem>
-            {value && !selected ? (
+            {value && !selected && !loading ? (
               <SelectItem value={value} className="py-2">
                 <span className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="shrink-0 font-mono text-[13px]">{value}</span>
@@ -178,6 +189,11 @@ export function MetaPixelSelect({
                     {t("metaPixelNotOnAccount")}
                   </span>
                 </span>
+              </SelectItem>
+            ) : null}
+            {value && !selected && loading ? (
+              <SelectItem value={value} className="py-2">
+                <PixelLabel name={savedName || value} id={savedName ? value : ""} isCrm={savedIsCrm} />
               </SelectItem>
             ) : null}
             {pixels.map((pixel) => (

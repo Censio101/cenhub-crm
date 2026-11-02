@@ -35,6 +35,8 @@ export type MetaConfig = {
   metaAdAccountId: string
   metaPageId: string
   metaPixelId: string
+  metaPixelName: string
+  metaPixelIsCrm: boolean
   enabled: boolean
   metaSyncStatus: string
   metaSyncError: string | null
@@ -45,6 +47,8 @@ const emptyMetaConfig: MetaConfig = {
   metaAdAccountId: "",
   metaPageId: "",
   metaPixelId: "",
+  metaPixelName: "",
+  metaPixelIsCrm: false,
   enabled: false,
   metaSyncStatus: "disabled",
   metaSyncError: null,
@@ -59,6 +63,8 @@ function toMetaConfig(
     metaAdAccountId: config.metaAdAccountId ?? "",
     metaPageId: config.metaPageId ?? "",
     metaPixelId: config.metaPixelId ?? "",
+    metaPixelName: config.metaPixelName ?? "",
+    metaPixelIsCrm: Boolean(config.metaPixelIsCrm),
     enabled: Boolean(config.enabled),
     metaSyncStatus: config.metaSyncStatus ?? "disabled",
     metaSyncError: config.metaSyncError ?? null,
@@ -400,7 +406,16 @@ export function AdminMetaConfigForm({
               slug={slug}
               adAccountId={config.metaAdAccountId}
               value={config.metaPixelId}
-              onChange={(metaPixelId) => setConfig((current) => ({ ...current, metaPixelId }))}
+              savedName={config.metaPixelName}
+              savedIsCrm={config.metaPixelIsCrm}
+              onChange={(metaPixelId, pixel) =>
+                setConfig((current) => ({
+                  ...current,
+                  metaPixelId,
+                  metaPixelName: pixel?.name ?? "",
+                  metaPixelIsCrm: pixel?.isCrm ?? false,
+                }))
+              }
             />
 
             <div className="grid gap-3 sm:grid-cols-2">

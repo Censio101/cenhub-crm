@@ -86,6 +86,11 @@ import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import { isServiceId, resolveServiceLabel } from "@/lib/performance/services"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
+import {
+  isQualityFieldKey,
+  qualityTone,
+  type QualityTone,
+} from "@/lib/lead-sheet/quality"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import {
   computeLeadPipelineStats,
@@ -234,6 +239,18 @@ const SHEET_DROPDOWN_TRIGGER_CLASS =
 const SHEET_DROPDOWN_PANEL_CLASS =
   "z-[80] w-52 rounded-xl border border-[#e4ddd4] bg-white p-1 shadow-[0_8px_22px_rgba(26,18,8,0.12)]"
 
+const QUALITY_DOT_CLASS: Record<QualityTone, string> = {
+  high: "bg-emerald-500",
+  medium: "bg-amber-500",
+  low: "bg-rose-400",
+}
+
+const QUALITY_TRIGGER_CLASS: Record<QualityTone, string> = {
+  high: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-50",
+  medium: "border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-50",
+  low: "border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-300 hover:bg-rose-50",
+}
+
 /** Single-select custom column: popover picker (no inline text field). */
 function LeadSheetSelectCell({
   value,
@@ -242,6 +259,8 @@ function LeadSheetSelectCell({
   placeholder,
   onChange,
   disabled,
+  toneOf,
+  clearLabel,
 }: {
   value: string
   options: ReadonlyArray<{ id: string; label: string }>
@@ -249,9 +268,14 @@ function LeadSheetSelectCell({
   placeholder: string
   onChange: (value: string) => void
   disabled?: boolean
+  /** Optional: colours the label (used for the quality column). */
+  toneOf?: (value: string) => QualityTone | null
+  /** Optional: adds an entry at the top that empties the cell (used for the quality column). */
+  clearLabel?: string
 }) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
+  const currentTone = toneOf && value ? toneOf(value) : null
   const display =
     options.find((option) => option.id === value)?.label ??
     (value ? value : null)
@@ -263,15 +287,60 @@ function LeadSheetSelectCell({
           aria-label={label}
           disabled={disabled}
           data-lead-sheet-dropdown=""
-          className={cn(SHEET_DROPDOWN_TRIGGER_CLASS, disabled && "cursor-not-allowed opacity-60")}
+          className={cn(
+            SHEET_DROPDOWN_TRIGGER_CLASS,
+            currentTone && QUALITY_TRIGGER_CLASS[currentTone],
+            disabled && "cursor-not-allowed opacity-60"
+          )}
         >
-          <span className={cn("min-w-0 flex-1 truncate", !display && "text-muted-foreground")}>
+          {currentTone ? (
+            <span
+              className={cn("size-2 shrink-0 rounded-full", QUALITY_DOT_CLASS[currentTone])}
+              aria-hidden="true"
+            />
+          ) : null}
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate",
+              !display && "text-muted-foreground",
+              currentTone && "font-medium"
+            )}
+          >
             {display ?? placeholder}
           </span>
           <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
         </PopoverTrigger>
         <PopoverContent align="start" alignOffset={4} className={SHEET_DROPDOWN_PANEL_CLASS}>
           <ul className="max-h-52 overflow-y-auto" role="listbox" aria-label={label}>
+          {clearLabel ? (
+            <li role="presentation">
+              <button
+                type="button"
+                role="option"
+                aria-selected={!value}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-full px-2.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-[#f7f3ee]",
+                  !value && "bg-primary/10 font-medium text-primary"
+                )}
+                onClick={() => {
+                  onChange("")
+                  setOpen(false)
+                }}
+              >
+                <span
+                  className={cn(
+                    "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                    !value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-input bg-background"
+                  )}
+                >
+                  {!value ? <CheckIcon className="size-3" /> : null}
+                </span>
+                <span className="min-w-0 truncate">{clearLabel}</span>
+              </button>
+            </li>
+          ) : null}
           {options.length === 0 ? (
             <li className="px-2 py-2 text-sm text-muted-foreground">{t("leadSheetSelectEmpty")}</li>
           ) : (
@@ -302,6 +371,15 @@ function LeadSheetSelectCell({
                     >
                       {selected ? <CheckIcon className="size-3" /> : null}
                     </span>
+                    {toneOf && toneOf(option.id) ? (
+                      <span
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          QUALITY_DOT_CLASS[toneOf(option.id) as QualityTone]
+                        )}
+                        aria-hidden="true"
+                      />
+                    ) : null}
                     <span className="min-w-0 truncate">{option.label}</span>
                   </button>
                 </li>
@@ -706,9 +784,21 @@ export function LeadsTable({
             <LeadSheetSelectCell
               value={current}
               label={col.customField.label}
-              placeholder={t("leadSheetSelectPlaceholder")}
+              placeholder={
+                isQualityFieldKey(col.customField.fieldKey)
+                  ? t("leadSheetQualityNotRated")
+                  : t("leadSheetSelectPlaceholder")
+              }
               options={cellOptions}
               onChange={(v) => patchCustom(v)}
+              toneOf={
+                isQualityFieldKey(col.customField.fieldKey) ? qualityTone : undefined
+              }
+              clearLabel={
+                isQualityFieldKey(col.customField.fieldKey)
+                  ? t("leadSheetQualityNotRated")
+                  : undefined
+              }
             />
           </TableCell>
         )

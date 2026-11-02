@@ -8,6 +8,11 @@ export function formatClientDisplayName(name: string) {
     .join(" ")
 }
 
+/** The first two words of a client name, for tight spaces (e.g. "Suntech Nordic Solar ApS" → "Suntech Nordic"). */
+export function shortClientName(name: string, maxWords = 2) {
+  return formatClientDisplayName(name).split(/\s+/).filter(Boolean).slice(0, maxWords).join(" ")
+}
+
 export function clientInitialsFromName(name: string) {
   const words = formatClientDisplayName(name).split(/\s+/).filter(Boolean)
   if (words.length === 0) return "?"

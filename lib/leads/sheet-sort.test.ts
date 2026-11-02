@@ -70,4 +70,48 @@ describe("sheet-sort", () => {
       isColumnSortable({ id: "n", sortIndex: 0, kind: "builtin", builtinKey: "fullName" })
     ).toBe(false)
   })
+
+  describe("quality column", () => {
+    const qualityCol: LeadSheetTemplateColumn = {
+      id: "q",
+      sortIndex: 3,
+      kind: "custom",
+      customField: {
+        id: "f1",
+        fieldKey: "kvalitet",
+        label: "Kvalitet",
+        fieldType: "select",
+        required: false,
+        config: { options: ["Lav", "Mellem", "Høj"] },
+      },
+    }
+    const rated = (id: string, value?: string) =>
+      lead(id, { customFields: value ? { kvalitet: value } : {} })
+    const rows = [rated("low", "Lav"), rated("none"), rated("high", "Høj"), rated("mid", "Mellem")]
+
+    it("is sortable, other dropdowns are not", () => {
+      expect(isColumnSortable(qualityCol)).toBe(true)
+      expect(
+        isColumnSortable({
+          ...qualityCol,
+          customField: { ...qualityCol.customField, fieldKey: "roof_type" },
+        } as LeadSheetTemplateColumn)
+      ).toBe(false)
+    })
+
+    it("first click lists the best leads first, second click the worst first", () => {
+      expect(sortLeadsBySheetColumn(rows, qualityCol, "asc").map((l) => l.id)).toEqual([
+        "high",
+        "mid",
+        "low",
+        "none",
+      ])
+      expect(sortLeadsBySheetColumn(rows, qualityCol, "desc").map((l) => l.id)).toEqual([
+        "low",
+        "mid",
+        "high",
+        "none",
+      ])
+    })
+  })
 })

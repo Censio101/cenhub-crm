@@ -5,6 +5,9 @@ export type ClientMetaConfig = {
   metaAdAccountId: string
   metaPageId: string
   metaPixelId: string
+  /** Name and CRM flag of the chosen pixel, saved with it so the page can show it instantly. */
+  metaPixelName: string
+  metaPixelIsCrm: boolean
   enabled: boolean
   metaSyncStatus: string
   metaSyncError: string | null
@@ -18,6 +21,8 @@ export type MetaConfigRow = {
   meta_ad_account_id: string | null
   meta_page_id: string | null
   meta_pixel_id: string | null
+  meta_pixel_name?: string | null
+  meta_pixel_is_crm?: boolean | null
   meta_system_user_token_encrypted: string | null
   meta_page_access_token_encrypted: string | null
   meta_sync_status: string
@@ -33,6 +38,8 @@ function rowToConfig(data: MetaConfigRow): ClientMetaConfig {
     metaAdAccountId: data.meta_ad_account_id ?? "",
     metaPageId: data.meta_page_id ?? "",
     metaPixelId: data.meta_pixel_id ?? "",
+    metaPixelName: data.meta_pixel_name ?? "",
+    metaPixelIsCrm: Boolean(data.meta_pixel_is_crm),
     enabled: Boolean(data.enabled),
     metaSyncStatus: data.meta_sync_status ?? "disabled",
     metaSyncError: data.meta_sync_error ?? null,
@@ -123,6 +130,8 @@ export async function upsertMetaConfig(
     metaAdAccountId?: string
     metaPageId?: string
     metaPixelId?: string
+    metaPixelName?: string
+    metaPixelIsCrm?: boolean
     enabled?: boolean
   }
 ): Promise<ClientMetaConfig> {
@@ -132,6 +141,12 @@ export async function upsertMetaConfig(
     input.metaAdAccountId ?? existing?.meta_ad_account_id ?? ""
   const metaPageId = input.metaPageId ?? existing?.meta_page_id ?? ""
   const hasAdAccount = Boolean(metaAdAccountId.trim())
+  const metaPixelId = input.metaPixelId ?? existing?.meta_pixel_id ?? ""
+  // A different pixel never keeps the old pixel's name.
+  const pixelChanged = metaPixelId !== (existing?.meta_pixel_id ?? "")
+  const metaPixelName = input.metaPixelName ?? (pixelChanged ? "" : existing?.meta_pixel_name ?? "")
+  const metaPixelIsCrm =
+    input.metaPixelIsCrm ?? (pixelChanged ? false : Boolean(existing?.meta_pixel_is_crm))
 
   let metaSyncStatus = existing?.meta_sync_status ?? "disabled"
   if (!enabled) {
@@ -147,7 +162,9 @@ export async function upsertMetaConfig(
         organization_id: organizationId,
         meta_ad_account_id: metaAdAccountId,
         meta_page_id: metaPageId,
-        meta_pixel_id: input.metaPixelId ?? existing?.meta_pixel_id ?? "",
+        meta_pixel_id: metaPixelId,
+        meta_pixel_name: metaPixelName,
+        meta_pixel_is_crm: metaPixelIsCrm,
         enabled,
         meta_sync_status: metaSyncStatus,
         meta_sync_error: enabled ? null : existing?.meta_sync_error ?? null,
