@@ -34,4 +34,15 @@ describe("essentialSheetColumns", () => {
     ]
     expect(essentialSheetColumns(cols).map((c) => c.id)).toEqual(["1", "2", "3", "5"])
   })
+
+  it("keeps postcode and city for calling", () => {
+    const cols = [
+      builtin("fullName", "1"),
+      builtin("zipCode", "2"),
+      builtin("city", "3"),
+      builtin("address", "4"),
+      builtin("status", "5"),
+    ]
+    expect(essentialSheetColumns(cols).map((c) => c.id)).toEqual(["1", "2", "3", "5"])
+  })
 })

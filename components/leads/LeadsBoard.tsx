@@ -1411,7 +1411,7 @@ export function LeadsBoard() {
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
-  const sheetFit = useFitToViewportHeight()
+  const { ref: sheetFitRef, style: sheetFitStyle } = useFitToViewportHeight()
   const [editingId, setEditingId] = useState<string | null>(null)
   const editingLead = editingId ? (leads.find((lead) => lead.id === editingId) ?? null) : null
 
@@ -1712,8 +1712,8 @@ export function LeadsBoard() {
       </LeadSheetFocusShell>
 
       <section
-        ref={sheetFit.ref}
-        style={sheetFit.style}
+        ref={sheetFitRef}
+        style={sheetFitStyle}
         className={cn(
           "dashboard-card flex max-h-[calc(100dvh-7rem)] min-h-[24rem] flex-col overflow-hidden",
           sheetFocusOpen && "hidden"
