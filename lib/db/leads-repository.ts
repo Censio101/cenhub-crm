@@ -37,9 +37,13 @@ export async function createLead(
   supabase: SupabaseClient,
   organizationId: string,
   lead: Lead,
-  options: { legacyId?: string | null } = {}
+  options: {
+    legacyId?: string | null
+    leadFunnelId?: string | null
+    funnelSourceLabel?: string | null
+  } = {}
 ): Promise<Lead> {
-  const row = leadToInsertRow(lead, organizationId, lead.source ?? "manual", options.legacyId)
+  const row = leadToInsertRow(lead, organizationId, lead.source ?? "manual", options)
   const { data, error } = await supabase
     .from("leads")
     .insert(row)

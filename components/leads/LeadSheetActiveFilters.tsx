@@ -82,6 +82,9 @@ export function LeadSheetActiveFilters({
   onClear,
   showServiceFilter = true,
   showSourceFilter = true,
+  showFormSourceFilter = false,
+  sheetFormSource = "all",
+  onSheetFormSourceChange,
 }: {
   dateIsAllTime: boolean
   datePreset: DatePreset
@@ -103,6 +106,9 @@ export function LeadSheetActiveFilters({
   onClear: () => void
   showServiceFilter?: boolean
   showSourceFilter?: boolean
+  showFormSourceFilter?: boolean
+  sheetFormSource?: string | "all"
+  onSheetFormSourceChange?: (next: string | "all") => void
 }) {
   const { locale, t } = useLanguage()
   const chips: Chip[] = []
@@ -149,6 +155,14 @@ export function LeadSheetActiveFilters({
       key: "source",
       label: t(FUNNEL_MESSAGE_KEYS[sheetFunnel]),
       onRemove: () => onSheetFunnelChange("all"),
+    })
+  }
+
+  if (showFormSourceFilter && sheetFormSource !== "all" && onSheetFormSourceChange) {
+    chips.push({
+      key: "formSource",
+      label: sheetFormSource,
+      onRemove: () => onSheetFormSourceChange("all"),
     })
   }
 

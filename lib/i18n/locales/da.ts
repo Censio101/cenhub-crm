@@ -2101,6 +2101,12 @@ const daMessages = {
   partialStepsSaved: "Delvise trin gemt.",
   partialStepsOff: "Delvise trin slået fra.",
   leadSheetFilterLabelForm: "Formular",
+  leadSheetFilterLabelFormSource: "Leadformular",
+  filterFormSourceAria: "Filtrer efter hvilken formular leadet kom fra",
+  filterFormSourceAll: "Alle formularer",
+  funnelSheetSourceLabel: "Label i leadark",
+  funnelSheetSourceLabelHint:
+    "Vises i filteret Leadformular på leadarket (fx Beregning, Quick-Heat Trailer). Tom = webhook-navn.",
   filterFormAria: "Filtrer efter udfyldt formular",
   filterFormAll: "Alle leads",
   filterFormComplete: "Komplet",

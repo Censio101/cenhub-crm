@@ -250,6 +250,7 @@ export function FunnelDetail({
         >
           {tab === "connect" ? (
             <FunnelSetupTab
+              slug={slug}
               funnel={funnel}
               url={url}
               customFields={customFields}
@@ -258,6 +259,7 @@ export function FunnelDetail({
               copiedKey={copiedKey}
               onCopy={onCopy}
               onRegenerateSecret={onRegenerateSecret}
+              onFunnelChange={onFunnelChange}
             />
           ) : tab === "fields" ? (
             <FunnelFieldsTab

@@ -81,6 +81,8 @@ export function leadRowToLead(row: LeadRow): Lead {
     lockedFields: row.locked_fields ?? [],
     customFields: row.custom_fields ?? {},
     formStepsDone: row.form_steps_done ?? null,
+    leadFunnelId: row.lead_funnel_id ?? null,
+    funnelSourceLabel: row.funnel_source_label ?? null,
   }
 }
 
@@ -150,9 +152,14 @@ export function leadToInsertRow(
   lead: Lead,
   organizationId: string,
   source: LeadRow["source"] = "demo",
-  /** Stable external identity (unique per organization); enables duplicate protection. */
-  legacyId?: string | null
+  options: {
+    /** Stable external identity (unique per organization); enables duplicate protection. */
+    legacyId?: string | null
+    leadFunnelId?: string | null
+    funnelSourceLabel?: string | null
+  } = {}
 ): Omit<LeadRow, "created_at" | "updated_at"> {
+  const legacyId = options.legacyId
   return {
     id: lead.id.includes("-") && lead.id.length === 36 ? lead.id : randomUUID(),
     organization_id: organizationId,
@@ -183,6 +190,8 @@ export function leadToInsertRow(
     custom_fields: lead.customFields ?? {},
     form_steps_done: lead.formStepsDone ?? null,
     import_id: null,
+    lead_funnel_id: options.leadFunnelId ?? lead.leadFunnelId ?? null,
+    funnel_source_label: options.funnelSourceLabel ?? lead.funnelSourceLabel ?? null,
   }
 }
 

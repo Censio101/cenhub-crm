@@ -34,6 +34,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       regenerateSecret?: boolean
       dataFormat?: "ours" | "own"
       webhookFieldTargets?: string[] | null
+      sheetSourceLabel?: string | null
     }
 
     const admin = createAdminClient()
@@ -90,6 +91,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       webhookSecret: body.regenerateSecret ? generateWebhookSecret() : undefined,
       dataFormat: body.dataFormat,
       webhookFieldTargets,
+      sheetSourceLabel:
+        body.sheetSourceLabel !== undefined
+          ? body.sheetSourceLabel?.trim() || null
+          : undefined,
     })
 
     return NextResponse.json({ funnel: serializeFunnel(funnel) })

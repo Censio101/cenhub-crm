@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   recordFunnelSampleError: vi.fn(),
   funnel: {
     id: "f1",
+    name: "Test Funnel",
     organization_id: "org1",
     enabled: true,
     webhook_secret: "secret",
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     field_mapping: {} as Record<string, string>,
     data_format: "ours" as "ours" | "own",
     sample_listening_until: null as string | null,
+    sheet_source_label: null as string | null,
   },
 }))
 
@@ -111,13 +113,21 @@ describe("funnel webhook", () => {
     const res = await post(base)
     expect(res.status).toBe(201)
     expect(mocks.findLeadIdByLegacyId).not.toHaveBeenCalled()
-    expect(mocks.createLead.mock.calls[0][3]).toEqual({ legacyId: null })
+    expect(mocks.createLead.mock.calls[0][3]).toEqual({
+      legacyId: null,
+      leadFunnelId: "f1",
+      funnelSourceLabel: "Test Funnel",
+    })
   })
 
   it("stores the externalId as a funnel-scoped legacy id", async () => {
     const res = await post({ ...base, externalId: "form-123" })
     expect(res.status).toBe(201)
-    expect(mocks.createLead.mock.calls[0][3]).toEqual({ legacyId: "hook:f1:form-123" })
+    expect(mocks.createLead.mock.calls[0][3]).toEqual({
+      legacyId: "hook:f1:form-123",
+      leadFunnelId: "f1",
+      funnelSourceLabel: "Test Funnel",
+    })
   })
 
   it("matches services by slug or name and warns about unknown ones", async () => {

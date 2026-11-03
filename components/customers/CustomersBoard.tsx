@@ -43,6 +43,11 @@ import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-l
 import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import {
+  distinctLeadFormSourceLabels,
+  matchesLeadFormSourceFilter,
+  shouldShowLeadFormSourceFilter,
+} from "@/lib/leads/sheet-form-source-filter"
+import {
   shouldShowCustomerSourceFilter,
   shouldShowServiceFilter,
 } from "@/lib/leads/sheet-filter-visibility"
@@ -154,14 +159,25 @@ export function CustomersBoard() {
   const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
   const [sheetService, setSheetService] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">("all")
+  const [sheetFormSource, setSheetFormSource] = useState<string | "all">("all")
   const showServiceFilter = shouldShowServiceFilter(servicesLoaded, enabledServices)
   const showSourceFilter = useMemo(() => shouldShowCustomerSourceFilter(customers), [customers])
+  const formSourceOptions = useMemo(() => distinctLeadFormSourceLabels(leads), [leads])
+  const showFormSourceFilter = useMemo(() => shouldShowLeadFormSourceFilter(leads), [leads])
   useEffect(() => {
     if (!showServiceFilter && sheetService) setSheetService(null)
   }, [showServiceFilter, sheetService])
   useEffect(() => {
     if (!showSourceFilter && sourceFilter !== "all") setSourceFilter("all")
   }, [showSourceFilter, sourceFilter])
+  useEffect(() => {
+    if (!showFormSourceFilter && sheetFormSource !== "all") setSheetFormSource("all")
+  }, [showFormSourceFilter, sheetFormSource])
+  useEffect(() => {
+    if (sheetFormSource !== "all" && !formSourceOptions.includes(sheetFormSource)) {
+      setSheetFormSource("all")
+    }
+  }, [formSourceOptions, sheetFormSource])
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
@@ -188,8 +204,23 @@ export function CustomersBoard() {
         ignoreDate: dateIsAllTime,
         service: sheetService,
         segment: sheetSegment === "all" ? null : sheetSegment,
-      }).filter((customer) => sourceFilter === "all" || customer.source === sourceFilter),
-    [customers, dateIsAllTime, sheetSegment, sheetService, sourceFilter, view.range]
+      })
+        .filter((customer) => sourceFilter === "all" || customer.source === sourceFilter)
+        .filter((customer) => {
+          if (sheetFormSource === "all") return true
+          const lead = leadsById.get(customer.leadId)
+          return lead ? matchesLeadFormSourceFilter(lead, sheetFormSource) : false
+        }),
+    [
+      customers,
+      dateIsAllTime,
+      leadsById,
+      sheetFormSource,
+      sheetSegment,
+      sheetService,
+      sourceFilter,
+      view.range,
+    ]
   )
 
   const filtered = useMemo(() => {
@@ -282,13 +313,14 @@ export function CustomersBoard() {
       !dateIsAllTime &&
       !search.trim() &&
       sourceFilter === "all" &&
+      sheetFormSource === "all" &&
       sheetSegment === "all" &&
       !sheetService
     ) {
       return t("customersEmptyPeriod")
     }
     return t("customersEmpty")
-  }, [dateIsAllTime, search, sheetSegment, sheetService, sourceFilter, t])
+  }, [dateIsAllTime, search, sheetFormSource, sheetSegment, sheetService, sourceFilter, t])
 
   const totals = useMemo(() => {
     const base = sumCustomerValue(filtered)
@@ -422,6 +454,10 @@ export function CustomersBoard() {
                   servicesLoaded={servicesLoaded}
                   showServiceFilter={showServiceFilter}
                   showSourceFilter={showSourceFilter}
+                  showFormSourceFilter={showFormSourceFilter}
+                  formSourceOptions={formSourceOptions}
+                  sheetFormSource={sheetFormSource}
+                  onSheetFormSourceChange={setSheetFormSource}
                   search={search}
                   onSearchChange={setSearch}
                   onExport={exportFiltered}
@@ -500,6 +536,10 @@ export function CustomersBoard() {
                 servicesLoaded={servicesLoaded}
                 showServiceFilter={showServiceFilter}
                 showSourceFilter={showSourceFilter}
+                showFormSourceFilter={showFormSourceFilter}
+                formSourceOptions={formSourceOptions}
+                sheetFormSource={sheetFormSource}
+                onSheetFormSourceChange={setSheetFormSource}
                 search={search}
                 onSearchChange={setSearch}
                 onExport={exportFiltered}

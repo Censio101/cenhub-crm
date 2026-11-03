@@ -97,6 +97,8 @@ export type LeadFunnelRow = {
   /** Subset of sheet-eligible mapping targets; null = all eligible. */
   webhook_field_targets: string[] | null
   default_segment: "b2b" | "b2c" | null
+  /** Label for the lead sheet Form filter; defaults to funnel name in the UI. */
+  sheet_source_label: string | null
   created_at: string
   updated_at: string
 }
@@ -133,6 +135,8 @@ export type LeadRow = {
   form_steps_done: number | null
   /** The import that created this lead, if any (used to undo an import). */
   import_id: string | null
+  lead_funnel_id: string | null
+  funnel_source_label: string | null
   created_at: string
   updated_at: string
 }

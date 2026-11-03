@@ -22,6 +22,7 @@ import {
   metaLeadgenLegacyId,
 } from "@/lib/leads/funnel-webhook-meta-merge"
 import { applyFunnelDefaultSegment } from "@/lib/leads/funnel-default-segment"
+import { funnelSheetSourceLabel } from "@/lib/funnels/funnel-sheet-source-label"
 import { buildInboundLead, parseInbound } from "@/lib/leads/process-inbound"
 import { readWebhookBody } from "@/lib/leads/read-webhook-body"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -176,6 +177,8 @@ export async function POST(request: Request, context: RouteContext) {
     try {
       created = await createLead(admin, funnel.organization_id, lead, {
         legacyId: legacyId ?? metaLegacyId,
+        leadFunnelId: funnel.id,
+        funnelSourceLabel: funnelSheetSourceLabel(funnel),
       })
     } catch (insertError) {
       // Two identical requests can race past the check above; the unique index decides.

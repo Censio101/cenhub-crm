@@ -108,5 +108,7 @@ export function mapMetaLeadToInsertRow(
       options.customFieldDefs ?? []
     ).values,
     import_id: null,
+    lead_funnel_id: null,
+    funnel_source_label: null,
   }
 }

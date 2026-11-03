@@ -94,7 +94,7 @@ export async function seedDemoOrganizationData(
   await clearDemoOrganizationData(supabase, organizationId, monthKeys)
 
   const insertRows = seedLeads.map((lead) =>
-    leadToInsertRow({ ...lead, id: randomUUID() }, organizationId, "demo")
+    leadToInsertRow({ ...lead, id: randomUUID() }, organizationId, "demo", {})
   )
 
   const { data: inserted, error: insertError } = await supabase

@@ -362,7 +362,9 @@ export async function seedSuntechSolarDemo(
 
   const seedLeads = buildSeedLeads(serviceSlugs)
   const rows = seedLeads.map((lead, index) =>
-    leadToInsertRow(lead, organizationId, "manual", `${SUNTECH_SEED_LEGACY_PREFIX}${index + 1}`)
+    leadToInsertRow(lead, organizationId, "manual", {
+      legacyId: `${SUNTECH_SEED_LEGACY_PREFIX}${index + 1}`,
+    })
   )
 
   const { data: inserted, error: insertError } = await supabase.from("leads").insert(rows).select("*")

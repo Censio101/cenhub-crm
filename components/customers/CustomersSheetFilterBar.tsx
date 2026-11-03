@@ -13,6 +13,7 @@ import {
   SHEET_CONTROL_CLASS,
   SHEET_CONTROL_IDLE,
 } from "@/components/leads/LeadSheetFilterMenu"
+import { LeadSheetFormSourceFilter } from "@/components/leads/LeadSheetFormSourceFilter"
 import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import type { MessageKey } from "@/lib/i18n"
@@ -48,6 +49,10 @@ export function CustomersSheetFilterBar({
   onToggleFocus,
   showServiceFilter = true,
   showSourceFilter = true,
+  showFormSourceFilter = false,
+  formSourceOptions = [],
+  sheetFormSource = "all",
+  onSheetFormSourceChange,
 }: {
   preset: DatePreset
   range: DateRange
@@ -72,6 +77,10 @@ export function CustomersSheetFilterBar({
   onToggleFocus?: () => void
   showServiceFilter?: boolean
   showSourceFilter?: boolean
+  showFormSourceFilter?: boolean
+  formSourceOptions?: readonly string[]
+  sheetFormSource?: string | "all"
+  onSheetFormSourceChange?: (next: string | "all") => void
 }) {
   const { locale, t } = useLanguage()
 
@@ -79,6 +88,7 @@ export function CustomersSheetFilterBar({
     onSheetSegmentChange("all")
     onSheetServiceChange(null)
     onSourceFilterChange("all")
+    onSheetFormSourceChange?.("all")
     onSearchChange("")
     onResetDate()
   }
@@ -113,6 +123,13 @@ export function CustomersSheetFilterBar({
       key: "source",
       label: t(sourceLabelKeys[sourceFilter]),
       onRemove: () => onSourceFilterChange("all"),
+    })
+  }
+  if (showFormSourceFilter && sheetFormSource !== "all" && onSheetFormSourceChange) {
+    chips.push({
+      key: "formSource",
+      label: sheetFormSource,
+      onRemove: () => onSheetFormSourceChange("all"),
     })
   }
   const query = search.trim()
@@ -202,6 +219,13 @@ export function CustomersSheetFilterBar({
               </LeadSheetFilterMenuItem>
             ))}
           </LeadSheetFilterMenu>
+        ) : null}
+        {showFormSourceFilter && onSheetFormSourceChange ? (
+          <LeadSheetFormSourceFilter
+            options={formSourceOptions}
+            value={sheetFormSource}
+            onChange={onSheetFormSourceChange}
+          />
         ) : null}
 
         <div className="ml-auto flex shrink-0 items-center gap-2">

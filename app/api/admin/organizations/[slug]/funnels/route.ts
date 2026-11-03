@@ -102,6 +102,7 @@ export async function POST(request: Request, context: RouteContext) {
       dataFormat: audienceDefaults.dataFormat,
       webhookFieldTargets: audienceDefaults.webhookFieldTargets,
       defaultSegment: audienceDefaults.defaultSegment,
+      sheetSourceLabel: audienceDefaults.sheetSourceLabel,
     })
 
     return NextResponse.json({ funnel: serializeFunnel(funnel) }, { status: 201 })

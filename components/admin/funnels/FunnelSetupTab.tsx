@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   CheckIcon,
   CopyIcon,
@@ -25,6 +25,7 @@ import type { ClientService } from "@/lib/services/types"
 import { cn } from "cn"
 
 type Props = {
+  slug: string
   funnel: FunnelDto
   url: string
   customFields: WebhookCustomFieldSpec[]
@@ -33,6 +34,7 @@ type Props = {
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
   onRegenerateSecret: () => void
+  onFunnelChange: (patch: Partial<FunnelDto>) => void
 }
 
 const readOnlyFieldClass =
@@ -48,6 +50,7 @@ const iconActionClass = cn(
 
 /** Where the sender posts to, and the secret that proves it is the sender. */
 export function FunnelSetupTab({
+  slug,
   funnel,
   url,
   customFields,
@@ -56,9 +59,14 @@ export function FunnelSetupTab({
   copiedKey,
   onCopy,
   onRegenerateSecret,
+  onFunnelChange,
 }: Props) {
   const { t } = useLanguage()
   const [secretShown, setSecretShown] = useState(false)
+  const [sheetLabelDraft, setSheetLabelDraft] = useState(funnel.sheetSourceLabel ?? "")
+  useEffect(() => {
+    setSheetLabelDraft(funnel.sheetSourceLabel ?? "")
+  }, [funnel.id, funnel.sheetSourceLabel])
   const urlCopyKey = `${funnel.id}-url`
   const secretCopyKey = `${funnel.id}-secret`
   const curlCopyKey = `${funnel.id}-connect-curl`
@@ -169,6 +177,38 @@ export function FunnelSetupTab({
             {t("funnelRegenerateSecret")}
           </Button>
         </div>
+      </div>
+
+      <div className={panelClass}>
+        <label className="text-sm font-semibold text-foreground" htmlFor={`${funnel.id}-sheet-label`}>
+          {t("funnelSheetSourceLabel")}
+        </label>
+        <p className="mt-1 text-sm text-muted-foreground">{t("funnelSheetSourceLabelHint")}</p>
+        <input
+          id={`${funnel.id}-sheet-label`}
+          type="text"
+          className="mt-3 w-full rounded-lg border border-[#e8e0d8] bg-white px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+          value={sheetLabelDraft}
+          placeholder={funnel.name}
+          onChange={(event) => setSheetLabelDraft(event.target.value)}
+          onBlur={async () => {
+            const next = sheetLabelDraft.trim() || null
+            if (next === (funnel.sheetSourceLabel?.trim() || null)) return
+            const previous = funnel.sheetSourceLabel
+            onFunnelChange({ sheetSourceLabel: next })
+            try {
+              const response = await fetch(`/api/admin/organizations/${slug}/funnels/${funnel.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sheetSourceLabel: next }),
+              })
+              if (!response.ok) throw new Error("label")
+            } catch {
+              onFunnelChange({ sheetSourceLabel: previous })
+              setSheetLabelDraft(previous ?? "")
+            }
+          }}
+        />
       </div>
     </div>
   )

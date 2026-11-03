@@ -2089,6 +2089,12 @@ export const en: Messages = {
   partialStepsSaved: "Partial steps saved.",
   partialStepsOff: "Partial steps turned off.",
   leadSheetFilterLabelForm: "Form",
+  leadSheetFilterLabelFormSource: "Lead form",
+  filterFormSourceAria: "Filter by which form the lead came from",
+  filterFormSourceAll: "All forms",
+  funnelSheetSourceLabel: "Sheet filter label",
+  funnelSheetSourceLabelHint:
+    "Shown in the Lead form filter on the lead sheet (e.g. Beregning, Quick-Heat Trailer). Empty = webhook name.",
   filterFormAria: "Filter by form completion",
   filterFormAll: "All leads",
   filterFormComplete: "Complete",

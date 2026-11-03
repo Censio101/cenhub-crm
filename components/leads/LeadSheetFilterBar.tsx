@@ -9,6 +9,7 @@ import {
   SHEET_CONTROL_IDLE,
 } from "@/components/leads/LeadSheetFilterMenu"
 import { LeadSheetFormFilter } from "@/components/leads/LeadSheetFormFilter"
+import { LeadSheetFormSourceFilter } from "@/components/leads/LeadSheetFormSourceFilter"
 import { LeadSheetScopeChips } from "@/components/leads/LeadSheetScopeChips"
 import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { StatusFilterGroups } from "@/components/leads/StatusFilterGroups"
@@ -51,6 +52,10 @@ export function LeadSheetFilterBar({
   onFormFilterChange,
   showServiceFilter = true,
   showSourceFilter = true,
+  showFormSourceFilter = false,
+  formSourceOptions = [],
+  sheetFormSource = "all",
+  onSheetFormSourceChange,
 }: {
   preset: DatePreset
   range: DateRange
@@ -82,6 +87,10 @@ export function LeadSheetFilterBar({
   onFormFilterChange?: (next: FormFilterValue) => void
   showServiceFilter?: boolean
   showSourceFilter?: boolean
+  showFormSourceFilter?: boolean
+  formSourceOptions?: readonly string[]
+  sheetFormSource?: string | "all"
+  onSheetFormSourceChange?: (next: string | "all") => void
 }) {
   const { t } = useLanguage()
 
@@ -90,6 +99,7 @@ export function LeadSheetFilterBar({
     onSheetServiceChange(null)
     onSheetSegmentChange("all")
     onSheetFunnelChange("all")
+    onSheetFormSourceChange?.("all")
     onFormFilterChange?.("all")
     onSearchChange("")
     onResetDate()
@@ -124,6 +134,13 @@ export function LeadSheetFilterBar({
         showServiceFilter={showServiceFilter}
         showSourceFilter={showSourceFilter}
       />
+      {showFormSourceFilter && onSheetFormSourceChange ? (
+        <LeadSheetFormSourceFilter
+          options={formSourceOptions}
+          value={sheetFormSource}
+          onChange={onSheetFormSourceChange}
+        />
+      ) : null}
       {showFormFilter && onFormFilterChange ? (
         <LeadSheetFormFilter value={formFilter} onChange={onFormFilterChange} />
       ) : null}
@@ -183,6 +200,9 @@ export function LeadSheetFilterBar({
       onClear={clearFilters}
       showServiceFilter={showServiceFilter}
       showSourceFilter={showSourceFilter}
+      sheetFormSource={sheetFormSource}
+      onSheetFormSourceChange={onSheetFormSourceChange}
+      showFormSourceFilter={showFormSourceFilter}
     />
     </div>
   )

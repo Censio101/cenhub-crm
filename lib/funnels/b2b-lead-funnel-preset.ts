@@ -33,6 +33,7 @@ export function leadFunnelCreateOptionsForAudience(audience: LeadFunnelAudience)
   fieldMapping: FieldMapping
   dataFormat: "ours" | "own"
   webhookFieldTargets: string[] | null
+  sheetSourceLabel: string | null
 } {
   if (audience === "b2b") {
     return {
@@ -40,6 +41,7 @@ export function leadFunnelCreateOptionsForAudience(audience: LeadFunnelAudience)
       fieldMapping: { ...B2B_FUNNEL_DANISH_FIELD_MAPPING },
       dataFormat: "own",
       webhookFieldTargets: [...B2B_FUNNEL_WEBHOOK_FIELD_TARGETS],
+      sheetSourceLabel: "Quick-Heat Trailer",
     }
   }
   return {
@@ -47,5 +49,6 @@ export function leadFunnelCreateOptionsForAudience(audience: LeadFunnelAudience)
     fieldMapping: {},
     dataFormat: "ours",
     webhookFieldTargets: null,
+    sheetSourceLabel: null,
   }
 }

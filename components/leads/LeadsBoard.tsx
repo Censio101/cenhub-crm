@@ -124,6 +124,11 @@ import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
 import { missingPriceCellClass } from "@/lib/leads/won-sales-price"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import {
+  distinctLeadFormSourceLabels,
+  matchesLeadFormSourceFilter,
+  shouldShowLeadFormSourceFilter,
+} from "@/lib/leads/sheet-form-source-filter"
+import {
   shouldShowLeadSourceFilter,
   shouldShowServiceFilter,
 } from "@/lib/leads/sheet-filter-visibility"
@@ -1441,16 +1446,27 @@ export function LeadsBoard() {
   const [sheetService, setSheetService] = useState<string | null>(null)
   const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
   const [sheetFunnel, setSheetFunnel] = useState<FunnelId | "all">("all")
+  const [sheetFormSource, setSheetFormSource] = useState<string | "all">("all")
   const [formFilter, setFormFilter] = useState<FormFilterValue>("all")
   const formStepsTotal = leadSheet.template.formStepsTotal ?? null
   const showServiceFilter = shouldShowServiceFilter(servicesLoaded, enabledServices)
   const showSourceFilter = useMemo(() => shouldShowLeadSourceFilter(leads), [leads])
+  const formSourceOptions = useMemo(() => distinctLeadFormSourceLabels(leads), [leads])
+  const showFormSourceFilter = useMemo(() => shouldShowLeadFormSourceFilter(leads), [leads])
   useEffect(() => {
     if (!showServiceFilter && sheetService) setSheetService(null)
   }, [showServiceFilter, sheetService])
   useEffect(() => {
     if (!showSourceFilter && sheetFunnel !== "all") setSheetFunnel("all")
   }, [showSourceFilter, sheetFunnel])
+  useEffect(() => {
+    if (!showFormSourceFilter && sheetFormSource !== "all") setSheetFormSource("all")
+  }, [showFormSourceFilter, sheetFormSource])
+  useEffect(() => {
+    if (sheetFormSource !== "all" && !formSourceOptions.includes(sheetFormSource)) {
+      setSheetFormSource("all")
+    }
+  }, [formSourceOptions, sheetFormSource])
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
@@ -1469,10 +1485,20 @@ export function LeadsBoard() {
         if (sheetSegment !== "all" && lead.segment !== sheetSegment) return false
         if (!leadMatchesServiceFilter(lead, sheetService, enabledServices)) return false
         if (sheetFunnel !== "all" && lead.platform !== sheetFunnel) return false
+        if (!matchesLeadFormSourceFilter(lead, sheetFormSource)) return false
         if (!matchesFormFilter(lead, formStepsTotal, formFilter)) return false
         return true
       }),
-    [enabledServices, formFilter, formStepsTotal, scoped, sheetFunnel, sheetSegment, sheetService]
+    [
+      enabledServices,
+      formFilter,
+      formStepsTotal,
+      scoped,
+      sheetFormSource,
+      sheetFunnel,
+      sheetSegment,
+      sheetService,
+    ]
   )
 
   const statusCounts = useMemo(() => {
@@ -1576,6 +1602,7 @@ export function LeadsBoard() {
       statusFilter === "all" &&
       sheetSegment === "all" &&
       sheetFunnel === "all" &&
+      sheetFormSource === "all" &&
       formFilter === "all" &&
       !sheetService
     ) {
@@ -1586,6 +1613,7 @@ export function LeadsBoard() {
     dateIsAllTime,
     formFilter,
     search,
+    sheetFormSource,
     sheetFunnel,
     sheetSegment,
     sheetService,
@@ -1709,6 +1737,10 @@ export function LeadsBoard() {
             onFormFilterChange={setFormFilter}
             showServiceFilter={showServiceFilter}
             showSourceFilter={showSourceFilter}
+            formSourceOptions={formSourceOptions}
+            sheetFormSource={sheetFormSource}
+            onSheetFormSourceChange={setSheetFormSource}
+            showFormSourceFilter={showFormSourceFilter}
           />
           <LeadSheetScrollArea
             className="min-h-0 flex-1"
@@ -1791,6 +1823,10 @@ export function LeadsBoard() {
           onFormFilterChange={setFormFilter}
           showServiceFilter={showServiceFilter}
           showSourceFilter={showSourceFilter}
+          formSourceOptions={formSourceOptions}
+          sheetFormSource={sheetFormSource}
+          onSheetFormSourceChange={setSheetFormSource}
+          showFormSourceFilter={showFormSourceFilter}
           focusOpen={false}
           onToggleFocus={() => setSheetFocusOpen(true)}
         />

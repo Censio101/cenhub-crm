@@ -12,6 +12,8 @@ export type FunnelDto = {
   /** Subset of sheet-eligible targets; null = all eligible from the lead sheet. */
   webhookFieldTargets: string[] | null
   defaultSegment: "b2b" | "b2c" | null
+  /** Label on the lead sheet Formular filter; empty = funnel name. */
+  sheetSourceLabel: string | null
   webhookSecret: string
   hasSample: boolean
   sampleReceivedAt: string | null
