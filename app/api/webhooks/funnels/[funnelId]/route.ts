@@ -21,6 +21,7 @@ import {
   mergeFunnelWebhookIntoExistingMetaLead,
   metaLeadgenLegacyId,
 } from "@/lib/leads/funnel-webhook-meta-merge"
+import { applyFunnelDefaultSegment } from "@/lib/leads/funnel-default-segment"
 import { buildInboundLead, parseInbound } from "@/lib/leads/process-inbound"
 import { readWebhookBody } from "@/lib/leads/read-webhook-body"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -122,7 +123,8 @@ export async function POST(request: Request, context: RouteContext) {
       serviceAliasMap,
       platform: funnel.platform,
     })
-    const { lead, warnings } = built
+    let { lead, warnings } = built
+    lead = applyFunnelDefaultSegment(lead, funnel)
 
     // The same lead arrived again. A stepped form's later steps are merged into it; anything
     // else is a retry or double submit and changes nothing.

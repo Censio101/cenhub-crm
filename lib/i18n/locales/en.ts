@@ -1418,6 +1418,12 @@ export const en: Messages = {
     "These columns are no longer on the lead sheet, so their values are ignored. Remove the mapping to clear this.",
   funnelMappingRemove: "Remove",
   funnelNew: "New webhook",
+  funnelAudienceLabel: "Lead type",
+  funnelAudienceB2c: "Private (B2C)",
+  funnelAudienceB2b: "Business (B2B)",
+  funnelAudienceB2cHint: "Uses the full lead sheet field list (existing funnel pages).",
+  funnelAudienceB2bHint:
+    "Fewer webhook fields (name, company, note, …) and new leads are tagged Business. Map “Note” to your sheet’s note column if the key differs.",
   funnelCreate: "Create webhook",
   funnelDisabled: "Disabled",
   funnelTabFields: "Fields",

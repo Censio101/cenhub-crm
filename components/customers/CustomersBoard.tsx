@@ -255,6 +255,7 @@ export function CustomersBoard() {
     leads: shownLeads,
     enabledServices,
     t,
+    segmentFilter: sheetSegment,
   })
 
   const sheetViewToolbar = (

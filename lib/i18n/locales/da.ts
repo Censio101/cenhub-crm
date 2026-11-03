@@ -1425,6 +1425,12 @@ const daMessages = {
     "Disse kolonner findes ikke længere i lead-arket, så værdierne ignoreres. Fjern kortlægningen for at fjerne advarslen.",
   funnelMappingRemove: "Fjern",
   funnelNew: "Ny webhook",
+  funnelAudienceLabel: "Leadtype",
+  funnelAudienceB2c: "Privat (B2C)",
+  funnelAudienceB2b: "Erhverv (B2B)",
+  funnelAudienceB2cHint: "Fuld liste af felter fra lead-arket (eksisterende funnel-sider).",
+  funnelAudienceB2bHint:
+    "Færre webhook-felter (navn, firma, note, …) og nye leads markeres som Erhverv. Map “Note” til arkets note-felt hvis nøglen er anderledes.",
   funnelCreate: "Opret webhook",
   funnelDisabled: "Deaktiveret",
   funnelTabFields: "Felter",

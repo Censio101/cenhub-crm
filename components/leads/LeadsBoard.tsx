@@ -1535,6 +1535,7 @@ export function LeadsBoard() {
     leads: filtered,
     enabledServices,
     t,
+    segmentFilter: sheetSegment,
   })
 
   const sheetViewToolbar = (

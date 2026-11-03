@@ -9,6 +9,10 @@ import { listOrganizationServiceAliases } from "@/lib/db/service-aliases-reposit
 import { getOrganizationServicesView } from "@/lib/db/services-repository"
 import { buildWebhookLeadSheetInfo, buildWebhookServiceSpecs } from "@/lib/lead-sheet/webhook-spec"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
+import {
+  leadFunnelCreateOptionsForAudience,
+  type LeadFunnelAudience,
+} from "@/lib/funnels/b2b-lead-funnel-preset"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -63,6 +67,7 @@ export async function POST(request: Request, context: RouteContext) {
       platform?: LeadFunnelPlatform
       fieldMapping?: FieldMapping
       enabled?: boolean
+      audience?: LeadFunnelAudience
     }
 
     if (!body.name?.trim()) {
@@ -84,13 +89,19 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
+    const audience = body.audience === "b2b" ? "b2b" : "b2c"
+    const audienceDefaults = leadFunnelCreateOptionsForAudience(audience)
+
     const funnel = await createLeadFunnel(admin, {
       organizationId: organization.id,
       name: body.name,
       slug: funnelSlug,
       platform: body.platform ?? "website",
-      fieldMapping: body.fieldMapping,
+      fieldMapping: body.fieldMapping ?? audienceDefaults.fieldMapping,
       enabled: body.enabled,
+      dataFormat: audienceDefaults.dataFormat,
+      webhookFieldTargets: audienceDefaults.webhookFieldTargets,
+      defaultSegment: audienceDefaults.defaultSegment,
     })
 
     return NextResponse.json({ funnel: serializeFunnel(funnel) }, { status: 201 })

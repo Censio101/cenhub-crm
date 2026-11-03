@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import type { MessageKey } from "@/lib/i18n"
-import type { Lead } from "@/lib/leads"
+import type { Lead, LeadSegmentId } from "@/lib/leads"
+import { filterColumnsForSegmentFilter } from "@/lib/leads/sheet-segment-columns"
 import {
   autoFitSampleText,
   headerDisplayText,
@@ -71,6 +72,8 @@ export function useLeadSheetColumnLayout(input: {
   leads: readonly Lead[]
   enabledServices: readonly NamedService[]
   t: (key: MessageKey) => string
+  /** Type filter on the sheet: B2B narrows which columns are shown. */
+  segmentFilter?: LeadSegmentId | "all"
 }): LeadSheetColumnLayout {
   const storageKey = layoutStorageKey(input.organizationId ?? "local", input.page)
   const columnCount = input.columns.length
@@ -85,7 +88,10 @@ export function useLeadSheetColumnLayout(input: {
 
   const displayMode = normalizeDisplayMode(saved.displayMode, columnCount)
 
-  const visibleColumns = useMemo(() => [...input.columns], [input.columns])
+  const visibleColumns = useMemo(
+    () => filterColumnsForSegmentFilter(input.columns, input.segmentFilter ?? "all"),
+    [input.columns, input.segmentFilter]
+  )
 
   const displayCtx = useMemo(
     () => ({ t: input.t, enabledServices: input.enabledServices }),

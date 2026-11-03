@@ -96,6 +96,7 @@ export type LeadFunnelRow = {
   sample_error: string | null
   /** Subset of sheet-eligible mapping targets; null = all eligible. */
   webhook_field_targets: string[] | null
+  default_segment: "b2b" | "b2c" | null
   created_at: string
   updated_at: string
 }

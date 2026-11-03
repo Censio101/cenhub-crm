@@ -19,7 +19,11 @@ import { cn } from "cn"
 
 type Props = {
   /** Resolves with an error message to show inline, or `null` once created. */
-  onCreate: (input: { name: string; platform: FunnelDto["platform"] }) => Promise<string | null>
+  onCreate: (input: {
+    name: string
+    platform: FunnelDto["platform"]
+    audience: "b2b" | "b2c"
+  }) => Promise<string | null>
   onClose: () => void
 }
 
@@ -28,6 +32,7 @@ export function NewFunnelDialog({ onCreate, onClose }: Props) {
   const { t } = useLanguage()
   const [name, setName] = useState("")
   const [platform, setPlatform] = useState<FunnelDto["platform"]>("website")
+  const [audience, setAudience] = useState<"b2b" | "b2c">("b2c")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,7 +48,7 @@ export function NewFunnelDialog({ onCreate, onClose }: Props) {
     if (!name.trim() || saving) return
     setSaving(true)
     setError(null)
-    const message = await onCreate({ name: name.trim(), platform })
+    const message = await onCreate({ name: name.trim(), platform, audience })
     // On success the page selects the new webhook and closes this popup.
     if (message) {
       setError(message)
@@ -105,6 +110,29 @@ export function NewFunnelDialog({ onCreate, onClose }: Props) {
               ))}
             </SelectContent>
           </Select>
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-medium">{t("funnelAudienceLabel")}</span>
+          <Select
+            value={audience}
+            onValueChange={(value) => {
+              if (value === "b2b" || value === "b2c") setAudience(value)
+            }}
+            disabled={saving}
+          >
+            <SelectTrigger className={cn(adminFieldClass, "w-full min-w-0")}>
+              <SelectValue>
+                {audience === "b2b" ? t("funnelAudienceB2b") : t("funnelAudienceB2c")}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger className="min-w-[var(--anchor-width)]">
+              <SelectItem value="b2c">{t("funnelAudienceB2c")}</SelectItem>
+              <SelectItem value="b2b">{t("funnelAudienceB2b")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {audience === "b2b" ? t("funnelAudienceB2bHint") : t("funnelAudienceB2cHint")}
+          </p>
         </label>
         {error ? (
           <p

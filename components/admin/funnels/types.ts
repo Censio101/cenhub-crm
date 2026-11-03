@@ -11,6 +11,7 @@ export type FunnelDto = {
   fieldMapping: Record<string, string>
   /** Subset of sheet-eligible targets; null = all eligible from the lead sheet. */
   webhookFieldTargets: string[] | null
+  defaultSegment: "b2b" | "b2c" | null
   webhookSecret: string
   hasSample: boolean
   sampleReceivedAt: string | null
