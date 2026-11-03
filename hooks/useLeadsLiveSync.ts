@@ -16,7 +16,10 @@ export function useLeadsLiveSync(
   onRemoteChange: () => void
 ) {
   const onChangeRef = useRef(onRemoteChange)
-  onChangeRef.current = onRemoteChange
+  // Kept current after each render (not during it); remote changes arrive later, from events.
+  useEffect(() => {
+    onChangeRef.current = onRemoteChange
+  })
 
   useEffect(() => {
     if (!enabled || !organizationId || !isBrowserSupabaseConfigured()) return

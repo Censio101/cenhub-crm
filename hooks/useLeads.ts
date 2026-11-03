@@ -235,7 +235,10 @@ export function useLeads(options?: { liveSync?: boolean }) {
   }, [loadLeads])
 
   const loadLeadsRef = useRef(loadLeads)
-  loadLeadsRef.current = loadLeads
+  // Kept current after each render (not during it); the live-sync callback runs later, from events.
+  useEffect(() => {
+    loadLeadsRef.current = loadLeads
+  })
 
   useLeadsLiveSync(
     organization?.id,
