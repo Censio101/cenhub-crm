@@ -10,7 +10,6 @@ const B2B_BUILTIN_KEYS = new Set<BuiltinColumnKey>([
   "phone",
   "segment",
   "companyName",
-  "platform",
   "metaAdId",
   "serviceIds",
   "status",
@@ -21,7 +20,7 @@ const B2B_BUILTIN_KEYS = new Set<BuiltinColumnKey>([
 ])
 
 /** Custom field keys (substring match) kept visible for B2B rows. */
-const B2B_CUSTOM_KEY_HINTS = ["note", "notat", "annonce", "ad_id", "meta"]
+const B2B_CUSTOM_KEY_HINTS = ["note", "notat", "annonce", "ad_id", "meta", "platform"]
 
 function customFieldVisibleForB2b(fieldKey: string): boolean {
   const key = fieldKey.trim().toLowerCase()
