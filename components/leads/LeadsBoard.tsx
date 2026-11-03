@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 
@@ -51,8 +50,6 @@ import { LeadSheetBulkSelectionBar } from "@/components/leads/LeadSheetBulkSelec
 import { LeadSheetToolbarMenu } from "@/components/leads/LeadSheetToolbarMenu"
 import { LeadSheetLeadQuickView } from "@/components/leads/LeadSheetLeadQuickView"
 import { rowHeightEstimatePx, type SheetRowDensity } from "@/lib/leads/sheet-column-widths"
-import { columnColorCss, sheetColumnColor } from "@/lib/leads/sheet-column-colors"
-import { cellTextForCopy, nextCellPosition } from "@/lib/leads/sheet-keyboard"
 import { useLeadSheetScrollElement } from "@/components/leads/LeadSheetScrollContext"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { LeadSheetViewControls } from "@/components/leads/LeadSheetViewControls"
@@ -71,7 +68,6 @@ import {
 } from "@/hooks/useLeadSheetColumnLayout"
 import { useLeads } from "@/hooks/useLeads"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
-import { LeadSheetColumnColorMenu } from "@/components/leads/LeadSheetColumnColorMenu"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -142,7 +138,7 @@ const cellInputClass =
   "h-8 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground/60 focus:bg-white focus:ring-1 focus:ring-ring select-text"
 
 const leadHeaderCellClass =
-  "sticky top-0 z-[2] h-11 border-b border-r border-white/15 bg-[#3f3a36] px-3 text-xs font-medium text-white"
+  "sticky top-0 z-[30] h-11 border-b border-r border-white/15 bg-[#3f3a36] px-3 text-xs font-medium text-white"
 
 /** Pinned sheet columns must stack above scrolling cells (open dropdown triggers use z-[6]). */
 const SHEET_Z_PINNED_BODY = "z-[20]"
@@ -1132,8 +1128,6 @@ export function LeadsTable({
   const { statuses } = useLeadSelectOptions()
   const scrollElement = useLeadSheetScrollElement()
   const selectOffset = bulkSelection ? SELECT_COL_PX : 0
-  // Cells before the first data column (the select box).
-  const selectOffsetCells = bulkSelection ? 1 : 0
   const colSpan = columns.length + 1 + (bulkSelection ? 1 : 0)
   const quickViewColumns = detailColumns ?? columns
 
@@ -1187,79 +1181,8 @@ export function LeadsTable({
         selectOffset
     : undefined
 
-  // Keyboard: arrows move between cells, Cmd/Ctrl+C copies the cell. Cells that already take
-  // focus (text cells, dropdowns) keep their own keys; typing boxes are left alone.
-  function onBodyKeyDown(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    if (event.defaultPrevented) return
-    const body = event.currentTarget
-    const target = event.target as HTMLElement
-    if (!body.contains(target)) return
-    if (target.closest('input, textarea, select, [contenteditable="true"], [aria-expanded="true"]')) return
-    const cell = target.closest("td")
-    const row = cell?.parentElement
-    if (!cell || !row || row.hasAttribute("aria-hidden")) return
-    const rowIndex = Number(row.getAttribute("data-index"))
-    const colIndex = cell.cellIndex - selectOffsetCells
-    if (!Number.isInteger(rowIndex) || colIndex < 0 || colIndex >= columns.length) return
-
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
-      if (window.getSelection()?.toString()) return
-      event.preventDefault()
-      void navigator.clipboard?.writeText(cellTextForCopy(cell.innerText))
-      return
-    }
-    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
-
-    const next = nextCellPosition(
-      event.key,
-      { row: rowIndex, col: colIndex },
-      leads.length,
-      columns.length
-    )
-    if (!next) return
-    event.preventDefault()
-
-    const find = () =>
-      body.querySelector(`tr[data-index="${next.row}"]`)?.children[selectOffsetCells + next.col] as
-        | HTMLElement
-        | undefined
-    const focusCell = (td: HTMLElement) => {
-      const inner = td.querySelector<HTMLElement>(
-        '[role="button"], button:not([disabled]), a[href], input:not([type="checkbox"]):not([type="hidden"]), [tabindex="0"]'
-      )
-      const focusTarget = inner ?? td
-      if (focusTarget === td) td.tabIndex = -1
-      focusTarget.focus()
-    }
-    const rendered = find()
-    if (rendered) {
-      focusCell(rendered)
-      return
-    }
-    // The row is outside the drawn window (rows are virtual): scroll to it, then focus.
-    rowVirtualizer.scrollToIndex(next.row, { align: "auto" })
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        const td = find()
-        if (td) focusCell(td)
-      })
-    )
-  }
-
-  const columnColors = columnLayout?.columnColors
-  const tintCss = useMemo(
-    () =>
-      columnColors
-        ? columnColorCss(columnColors, columns.map((col) => col.id), bulkSelection ? 1 : 0)
-        : "",
-    [bulkSelection, columnColors, columns]
-  )
-
   return (
-    <>
-    {tintCss ? <style>{tintCss}</style> : null}
     <Table
-      data-lead-sheet-table=""
       containerClassName="overflow-visible"
       className={cn(
         "border-separate border-spacing-0",
@@ -1289,7 +1212,7 @@ export function LeadsTable({
               className={cn(
                 leadHeaderCellClass,
                 cn(
-                  "sticky left-0 w-11 min-w-11 cursor-pointer p-0",
+                  "sticky top-0 left-0 w-11 min-w-11 cursor-pointer p-0",
                   SHEET_Z_PINNED_HEADER_EDGE
                 ),
                 columnLayout && "border-r border-white/15"
@@ -1308,7 +1231,6 @@ export function LeadsTable({
             const label = headerLabel(col)
             const sortable = isColumnSortable(col)
             const box = cellBox(col, index)
-            const columnColor = sheetColumnColor(columnLayout?.columnColors[col.id])
             const headInner = sortable ? (
               <LeadSheetSortableHeader
                 columnId={col.id}
@@ -1324,47 +1246,34 @@ export function LeadsTable({
                 key={col.id}
                 className={cn(
                   leadHeaderCellClass,
-                  columnLayout && "group/colhead relative pr-7",
                   columnLayout
                     ? cn(
                         "px-2",
-                        index <= 1 && cn("sticky", SHEET_Z_PINNED_HEADER),
+                        index <= 1 && cn("sticky top-0", SHEET_Z_PINNED_HEADER),
                         index === 1 && "border-r border-white/15"
                       )
                     : cn(
                         bulkSelection &&
                           index === 0 &&
-                          cn("sticky left-11 w-36 min-w-36", SHEET_Z_PINNED_HEADER),
+                          cn("sticky top-0 left-11 w-36 min-w-36", SHEET_Z_PINNED_HEADER),
                         bulkSelection &&
                           index === 1 &&
-                          cn("sticky left-[calc(2.75rem+9rem)] min-w-44", SHEET_Z_PINNED_HEADER),
+                          cn(
+                            "sticky top-0 left-[calc(2.75rem+9rem)] min-w-44",
+                            SHEET_Z_PINNED_HEADER
+                          ),
                         !bulkSelection &&
                           index === 0 &&
-                          cn("sticky left-0 w-36 min-w-36", SHEET_Z_PINNED_HEADER),
+                          cn("sticky top-0 left-0 w-36 min-w-36", SHEET_Z_PINNED_HEADER),
                         !bulkSelection &&
                           index === 1 &&
-                          cn("sticky left-36 min-w-44", SHEET_Z_PINNED_HEADER)
+                          cn("sticky top-0 left-36 min-w-44", SHEET_Z_PINNED_HEADER)
                       )
                 )}
-                style={
-                  columnLayout
-                    ? {
-                        ...box.style,
-                        ...(columnColor
-                          ? { boxShadow: `inset 0 -3px 0 ${columnColor.marker}` }
-                          : {}),
-                      }
-                    : undefined
-                }
+                style={columnLayout ? box.style : undefined}
                 title={label}
               >
                 {headInner}
-                {columnLayout ? (
-                  <LeadSheetColumnColorMenu
-                    current={columnColor?.id ?? null}
-                    onChange={(color) => columnLayout.setColumnColor(col.id, color)}
-                  />
-                ) : null}
               </TableHead>
             )
           })}
@@ -1372,7 +1281,7 @@ export function LeadsTable({
             className={cn(
               leadHeaderCellClass,
               cn(
-                "sticky right-0 w-[6.75rem] min-w-[6.75rem] border-r-0 border-l px-1 text-center",
+                "sticky top-0 right-0 w-[6.75rem] min-w-[6.75rem] border-r-0 border-l px-1 text-center",
                 SHEET_Z_PINNED_HEADER
               )
             )}
@@ -1382,11 +1291,8 @@ export function LeadsTable({
         </TableRow>
       </TableHeader>
       <TableBody
-        onKeyDown={onBodyKeyDown}
         className={cn(
           "[&_td]:border-b [&_td]:border-b-[#eee7de]",
-          // Keep the focused cell clear of the pinned header, and show where the focus is.
-          "[&_td]:scroll-mt-12 [&_td:focus-visible]:outline-2 [&_td:focus-visible]:-outline-offset-2 [&_td:focus-visible]:outline-primary",
           // Tight rows: less padding around the controls (dropdown wrappers drop their own too).
           density === "compact" &&
             "[&_td:not([data-lead-status-cell])]:!py-0.5 [&_td:not([data-lead-status-cell])_[data-lead-sheet-no-pan]]:!py-0"
@@ -1441,7 +1347,6 @@ export function LeadsTable({
         )}
       </TableBody>
     </Table>
-    </>
   )
 }
 
