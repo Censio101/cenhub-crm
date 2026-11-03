@@ -10,9 +10,11 @@ export const SHEET_COL_MIN_DROPDOWN = 168
 export const SHEET_COL_MIN_STATUS = 216
 /** Note / ISO info columns: preview + Add button (matches `LeadSheetNoteCell` max width). */
 export const SHEET_COL_NOTE_MAX = 224
+/** Lead date + optional time (`YYYY-MM-DD HH:mm`) without ellipsis in compact or full text. */
+export const SHEET_COL_MIN_DATETIME = 168
 
 const DEFAULT_BY_BUILTIN: Partial<Record<string, number>> = {
-  date: 132,
+  date: SHEET_COL_MIN_DATETIME,
   fullName: 176,
   email: 200,
   phone: 128,
@@ -27,11 +29,12 @@ const DEFAULT_BY_BUILTIN: Partial<Record<string, number>> = {
   salesPrice: 112,
   profit: 112,
   ltv: 112,
-  wonDate: 132,
+  wonDate: SHEET_COL_MIN_DATETIME,
 }
 
 export function minimumColumnWidth(col: LeadSheetTemplateColumn): number {
   if (col.kind === "builtin") {
+    if (col.builtinKey === "date" || col.builtinKey === "wonDate") return SHEET_COL_MIN_DATETIME
     if (col.builtinKey === "status") return SHEET_COL_MIN_STATUS
     if (col.builtinKey === "serviceIds") return SHEET_COL_MIN_DROPDOWN
   }

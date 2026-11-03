@@ -24,12 +24,14 @@ export function LeadSheetEditableText({
   label,
   onCommit,
   className,
+  fullText = false,
 }: {
   value: unknown
   kind: EditableCellKind
   label: string
   onCommit: (next: string | number | null) => void
   className?: string
+  fullText?: boolean
 }) {
   const { t } = useLanguage()
   const [editing, setEditing] = useState(false)
@@ -86,7 +88,8 @@ export function LeadSheetEditableText({
       aria-label={`${label}: ${text || "–"}`}
       title={text ? `${text}\n${t("leadSheetEditCellHint")}` : t("leadSheetEditCellHint")}
       className={cn(
-        "block min-h-8 w-full min-w-0 cursor-default truncate rounded-md px-1.5 py-1.5 text-sm text-foreground outline-none",
+        "block min-h-8 w-full min-w-0 cursor-default rounded-md px-1.5 py-1.5 text-sm text-foreground outline-none",
+        fullText ? "whitespace-nowrap" : "truncate",
         "hover:bg-black/[0.04] focus-visible:ring-2 focus-visible:ring-primary/30",
         !text && "text-muted-foreground/60",
         kind === "number" && "tabular-nums",

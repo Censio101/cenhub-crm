@@ -16,20 +16,30 @@ export function LeadSheetReadOnlyText({
   children,
   mono,
   title,
+  fullText = false,
 }: {
   className?: string
   children: ReactNode
   mono?: boolean
   /** Full value on hover when the cell truncates. */
   title?: string
+  /** Fuld tekst view: show the whole value when the column is wide enough. */
+  fullText?: boolean
 }) {
   const hoverTitle =
-    title ??
-    (typeof children === "string" && children.trim() && children !== "–" ? children : undefined)
+    !fullText &&
+    (title ??
+      (typeof children === "string" && children.trim() && children !== "–" ? children : undefined))
   return (
     <span
       title={hoverTitle}
-      className={cn(readOnlyClass, "block truncate px-1.5", mono && "font-mono text-[0.8125rem]", className)}
+      className={cn(
+        readOnlyClass,
+        "block px-1.5",
+        fullText ? "whitespace-nowrap" : "truncate",
+        mono && "font-mono text-[0.8125rem]",
+        className
+      )}
     >
       {children || "–"}
     </span>
@@ -40,14 +50,18 @@ export function LeadSheetReadOnlyDateCell({
   lead,
   className,
   style,
+  fullText,
 }: {
   lead: Lead
   className?: string
   style?: CSSProperties
+  fullText?: boolean
 }) {
   return (
     <TableCell className={className} style={style}>
-      <LeadSheetReadOnlyText>{formatLeadDateTime(lead.date, lead.time)}</LeadSheetReadOnlyText>
+      <LeadSheetReadOnlyText fullText={fullText}>
+        {formatLeadDateTime(lead.date, lead.time)}
+      </LeadSheetReadOnlyText>
     </TableCell>
   )
 }
@@ -55,15 +69,17 @@ export function LeadSheetReadOnlyDateCell({
 export function LeadSheetReadOnlyWonDateCell({
   lead,
   className,
+  fullText,
 }: {
   lead: Lead
   className?: string
+  fullText?: boolean
 }) {
   const value =
     lead.status === "won" && lead.wonDate ? formatLeadDateTime(lead.wonDate, null) : ""
   return (
     <TableCell className={className}>
-      <LeadSheetReadOnlyText>{value}</LeadSheetReadOnlyText>
+      <LeadSheetReadOnlyText fullText={fullText}>{value}</LeadSheetReadOnlyText>
     </TableCell>
   )
 }
@@ -72,15 +88,17 @@ export function LeadSheetReadOnlyFullNameCell({
   lead,
   className,
   style,
+  fullText,
 }: {
   lead: Lead
   className?: string
   style?: CSSProperties
+  fullText?: boolean
 }) {
   const name = lead.fullName.trim()
   return (
     <TableCell className={className} style={style}>
-      <LeadSheetReadOnlyText title={name || undefined} className="px-1.5">
+      <LeadSheetReadOnlyText title={name || undefined} className="px-1.5" fullText={fullText}>
         {name || "–"}
       </LeadSheetReadOnlyText>
     </TableCell>
@@ -145,14 +163,18 @@ export function LeadSheetReadOnlyPlainCell({
   value,
   className,
   mono,
+  fullText,
 }: {
   value: string
   className?: string
   mono?: boolean
+  fullText?: boolean
 }) {
   return (
     <TableCell className={className}>
-      <LeadSheetReadOnlyText mono={mono}>{value.trim() || "–"}</LeadSheetReadOnlyText>
+      <LeadSheetReadOnlyText mono={mono} fullText={fullText}>
+        {value.trim() || "–"}
+      </LeadSheetReadOnlyText>
     </TableCell>
   )
 }

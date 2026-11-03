@@ -8,8 +8,10 @@ import {
   parseStoredDisplayMode,
   parseStoredRowDensity,
   rowHeightEstimatePx,
+  SHEET_COL_MIN_DATETIME,
   SHEET_COL_NOTE_MAX,
   WIDE_SHEET_COLUMN_COUNT,
+  defaultColumnWidth,
 } from "@/lib/leads/sheet-column-widths"
 
 describe("defaultDisplayMode", () => {
@@ -38,6 +40,20 @@ describe("saved layout", () => {
     expect(parseStoredRowDensity({ rowDensity: "compact" })).toBe("compact")
     expect(parseStoredRowDensity({ rowDensity: "standard" })).toBe("standard")
     expect(parseStoredRowDensity({ rowDensity: "huge" as never })).toBeNull()
+  })
+})
+
+describe("date column width", () => {
+  const dateCol = {
+    id: "d1",
+    kind: "builtin",
+    builtinKey: "date",
+  } as LeadSheetTemplateColumn
+
+  it("fits a full date and time string", () => {
+    expect(defaultColumnWidth(dateCol)).toBeGreaterThanOrEqual(SHEET_COL_MIN_DATETIME)
+    const width = autoFitColumnWidth(dateCol, ["2026-11-03 12:48"], 132)
+    expect(width).toBeGreaterThanOrEqual(SHEET_COL_MIN_DATETIME)
   })
 })
 

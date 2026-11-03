@@ -673,6 +673,7 @@ type LeadRowEnv = {
   columnLayout: LeadSheetColumnLayout | undefined
   selectOffset: number
   density: SheetRowDensity
+  fullText: boolean
 }
 
 function renderLeadColumnCell(
@@ -681,7 +682,7 @@ function renderLeadColumnCell(
   col: LeadSheetTemplateColumn,
   colIndex: number
 ) {
-  const { t, statuses, onUpdate, columnLayout, selectOffset, density } = env
+  const { t, statuses, onUpdate, columnLayout, selectOffset, density, fullText } = env
 
   function stickyCellClass(colIndex: number) {
     if (columnLayout) {
@@ -770,6 +771,7 @@ function renderLeadColumnCell(
               kind={plainKind}
               label={col.customField.label}
               onCommit={(next) => patchCustom(next)}
+              fullText={fullText}
             />
           </TableCell>
         )
@@ -848,6 +850,7 @@ function renderLeadColumnCell(
             lead={lead}
             className={stickyBg}
             style={stickyLayout.style}
+            fullText={fullText}
           />
         )
       case "fullName":
@@ -857,6 +860,7 @@ function renderLeadColumnCell(
             lead={lead}
             className={stickyBg}
             style={stickyLayout.style}
+            fullText={fullText}
           />
         )
       case "email":
@@ -873,6 +877,7 @@ function renderLeadColumnCell(
             key={col.id}
             value={lead.companyName}
             className={cn("min-w-44 px-2", priceCue)}
+            fullText={fullText}
           />
         )
       case "address":
@@ -881,6 +886,7 @@ function renderLeadColumnCell(
             key={col.id}
             value={lead.address}
             className={cn("min-w-44 px-2", priceCue)}
+            fullText={fullText}
           />
         )
       case "zipCode":
@@ -889,6 +895,7 @@ function renderLeadColumnCell(
             key={col.id}
             value={lead.zipCode}
             className={cn("min-w-24 px-2", priceCue)}
+            fullText={fullText}
           />
         )
       case "city":
@@ -897,6 +904,7 @@ function renderLeadColumnCell(
             key={col.id}
             value={lead.city}
             className={cn("min-w-32 px-2", priceCue)}
+            fullText={fullText}
           />
         )
       case "serviceIds":
@@ -922,6 +930,7 @@ function renderLeadColumnCell(
             value={lead.metaAdId}
             className={cn("min-w-48 px-2", priceCue)}
             mono
+            fullText={fullText}
           />
         )
       case "formProgress":
@@ -939,6 +948,7 @@ function renderLeadColumnCell(
             key={col.id}
             lead={lead}
             className={cn("min-w-28 px-2", priceCue)}
+            fullText={fullText}
           />
         )
       case "status":
@@ -1147,9 +1157,18 @@ export function LeadsTable({
     []
   )
   const density = "compact" as const satisfies SheetRowDensity
+  const fullText = columnLayout?.displayMode === "full"
   const rowEnv = useMemo<LeadRowEnv>(
-    () => ({ t, statuses, onUpdate: stable.onUpdate, columnLayout, selectOffset, density }),
-    [t, statuses, stable, columnLayout, selectOffset, density]
+    () => ({
+      t,
+      statuses,
+      onUpdate: stable.onUpdate,
+      columnLayout,
+      selectOffset,
+      density,
+      fullText,
+    }),
+    [t, statuses, stable, columnLayout, selectOffset, density, fullText]
   )
 
   const rowVirtualizer = useVirtualizer({
