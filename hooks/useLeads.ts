@@ -168,6 +168,14 @@ export function useLeads(options?: { liveSync?: boolean }) {
     }
 
     try {
+      // Ask for the sheet config at the same time as the leads (they do not depend on each
+      // other). Starting it only after the leads arrived made the page wait for both in a row.
+      const needsSheetFetch = !(opts?.silent && cached?.leadSheet)
+      const sheetRequest = needsSheetFetch ? fetchLeadSheetConfig() : null
+      // A failed config request is handled where it is awaited; avoid an unhandled rejection
+      // when the leads request fails first.
+      sheetRequest?.catch(() => undefined)
+
       const result = await fetchJsonDeduped<LeadsResponse>("/api/leads")
       if (!isCurrent()) return
       const data = result.data
@@ -189,10 +197,9 @@ export function useLeads(options?: { liveSync?: boolean }) {
       setLeads(data.leads)
       setDataSource(data.source)
       if (data.source === "supabase") {
-        const sheet =
-          opts?.silent && cached?.leadSheet
-            ? cached.leadSheet
-            : await fetchLeadSheetConfig()
+        const sheet = sheetRequest
+          ? await sheetRequest
+          : (cached?.leadSheet ?? (await fetchLeadSheetConfig()))
         if (!isCurrent()) return
         if (!opts?.silent || !cached?.leadSheet) {
           lastSheetFetchRef.current = Date.now()
