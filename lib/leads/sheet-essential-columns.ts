@@ -6,6 +6,8 @@ const ESSENTIAL_BUILTINS = new Set([
   "fullName",
   "email",
   "phone",
+  "zipCode",
+  "city",
   "status",
   "formProgress",
   "wonDate",

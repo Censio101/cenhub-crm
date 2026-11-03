@@ -35,6 +35,7 @@ import {
   LeadSheetReadOnlySegmentCell,
 } from "@/components/leads/LeadSheetReadOnlyCell"
 import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
+import { LeadSheetEditableText } from "@/components/leads/LeadSheetEditableText"
 import { LeadSheetNoteCell } from "@/components/leads/LeadSheetNoteCell"
 import { LeadCardList } from "@/components/leads/LeadCardList"
 import { LeadSheetBulkSelectionBar } from "@/components/leads/LeadSheetBulkSelectionBar"
@@ -735,6 +736,32 @@ function renderLeadColumnCell(
               fieldLabel={col.customField.label}
               leadName={lead.fullName}
               onChange={(next) => patchCustom(next)}
+            />
+          </TableCell>
+        )
+      }
+
+      const plainKind =
+        col.customField.fieldType === "number"
+          ? "number"
+          : col.customField.fieldType === "date"
+            ? "date"
+            : col.customField.fieldType === "time"
+              ? "time"
+              : col.customField.fieldType === "text"
+                ? "text"
+                : null
+      if (density === "compact" && plainKind) {
+        return (
+          <TableCell
+            key={col.id}
+            className={cn(plainKind === "number" ? "min-w-28 px-2" : "min-w-36 px-2", priceCue)}
+          >
+            <LeadSheetEditableText
+              value={value}
+              kind={plainKind}
+              label={col.customField.label}
+              onCommit={(next) => patchCustom(next)}
             />
           </TableCell>
         )
