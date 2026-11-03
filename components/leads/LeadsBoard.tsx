@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
+import { useFitToViewportHeight } from "@/hooks/useFitToViewportHeight"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
 import { ClientCorePageShell } from "@/components/client/ClientCorePageShell"
@@ -1375,6 +1376,7 @@ export function LeadsBoard() {
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
+  const sheetFit = useFitToViewportHeight()
   const [editingId, setEditingId] = useState<string | null>(null)
   const editingLead = editingId ? (leads.find((lead) => lead.id === editingId) ?? null) : null
 
@@ -1583,7 +1585,7 @@ export function LeadsBoard() {
           pending={pending}
           animateEnter={animateBoardEnter}
         >
-      {!sheetFocusOpen ? <LeadPipelineBar stats={pipelineStats} /> : null}
+      {!sheetFocusOpen ? <LeadPipelineBar compact stats={pipelineStats} /> : null}
 
       <LeadSheetFocusShell open={sheetFocusOpen} onClose={() => setSheetFocusOpen(false)}>
         <div className="flex min-h-0 flex-1 flex-col">
@@ -1673,6 +1675,8 @@ export function LeadsBoard() {
       </LeadSheetFocusShell>
 
       <section
+        ref={sheetFit.ref}
+        style={sheetFit.style}
         className={cn(
           "dashboard-card flex max-h-[calc(100dvh-7rem)] min-h-[24rem] flex-col overflow-hidden",
           sheetFocusOpen && "hidden"

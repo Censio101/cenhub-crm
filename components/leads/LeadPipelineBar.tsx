@@ -8,9 +8,12 @@ import { cn } from "cn"
 export function LeadPipelineBar({
   stats,
   description,
+  compact = false,
 }: {
   stats: LeadPipelineStats
   description?: string
+  /** One slim row (used above the lead sheet so the table gets the room). */
+  compact?: boolean
 }) {
   const { t } = useLanguage()
   const resolvedDescription = description ?? t("leadSheetPipelineBarDesc")
@@ -45,6 +48,48 @@ export function LeadPipelineBar({
 
   function shareOfTotal(value: number) {
     return total <= 0 ? 0 : (value / total) * 100
+  }
+
+  if (compact) {
+    return (
+      <section
+        className="dashboard-card flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3"
+        aria-label={t("leadSheetPipelineOpen")}
+      >
+        <h2 className="text-sm font-medium tracking-tight text-[var(--text-primary)]">
+          {t("leadSheetPipelineOpen")}
+        </h2>
+        <div
+          className="flex h-1.5 min-w-24 flex-1 overflow-hidden rounded-full bg-[#efe8e1]"
+          role="img"
+          aria-label={resolvedDescription}
+        >
+          {segments.map((segment) => {
+            const share = shareOfTotal(segment.value)
+            if (share <= 0) return null
+            return (
+              <div
+                key={segment.id}
+                className={cn("h-full min-w-0", segment.bar)}
+                style={{ width: `${share}%` }}
+              />
+            )
+          })}
+        </div>
+        <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          {segments.map((segment) => (
+            <li key={segment.id} className="flex items-center gap-2 text-xs">
+              <span className={cn("size-2 shrink-0 rounded-full", segment.swatch)} aria-hidden />
+              <span className="font-medium text-[var(--text-primary)]">{segment.label}</span>
+              <span className="font-semibold tabular-nums text-[var(--text-primary)]">
+                {formatCurrencyDKK(segment.value)}
+              </span>
+              <span className="text-[var(--text-muted)]">{segment.count}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
   }
 
   return (

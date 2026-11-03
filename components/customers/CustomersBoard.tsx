@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { XIcon } from "lucide-react"
 
 import { useCompanyServices } from "@/hooks/useCompanyServices"
+import { useFitToViewportHeight } from "@/hooks/useFitToViewportHeight"
 import { AdminClientRouteGate } from "@/components/admin/AdminClientRouteGate"
 import { ClientBoardEnter } from "@/components/client/ClientBoardEnter"
 import { ClientCorePageShell } from "@/components/client/ClientCorePageShell"
@@ -152,6 +153,7 @@ export function CustomersBoard() {
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
+  const sheetFit = useFitToViewportHeight()
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null)
   const customerDateSpan = useMemo(() => {
     let earliest: string | null = null
@@ -456,6 +458,8 @@ export function CustomersBoard() {
             </LeadSheetFocusShell>
 
             <section
+              ref={sheetFit.ref}
+              style={sheetFit.style}
               className={cn(
                 "dashboard-card flex max-h-[calc(100dvh-7rem)] min-h-[24rem] flex-col overflow-hidden",
                 sheetFocusOpen && "hidden"
