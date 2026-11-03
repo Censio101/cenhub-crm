@@ -1,6 +1,15 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 
 import {
@@ -43,6 +52,7 @@ import { LeadSheetToolbarMenu } from "@/components/leads/LeadSheetToolbarMenu"
 import { LeadSheetLeadQuickView } from "@/components/leads/LeadSheetLeadQuickView"
 import { rowHeightEstimatePx, type SheetRowDensity } from "@/lib/leads/sheet-column-widths"
 import { columnColorCss, sheetColumnColor } from "@/lib/leads/sheet-column-colors"
+import { cellTextForCopy, nextCellPosition } from "@/lib/leads/sheet-keyboard"
 import { useLeadSheetScrollElement } from "@/components/leads/LeadSheetScrollContext"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { LeadSheetViewControls } from "@/components/leads/LeadSheetViewControls"
@@ -1122,6 +1132,8 @@ export function LeadsTable({
   const { statuses } = useLeadSelectOptions()
   const scrollElement = useLeadSheetScrollElement()
   const selectOffset = bulkSelection ? SELECT_COL_PX : 0
+  // Cells before the first data column (the select box).
+  const selectOffsetCells = bulkSelection ? 1 : 0
   const colSpan = columns.length + 1 + (bulkSelection ? 1 : 0)
   const quickViewColumns = detailColumns ?? columns
 
@@ -1174,6 +1186,65 @@ export function LeadsTable({
         ACTIONS_COL_PX +
         selectOffset
     : undefined
+
+  // Keyboard: arrows move between cells, Cmd/Ctrl+C copies the cell. Cells that already take
+  // focus (text cells, dropdowns) keep their own keys; typing boxes are left alone.
+  function onBodyKeyDown(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
+    if (event.defaultPrevented) return
+    const body = event.currentTarget
+    const target = event.target as HTMLElement
+    if (!body.contains(target)) return
+    if (target.closest('input, textarea, select, [contenteditable="true"], [aria-expanded="true"]')) return
+    const cell = target.closest("td")
+    const row = cell?.parentElement
+    if (!cell || !row || row.hasAttribute("aria-hidden")) return
+    const rowIndex = Number(row.getAttribute("data-index"))
+    const colIndex = cell.cellIndex - selectOffsetCells
+    if (!Number.isInteger(rowIndex) || colIndex < 0 || colIndex >= columns.length) return
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
+      if (window.getSelection()?.toString()) return
+      event.preventDefault()
+      void navigator.clipboard?.writeText(cellTextForCopy(cell.innerText))
+      return
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+
+    const next = nextCellPosition(
+      event.key,
+      { row: rowIndex, col: colIndex },
+      leads.length,
+      columns.length
+    )
+    if (!next) return
+    event.preventDefault()
+
+    const find = () =>
+      body.querySelector(`tr[data-index="${next.row}"]`)?.children[selectOffsetCells + next.col] as
+        | HTMLElement
+        | undefined
+    const focusCell = (td: HTMLElement) => {
+      const inner = td.querySelector<HTMLElement>(
+        '[role="button"], button:not([disabled]), a[href], input:not([type="checkbox"]):not([type="hidden"]), [tabindex="0"]'
+      )
+      const focusTarget = inner ?? td
+      if (focusTarget === td) td.tabIndex = -1
+      focusTarget.focus()
+    }
+    const rendered = find()
+    if (rendered) {
+      focusCell(rendered)
+      return
+    }
+    // The row is outside the drawn window (rows are virtual): scroll to it, then focus.
+    rowVirtualizer.scrollToIndex(next.row, { align: "auto" })
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const td = find()
+        if (td) focusCell(td)
+      })
+    )
+  }
 
   const columnColors = columnLayout?.columnColors
   const tintCss = useMemo(
@@ -1312,8 +1383,11 @@ export function LeadsTable({
         </TableRow>
       </TableHeader>
       <TableBody
+        onKeyDown={onBodyKeyDown}
         className={cn(
           "[&_td]:border-b [&_td]:border-b-[#eee7de]",
+          // Keep the focused cell clear of the pinned header, and show where the focus is.
+          "[&_td]:scroll-mt-12 [&_td:focus-visible]:outline-2 [&_td:focus-visible]:-outline-offset-2 [&_td:focus-visible]:outline-primary",
           // Tight rows: less padding around the controls (dropdown wrappers drop their own too).
           density === "compact" &&
             "[&_td:not([data-lead-status-cell])]:!py-0.5 [&_td:not([data-lead-status-cell])_[data-lead-sheet-no-pan]]:!py-0"
