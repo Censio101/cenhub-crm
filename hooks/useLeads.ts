@@ -74,8 +74,8 @@ function mergeLeadPatches(first: LeadPatch | undefined, second: LeadPatch): Lead
 
 /** Minimum time between focus-triggered refreshes of the lead sheet config. */
 const SHEET_REFRESH_MIN_MS = 60_000
-/** Minimum time between focus-triggered lead list refetches (tab visible again). */
-const LEADS_VISIBILITY_REFRESH_MIN_MS = 60_000
+/** Collapses the focus and visibility events that fire together when the tab is opened again. */
+const LEADS_VISIBLE_REFRESH_DEBOUNCE_MS = 300
 
 /** `null` when the request fails, so a transient error never replaces a good config. */
 async function fetchLeadSheetConfigOrNull(): Promise<ResolvedLeadSheetConfig | null> {
@@ -111,7 +111,6 @@ export function useLeads(options?: { liveSync?: boolean }) {
   const saveFailed = useRef(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const lastSheetFetchRef = useRef(0)
-  const lastVisibleLeadsFetchRef = useRef(0)
   const pendingRemoteReloadRef = useRef(false)
   const loadLeadsRef = useRef<(opts?: LoadLeadsOptions) => Promise<void>>(async () => {})
   const [guard] = useState(createRequestGuard)
@@ -247,6 +246,8 @@ export function useLeads(options?: { liveSync?: boolean }) {
   useEffect(() => {
     if (dataSource !== "supabase") return
 
+    let leadsRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
     const refreshOnVisible = () => {
       if (document.visibilityState !== "visible") return
 
@@ -260,15 +261,17 @@ export function useLeads(options?: { liveSync?: boolean }) {
         })
       }
 
-      if (Date.now() - lastVisibleLeadsFetchRef.current >= LEADS_VISIBILITY_REFRESH_MIN_MS) {
-        lastVisibleLeadsFetchRef.current = Date.now()
+      if (leadsRefreshTimer) clearTimeout(leadsRefreshTimer)
+      leadsRefreshTimer = setTimeout(() => {
+        leadsRefreshTimer = null
         void loadLeadsRef.current({ force: true, silent: true })
-      }
+      }, LEADS_VISIBLE_REFRESH_DEBOUNCE_MS)
     }
 
     window.addEventListener("focus", refreshOnVisible)
     document.addEventListener("visibilitychange", refreshOnVisible)
     return () => {
+      if (leadsRefreshTimer) clearTimeout(leadsRefreshTimer)
       window.removeEventListener("focus", refreshOnVisible)
       document.removeEventListener("visibilitychange", refreshOnVisible)
     }

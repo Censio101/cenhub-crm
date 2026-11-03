@@ -25,8 +25,6 @@ type AdSpendSource = "synced" | "demo" | "pending"
 type DashboardDataState = {
   /** Leads the dashboard counts: partial leads of a stepped form are left out. */
   leads: Lead[]
-  /** Leads that only filled a stepped form partly (shown as their own metric). */
-  partialLeads: Lead[]
   /** Total steps of the client's stepped form; null when the sheet has none. */
   formStepsTotal: number | null
   adSpendByMonth: Record<string, number>
@@ -231,15 +229,9 @@ export function useDashboardData(): DashboardDataState {
   }, [activeSlug])
 
   const leads = useMemo(() => withoutPartialLeads(allLeads, formStepsTotal), [allLeads, formStepsTotal])
-  const partialLeads = useMemo(() => {
-    if (formStepsTotal === null) return []
-    const complete = new Set(leads.map((lead) => lead.id))
-    return allLeads.filter((lead) => !complete.has(lead.id))
-  }, [allLeads, formStepsTotal, leads])
 
   return {
     leads,
-    partialLeads,
     formStepsTotal,
     adSpendByMonth,
     adSpendSource,

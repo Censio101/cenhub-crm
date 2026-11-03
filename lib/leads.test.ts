@@ -3,9 +3,43 @@ import { describe, expect, it } from "vitest"
 import { MOCK_CUSTOMERS } from "./customers"
 import {
   MOCK_LEADS,
+  computeLeadPipelineStats,
+  pipelineSegmentSharePercent,
   previousLeadMonthKey,
   sortLeadsByDate,
 } from "./leads"
+
+describe("pipelineSegmentSharePercent", () => {
+  it("uses DKK totals when any bucket has sales price", () => {
+    const stats = computeLeadPipelineStats(MOCK_LEADS)
+    const valueTotal = stats.lostValue + stats.pipelineValue + stats.wonValue
+    if (valueTotal <= 0) return
+    const sum =
+      pipelineSegmentSharePercent(stats, "lost") +
+      pipelineSegmentSharePercent(stats, "open") +
+      pipelineSegmentSharePercent(stats, "won")
+    expect(sum).toBeCloseTo(100, 5)
+  })
+
+  it("falls back to lead counts when all bucket values are zero", () => {
+    const stats = {
+      openCount: 80,
+      wonCount: 10,
+      lostCount: 10,
+      totalCount: 100,
+      pipelineValue: 0,
+      wonValue: 0,
+      lostValue: 0,
+      closeRate: 10,
+      remainingShare: 80,
+      averageWonSales: null,
+      averageWonProfit: null,
+    }
+    expect(pipelineSegmentSharePercent(stats, "open")).toBe(80)
+    expect(pipelineSegmentSharePercent(stats, "won")).toBe(10)
+    expect(pipelineSegmentSharePercent(stats, "lost")).toBe(10)
+  })
+})
 
 describe("lead date helpers", () => {
   it("steps a month key back one month", () => {

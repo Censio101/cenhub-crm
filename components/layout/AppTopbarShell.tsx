@@ -123,11 +123,11 @@ export function AppTopbarShell() {
       className={cn(
         "relative sticky top-0 z-40 grid min-h-[4.5rem] w-full max-w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 overflow-x-clip bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-4 py-2 font-sans sm:gap-x-3 sm:px-6 lg:px-8",
         showNavRow
-          ? "xl:min-h-20 xl:grid-cols-[minmax(0,280px)_minmax(0,1fr)_auto] xl:py-0"
-          : "xl:min-h-[4.5rem] xl:grid-cols-[minmax(0,1fr)_auto] xl:py-2"
+          ? "2xl:min-h-20 2xl:grid-cols-[max-content_minmax(0,1fr)_auto] 2xl:py-0"
+          : "2xl:min-h-[4.5rem] 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:py-2"
       )}
     >
-      <div className="z-10 col-start-1 row-start-1 flex min-w-0 max-w-full items-center justify-self-start xl:max-w-[min(280px,35%)]">
+      <div className="z-20 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start">
         <Link
           href={homeHref}
           className="flex min-w-0 items-center gap-3.5 sm:gap-4"
@@ -163,7 +163,7 @@ export function AppTopbarShell() {
 
       {showNavRow ? (
         <nav
-          className="z-10 col-span-2 row-start-2 flex min-w-0 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto [scrollbar-width:none] sm:gap-2 sm:justify-center xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:justify-center [&::-webkit-scrollbar]:hidden"
+          className="z-10 col-span-2 row-start-2 flex min-w-0 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto border-t border-white/10 pt-1 [scrollbar-width:none] sm:gap-2 sm:justify-center 2xl:col-span-1 2xl:col-start-2 2xl:row-start-1 2xl:justify-center 2xl:border-t-0 2xl:pt-0 [&::-webkit-scrollbar]:hidden"
           aria-label={t("navMainAria")}
         >
           {showAdminHeaderNav ? <AdminHeaderNav /> : null}
@@ -188,7 +188,7 @@ export function AppTopbarShell() {
         </nav>
       ) : null}
 
-      <div className="z-10 col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end xl:col-start-3">
+      <div className="z-20 col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end 2xl:col-start-3">
         {sessionReady &&
         signedIn &&
         onClientDashboard &&

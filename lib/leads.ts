@@ -238,6 +238,33 @@ export type LeadPipelineStats = {
   averageWonProfit: number | null
 }
 
+/**
+ * Share shown under each pipeline bucket: % of total DKK in lost + open + won.
+ * When every bucket is 0 kr. (typical before salesPrice is filled), uses lead counts instead.
+ */
+export function pipelineSegmentSharePercent(
+  stats: LeadPipelineStats,
+  segment: "lost" | "open" | "won"
+): number {
+  const valueBySegment = {
+    lost: stats.lostValue,
+    open: stats.pipelineValue,
+    won: stats.wonValue,
+  } as const
+  const countBySegment = {
+    lost: stats.lostCount,
+    open: stats.openCount,
+    won: stats.wonCount,
+  } as const
+  const valueTotal = stats.lostValue + stats.pipelineValue + stats.wonValue
+  if (valueTotal > 0) {
+    return (valueBySegment[segment] / valueTotal) * 100
+  }
+  const countTotal = stats.lostCount + stats.openCount + stats.wonCount
+  if (countTotal <= 0) return 0
+  return (countBySegment[segment] / countTotal) * 100
+}
+
 export function computeLeadPipelineStats(
   leads: readonly Lead[]
 ): LeadPipelineStats {
