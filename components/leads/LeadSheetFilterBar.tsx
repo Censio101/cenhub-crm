@@ -49,6 +49,8 @@ export function LeadSheetFilterBar({
   showFormFilter = false,
   formFilter = "all",
   onFormFilterChange,
+  showServiceFilter = true,
+  showSourceFilter = true,
 }: {
   preset: DatePreset
   range: DateRange
@@ -78,6 +80,8 @@ export function LeadSheetFilterBar({
   showFormFilter?: boolean
   formFilter?: FormFilterValue
   onFormFilterChange?: (next: FormFilterValue) => void
+  showServiceFilter?: boolean
+  showSourceFilter?: boolean
 }) {
   const { t } = useLanguage()
 
@@ -117,6 +121,8 @@ export function LeadSheetFilterBar({
         onSheetFunnelChange={onSheetFunnelChange}
         enabledServices={enabledServices}
         servicesLoaded={servicesLoaded}
+        showServiceFilter={showServiceFilter}
+        showSourceFilter={showSourceFilter}
       />
       {showFormFilter && onFormFilterChange ? (
         <LeadSheetFormFilter value={formFilter} onChange={onFormFilterChange} />
@@ -175,6 +181,8 @@ export function LeadSheetFilterBar({
       search={search}
       onSearchChange={onSearchChange}
       onClear={clearFilters}
+      showServiceFilter={showServiceFilter}
+      showSourceFilter={showSourceFilter}
     />
     </div>
   )

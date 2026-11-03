@@ -123,6 +123,10 @@ import {
 import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
 import { missingPriceCellClass } from "@/lib/leads/won-sales-price"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
+import {
+  shouldShowLeadSourceFilter,
+  shouldShowServiceFilter,
+} from "@/lib/leads/sheet-filter-visibility"
 import { leadMatchesServiceFilter } from "@/lib/leads/service-filter"
 import { matchesSearch } from "@/lib/leads/search"
 import {
@@ -1439,6 +1443,14 @@ export function LeadsBoard() {
   const [sheetFunnel, setSheetFunnel] = useState<FunnelId | "all">("all")
   const [formFilter, setFormFilter] = useState<FormFilterValue>("all")
   const formStepsTotal = leadSheet.template.formStepsTotal ?? null
+  const showServiceFilter = shouldShowServiceFilter(servicesLoaded, enabledServices)
+  const showSourceFilter = useMemo(() => shouldShowLeadSourceFilter(leads), [leads])
+  useEffect(() => {
+    if (!showServiceFilter && sheetService) setSheetService(null)
+  }, [showServiceFilter, sheetService])
+  useEffect(() => {
+    if (!showSourceFilter && sheetFunnel !== "all") setSheetFunnel("all")
+  }, [showSourceFilter, sheetFunnel])
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
@@ -1694,6 +1706,8 @@ export function LeadsBoard() {
             showFormFilter={formStepsTotal !== null}
             formFilter={formFilter}
             onFormFilterChange={setFormFilter}
+            showServiceFilter={showServiceFilter}
+            showSourceFilter={showSourceFilter}
           />
           <LeadSheetScrollArea
             className="min-h-0 flex-1"
@@ -1774,6 +1788,8 @@ export function LeadsBoard() {
           showFormFilter={formStepsTotal !== null}
           formFilter={formFilter}
           onFormFilterChange={setFormFilter}
+          showServiceFilter={showServiceFilter}
+          showSourceFilter={showSourceFilter}
           focusOpen={false}
           onToggleFocus={() => setSheetFocusOpen(true)}
         />

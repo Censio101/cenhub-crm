@@ -26,10 +26,10 @@ export function LeadSheetReadOnlyText({
   /** Fuld tekst view: show the whole value when the column is wide enough. */
   fullText?: boolean
 }) {
-  const hoverTitle =
-    !fullText &&
-    (title ??
-      (typeof children === "string" && children.trim() && children !== "–" ? children : undefined))
+  const hoverTitle = fullText
+    ? undefined
+    : title ??
+      (typeof children === "string" && children.trim() && children !== "–" ? children : undefined)
   return (
     <span
       title={hoverTitle}

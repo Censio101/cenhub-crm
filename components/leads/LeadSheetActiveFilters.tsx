@@ -80,6 +80,8 @@ export function LeadSheetActiveFilters({
   search,
   onSearchChange,
   onClear,
+  showServiceFilter = true,
+  showSourceFilter = true,
 }: {
   dateIsAllTime: boolean
   datePreset: DatePreset
@@ -99,6 +101,8 @@ export function LeadSheetActiveFilters({
   search: string
   onSearchChange: (value: string) => void
   onClear: () => void
+  showServiceFilter?: boolean
+  showSourceFilter?: boolean
 }) {
   const { locale, t } = useLanguage()
   const chips: Chip[] = []
@@ -132,7 +136,7 @@ export function LeadSheetActiveFilters({
     })
   }
 
-  if (sheetService) {
+  if (showServiceFilter && sheetService) {
     chips.push({
       key: "service",
       label: enabledServices.find((service) => service.id === sheetService)?.label ?? sheetService,
@@ -140,7 +144,7 @@ export function LeadSheetActiveFilters({
     })
   }
 
-  if (sheetFunnel !== "all") {
+  if (showSourceFilter && sheetFunnel !== "all") {
     chips.push({
       key: "source",
       label: t(FUNNEL_MESSAGE_KEYS[sheetFunnel]),

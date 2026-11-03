@@ -42,6 +42,10 @@ import { formProgressText } from "@/lib/lead-sheet/form-steps"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
+import {
+  shouldShowCustomerSourceFilter,
+  shouldShowServiceFilter,
+} from "@/lib/leads/sheet-filter-visibility"
 import { matchesSearch } from "@/lib/leads/search"
 import {
   defaultCustomersSheetSort,
@@ -150,6 +154,14 @@ export function CustomersBoard() {
   const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
   const [sheetService, setSheetService] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">("all")
+  const showServiceFilter = shouldShowServiceFilter(servicesLoaded, enabledServices)
+  const showSourceFilter = useMemo(() => shouldShowCustomerSourceFilter(customers), [customers])
+  useEffect(() => {
+    if (!showServiceFilter && sheetService) setSheetService(null)
+  }, [showServiceFilter, sheetService])
+  useEffect(() => {
+    if (!showSourceFilter && sourceFilter !== "all") setSourceFilter("all")
+  }, [showSourceFilter, sourceFilter])
   const [sheetSort, setSheetSort] = useState<SheetSortState>(null)
   const [search, setSearch] = useState("")
   const [sheetFocusOpen, setSheetFocusOpen] = useState(false)
@@ -407,6 +419,8 @@ export function CustomersBoard() {
                   sourceLabelKeys={SOURCE_LABEL_KEYS}
                   enabledServices={enabledServices}
                   servicesLoaded={servicesLoaded}
+                  showServiceFilter={showServiceFilter}
+                  showSourceFilter={showSourceFilter}
                   search={search}
                   onSearchChange={setSearch}
                   onExport={exportFiltered}
@@ -483,6 +497,8 @@ export function CustomersBoard() {
                 sourceLabelKeys={SOURCE_LABEL_KEYS}
                 enabledServices={enabledServices}
                 servicesLoaded={servicesLoaded}
+                showServiceFilter={showServiceFilter}
+                showSourceFilter={showSourceFilter}
                 search={search}
                 onSearchChange={setSearch}
                 onExport={exportFiltered}

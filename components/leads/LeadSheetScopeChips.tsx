@@ -23,6 +23,8 @@ export function LeadSheetScopeChips({
   onSheetFunnelChange,
   enabledServices,
   servicesLoaded,
+  showServiceFilter = true,
+  showSourceFilter = true,
 }: {
   sheetSegment: LeadSegmentId | "all"
   onSheetSegmentChange: (segment: LeadSegmentId | "all") => void
@@ -32,6 +34,8 @@ export function LeadSheetScopeChips({
   onSheetFunnelChange: (funnel: FunnelId | "all") => void
   enabledServices: readonly NamedService[]
   servicesLoaded: boolean
+  showServiceFilter?: boolean
+  showSourceFilter?: boolean
 }) {
   const { t } = useLanguage()
 
@@ -71,53 +75,57 @@ export function LeadSheetScopeChips({
         </LeadSheetFilterMenuItem>
       </LeadSheetFilterMenu>
 
-      <LeadSheetFilterMenu
-        icon={<WrenchIcon />}
-        label={t("leadSheetFilterLabelService")}
-        ariaLabel={t("filterServiceAria")}
-        active={Boolean(sheetService)}
-        valueLabel={serviceValue}
-      >
-        <LeadSheetFilterMenuItem
-          selected={!sheetService}
-          onSelect={() => onSheetServiceChange(null)}
+      {showServiceFilter ? (
+        <LeadSheetFilterMenu
+          icon={<WrenchIcon />}
+          label={t("leadSheetFilterLabelService")}
+          ariaLabel={t("filterServiceAria")}
+          active={Boolean(sheetService)}
+          valueLabel={serviceValue}
         >
-          {t("filterAllServices")}
-        </LeadSheetFilterMenuItem>
-        {enabledServices.map((item) => (
           <LeadSheetFilterMenuItem
-            key={item.id}
-            selected={sheetService === item.id}
-            onSelect={() => onSheetServiceChange(item.id)}
+            selected={!sheetService}
+            onSelect={() => onSheetServiceChange(null)}
           >
-            {item.label}
+            {t("filterAllServices")}
           </LeadSheetFilterMenuItem>
-        ))}
-      </LeadSheetFilterMenu>
+          {enabledServices.map((item) => (
+            <LeadSheetFilterMenuItem
+              key={item.id}
+              selected={sheetService === item.id}
+              onSelect={() => onSheetServiceChange(item.id)}
+            >
+              {item.label}
+            </LeadSheetFilterMenuItem>
+          ))}
+        </LeadSheetFilterMenu>
+      ) : null}
 
-      <LeadSheetFilterMenu
-        icon={<MegaphoneIcon />}
-        label={t("leadSheetFilterLabelSource")}
-        ariaLabel={t("filterFunnelAria")}
-        active={sheetFunnel !== "all"}
-        valueLabel={funnelValue}
-      >
-        <LeadSheetFilterMenuItem
-          selected={sheetFunnel === "all"}
-          onSelect={() => onSheetFunnelChange("all")}
+      {showSourceFilter ? (
+        <LeadSheetFilterMenu
+          icon={<MegaphoneIcon />}
+          label={t("leadSheetFilterLabelSource")}
+          ariaLabel={t("filterFunnelAria")}
+          active={sheetFunnel !== "all"}
+          valueLabel={funnelValue}
         >
-          {t("filterFunnelAll")}
-        </LeadSheetFilterMenuItem>
-        {FUNNELS.map((item) => (
           <LeadSheetFilterMenuItem
-            key={item.id}
-            selected={sheetFunnel === item.id}
-            onSelect={() => onSheetFunnelChange(item.id)}
+            selected={sheetFunnel === "all"}
+            onSelect={() => onSheetFunnelChange("all")}
           >
-            {t(FUNNEL_MESSAGE_KEYS[item.id])}
+            {t("filterFunnelAll")}
           </LeadSheetFilterMenuItem>
-        ))}
-      </LeadSheetFilterMenu>
+          {FUNNELS.map((item) => (
+            <LeadSheetFilterMenuItem
+              key={item.id}
+              selected={sheetFunnel === item.id}
+              onSelect={() => onSheetFunnelChange(item.id)}
+            >
+              {t(FUNNEL_MESSAGE_KEYS[item.id])}
+            </LeadSheetFilterMenuItem>
+          ))}
+        </LeadSheetFilterMenu>
+      ) : null}
     </>
   )
 }

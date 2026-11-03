@@ -46,6 +46,8 @@ export function CustomersSheetFilterBar({
   onSearchChange,
   onExport,
   onToggleFocus,
+  showServiceFilter = true,
+  showSourceFilter = true,
 }: {
   preset: DatePreset
   range: DateRange
@@ -68,6 +70,8 @@ export function CustomersSheetFilterBar({
   onSearchChange: (value: string) => void
   onExport?: () => void
   onToggleFocus?: () => void
+  showServiceFilter?: boolean
+  showSourceFilter?: boolean
 }) {
   const { locale, t } = useLanguage()
 
@@ -97,14 +101,14 @@ export function CustomersSheetFilterBar({
       onRemove: () => onSheetSegmentChange("all"),
     })
   }
-  if (sheetService) {
+  if (showServiceFilter && sheetService) {
     chips.push({
       key: "service",
       label: enabledServices.find((service) => service.id === sheetService)?.label ?? sheetService,
       onRemove: () => onSheetServiceChange(null),
     })
   }
-  if (sourceFilter !== "all") {
+  if (showSourceFilter && sourceFilter !== "all") {
     chips.push({
       key: "source",
       label: t(sourceLabelKeys[sourceFilter]),
@@ -155,46 +159,50 @@ export function CustomersSheetFilterBar({
             {t("filterSegmentB2b")}
           </LeadSheetFilterMenuItem>
         </LeadSheetFilterMenu>
-        <LeadSheetFilterMenu
-          icon={<WrenchIcon />}
-          label={t("leadSheetFilterLabelService")}
-          ariaLabel={t("filterServiceAria")}
-          active={Boolean(sheetService)}
-          valueLabel={serviceValue}
-        >
-          <LeadSheetFilterMenuItem selected={!sheetService} onSelect={() => onSheetServiceChange(null)}>
-            {t("filterAllServices")}
-          </LeadSheetFilterMenuItem>
-          {enabledServices.map((item) => (
-            <LeadSheetFilterMenuItem
-              key={item.id}
-              selected={sheetService === item.id}
-              onSelect={() => onSheetServiceChange(item.id)}
-            >
-              {item.label}
+        {showServiceFilter ? (
+          <LeadSheetFilterMenu
+            icon={<WrenchIcon />}
+            label={t("leadSheetFilterLabelService")}
+            ariaLabel={t("filterServiceAria")}
+            active={Boolean(sheetService)}
+            valueLabel={serviceValue}
+          >
+            <LeadSheetFilterMenuItem selected={!sheetService} onSelect={() => onSheetServiceChange(null)}>
+              {t("filterAllServices")}
             </LeadSheetFilterMenuItem>
-          ))}
-        </LeadSheetFilterMenu>
-        <LeadSheetFilterMenu
-          icon={<MegaphoneIcon />}
-          label={t("leadSheetFilterLabelSource")}
-          ariaLabel={t("customersFilterSourceAria")}
-          active={sourceFilter !== "all"}
-          valueLabel={sourceFilter === "all" ? "" : t(sourceLabelKeys[sourceFilter])}
-        >
-          <LeadSheetFilterMenuItem selected={sourceFilter === "all"} onSelect={() => onSourceFilterChange("all")}>
-            {t("customersAllSources")}
-          </LeadSheetFilterMenuItem>
-          {(Object.keys(sourceLabelKeys) as CustomerSourceId[]).map((id) => (
-            <LeadSheetFilterMenuItem
-              key={id}
-              selected={sourceFilter === id}
-              onSelect={() => onSourceFilterChange(id)}
-            >
-              {t(sourceLabelKeys[id])}
+            {enabledServices.map((item) => (
+              <LeadSheetFilterMenuItem
+                key={item.id}
+                selected={sheetService === item.id}
+                onSelect={() => onSheetServiceChange(item.id)}
+              >
+                {item.label}
+              </LeadSheetFilterMenuItem>
+            ))}
+          </LeadSheetFilterMenu>
+        ) : null}
+        {showSourceFilter ? (
+          <LeadSheetFilterMenu
+            icon={<MegaphoneIcon />}
+            label={t("leadSheetFilterLabelSource")}
+            ariaLabel={t("customersFilterSourceAria")}
+            active={sourceFilter !== "all"}
+            valueLabel={sourceFilter === "all" ? "" : t(sourceLabelKeys[sourceFilter])}
+          >
+            <LeadSheetFilterMenuItem selected={sourceFilter === "all"} onSelect={() => onSourceFilterChange("all")}>
+              {t("customersAllSources")}
             </LeadSheetFilterMenuItem>
-          ))}
-        </LeadSheetFilterMenu>
+            {(Object.keys(sourceLabelKeys) as CustomerSourceId[]).map((id) => (
+              <LeadSheetFilterMenuItem
+                key={id}
+                selected={sourceFilter === id}
+                onSelect={() => onSourceFilterChange(id)}
+              >
+                {t(sourceLabelKeys[id])}
+              </LeadSheetFilterMenuItem>
+            ))}
+          </LeadSheetFilterMenu>
+        ) : null}
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <SheetSearchField
