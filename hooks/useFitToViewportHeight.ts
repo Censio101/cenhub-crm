@@ -2,12 +2,8 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react"
 
-/** Never shorter than this (px), so a short window still shows a usable sheet. */
-const MIN_HEIGHT_PX = 384
-/** Window height minus this (px) is the least height the sheet gets: top bar plus a little air. */
-const FULL_WINDOW_INSET_PX = 96
-/** Space kept below the element (px). */
-const BOTTOM_GAP_PX = 24
+import { computeSheetHeightPx } from "@/lib/leads/sheet-fit-height"
+
 /** Below this width the sheet is replaced by cards, so no fixed height is applied. */
 const DESKTOP_MIN_WIDTH_PX = 768
 
@@ -29,11 +25,7 @@ export function useFitToViewportHeight(): {
       return
     }
     const top = node.getBoundingClientRect().top + window.scrollY
-    const fillBelow = window.innerHeight - top - BOTTOM_GAP_PX
-    // The summary cards above can push the sheet low on the page. Then it still gets almost a
-    // full window of height (the page scrolls to it) instead of a short strip.
-    const nearlyFullWindow = window.innerHeight - FULL_WINDOW_INSET_PX
-    const next = Math.max(MIN_HEIGHT_PX, Math.round(Math.max(fillBelow, nearlyFullWindow)))
+    const next = computeSheetHeightPx(window.innerHeight, top)
     setHeight((prev) => (prev === next ? prev : next))
   }, [node])
 
