@@ -72,7 +72,7 @@ export function columnColorCss(
     if (!color) return
     const nth = leadingCells + index + 1
     rules.push(
-      `[data-lead-sheet-table] > tbody > tr:not([aria-hidden]) > td:nth-child(${nth}):not([data-lead-status-cell]){background-color:${color.cell} !important}`
+      `[data-lead-sheet-table] > tbody > tr:not([aria-hidden]) > td:nth-child(${nth}):not([data-lead-status-cell]){background-color:${color.cell}}`
     )
   })
   return rules.join("\n")

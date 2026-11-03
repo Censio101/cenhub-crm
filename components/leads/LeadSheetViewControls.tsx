@@ -6,6 +6,7 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -60,40 +61,44 @@ export function LeadSheetViewControls({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="min-w-44 rounded-[4px] p-1.5">
-        <LeadSheetFilterMenuItem
-          selected={displayMode === "compact"}
-          onSelect={() => onDisplayModeChange("compact")}
-        >
-          {t("leadSheetViewModeCompact")}
-        </LeadSheetFilterMenuItem>
-        <LeadSheetFilterMenuItem
-          selected={displayMode === "key"}
-          onSelect={() => onDisplayModeChange("key")}
-        >
-          {t("leadSheetViewModeKey")}
-        </LeadSheetFilterMenuItem>
-        <LeadSheetFilterMenuItem
-          selected={displayMode === "full"}
-          onSelect={() => onDisplayModeChange("full")}
-        >
-          {t("leadSheetViewModeFull")}
-        </LeadSheetFilterMenuItem>
+        <DropdownMenuGroup>
+          <LeadSheetFilterMenuItem
+            selected={displayMode === "compact"}
+            onSelect={() => onDisplayModeChange("compact")}
+          >
+            {t("leadSheetViewModeCompact")}
+          </LeadSheetFilterMenuItem>
+          <LeadSheetFilterMenuItem
+            selected={displayMode === "key"}
+            onSelect={() => onDisplayModeChange("key")}
+          >
+            {t("leadSheetViewModeKey")}
+          </LeadSheetFilterMenuItem>
+          <LeadSheetFilterMenuItem
+            selected={displayMode === "full"}
+            onSelect={() => onDisplayModeChange("full")}
+          >
+            {t("leadSheetViewModeFull")}
+          </LeadSheetFilterMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("leadSheetRowSize")}
-        </DropdownMenuLabel>
-        <LeadSheetFilterMenuItem
-          selected={rowDensity === "compact"}
-          onSelect={() => onRowDensityChange("compact")}
-        >
-          {t("leadSheetRowSizeCompact")}
-        </LeadSheetFilterMenuItem>
-        <LeadSheetFilterMenuItem
-          selected={rowDensity === "standard"}
-          onSelect={() => onRowDensityChange("standard")}
-        >
-          {t("leadSheetRowSizeStandard")}
-        </LeadSheetFilterMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("leadSheetRowSize")}
+          </DropdownMenuLabel>
+          <LeadSheetFilterMenuItem
+            selected={rowDensity === "compact"}
+            onSelect={() => onRowDensityChange("compact")}
+          >
+            {t("leadSheetRowSizeCompact")}
+          </LeadSheetFilterMenuItem>
+          <LeadSheetFilterMenuItem
+            selected={rowDensity === "standard"}
+            onSelect={() => onRowDensityChange("standard")}
+          >
+            {t("leadSheetRowSizeStandard")}
+          </LeadSheetFilterMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

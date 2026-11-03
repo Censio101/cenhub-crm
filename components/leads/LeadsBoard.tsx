@@ -1324,8 +1324,7 @@ export function LeadsTable({
                 key={col.id}
                 className={cn(
                   leadHeaderCellClass,
-                  // Sticky columns are already positioned; the others need it for the colour button.
-                  columnLayout && cn("group/colhead pr-7", index > 1 && "relative"),
+                  columnLayout && "group/colhead relative pr-7",
                   columnLayout
                     ? cn(
                         "px-2",
