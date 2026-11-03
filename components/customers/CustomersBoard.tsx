@@ -342,7 +342,7 @@ export function CustomersBoard() {
           <ClientBoardLoadingState variant="customers" />
         ) : (
           <ClientBoardEnter
-            className="client-core-settle-stack flex min-h-0 flex-1 flex-col gap-6"
+            className="client-core-settle-stack flex min-h-0 flex-1 flex-col gap-3"
             pending={pending}
             animateEnter={animateBoardEnter}
           >

@@ -1283,7 +1283,7 @@ export function LeadsTable({
         className={cn(
           "[&_td]:border-b [&_td]:border-b-[#eee7de]",
           // Tight rows: less padding around the controls (dropdown wrappers drop their own too).
-          density === "compact" && "[&_td]:!py-0.5 [&_td_.py-0\\.5]:!py-0"
+          density === "compact" && "[&_td:not([data-lead-status-cell])]:!py-0.5 [&_td_.py-0\\.5]:!py-0"
         )}
       >
         {leads.length === 0 ? (
@@ -1618,7 +1618,7 @@ export function LeadsBoard() {
         <ClientBoardLoadingState variant="leads" />
       ) : (
         <ClientBoardEnter
-          className="client-core-settle-stack flex min-h-0 flex-1 flex-col gap-6"
+          className="client-core-settle-stack flex min-h-0 flex-1 flex-col gap-3"
           pending={pending}
           animateEnter={animateBoardEnter}
         >
