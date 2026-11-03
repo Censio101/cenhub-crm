@@ -146,14 +146,15 @@ import { cn } from "cn"
 const cellInputClass =
   "h-8 w-full min-w-0 rounded-md border-0 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground/60 focus:bg-white focus:ring-1 focus:ring-ring select-text"
 
+/** Scrollable header cells (sticky top only) — below pinned date/name so they slide under on horizontal scroll. */
 const leadHeaderCellClass =
-  "sticky top-0 z-[30] h-11 border-b border-r border-white/15 bg-[#3f3a36] px-3 text-xs font-medium text-white"
+  "sticky top-0 z-[25] h-11 border-b border-r border-white/15 bg-[#3f3a36] px-3 text-xs font-medium text-white"
 
 /** Pinned sheet columns must stack above scrolling cells (open dropdown triggers use z-[6]). */
 const SHEET_Z_PINNED_BODY = "z-[20]"
 const SHEET_Z_PINNED_BODY_EDGE = "z-[21]"
-const SHEET_Z_PINNED_HEADER = "z-[30]"
-const SHEET_Z_PINNED_HEADER_EDGE = "z-[31]"
+const SHEET_Z_PINNED_HEADER = "z-[32]"
+const SHEET_Z_PINNED_HEADER_EDGE = "z-[33]"
 
 function parseMoney(value: string): number | null {
   const digits = value.replace(/[^\d]/g, "")
@@ -697,7 +698,11 @@ function renderLeadColumnCell(
     if (columnLayout) {
       return cn(
         "px-2",
-        colIndex <= 1 && cn("sticky bg-card", SHEET_Z_PINNED_BODY),
+        colIndex <= 1 &&
+          cn(
+            "sticky bg-card",
+            colIndex === 0 ? SHEET_Z_PINNED_BODY : SHEET_Z_PINNED_BODY_EDGE
+          ),
         colIndex === 1 && "border-r border-border"
       )
     }
@@ -1277,7 +1282,11 @@ export function LeadsTable({
                   columnLayout
                     ? cn(
                         "px-2",
-                        index <= 1 && cn("sticky top-0", SHEET_Z_PINNED_HEADER),
+                        index <= 1 &&
+                          cn(
+                            "sticky top-0",
+                            index === 0 ? SHEET_Z_PINNED_HEADER : SHEET_Z_PINNED_HEADER_EDGE
+                          ),
                         index === 1 && "border-r border-white/15"
                       )
                     : cn(
