@@ -1562,6 +1562,7 @@ export function LeadsBoard() {
     enabledServices,
     t,
     segmentFilter: sheetSegment,
+    formSourceFilter: sheetFormSource,
   })
 
   const sheetViewToolbar = (

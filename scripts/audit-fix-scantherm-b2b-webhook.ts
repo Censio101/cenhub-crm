@@ -197,7 +197,21 @@ async function main() {
     console.log("Funnel mapping already complete — no PATCH needed")
   }
 
-  const report = {
+  const report: {
+    funnelId: string
+    funnelSlug: string
+    webhookUrl: string
+    before: typeof before
+    after: {
+      dataFormat: string
+      fieldMapping: Record<string, string>
+      webhookFieldTargets: string[] | null
+      sheetSourceLabel: string | null
+    }
+    sheetColumnCheck: typeof sheetCheck
+    sheetWarnings: (string | false)[]
+    sheetFixActions?: string[]
+  } = {
     funnelId: funnel.id,
     funnelSlug: funnel.slug,
     webhookUrl: `${CRM_BASE}/api/webhooks/funnels/${funnel.id}`,
@@ -223,14 +237,18 @@ async function main() {
     if (sheetFixActions.length > 0) {
       const sheetAfter = await resolveLeadSheetForOrganization(admin, org.id)
       report.sheetColumnCheck = {
-        companyName: sheetAfter?.columns.some(
-          (c) => c.kind === "builtin" && c.builtinKey === "companyName"
+        companyName: Boolean(
+          sheetAfter?.columns.some(
+            (c) => c.kind === "builtin" && c.builtinKey === "companyName"
+          )
         ),
-        metaAdId: sheetAfter?.columns.some(
-          (c) => c.kind === "builtin" && c.builtinKey === "metaAdId"
+        metaAdId: Boolean(
+          sheetAfter?.columns.some((c) => c.kind === "builtin" && c.builtinKey === "metaAdId")
         ),
-        note: sheetAfter?.columns.some(
-          (c) => c.kind === "custom" && c.customField.fieldKey === "note"
+        note: Boolean(
+          sheetAfter?.columns.some(
+            (c) => c.kind === "custom" && c.customField.fieldKey === "note"
+          )
         ),
         customKeysSample: [],
       }

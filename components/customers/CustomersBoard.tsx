@@ -287,6 +287,7 @@ export function CustomersBoard() {
     enabledServices,
     t,
     segmentFilter: sheetSegment,
+    formSourceFilter: sheetFormSource,
   })
 
   const sheetViewToolbar = (
