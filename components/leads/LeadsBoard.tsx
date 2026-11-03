@@ -42,6 +42,7 @@ import { LeadSheetBulkSelectionBar } from "@/components/leads/LeadSheetBulkSelec
 import { LeadSheetToolbarMenu } from "@/components/leads/LeadSheetToolbarMenu"
 import { LeadSheetLeadQuickView } from "@/components/leads/LeadSheetLeadQuickView"
 import { rowHeightEstimatePx, type SheetRowDensity } from "@/lib/leads/sheet-column-widths"
+import { columnColorCss, sheetColumnColor } from "@/lib/leads/sheet-column-colors"
 import { useLeadSheetScrollElement } from "@/components/leads/LeadSheetScrollContext"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { LeadSheetViewControls } from "@/components/leads/LeadSheetViewControls"
@@ -60,6 +61,7 @@ import {
 } from "@/hooks/useLeadSheetColumnLayout"
 import { useLeads } from "@/hooks/useLeads"
 import { LeadPipelineBar } from "@/components/leads/LeadPipelineBar"
+import { LeadSheetColumnColorMenu } from "@/components/leads/LeadSheetColumnColorMenu"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -1173,8 +1175,20 @@ export function LeadsTable({
         selectOffset
     : undefined
 
+  const columnColors = columnLayout?.columnColors
+  const tintCss = useMemo(
+    () =>
+      columnColors
+        ? columnColorCss(columnColors, columns.map((col) => col.id), bulkSelection ? 1 : 0)
+        : "",
+    [bulkSelection, columnColors, columns]
+  )
+
   return (
+    <>
+    {tintCss ? <style>{tintCss}</style> : null}
     <Table
+      data-lead-sheet-table=""
       containerClassName="overflow-visible"
       className={cn(
         "border-separate border-spacing-0",
@@ -1223,6 +1237,7 @@ export function LeadsTable({
             const label = headerLabel(col)
             const sortable = isColumnSortable(col)
             const box = cellBox(col, index)
+            const columnColor = sheetColumnColor(columnLayout?.columnColors[col.id])
             const headInner = sortable ? (
               <LeadSheetSortableHeader
                 columnId={col.id}
@@ -1238,6 +1253,8 @@ export function LeadsTable({
                 key={col.id}
                 className={cn(
                   leadHeaderCellClass,
+                  // Sticky columns are already positioned; the others need it for the colour button.
+                  columnLayout && cn("group/colhead pr-7", index > 1 && "relative"),
                   columnLayout
                     ? cn(
                         "px-2",
@@ -1259,10 +1276,25 @@ export function LeadsTable({
                           cn("sticky left-36 min-w-44", SHEET_Z_PINNED_HEADER)
                       )
                 )}
-                style={columnLayout ? box.style : undefined}
+                style={
+                  columnLayout
+                    ? {
+                        ...box.style,
+                        ...(columnColor
+                          ? { boxShadow: `inset 0 -3px 0 ${columnColor.marker}` }
+                          : {}),
+                      }
+                    : undefined
+                }
                 title={label}
               >
                 {headInner}
+                {columnLayout ? (
+                  <LeadSheetColumnColorMenu
+                    current={columnColor?.id ?? null}
+                    onChange={(color) => columnLayout.setColumnColor(col.id, color)}
+                  />
+                ) : null}
               </TableHead>
             )
           })}
@@ -1336,6 +1368,7 @@ export function LeadsTable({
         )}
       </TableBody>
     </Table>
+    </>
   )
 }
 

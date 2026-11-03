@@ -103,6 +103,8 @@ export function rowHeightEstimatePx(density: SheetRowDensity): number {
 export type StoredSheetLayout = {
   displayMode?: SheetDisplayMode
   rowDensity?: SheetRowDensity
+  /** Column id -> colour id (see `sheet-column-colors.ts`). */
+  columnColors?: Record<string, string>
   /** @deprecated ignored: column hide removed */
   hiddenColumnIds?: string[]
   fitText?: boolean

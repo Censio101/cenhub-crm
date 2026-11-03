@@ -19,6 +19,12 @@ import {
   type SheetRowDensity,
   type StoredSheetLayout,
 } from "@/lib/leads/sheet-column-widths"
+import {
+  parseStoredColumnColors,
+  withColumnColor,
+  type SheetColumnColorId,
+  type SheetColumnColors,
+} from "@/lib/leads/sheet-column-colors"
 import type { NamedService } from "@/lib/performance/services"
 
 export type LeadSheetColumnLayout = {
@@ -29,9 +35,17 @@ export type LeadSheetColumnLayout = {
   setDisplayMode: (mode: SheetDisplayMode) => void
   rowDensity: SheetRowDensity
   setRowDensity: (density: SheetRowDensity) => void
+  columnColors: SheetColumnColors
+  setColumnColor: (columnId: string, color: SheetColumnColorId | null) => void
 }
 
-type SavedLayout = { displayMode: SheetDisplayMode | null; rowDensity: SheetRowDensity | null }
+type SavedLayout = {
+  displayMode: SheetDisplayMode | null
+  rowDensity: SheetRowDensity | null
+  columnColors: SheetColumnColors
+}
+
+const EMPTY_LAYOUT: SavedLayout = { displayMode: null, rowDensity: null, columnColors: {} }
 
 function readStored(key: string): SavedLayout | null {
   if (typeof window === "undefined") return null
@@ -43,6 +57,7 @@ function readStored(key: string): SavedLayout | null {
     return {
       displayMode: parseStoredDisplayMode(parsed),
       rowDensity: parseStoredRowDensity(parsed),
+      columnColors: parseStoredColumnColors(parsed.columnColors),
     }
   } catch {
     return null
@@ -68,12 +83,12 @@ export function useLeadSheetColumnLayout(input: {
   const storageKey = layoutStorageKey(input.organizationId ?? "local", input.page)
   const columnCount = input.columns.length
   const [saved, setSaved] = useState<SavedLayout>(
-    () => readStored(storageKey) ?? { displayMode: null, rowDensity: null }
+    () => readStored(storageKey) ?? EMPTY_LAYOUT
   )
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is external store keyed by storageKey
-    setSaved(readStored(storageKey) ?? { displayMode: null, rowDensity: null })
+    setSaved(readStored(storageKey) ?? EMPTY_LAYOUT)
   }, [storageKey])
 
   // Until the user picks a view, wide sheets start on Key columns.
@@ -144,6 +159,19 @@ export function useLeadSheetColumnLayout(input: {
     [storageKey]
   )
 
+  const setColumnColor = useCallback(
+    (columnId: string, color: SheetColumnColorId | null) => {
+      setSaved((prev) => {
+        const next = { ...prev, columnColors: withColumnColor(prev.columnColors, columnId, color) }
+        writeStored(storageKey, next)
+        return next
+      })
+    },
+    [storageKey]
+  )
+
+  const columnColors = saved.columnColors
+
   // One identity until something really changes, so memoized sheet rows are not re-drawn.
   return useMemo(
     () => ({
@@ -154,7 +182,19 @@ export function useLeadSheetColumnLayout(input: {
       setDisplayMode,
       rowDensity,
       setRowDensity,
+      columnColors,
+      setColumnColor,
     }),
-    [visibleColumns, widthForColumn, stickyLeftPx, displayMode, setDisplayMode, rowDensity, setRowDensity]
+    [
+      visibleColumns,
+      widthForColumn,
+      stickyLeftPx,
+      displayMode,
+      setDisplayMode,
+      rowDensity,
+      setRowDensity,
+      columnColors,
+      setColumnColor,
+    ]
   )
 }
