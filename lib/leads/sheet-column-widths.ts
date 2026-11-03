@@ -8,6 +8,8 @@ export const SHEET_COL_CELL_PADDING_PX = 28
 /** Dropdown / status cells need at least this width so triggers are not clipped by the next column. */
 export const SHEET_COL_MIN_DROPDOWN = 168
 export const SHEET_COL_MIN_STATUS = 216
+/** Note / ISO info columns: preview + Add button (matches `LeadSheetNoteCell` max width). */
+export const SHEET_COL_NOTE_MAX = 224
 
 const DEFAULT_BY_BUILTIN: Partial<Record<string, number>> = {
   date: 132,
@@ -45,7 +47,7 @@ export function defaultColumnWidth(col: LeadSheetTemplateColumn): number {
   if (col.kind === "builtin") {
     base = DEFAULT_BY_BUILTIN[col.builtinKey] ?? SHEET_COL_WIDTH_DEFAULT
   } else if (col.customField.fieldType === "textarea") {
-    base = 200
+    base = 176
   } else if (col.customField.fieldType === "image") {
     base = 160
   }
@@ -81,7 +83,11 @@ export function autoFitColumnWidth(
     max = Math.max(max, measureSheetTextWidth(samples[i] ?? ""))
   }
   if (max <= 0) return fallback
-  return clampColumnWidth(Math.max(max + SHEET_COL_CELL_PADDING_PX, minimumColumnWidth(col)))
+  let width = clampColumnWidth(Math.max(max + SHEET_COL_CELL_PADDING_PX, minimumColumnWidth(col)))
+  if (col.kind === "custom" && col.customField.fieldType === "textarea") {
+    width = Math.min(width, SHEET_COL_NOTE_MAX)
+  }
+  return width
 }
 
 /** compact = every column, fixed widths. full = every column, widths fit the text. key = key columns only. */
@@ -130,7 +136,7 @@ export function parseStoredRowDensity(parsed: Partial<StoredSheetLayout>): Sheet
     : null
 }
 
-/** What a sheet starts in when the user has not picked a view: wide sheets begin on Key columns. */
-export function defaultDisplayMode(columnCount: number): SheetDisplayMode {
-  return columnCount > WIDE_SHEET_COLUMN_COUNT ? "key" : "compact"
+/** Default view when the user has not picked one: all columns, fixed widths. */
+export function defaultDisplayMode(_columnCount: number): SheetDisplayMode {
+  return "compact"
 }

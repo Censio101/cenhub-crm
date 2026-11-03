@@ -88,3 +88,12 @@ export function headerDisplayText(
 ): string {
   return columnDisplayLabel(col, t)
 }
+
+/** Note columns auto-fit from a short preview, not the full note body (editing is in a popup). */
+export function autoFitSampleText(col: LeadSheetTemplateColumn, text: string): string {
+  if (col.kind !== "custom" || col.customField.fieldType !== "textarea") return text
+  const trimmed = text.trim()
+  const max = 40
+  if (trimmed.length <= max) return trimmed
+  return `${trimmed.slice(0, max).trimEnd()}…`
+}

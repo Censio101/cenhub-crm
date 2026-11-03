@@ -7,11 +7,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { SheetDisplayMode, SheetRowDensity } from "@/lib/leads/sheet-column-widths"
+import type { SheetDisplayMode } from "@/lib/leads/sheet-column-widths"
 import {
   LeadSheetFilterMenuItem,
   SHEET_CONTROL_CLASS,
@@ -23,24 +21,13 @@ import { cn } from "cn"
 type Props = {
   displayMode: SheetDisplayMode
   onDisplayModeChange: (mode: SheetDisplayMode) => void
-  rowDensity: SheetRowDensity
-  onRowDensityChange: (density: SheetRowDensity) => void
 }
 
-export function LeadSheetViewControls({
-  displayMode,
-  onDisplayModeChange,
-  rowDensity,
-  onRowDensityChange,
-}: Props) {
+export function LeadSheetViewControls({ displayMode, onDisplayModeChange }: Props) {
   const { t } = useLanguage()
 
   const modeLabel =
-    displayMode === "full"
-      ? t("leadSheetViewModeFull")
-      : displayMode === "key"
-        ? t("leadSheetViewModeKey")
-        : t("leadSheetViewModeCompact")
+    displayMode === "full" ? t("leadSheetViewModeFull") : t("leadSheetViewModeCompact")
 
   return (
     <DropdownMenu modal={false}>
@@ -69,34 +56,10 @@ export function LeadSheetViewControls({
             {t("leadSheetViewModeCompact")}
           </LeadSheetFilterMenuItem>
           <LeadSheetFilterMenuItem
-            selected={displayMode === "key"}
-            onSelect={() => onDisplayModeChange("key")}
-          >
-            {t("leadSheetViewModeKey")}
-          </LeadSheetFilterMenuItem>
-          <LeadSheetFilterMenuItem
             selected={displayMode === "full"}
             onSelect={() => onDisplayModeChange("full")}
           >
             {t("leadSheetViewModeFull")}
-          </LeadSheetFilterMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("leadSheetRowSize")}
-          </DropdownMenuLabel>
-          <LeadSheetFilterMenuItem
-            selected={rowDensity === "compact"}
-            onSelect={() => onRowDensityChange("compact")}
-          >
-            {t("leadSheetRowSizeCompact")}
-          </LeadSheetFilterMenuItem>
-          <LeadSheetFilterMenuItem
-            selected={rowDensity === "standard"}
-            onSelect={() => onRowDensityChange("standard")}
-          >
-            {t("leadSheetRowSizeStandard")}
           </LeadSheetFilterMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

@@ -1146,7 +1146,7 @@ export function LeadsTable({
     }),
     []
   )
-  const density: SheetRowDensity = columnLayout?.rowDensity ?? "standard"
+  const density = "compact" as const satisfies SheetRowDensity
   const rowEnv = useMemo<LeadRowEnv>(
     () => ({ t, statuses, onUpdate: stable.onUpdate, columnLayout, selectOffset, density }),
     [t, statuses, stable, columnLayout, selectOffset, density]
@@ -1510,8 +1510,6 @@ export function LeadsBoard() {
     <LeadSheetViewControls
       displayMode={columnLayout.displayMode}
       onDisplayModeChange={columnLayout.setDisplayMode}
-      rowDensity={columnLayout.rowDensity}
-      onRowDensityChange={columnLayout.setRowDensity}
     />
   )
 
