@@ -84,7 +84,8 @@ export function autoFitColumnWidth(
   return clampColumnWidth(Math.max(max + SHEET_COL_CELL_PADDING_PX, minimumColumnWidth(col)))
 }
 
-export type SheetDisplayMode = "compact" | "full"
+/** compact = every column, fixed widths. full = every column, widths fit the text. key = key columns only. */
+export type SheetDisplayMode = "compact" | "full" | "key"
 
 export type StoredSheetLayout = {
   displayMode: SheetDisplayMode
@@ -99,7 +100,7 @@ export function layoutStorageKey(organizationId: string, page: "leads" | "custom
 }
 
 export function parseStoredDisplayMode(parsed: Partial<StoredSheetLayout>): SheetDisplayMode {
-  if (parsed.displayMode === "full" || parsed.displayMode === "compact") {
+  if (parsed.displayMode === "full" || parsed.displayMode === "compact" || parsed.displayMode === "key") {
     return parsed.displayMode
   }
   if (parsed.fitText === true) return "full"

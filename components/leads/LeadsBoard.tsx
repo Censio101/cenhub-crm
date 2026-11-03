@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 
 import {
   CheckIcon,
@@ -38,6 +39,7 @@ import { LeadCardList } from "@/components/leads/LeadCardList"
 import { LeadSheetBulkSelectionBar } from "@/components/leads/LeadSheetBulkSelectionBar"
 import { LeadSheetToolbarMenu } from "@/components/leads/LeadSheetToolbarMenu"
 import { LeadSheetLeadQuickView } from "@/components/leads/LeadSheetLeadQuickView"
+import { useLeadSheetScrollElement } from "@/components/leads/LeadSheetScrollContext"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { LeadSheetViewControls } from "@/components/leads/LeadSheetViewControls"
 import { LeadStatusTableCell } from "@/components/leads/LeadStatusTableCell"
@@ -586,6 +588,8 @@ function FooterStat({
 
 const ACTIONS_COL_PX = 108
 const SELECT_COL_PX = 44
+/** Typical rendered row height; the real height of each row is measured. */
+const LEAD_SHEET_ROW_PX = 53
 
 export type LeadSheetBulkSelection = {
   selectedIds: ReadonlySet<string>
@@ -653,47 +657,21 @@ const bulkSelectColumnAttrs = {
 const bulkSelectHitTargetClass =
   "flex h-12 w-full cursor-pointer items-center px-2 select-none"
 
-export function LeadsTable({
-  columns,
-  leads,
-  emptyText,
-  sheetSort,
-  onSheetSort,
-  onUpdate,
-  onEdit,
-  onDelete,
-  separatePinnedColumns = false,
-  columnLayout,
-  detailColumns,
-  bulkSelection,
-  canDelete = false,
-}: {
-  /** Only client admins (and Censio admins) see the delete button. */
-  canDelete?: boolean
-  columns: LeadSheetTemplateColumn[]
-  /** Full template columns for the read-only quick-view popup (defaults to visible columns). */
-  detailColumns?: readonly LeadSheetTemplateColumn[]
-  bulkSelection?: LeadSheetBulkSelection
-  leads: Lead[]
-  emptyText: string
-  sheetSort: SheetSortState
-  onSheetSort: (columnId: string, direction: SheetSortDirection | null) => void
+type LeadRowEnv = {
+  t: ReturnType<typeof useLanguage>["t"]
+  statuses: ReturnType<typeof useLeadSelectOptions>["statuses"]
   onUpdate: (id: string, patch: Partial<Lead>) => void
-  onEdit: (id: string) => void
-  onDelete: (id: string) => void
-  /** Customer sheet: the two frozen columns read as fixed, and the rest as the scrolling area. */
-  separatePinnedColumns?: boolean
-  columnLayout?: LeadSheetColumnLayout
-}) {
-  const { t } = useLanguage()
-  const { statuses } = useLeadSelectOptions()
-  const selectOffset = bulkSelection ? SELECT_COL_PX : 0
-  const colSpan = columns.length + 1 + (bulkSelection ? 1 : 0)
-  const quickViewColumns = detailColumns ?? columns
+  columnLayout: LeadSheetColumnLayout | undefined
+  selectOffset: number
+}
 
-  function headerLabel(col: LeadSheetTemplateColumn) {
-    return columnDisplayLabel(col, t)
-  }
+function renderLeadColumnCell(
+  env: LeadRowEnv,
+  lead: Lead,
+  col: LeadSheetTemplateColumn,
+  colIndex: number
+) {
+  const { t, statuses, onUpdate, columnLayout, selectOffset } = env
 
   function stickyCellClass(colIndex: number) {
     if (columnLayout) {
@@ -973,6 +951,192 @@ export function LeadsTable({
     }
   }
 
+  return renderColumnCell(lead, col, colIndex)
+}
+
+type LeadTableRowProps = {
+  lead: Lead
+  env: LeadRowEnv
+  columns: LeadSheetTemplateColumn[]
+  quickViewColumns: readonly LeadSheetTemplateColumn[]
+  separatePinnedColumns: boolean
+  canDelete: boolean
+  /** undefined: bulk select is off. */
+  bulkSelected: boolean | undefined
+  onToggle: (id: string) => void
+  onEdit: (id: string) => void
+  onDelete: (id: string) => void
+  measureRef: (node: Element | null) => void
+  index: number
+}
+
+/**
+ * One sheet row. It re-draws only when its own lead (or the sheet setup) changes, so scrolling,
+ * which swaps a few rows in and out, never re-draws the rows that stay on screen.
+ */
+const LeadTableRow = memo(function LeadTableRow({
+  lead,
+  env,
+  columns,
+  quickViewColumns,
+  separatePinnedColumns,
+  canDelete,
+  bulkSelected,
+  onToggle,
+  onEdit,
+  onDelete,
+  measureRef,
+  index,
+}: LeadTableRowProps) {
+  const { t } = env
+  return (
+    <TableRow
+      data-index={index}
+      ref={measureRef}
+      className={
+        separatePinnedColumns
+          ? bulkSelected !== undefined
+            ? "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(2)]:bg-[#e8f3eb] [&>td:nth-child(3)]:bg-[#e8f3eb] [&>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(2)]:bg-[#dceee1] [&:hover>td:nth-child(3)]:bg-[#dceee1] [&:hover>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
+            : "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(-n+2)]:bg-[#e8f3eb] [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(-n+2)]:bg-[#dceee1] [&:hover>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
+          : getWonLeadRowClass(lead.status)
+      }
+    >
+      {bulkSelected !== undefined ? (
+        <TableCell
+          {...bulkSelectColumnAttrs}
+          className={cn(
+            cn(
+              "sticky left-0 w-11 min-w-11 cursor-pointer border-r border-[#eee7de] bg-card p-0",
+              SHEET_Z_PINNED_BODY_EDGE
+            ),
+            getWonLeadCellClass(lead.status)
+          )}
+        >
+          <label className={bulkSelectHitTargetClass}>
+            <input
+              type="checkbox"
+              className="size-3.5 cursor-pointer accent-primary"
+              aria-label={t("leadSheetSelectRow")}
+              checked={bulkSelected}
+              onChange={() => onToggle(lead.id)}
+            />
+          </label>
+        </TableCell>
+      ) : null}
+      {columns.map((col, colIndex) => renderLeadColumnCell(env, lead, col, colIndex))}
+      <TableCell
+        className={cn(
+          cn(
+            "sticky right-0 w-[6.75rem] min-w-[6.75rem] border-l border-border bg-card px-0.5",
+            SHEET_Z_PINNED_BODY
+          ),
+          getWonLeadCellClass(lead.status)
+        )}
+      >
+        <div className="flex items-center justify-center gap-0">
+          <LeadSheetLeadQuickView lead={lead} columns={quickViewColumns} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("leadSheetEditLead")}
+            title={t("leadSheetEditLead")}
+            className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            onClick={() => onEdit(lead.id)}
+          >
+            <PencilIcon />
+          </Button>
+          {canDelete ? (
+            <DeleteLeadButton leadName={lead.fullName.trim()} onDelete={() => onDelete(lead.id)} />
+          ) : null}
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+})
+
+export function LeadsTable({
+  columns,
+  leads,
+  emptyText,
+  sheetSort,
+  onSheetSort,
+  onUpdate,
+  onEdit,
+  onDelete,
+  separatePinnedColumns = false,
+  columnLayout,
+  detailColumns,
+  bulkSelection,
+  canDelete = false,
+}: {
+  /** Only client admins (and Censio admins) see the delete button. */
+  canDelete?: boolean
+  columns: LeadSheetTemplateColumn[]
+  /** Full template columns for the read-only quick-view popup (defaults to visible columns). */
+  detailColumns?: readonly LeadSheetTemplateColumn[]
+  bulkSelection?: LeadSheetBulkSelection
+  leads: Lead[]
+  emptyText: string
+  sheetSort: SheetSortState
+  onSheetSort: (columnId: string, direction: SheetSortDirection | null) => void
+  onUpdate: (id: string, patch: Partial<Lead>) => void
+  onEdit: (id: string) => void
+  onDelete: (id: string) => void
+  /** Customer sheet: the two frozen columns read as fixed, and the rest as the scrolling area. */
+  separatePinnedColumns?: boolean
+  columnLayout?: LeadSheetColumnLayout
+}) {
+  const { t } = useLanguage()
+  const { statuses } = useLeadSelectOptions()
+  const scrollElement = useLeadSheetScrollElement()
+  const selectOffset = bulkSelection ? SELECT_COL_PX : 0
+  const colSpan = columns.length + 1 + (bulkSelection ? 1 : 0)
+  const quickViewColumns = detailColumns ?? columns
+
+  // Handlers keep one identity for the table's life (they call the newest props), so rows that
+  // stay on screen are not re-drawn when the parent re-renders.
+  const latest = useRef({ onUpdate, onEdit, onDelete, onToggle: bulkSelection?.onToggle })
+  useEffect(() => {
+    latest.current = { onUpdate, onEdit, onDelete, onToggle: bulkSelection?.onToggle }
+  })
+  const stable = useMemo(
+    () => ({
+      onUpdate: (id: string, patch: Partial<Lead>) => latest.current.onUpdate(id, patch),
+      onEdit: (id: string) => latest.current.onEdit(id),
+      onDelete: (id: string) => latest.current.onDelete(id),
+      onToggle: (id: string) => latest.current.onToggle?.(id),
+    }),
+    []
+  )
+  const rowEnv = useMemo<LeadRowEnv>(
+    () => ({ t, statuses, onUpdate: stable.onUpdate, columnLayout, selectOffset }),
+    [t, statuses, stable, columnLayout, selectOffset]
+  )
+
+  const rowVirtualizer = useVirtualizer({
+    count: leads.length,
+    getScrollElement: () => scrollElement,
+    estimateSize: () => LEAD_SHEET_ROW_PX,
+    overscan: 14,
+    // Rows are measured, so a row that is taller than the estimate never shifts the list.
+    measureElement: (el) => el.getBoundingClientRect().height,
+  })
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const virtualPaddingTop = virtualRows.length > 0 ? virtualRows[0]!.start : 0
+  const virtualPaddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1]!.end
+      : 0
+
+  function headerLabel(col: LeadSheetTemplateColumn) {
+    return columnDisplayLabel(col, t)
+  }
+
+  function cellBox(col: LeadSheetTemplateColumn, colIndex: number) {
+    return columnBoxStyle(columnLayout, col, colIndex, selectOffset)
+  }
+
   const tableMinWidth = columnLayout
     ? columns.reduce((sum, col) => sum + columnLayout.widthForColumn(col), 0) +
         ACTIONS_COL_PX +
@@ -1096,72 +1260,42 @@ export function LeadsTable({
             </TableCell>
           </TableRow>
         ) : (
-          leads.map((lead) => (
-            <TableRow
-              key={lead.id}
-              className={
-                separatePinnedColumns
-                  ? bulkSelection
-                    ? "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(2)]:bg-[#e8f3eb] [&>td:nth-child(3)]:bg-[#e8f3eb] [&>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(2)]:bg-[#dceee1] [&:hover>td:nth-child(3)]:bg-[#dceee1] [&:hover>td:nth-child(n+4):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
-                    : "text-[#1f4d30] hover:bg-transparent [&>td:nth-child(-n+2)]:bg-[#e8f3eb] [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-white [&>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:text-foreground [&:hover>td:nth-child(-n+2)]:bg-[#dceee1] [&:hover>td:nth-child(n+3):not(:last-child):not([data-lead-status-cell])]:bg-[#f7f4ef]"
-                  : getWonLeadRowClass(lead.status)
-              }
-            >
-              {bulkSelection ? (
+          <>
+            {virtualPaddingTop > 0 ? (
+              <TableRow aria-hidden className="pointer-events-none hover:bg-transparent">
+                <TableCell colSpan={colSpan} className="border-0 p-0" style={{ height: virtualPaddingTop }} />
+              </TableRow>
+            ) : null}
+            {virtualRows.map((virtualRow) => {
+              const lead = leads[virtualRow.index]!
+              return (
+                <LeadTableRow
+                  key={lead.id}
+                  lead={lead}
+                  index={virtualRow.index}
+                  measureRef={rowVirtualizer.measureElement}
+                  env={rowEnv}
+                  columns={columns}
+                  quickViewColumns={quickViewColumns}
+                  separatePinnedColumns={separatePinnedColumns}
+                  canDelete={canDelete}
+                  bulkSelected={bulkSelection ? bulkSelection.selectedIds.has(lead.id) : undefined}
+                  onToggle={stable.onToggle}
+                  onEdit={stable.onEdit}
+                  onDelete={stable.onDelete}
+                />
+              )
+            })}
+            {virtualPaddingBottom > 0 ? (
+              <TableRow aria-hidden className="pointer-events-none hover:bg-transparent">
                 <TableCell
-                  {...bulkSelectColumnAttrs}
-                  className={cn(
-                    cn(
-                      "sticky left-0 w-11 min-w-11 cursor-pointer border-r border-[#eee7de] bg-card p-0",
-                      SHEET_Z_PINNED_BODY_EDGE
-                    ),
-                    getWonLeadCellClass(lead.status)
-                  )}
-                >
-                  <label className={bulkSelectHitTargetClass}>
-                    <input
-                      type="checkbox"
-                      className="size-3.5 cursor-pointer accent-primary"
-                      aria-label={t("leadSheetSelectRow")}
-                      checked={bulkSelection.selectedIds.has(lead.id)}
-                      onChange={() => bulkSelection.onToggle(lead.id)}
-                    />
-                  </label>
-                </TableCell>
-              ) : null}
-              {columns.map((col, colIndex) => renderColumnCell(lead, col, colIndex))}
-              <TableCell
-                className={cn(
-                  cn(
-                    "sticky right-0 w-[6.75rem] min-w-[6.75rem] border-l border-border bg-card px-0.5",
-                    SHEET_Z_PINNED_BODY
-                  ),
-                  getWonLeadCellClass(lead.status)
-                )}
-              >
-                <div className="flex items-center justify-center gap-0">
-                  <LeadSheetLeadQuickView lead={lead} columns={quickViewColumns} />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("leadSheetEditLead")}
-                    title={t("leadSheetEditLead")}
-                    className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                    onClick={() => onEdit(lead.id)}
-                  >
-                    <PencilIcon />
-                  </Button>
-                  {canDelete ? (
-                    <DeleteLeadButton
-                      leadName={lead.fullName.trim()}
-                      onDelete={() => onDelete(lead.id)}
-                    />
-                  ) : null}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))
+                  colSpan={colSpan}
+                  className="border-0 p-0"
+                  style={{ height: virtualPaddingBottom }}
+                />
+              </TableRow>
+            ) : null}
+          </>
         )}
       </TableBody>
     </Table>

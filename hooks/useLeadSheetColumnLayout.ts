@@ -6,6 +6,7 @@ import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import type { MessageKey } from "@/lib/i18n"
 import type { Lead } from "@/lib/leads"
 import { headerDisplayText, leadSheetCellDisplayText } from "@/lib/leads/sheet-column-display"
+import { essentialSheetColumns } from "@/lib/leads/sheet-essential-columns"
 import {
   autoFitColumnWidth,
   defaultColumnWidth,
@@ -66,7 +67,10 @@ export function useLeadSheetColumnLayout(input: {
     setDisplayModeState(next?.displayMode ?? "compact")
   }, [storageKey])
 
-  const visibleColumns = useMemo(() => [...input.columns], [input.columns])
+  const visibleColumns = useMemo(() => {
+    const all = [...input.columns]
+    return displayMode === "key" ? essentialSheetColumns(all) : all
+  }, [displayMode, input.columns])
 
   const displayCtx = useMemo(
     () => ({ t: input.t, enabledServices: input.enabledServices }),
@@ -113,11 +117,9 @@ export function useLeadSheetColumnLayout(input: {
     [storageKey]
   )
 
-  return {
-    visibleColumns,
-    widthForColumn,
-    stickyLeftPx,
-    displayMode,
-    setDisplayMode,
-  }
+  // One identity until something really changes, so memoized sheet rows are not re-drawn.
+  return useMemo(
+    () => ({ visibleColumns, widthForColumn, stickyLeftPx, displayMode, setDisplayMode }),
+    [visibleColumns, widthForColumn, stickyLeftPx, displayMode, setDisplayMode]
+  )
 }

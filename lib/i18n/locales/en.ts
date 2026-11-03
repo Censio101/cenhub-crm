@@ -2116,6 +2116,7 @@ export const en: Messages = {
   leadSheetViewMode: "View",
   leadSheetViewModeCompact: "Compact",
   leadSheetViewModeFull: "Full text",
+  leadSheetViewModeKey: "Key columns",
   leadSheetExport: "Export",
   leadSheetNoteView: "View",
   leadSheetNoteAdd: "Add",

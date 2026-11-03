@@ -26,7 +26,11 @@ export function LeadSheetViewControls({ displayMode, onDisplayModeChange }: Prop
   const { t } = useLanguage()
 
   const modeLabel =
-    displayMode === "full" ? t("leadSheetViewModeFull") : t("leadSheetViewModeCompact")
+    displayMode === "full"
+      ? t("leadSheetViewModeFull")
+      : displayMode === "key"
+        ? t("leadSheetViewModeKey")
+        : t("leadSheetViewModeCompact")
 
   return (
     <DropdownMenu modal={false}>
@@ -36,7 +40,7 @@ export function LeadSheetViewControls({ displayMode, onDisplayModeChange }: Prop
         className={cn(
           SHEET_CONTROL_CLASS,
           "group h-8 min-w-[7.5rem] justify-between px-2.5 text-xs",
-          displayMode === "full" ? SHEET_CONTROL_ACTIVE : SHEET_CONTROL_IDLE
+          displayMode !== "compact" ? SHEET_CONTROL_ACTIVE : SHEET_CONTROL_IDLE
         )}
       >
         <LayoutGridIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -52,6 +56,12 @@ export function LeadSheetViewControls({ displayMode, onDisplayModeChange }: Prop
           onSelect={() => onDisplayModeChange("compact")}
         >
           {t("leadSheetViewModeCompact")}
+        </LeadSheetFilterMenuItem>
+        <LeadSheetFilterMenuItem
+          selected={displayMode === "key"}
+          onSelect={() => onDisplayModeChange("key")}
+        >
+          {t("leadSheetViewModeKey")}
         </LeadSheetFilterMenuItem>
         <LeadSheetFilterMenuItem
           selected={displayMode === "full"}

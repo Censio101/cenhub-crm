@@ -2128,6 +2128,7 @@ const daMessages = {
   leadSheetViewMode: "Visning",
   leadSheetViewModeCompact: "Kompakt",
   leadSheetViewModeFull: "Fuld tekst",
+  leadSheetViewModeKey: "Nøglekolonner",
   leadSheetExport: "Eksportér",
   leadSheetNoteView: "Vis",
   leadSheetNoteAdd: "Tilføj",

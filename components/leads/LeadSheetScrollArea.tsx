@@ -1,10 +1,11 @@
 "use client"
 
-import { type ReactNode, useEffect, useRef, useState } from "react"
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeftIcon, ChevronRightIcon, GripHorizontalIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
+import { LeadSheetScrollProvider } from "@/components/leads/LeadSheetScrollContext"
 import { useDragToScroll } from "@/hooks/useDragToScroll"
 import { cn } from "cn"
 
@@ -32,7 +33,12 @@ export function LeadSheetScrollArea({
   toolbarEnd,
 }: Props) {
   const { t } = useLanguage()
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
+  const attachScrollElement = useCallback((node: HTMLDivElement | null) => {
+    scrollRef.current = node
+    setScrollElement(node)
+  }, [])
   const sheetPanning = useDragToScroll(scrollRef)
   const [edges, setEdges] = useState<Edges>({ atStart: true, atEnd: false })
 
@@ -118,7 +124,7 @@ export function LeadSheetScrollArea({
         </div>
       </div>
       <div
-        ref={scrollRef}
+        ref={attachScrollElement}
         className={cn(
           // Horizontal overscroll stays inside the sheet (no browser back-swipe); vertical still
           // hands over to the page once the sheet reaches its end.
@@ -139,7 +145,7 @@ export function LeadSheetScrollArea({
           scrollClassName
         )}
       >
-        {children}
+        <LeadSheetScrollProvider scrollElement={scrollElement}>{children}</LeadSheetScrollProvider>
       </div>
       {/* One transparent layer gives the grabbing cursor everywhere and stops hover repaints
           while panning, instead of restyling every cell. */}
