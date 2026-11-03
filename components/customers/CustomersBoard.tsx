@@ -249,6 +249,8 @@ export function CustomersBoard() {
     <LeadSheetViewControls
       displayMode={columnLayout.displayMode}
       onDisplayModeChange={columnLayout.setDisplayMode}
+      rowDensity={columnLayout.rowDensity}
+      onRowDensityChange={columnLayout.setRowDensity}
     />
   )
 

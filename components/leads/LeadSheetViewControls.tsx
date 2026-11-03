@@ -6,9 +6,11 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { SheetDisplayMode } from "@/lib/leads/sheet-column-widths"
+import type { SheetDisplayMode, SheetRowDensity } from "@/lib/leads/sheet-column-widths"
 import {
   LeadSheetFilterMenuItem,
   SHEET_CONTROL_CLASS,
@@ -20,9 +22,16 @@ import { cn } from "cn"
 type Props = {
   displayMode: SheetDisplayMode
   onDisplayModeChange: (mode: SheetDisplayMode) => void
+  rowDensity: SheetRowDensity
+  onRowDensityChange: (density: SheetRowDensity) => void
 }
 
-export function LeadSheetViewControls({ displayMode, onDisplayModeChange }: Props) {
+export function LeadSheetViewControls({
+  displayMode,
+  onDisplayModeChange,
+  rowDensity,
+  onRowDensityChange,
+}: Props) {
   const { t } = useLanguage()
 
   const modeLabel =
@@ -68,6 +77,22 @@ export function LeadSheetViewControls({ displayMode, onDisplayModeChange }: Prop
           onSelect={() => onDisplayModeChange("full")}
         >
           {t("leadSheetViewModeFull")}
+        </LeadSheetFilterMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("leadSheetRowSize")}
+        </DropdownMenuLabel>
+        <LeadSheetFilterMenuItem
+          selected={rowDensity === "compact"}
+          onSelect={() => onRowDensityChange("compact")}
+        >
+          {t("leadSheetRowSizeCompact")}
+        </LeadSheetFilterMenuItem>
+        <LeadSheetFilterMenuItem
+          selected={rowDensity === "standard"}
+          onSelect={() => onRowDensityChange("standard")}
+        >
+          {t("leadSheetRowSizeStandard")}
         </LeadSheetFilterMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

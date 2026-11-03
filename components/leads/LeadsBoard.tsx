@@ -40,6 +40,7 @@ import { LeadCardList } from "@/components/leads/LeadCardList"
 import { LeadSheetBulkSelectionBar } from "@/components/leads/LeadSheetBulkSelectionBar"
 import { LeadSheetToolbarMenu } from "@/components/leads/LeadSheetToolbarMenu"
 import { LeadSheetLeadQuickView } from "@/components/leads/LeadSheetLeadQuickView"
+import { rowHeightEstimatePx, type SheetRowDensity } from "@/lib/leads/sheet-column-widths"
 import { useLeadSheetScrollElement } from "@/components/leads/LeadSheetScrollContext"
 import { LeadSheetScrollArea } from "@/components/leads/LeadSheetScrollArea"
 import { LeadSheetViewControls } from "@/components/leads/LeadSheetViewControls"
@@ -589,8 +590,6 @@ function FooterStat({
 
 const ACTIONS_COL_PX = 108
 const SELECT_COL_PX = 44
-/** Typical rendered row height; the real height of each row is measured. */
-const LEAD_SHEET_ROW_PX = 53
 
 export type LeadSheetBulkSelection = {
   selectedIds: ReadonlySet<string>
@@ -664,6 +663,7 @@ type LeadRowEnv = {
   onUpdate: (id: string, patch: Partial<Lead>) => void
   columnLayout: LeadSheetColumnLayout | undefined
   selectOffset: number
+  density: SheetRowDensity
 }
 
 function renderLeadColumnCell(
@@ -672,7 +672,7 @@ function renderLeadColumnCell(
   col: LeadSheetTemplateColumn,
   colIndex: number
 ) {
-  const { t, statuses, onUpdate, columnLayout, selectOffset } = env
+  const { t, statuses, onUpdate, columnLayout, selectOffset, density } = env
 
   function stickyCellClass(colIndex: number) {
     if (columnLayout) {
@@ -913,6 +913,7 @@ function renderLeadColumnCell(
             status={lead.status}
             label={t("leadSheetColStatus")}
             options={statuses}
+            compact={density === "compact"}
             onStatusChange={(status) => onUpdate(lead.id, { status })}
           />
         )
@@ -1110,15 +1111,16 @@ export function LeadsTable({
     }),
     []
   )
+  const density: SheetRowDensity = columnLayout?.rowDensity ?? "standard"
   const rowEnv = useMemo<LeadRowEnv>(
-    () => ({ t, statuses, onUpdate: stable.onUpdate, columnLayout, selectOffset }),
-    [t, statuses, stable, columnLayout, selectOffset]
+    () => ({ t, statuses, onUpdate: stable.onUpdate, columnLayout, selectOffset, density }),
+    [t, statuses, stable, columnLayout, selectOffset, density]
   )
 
   const rowVirtualizer = useVirtualizer({
     count: leads.length,
     getScrollElement: () => scrollElement,
-    estimateSize: () => LEAD_SHEET_ROW_PX,
+    estimateSize: () => rowHeightEstimatePx(density),
     overscan: 14,
     // Rows are measured, so a row that is taller than the estimate never shifts the list.
     measureElement: (el) => el.getBoundingClientRect().height,
@@ -1250,7 +1252,13 @@ export function LeadsTable({
           </TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody className="[&_td]:border-b [&_td]:border-b-[#eee7de]">
+      <TableBody
+        className={cn(
+          "[&_td]:border-b [&_td]:border-b-[#eee7de]",
+          // Tight rows: less padding around the controls (dropdown wrappers drop their own too).
+          density === "compact" && "[&_td]:!py-0.5 [&_td_.py-0\\.5]:!py-0"
+        )}
+      >
         {leads.length === 0 ? (
           <TableRow className="hover:bg-transparent">
             <TableCell
@@ -1463,6 +1471,8 @@ export function LeadsBoard() {
     <LeadSheetViewControls
       displayMode={columnLayout.displayMode}
       onDisplayModeChange={columnLayout.setDisplayMode}
+      rowDensity={columnLayout.rowDensity}
+      onRowDensityChange={columnLayout.setRowDensity}
     />
   )
 

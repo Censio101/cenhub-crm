@@ -12,11 +12,14 @@ export function LeadStatusTableCell({
   options,
   label,
   onStatusChange,
+  compact = false,
 }: {
   status: LeadStatusId
   options: ReadonlyArray<StatusOption>
   label: string
   onStatusChange: (status: LeadStatusId) => void
+  /** Tight rows: the cell is as tall as the other controls. */
+  compact?: boolean
 }) {
   return (
     <TableCell
@@ -27,7 +30,7 @@ export function LeadStatusTableCell({
         getLeadStatusCellClass(status)
       )}
     >
-      <div className="flex h-12 items-stretch">
+      <div className={cn("flex items-stretch", compact ? "h-9" : "h-12")}>
         <LeadStatusCellSelect
           status={status}
           label={label}

@@ -87,9 +87,23 @@ export function autoFitColumnWidth(
 /** compact = every column, fixed widths. full = every column, widths fit the text. key = key columns only. */
 export type SheetDisplayMode = "compact" | "full" | "key"
 
+/** compact = tight rows with plain-text cells. standard = the original, roomier rows. */
+export type SheetRowDensity = "compact" | "standard"
+
+export const DEFAULT_ROW_DENSITY: SheetRowDensity = "compact"
+
+/** Sheets with more columns than this start in the Key columns view (until the user picks). */
+export const WIDE_SHEET_COLUMN_COUNT = 30
+
+/** Typical rendered row height; the virtual list measures the real height of each row. */
+export function rowHeightEstimatePx(density: SheetRowDensity): number {
+  return density === "compact" ? 37 : 53
+}
+
 export type StoredSheetLayout = {
-  displayMode: SheetDisplayMode
-  /** @deprecated ignored — column hide removed */
+  displayMode?: SheetDisplayMode
+  rowDensity?: SheetRowDensity
+  /** @deprecated ignored: column hide removed */
   hiddenColumnIds?: string[]
   fitText?: boolean
   widths?: Record<string, number>
@@ -99,12 +113,24 @@ export function layoutStorageKey(organizationId: string, page: "leads" | "custom
   return `cenhub:lead-sheet-layout:${organizationId}:${page}`
 }
 
-export function parseStoredDisplayMode(parsed: Partial<StoredSheetLayout>): SheetDisplayMode {
+/** The view mode the user saved, or null when they never picked one. */
+export function parseStoredDisplayMode(parsed: Partial<StoredSheetLayout>): SheetDisplayMode | null {
   if (parsed.displayMode === "full" || parsed.displayMode === "compact" || parsed.displayMode === "key") {
     return parsed.displayMode
   }
   if (parsed.fitText === true) return "full"
   const widths = parsed.widths && typeof parsed.widths === "object" ? parsed.widths : {}
   if (Object.keys(widths).length > 0) return "full"
-  return "compact"
+  return null
+}
+
+export function parseStoredRowDensity(parsed: Partial<StoredSheetLayout>): SheetRowDensity | null {
+  return parsed.rowDensity === "compact" || parsed.rowDensity === "standard"
+    ? parsed.rowDensity
+    : null
+}
+
+/** What a sheet starts in when the user has not picked a view: wide sheets begin on Key columns. */
+export function defaultDisplayMode(columnCount: number): SheetDisplayMode {
+  return columnCount > WIDE_SHEET_COLUMN_COUNT ? "key" : "compact"
 }

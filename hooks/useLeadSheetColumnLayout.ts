@@ -9,10 +9,14 @@ import { headerDisplayText, leadSheetCellDisplayText } from "@/lib/leads/sheet-c
 import { essentialSheetColumns } from "@/lib/leads/sheet-essential-columns"
 import {
   autoFitColumnWidth,
+  DEFAULT_ROW_DENSITY,
   defaultColumnWidth,
+  defaultDisplayMode,
   layoutStorageKey,
   parseStoredDisplayMode,
+  parseStoredRowDensity,
   type SheetDisplayMode,
+  type SheetRowDensity,
   type StoredSheetLayout,
 } from "@/lib/leads/sheet-column-widths"
 import type { NamedService } from "@/lib/performance/services"
@@ -23,9 +27,13 @@ export type LeadSheetColumnLayout = {
   stickyLeftPx: (columnIndex: number) => number | undefined
   displayMode: SheetDisplayMode
   setDisplayMode: (mode: SheetDisplayMode) => void
+  rowDensity: SheetRowDensity
+  setRowDensity: (density: SheetRowDensity) => void
 }
 
-function readStored(key: string): StoredSheetLayout | null {
+type SavedLayout = { displayMode: SheetDisplayMode | null; rowDensity: SheetRowDensity | null }
+
+function readStored(key: string): SavedLayout | null {
   if (typeof window === "undefined") return null
   try {
     const raw = window.localStorage.getItem(key)
@@ -33,16 +41,17 @@ function readStored(key: string): StoredSheetLayout | null {
     const parsed = JSON.parse(raw) as Partial<StoredSheetLayout>
     if (!parsed || typeof parsed !== "object") return null
     return {
-      displayMode: parseStoredDisplayMode(parsed as Partial<StoredSheetLayout>),
+      displayMode: parseStoredDisplayMode(parsed),
+      rowDensity: parseStoredRowDensity(parsed),
     }
   } catch {
     return null
   }
 }
 
-function writeStored(key: string, mode: SheetDisplayMode) {
+function writeStored(key: string, layout: SavedLayout) {
   try {
-    window.localStorage.setItem(key, JSON.stringify({ displayMode: mode }))
+    window.localStorage.setItem(key, JSON.stringify(layout))
   } catch {
     // quota / private mode
   }
@@ -57,15 +66,19 @@ export function useLeadSheetColumnLayout(input: {
   t: (key: MessageKey) => string
 }): LeadSheetColumnLayout {
   const storageKey = layoutStorageKey(input.organizationId ?? "local", input.page)
-  const [displayMode, setDisplayModeState] = useState<SheetDisplayMode>(
-    () => readStored(storageKey)?.displayMode ?? "compact"
+  const columnCount = input.columns.length
+  const [saved, setSaved] = useState<SavedLayout>(
+    () => readStored(storageKey) ?? { displayMode: null, rowDensity: null }
   )
 
   useEffect(() => {
-    const next = readStored(storageKey)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is external store keyed by storageKey
-    setDisplayModeState(next?.displayMode ?? "compact")
+    setSaved(readStored(storageKey) ?? { displayMode: null, rowDensity: null })
   }, [storageKey])
+
+  // Until the user picks a view, wide sheets start on Key columns.
+  const displayMode: SheetDisplayMode = saved.displayMode ?? defaultDisplayMode(columnCount)
+  const rowDensity: SheetRowDensity = saved.rowDensity ?? DEFAULT_ROW_DENSITY
 
   const visibleColumns = useMemo(() => {
     const all = [...input.columns]
@@ -111,15 +124,37 @@ export function useLeadSheetColumnLayout(input: {
 
   const setDisplayMode = useCallback(
     (mode: SheetDisplayMode) => {
-      setDisplayModeState(mode)
-      writeStored(storageKey, mode)
+      setSaved((prev) => {
+        const next = { ...prev, displayMode: mode }
+        writeStored(storageKey, next)
+        return next
+      })
+    },
+    [storageKey]
+  )
+
+  const setRowDensity = useCallback(
+    (density: SheetRowDensity) => {
+      setSaved((prev) => {
+        const next = { ...prev, rowDensity: density }
+        writeStored(storageKey, next)
+        return next
+      })
     },
     [storageKey]
   )
 
   // One identity until something really changes, so memoized sheet rows are not re-drawn.
   return useMemo(
-    () => ({ visibleColumns, widthForColumn, stickyLeftPx, displayMode, setDisplayMode }),
-    [visibleColumns, widthForColumn, stickyLeftPx, displayMode, setDisplayMode]
+    () => ({
+      visibleColumns,
+      widthForColumn,
+      stickyLeftPx,
+      displayMode,
+      setDisplayMode,
+      rowDensity,
+      setRowDensity,
+    }),
+    [visibleColumns, widthForColumn, stickyLeftPx, displayMode, setDisplayMode, rowDensity, setRowDensity]
   )
 }
