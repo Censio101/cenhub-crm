@@ -27,7 +27,7 @@ type AdSpendCacheEntry = {
   cachedAt?: number
 }
 
-/** Reuse in-memory workspace data when switching dashboard ↔ leads ↔ customers. */
+/** How long cached rows count as “fresh” for instant paint when switching workspace pages (server still reconciles in the background). */
 export const WORKSPACE_CACHE_TTL_MS = 120_000
 
 let leadsCache: LeadsCacheEntry | null = null
@@ -69,6 +69,7 @@ export function replaceCachedLeads(leads: Lead[], source: "mock" | "supabase") {
     organizationSlug: leadsCache?.organizationSlug ?? null,
     leads,
     source,
+    cachedAt: Date.now(),
   }
 }
 

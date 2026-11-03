@@ -10,7 +10,6 @@ import {
   CLIENT_ORG_CHANGED_EVENT,
   getCustomersCache,
   hasCustomersCache,
-  hasFreshCustomersCache,
   setCustomersCache,
 } from "@/lib/data/client-cache"
 import { fetchJsonDeduped } from "@/lib/data/in-flight"
@@ -65,21 +64,18 @@ export function useCustomers() {
       }
       return
     }
-    const showLoading = !hasCustomersCache(activeSlug)
+    const cached = getCustomersCache(activeSlug)
+    if (cached && isCurrent()) {
+      setCustomers(cached.customers)
+      setDataSource(cached.source)
+      setOrganizationName(cached.organizationName)
+    }
+
+    const reconcileSilent = Boolean(cached)
+    const showLoading = !reconcileSilent && !hasCustomersCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
-
-    if (hasFreshCustomersCache(activeSlug)) {
-      const cached = getCustomersCache(activeSlug)!
-      if (isCurrent()) {
-        setCustomers(cached.customers)
-        setDataSource(cached.source)
-        setOrganizationName(cached.organizationName)
-        setLoading(false)
-      }
-      return
-    }
 
     try {
       const result = await fetchJsonDeduped<CustomersResponse>("/api/customers")

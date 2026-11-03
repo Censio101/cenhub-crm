@@ -8,7 +8,6 @@ import type { MessageKey } from "@/lib/i18n"
 import {
   CLIENT_ORG_CHANGED_EVENT,
   getLeadsCache,
-  hasFreshLeadsCache,
   hasLeadsCache,
   emitCustomersRefresh,
   emitLeadsUpdated,
@@ -16,6 +15,10 @@ import {
   setLeadsCache,
 } from "@/lib/data/client-cache"
 import { fetchJsonDeduped } from "@/lib/data/in-flight"
+import {
+  canReplaceLeadsFromServer,
+  shouldQueueRemoteLeadsReload,
+} from "@/lib/data/leads-refresh-guard"
 import { createRequestGuard } from "@/lib/data/request-guard"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
 import { fetchCompanyConfig, leadSheetOrDefault } from "@/lib/data/company-config"
@@ -71,6 +74,8 @@ function mergeLeadPatches(first: LeadPatch | undefined, second: LeadPatch): Lead
 
 /** Minimum time between focus-triggered refreshes of the lead sheet config. */
 const SHEET_REFRESH_MIN_MS = 60_000
+/** Minimum time between focus-triggered lead list refetches (tab visible again). */
+const LEADS_VISIBILITY_REFRESH_MIN_MS = 60_000
 
 /** `null` when the request fails, so a transient error never replaces a good config. */
 async function fetchLeadSheetConfigOrNull(): Promise<ResolvedLeadSheetConfig | null> {
@@ -106,7 +111,17 @@ export function useLeads(options?: { liveSync?: boolean }) {
   const saveFailed = useRef(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const lastSheetFetchRef = useRef(0)
+  const lastVisibleLeadsFetchRef = useRef(0)
+  const pendingRemoteReloadRef = useRef(false)
+  const loadLeadsRef = useRef<(opts?: LoadLeadsOptions) => Promise<void>>(async () => {})
   const [guard] = useState(createRequestGuard)
+
+  const tryFlushDeferredReload = useCallback(() => {
+    if (!pendingRemoteReloadRef.current) return
+    if (!canReplaceLeadsFromServer(inflightSaves.current, pendingData.current.size)) return
+    pendingRemoteReloadRef.current = false
+    void loadLeadsRef.current({ force: true, silent: true })
+  }, [])
 
   useEffect(() => () => guard.dispose(), [guard])
 
@@ -124,53 +139,24 @@ export function useLeads(options?: { liveSync?: boolean }) {
       }
       return
     }
-    const showLoading = !opts?.silent && !hasLeadsCache(activeSlug)
+    const cached = getLeadsCache(activeSlug)
+    const paintFromCache = !opts?.force && cached
+    if (paintFromCache && isCurrent()) {
+      setLeads(cached.leads)
+      setDataSource(cached.source)
+      if (cached.leadSheet) setLeadSheet(cached.leadSheet)
+    }
+
+    const reconcileSilent = opts?.silent || paintFromCache
+    const showLoading = !reconcileSilent && !hasLeadsCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
 
-    const cached = getLeadsCache(activeSlug)
-    const freshLeads = hasFreshLeadsCache(activeSlug)
-    if (!opts?.force && freshLeads && cached) {
-      if (cached.leadSheet) {
-        if (isCurrent()) {
-          setLeads(cached.leads)
-          setDataSource(cached.source)
-          setLeadSheet(cached.leadSheet)
-          setLoading(false)
-        }
-        return
-      }
-      if (isCurrent()) {
-        setLeads(cached.leads)
-        setDataSource(cached.source)
-        setLoading(false)
-      }
-      try {
-        const sheet = await fetchLeadSheetConfig()
-        if (!isCurrent()) return
-        lastSheetFetchRef.current = Date.now()
-        setLeadSheet(sheet)
-        setLeadsCache({
-          leads: cached.leads,
-          source: cached.source,
-          organizationSlug: cached.organizationSlug ?? activeSlug,
-          leadSheet: sheet,
-        })
-      } catch (loadError) {
-        if (!isCurrent()) return
-        console.error(loadError)
-        setError("leadsLoadError")
-      } finally {
-        if (isCurrent() && showLoading) setLoading(false)
-      }
-      return
-    }
-
     try {
       // Ask for the sheet config at the same time as the leads (they do not depend on each
       // other). Starting it only after the leads arrived made the page wait for both in a row.
-      const needsSheetFetch = !(opts?.silent && cached?.leadSheet)
+      const needsSheetFetch = !(reconcileSilent && cached?.leadSheet)
       const sheetRequest = needsSheetFetch ? fetchLeadSheetConfig() : null
       // A failed config request is handled where it is awaited; avoid an unhandled rejection
       // when the leads request fails first.
@@ -194,6 +180,13 @@ export function useLeads(options?: { liveSync?: boolean }) {
         throw new Error("leadsLoadError")
       }
 
+      if (
+        shouldQueueRemoteLeadsReload(inflightSaves.current, pendingData.current.size)
+      ) {
+        pendingRemoteReloadRef.current = true
+        return
+      }
+
       setLeads(data.leads)
       setDataSource(data.source)
       if (data.source === "supabase") {
@@ -201,7 +194,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
           ? await sheetRequest
           : (cached?.leadSheet ?? (await fetchLeadSheetConfig()))
         if (!isCurrent()) return
-        if (!opts?.silent || !cached?.leadSheet) {
+        if (!reconcileSilent || !cached?.leadSheet) {
           lastSheetFetchRef.current = Date.now()
         }
         setLeadSheet(sheet)
@@ -234,43 +227,50 @@ export function useLeads(options?: { liveSync?: boolean }) {
     void loadLeads()
   }, [loadLeads])
 
-  const loadLeadsRef = useRef(loadLeads)
-  // Kept current after each render (not during it); the live-sync callback runs later, from events.
   useEffect(() => {
     loadLeadsRef.current = loadLeads
-  })
+  }, [loadLeads])
 
   useLeadsLiveSync(
     organization?.id,
     liveSync && dataSource === "supabase" && !adminMustPickClient && sessionReady,
     () => {
-      if (inflightSaves.current > 0 || pendingData.current.size > 0) return
+      if (shouldQueueRemoteLeadsReload(inflightSaves.current, pendingData.current.size)) {
+        pendingRemoteReloadRef.current = true
+        return
+      }
       void loadLeadsRef.current({ force: true, silent: true })
     }
   )
 
-  // An admin may change the client's lead sheet while this page stays open in a tab.
-  // Re-check when the tab is used again (at most once a minute) so columns stay current.
+  // When the tab is used again: refresh sheet config and reconcile the lead list with the server.
   useEffect(() => {
     if (dataSource !== "supabase") return
 
-    const refreshSheet = () => {
+    const refreshOnVisible = () => {
       if (document.visibilityState !== "visible") return
-      if (Date.now() - lastSheetFetchRef.current < SHEET_REFRESH_MIN_MS) return
-      lastSheetFetchRef.current = Date.now()
-      void fetchLeadSheetConfigOrNull().then((sheet) => {
-        if (!sheet) return
-        setLeadSheet((current) =>
-          JSON.stringify(current) === JSON.stringify(sheet) ? current : sheet
-        )
-      })
+
+      if (Date.now() - lastSheetFetchRef.current >= SHEET_REFRESH_MIN_MS) {
+        lastSheetFetchRef.current = Date.now()
+        void fetchLeadSheetConfigOrNull().then((sheet) => {
+          if (!sheet) return
+          setLeadSheet((current) =>
+            JSON.stringify(current) === JSON.stringify(sheet) ? current : sheet
+          )
+        })
+      }
+
+      if (Date.now() - lastVisibleLeadsFetchRef.current >= LEADS_VISIBILITY_REFRESH_MIN_MS) {
+        lastVisibleLeadsFetchRef.current = Date.now()
+        void loadLeadsRef.current({ force: true, silent: true })
+      }
     }
 
-    window.addEventListener("focus", refreshSheet)
-    document.addEventListener("visibilitychange", refreshSheet)
+    window.addEventListener("focus", refreshOnVisible)
+    document.addEventListener("visibilitychange", refreshOnVisible)
     return () => {
-      window.removeEventListener("focus", refreshSheet)
-      document.removeEventListener("visibilitychange", refreshSheet)
+      window.removeEventListener("focus", refreshOnVisible)
+      document.removeEventListener("visibilitychange", refreshOnVisible)
     }
   }, [dataSource])
 
@@ -327,10 +327,11 @@ export function useLeads(options?: { liveSync?: boolean }) {
         if (inflightSaves.current === 0 && pendingData.current.size === 0) {
           setSaveStatus(saveFailed.current ? "error" : "saved")
           saveFailed.current = false
+          tryFlushDeferredReload()
         }
       }
     },
-    [dataSource]
+    [dataSource, tryFlushDeferredReload]
   )
 
   const updateLead = useCallback(
@@ -460,10 +461,11 @@ export function useLeads(options?: { liveSync?: boolean }) {
         if (inflightSaves.current === 0 && pendingData.current.size === 0) {
           setSaveStatus(saveFailed.current ? "error" : "saved")
           saveFailed.current = false
+          tryFlushDeferredReload()
         }
       }
     },
-    [dataSource]
+    [dataSource, tryFlushDeferredReload]
   )
 
   /**

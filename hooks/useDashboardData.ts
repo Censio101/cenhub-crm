@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useActiveOrganization } from "@/hooks/useActiveOrganization"
 import { NO_ACTIVE_ORGANIZATION_ERROR } from "@/lib/auth/active-organization"
@@ -10,8 +10,6 @@ import {
   CLIENT_ORG_CHANGED_EVENT,
   getAdSpendCache,
   getLeadsCache,
-  hasFreshAdSpendCache,
-  hasFreshLeadsCache,
   hasLeadsCache,
   setAdSpendCache,
   setLeadsCache,
@@ -58,6 +56,9 @@ type AdSpendPayload = {
   metaLastSyncedAt?: string | null
 }
 
+/** Minimum time between focus-triggered dashboard refetches (tab visible again). */
+const DASHBOARD_VISIBILITY_REFRESH_MIN_MS = 60_000
+
 function cachedFormStepsTotal(
   entry: ReturnType<typeof getLeadsCache> | null | undefined
 ): number | null {
@@ -86,6 +87,8 @@ export function useDashboardData(): DashboardDataState {
   const [metaEnabled, setMetaEnabled] = useState(false)
   const [metaLastSyncedAt, setMetaLastSyncedAt] = useState<string | null>(null)
   const [guard] = useState(createRequestGuard)
+  const loadRef = useRef<() => Promise<void>>(async () => {})
+  const lastVisibleDashboardFetchRef = useRef(0)
 
   useEffect(() => () => guard.dispose(), [guard])
 
@@ -103,25 +106,22 @@ export function useDashboardData(): DashboardDataState {
       }
       return
     }
-    const showLoading = !hasLeadsCache(activeSlug)
+    const cachedLeads = getLeadsCache(activeSlug)
+    const cachedAdSpend = getAdSpendCache(activeSlug)
+    if (cachedLeads && isCurrent()) {
+      setLeads(cachedLeads.leads)
+      setFormStepsTotal(cachedFormStepsTotal(cachedLeads))
+      setSource(cachedLeads.source)
+    }
+    if (cachedAdSpend !== null && isCurrent()) {
+      setAdSpendByMonth(cachedAdSpend)
+    }
+
+    const reconcileSilent = Boolean(cachedLeads)
+    const showLoading = !reconcileSilent && !hasLeadsCache(activeSlug)
     if (showLoading) setLoading(true)
     setError(null)
     setNeedsClientSelection(false)
-
-    const freshLeads = hasFreshLeadsCache(activeSlug)
-    const freshAdSpend = hasFreshAdSpendCache(activeSlug)
-    if (freshLeads && freshAdSpend) {
-      const cached = getLeadsCache(activeSlug)!
-      const adSpend = getAdSpendCache(activeSlug) ?? {}
-      if (isCurrent()) {
-        setLeads(cached.leads)
-        setFormStepsTotal(cachedFormStepsTotal(cached))
-        setSource(cached.source)
-        setAdSpendByMonth(adSpend)
-        setLoading(false)
-      }
-      return
-    }
 
     try {
       const [leadsResult, adSpendResult] = await Promise.all([
@@ -184,6 +184,27 @@ export function useDashboardData(): DashboardDataState {
   useAsyncEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    loadRef.current = load
+  }, [load])
+
+  useEffect(() => {
+    const refreshOnVisible = () => {
+      if (document.visibilityState !== "visible") return
+      if (Date.now() - lastVisibleDashboardFetchRef.current < DASHBOARD_VISIBILITY_REFRESH_MIN_MS) {
+        return
+      }
+      lastVisibleDashboardFetchRef.current = Date.now()
+      void loadRef.current()
+    }
+    window.addEventListener("focus", refreshOnVisible)
+    document.addEventListener("visibilitychange", refreshOnVisible)
+    return () => {
+      window.removeEventListener("focus", refreshOnVisible)
+      document.removeEventListener("visibilitychange", refreshOnVisible)
+    }
+  }, [])
 
   useEffect(() => {
     const onOrgChanged = () => {
