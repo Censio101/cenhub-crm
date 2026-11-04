@@ -205,8 +205,6 @@ export function useLeads(options?: { liveSync?: boolean }) {
         return
       }
 
-      setLeads(data.leads)
-      setDataSource(data.source)
       if (data.source === "supabase") {
         let bundle: SheetConfigBundle
         if (sheetRequest) {
@@ -224,8 +222,11 @@ export function useLeads(options?: { liveSync?: boolean }) {
         if (!reconcileSilent || !cached?.leadSheet) {
           lastSheetFetchRef.current = Date.now()
         }
+        // Apply sheet config before leads so filter bar (form steps, Leadformular) does not flash in.
         setLeadSheet(bundle.leadSheet)
         setFunnelFormViews(bundle.funnelFormViews)
+        setLeads(data.leads)
+        setDataSource(data.source)
         setLeadsCache({
           leads: data.leads,
           source: data.source,
@@ -234,13 +235,15 @@ export function useLeads(options?: { liveSync?: boolean }) {
           funnelFormViews: bundle.funnelFormViews,
         })
       } else {
+        setLeadSheet(buildDefaultLeadSheetConfig())
+        setFunnelFormViews([])
+        setLeads(data.leads)
+        setDataSource(data.source)
         setLeadsCache({
           leads: data.leads,
           source: data.source,
           organizationSlug: data.organization?.slug ?? null,
         })
-        setLeadSheet(buildDefaultLeadSheetConfig())
-        setFunnelFormViews([])
       }
       emitLeadsUpdated()
     } catch (loadError) {

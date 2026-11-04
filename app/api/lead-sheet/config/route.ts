@@ -18,12 +18,17 @@ export async function GET() {
       ctx.isDemoFallback && !ctx.userId ? createAdminClient() : await createClient()
 
     // Only the columns this client should see; hidden ones stay in the backend.
-    const [{ visible }, services] = await Promise.all([
+    const [{ visible }, services, funnels] = await Promise.all([
       resolveClientDashboardSheet(supabase, ctx.organization.id),
       // The organization is already authorised above; the service tables are server-only.
       resolveOrganizationServices(createAdminClient(), ctx.organization.id),
+      listLeadFunnelsForOrganization(createAdminClient(), ctx.organization.id),
     ])
-    return NextResponse.json({ leadSheet: visible, services })
+    return NextResponse.json({
+      leadSheet: visible,
+      services,
+      funnelFormViews: serializeFunnelFormViews(funnels),
+    })
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)
     if (orgResponse.status !== 500) return orgResponse

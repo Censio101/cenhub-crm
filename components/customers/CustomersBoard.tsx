@@ -43,9 +43,9 @@ import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-l
 import { downloadCsv, plainCustomFieldCell, toCsv } from "@/lib/leads/export-csv"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import {
-  distinctLeadFormSourceLabels,
+  leadFormSourceFilterOptions,
   matchesLeadFormSourceFilter,
-  shouldShowLeadFormSourceFilter,
+  shouldShowLeadFormSourceFilterForSheet,
 } from "@/lib/leads/sheet-form-source-filter"
 import {
   shouldShowCustomerSourceFilter,
@@ -168,8 +168,14 @@ export function CustomersBoard() {
   const [sheetFormSource, setSheetFormSource] = useState<string | "all">("all")
   const showServiceFilter = shouldShowServiceFilter(servicesLoaded, enabledServices)
   const showSourceFilter = useMemo(() => shouldShowCustomerSourceFilter(customers), [customers])
-  const formSourceOptions = useMemo(() => distinctLeadFormSourceLabels(leads), [leads])
-  const showFormSourceFilter = useMemo(() => shouldShowLeadFormSourceFilter(leads), [leads])
+  const formSourceOptions = useMemo(
+    () => leadFormSourceFilterOptions(funnelFormViews, leads),
+    [funnelFormViews, leads]
+  )
+  const showFormSourceFilter = useMemo(
+    () => shouldShowLeadFormSourceFilterForSheet(funnelFormViews, leads),
+    [funnelFormViews, leads]
+  )
   useEffect(() => {
     if (!showServiceFilter && sheetService) setSheetService(null)
   }, [showServiceFilter, sheetService])
