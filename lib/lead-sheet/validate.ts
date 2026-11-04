@@ -14,6 +14,8 @@ import {
 import {
   isSessionStatusFieldKey,
   normalizeSessionStatusStoredValue,
+  sessionStatusFieldOptions,
+  sessionStatusValuesEqual,
 } from "@/lib/leads/session-status-display"
 
 export function assertAllBuiltinsPresent(builtinKeys: readonly string[]): string | null {
@@ -57,6 +59,13 @@ export function validateCustomFieldValue(
 ): string | null {
   if (isEmptyCustomFieldValue(value)) {
     return field.required ? `${field.fieldKey} is required` : null
+  }
+
+  if (isSessionStatusFieldKey(field.fieldKey)) {
+    const stored = normalizeSessionStatusStoredValue(value)
+    if (!stored) return "Invalid option"
+    const allowed = sessionStatusFieldOptions(field.config)
+    return allowed.some((o) => sessionStatusValuesEqual(o, stored)) ? null : "Invalid option"
   }
 
   switch (field.fieldType) {

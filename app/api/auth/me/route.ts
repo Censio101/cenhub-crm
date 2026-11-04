@@ -37,6 +37,8 @@ export async function GET() {
           logoBackground: parseOrganizationLogoBackground(ctx.organization.logo_background),
           logoPadding: parseLogoStep(ctx.organization.logo_padding),
           logoRadius: parseLogoStep(ctx.organization.logo_radius),
+          logoSize: parseLogoStep(ctx.organization.logo_size),
+          logoOffsetY: parseLogoStep(ctx.organization.logo_offset_y),
           profileComplete: isOrganizationProfileComplete(ctx.organization),
           dashboardHiddenMetrics: parseHiddenMetrics(ctx.organization.dashboard_hidden_metrics),
         }

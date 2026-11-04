@@ -1,6 +1,8 @@
 import {
   LOGO_STEP_DEFAULT,
   logoChipStyle,
+  logoImageStyle,
+  logoOffsetStyle,
   type OrganizationLogoBackground,
 } from "@/lib/organization-logo"
 import { cn } from "cn"
@@ -22,19 +24,23 @@ export function ClientLogoMark({
   background = "transparent",
   padding = LOGO_STEP_DEFAULT,
   radius = LOGO_STEP_DEFAULT,
+  size = LOGO_STEP_DEFAULT,
+  offsetY = LOGO_STEP_DEFAULT,
   className,
 }: {
   src: string
   alt: string
   background?: OrganizationLogoBackground
-  /** Chip padding and corner radius, steps 0 to 4 (2 = original look). */
+  /** Chip padding, corner radius, logo size, and menu vertical offset — steps 0 to 4 (2 = original look). */
   padding?: number
   radius?: number
+  size?: number
+  offsetY?: number
   className?: string
 }) {
   return (
     <span
-      style={logoChipStyle("header", padding, radius)}
+      style={{ ...logoChipStyle("header", padding, radius), ...logoOffsetStyle(offsetY) }}
       className={cn(
         "inline-flex shrink-0 items-center justify-center overflow-hidden",
         backdropClassName[background],
@@ -45,7 +51,8 @@ export function ClientLogoMark({
       <img
         src={src}
         alt={alt}
-        className="h-10 w-auto max-w-[10rem] object-contain sm:h-12 sm:max-w-[15rem]"
+        style={logoImageStyle("header", size)}
+        className="h-auto w-auto object-contain"
       />
     </span>
   )

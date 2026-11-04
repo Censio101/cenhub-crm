@@ -1,5 +1,16 @@
 export const SESSION_STATUS_FIELD_KEY = "session_status"
 
+/** Stored select values (sheet labels via {@link formatSessionStatusDisplay}). */
+export const SESSION_STATUS_SELECT_OPTIONS = ["abandoned", "nej"] as const
+
+export function sessionStatusFieldOptions(
+  config: { options?: string[] } | undefined
+): string[] {
+  const opts = config?.options?.filter((o) => o.trim().length > 0) ?? []
+  if (opts.length >= 2) return opts
+  return [...SESSION_STATUS_SELECT_OPTIONS]
+}
+
 export function isSessionStatusFieldKey(fieldKey: string): boolean {
   return fieldKey.trim().toLowerCase() === SESSION_STATUS_FIELD_KEY
 }

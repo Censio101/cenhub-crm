@@ -164,6 +164,8 @@ export function AppTopbarShell() {
                 background={organization?.logoBackground ?? "transparent"}
                 padding={organization?.logoPadding}
                 radius={organization?.logoRadius}
+                size={organization?.logoSize}
+                offsetY={organization?.logoOffsetY}
               />
             </>
           ) : null}

@@ -23,6 +23,12 @@ function coerceValue(def: LeadSheetCustomFieldDef, raw: unknown): Coerced {
   switch (def.fieldType) {
     case "text":
     case "textarea": {
+      if (isSessionStatusFieldKey(def.fieldKey)) {
+        const stored = normalizeSessionStatusStoredValue(raw)
+        return stored
+          ? { ok: true, value: stored }
+          : { ok: false, message: "Expected abandoned or nej" }
+      }
       if (typeof raw === "string") return { ok: true, value: raw.trim() }
       if (typeof raw === "number" || typeof raw === "boolean") {
         return { ok: true, value: String(raw) }

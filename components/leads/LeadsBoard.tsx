@@ -41,6 +41,7 @@ import {
   LeadSheetReadOnlyPhoneCell,
   LeadSheetReadOnlyPlainCell,
   LeadSheetReadOnlySegmentCell,
+  LeadSheetReadOnlyText,
 } from "@/components/leads/LeadSheetReadOnlyCell"
 import { LeadImageFieldCell } from "@/components/leads/LeadImageFieldCell"
 import { LeadSheetEditableText } from "@/components/leads/LeadSheetEditableText"
@@ -772,6 +773,20 @@ function renderLeadColumnCell(
               leadName={lead.fullName}
               onChange={(next) => patchCustom(next)}
             />
+          </TableCell>
+        )
+      }
+
+      if (isSessionStatusFieldKey(key)) {
+        const label =
+          value == null || value === ""
+            ? ""
+            : formatSessionStatusDisplay(value)
+        return (
+          <TableCell key={col.id} className={cn("min-w-28 px-2", priceCue)}>
+            <LeadSheetReadOnlyText fullText={fullText} title={label || undefined}>
+              {label}
+            </LeadSheetReadOnlyText>
           </TableCell>
         )
       }

@@ -29,7 +29,7 @@ export function parseOrganizationLogoBackground(value: unknown): OrganizationLog
   return isOrganizationLogoBackground(value) ? value : "white"
 }
 
-/** Padding and corner radius of the logo chip come in 5 steps. Step 2 is the original look. */
+/** Padding, corner radius, and vertical offset come in 5 steps. Step 2 is the original look. */
 export const LOGO_STEP_MIN = 0
 export const LOGO_STEP_MAX = 4
 export const LOGO_STEP_DEFAULT = 2
@@ -71,6 +71,40 @@ export function logoChipStyle(size: LogoChipSize, padding: number, radius: numbe
 
 export function logoRadiusPx(size: LogoChipSize, radius: number): string {
   return `${RADIUS_PX[size][parseLogoStep(radius)]}px`
+}
+
+/** Max logo image height in px per size step. Step 2 matches the original header look. */
+const LOGO_IMAGE_HEIGHT_PX: Record<LogoChipSize, readonly number[]> = {
+  header: [28, 32, 40, 48, 56],
+  stage: [44, 52, 56, 64, 72],
+}
+
+const LOGO_IMAGE_MAX_WIDTH_PX: Record<LogoChipSize, readonly number[]> = {
+  header: [120, 140, 160, 180, 200],
+  stage: [180, 210, 240, 270, 288],
+}
+
+export function logoImageMaxHeightPx(chip: LogoChipSize, sizeStep: number): number {
+  return LOGO_IMAGE_HEIGHT_PX[chip][parseLogoStep(sizeStep)]
+}
+
+export function logoImageStyle(chip: LogoChipSize, sizeStep: number): CSSProperties {
+  return {
+    maxHeight: `${logoImageMaxHeightPx(chip, sizeStep)}px`,
+    maxWidth: `${LOGO_IMAGE_MAX_WIDTH_PX[chip][parseLogoStep(sizeStep)]}px`,
+  }
+}
+
+/** Vertical nudge in the top menu (px). Step 2 = centered with Censio. */
+const LOGO_OFFSET_Y_PX: readonly number[] = [-8, -4, 0, 4, 8]
+
+export function logoOffsetTranslateYpx(offsetStep: number): number {
+  return LOGO_OFFSET_Y_PX[parseLogoStep(offsetStep)]
+}
+
+export function logoOffsetStyle(offsetStep: number): CSSProperties {
+  const y = logoOffsetTranslateYpx(offsetStep)
+  return y === 0 ? {} : { transform: `translateY(${y}px)` }
 }
 
 export function isAllowedOrganizationLogoMime(type: string): boolean {

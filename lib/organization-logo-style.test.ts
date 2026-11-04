@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { isLogoStep, logoChipStyle, parseLogoStep } from "@/lib/organization-logo"
+import {
+  isLogoStep,
+  logoChipStyle,
+  logoImageMaxHeightPx,
+  logoOffsetTranslateYpx,
+  parseLogoStep,
+} from "@/lib/organization-logo"
 
 describe("logo chip style", () => {
   it("only accepts whole steps from 0 to 4", () => {
@@ -21,8 +27,21 @@ describe("logo chip style", () => {
   })
 
   it("grows with each step and the last radius step is a pill", () => {
-    const paddings = [0, 1, 2, 3, 4].map((step) => parseInt(logoChipStyle("stage", step, 2).padding as string, 10))
+    const paddings = [0, 1, 2, 3, 4].map((step) =>
+      parseInt(logoChipStyle("stage", step, 2).padding as string, 10)
+    )
     expect([...paddings].sort((a, b) => a - b)).toEqual(paddings)
     expect(logoChipStyle("header", 2, 4).borderRadius).toBe("999px")
+  })
+
+  it("scales logo image height with the size step", () => {
+    expect(logoImageMaxHeightPx("header", 2)).toBe(40)
+    expect(logoImageMaxHeightPx("header", 4)).toBeGreaterThan(logoImageMaxHeightPx("header", 0))
+  })
+
+  it("nudges logo vertically around center at step 2", () => {
+    expect(logoOffsetTranslateYpx(2)).toBe(0)
+    expect(logoOffsetTranslateYpx(0)).toBeLessThan(0)
+    expect(logoOffsetTranslateYpx(4)).toBeGreaterThan(0)
   })
 })

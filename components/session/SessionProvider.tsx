@@ -140,6 +140,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               logoBackground: org.logoBackground ?? "white",
               logoPadding: org.logoPadding ?? 2,
               logoRadius: org.logoRadius ?? 2,
+              logoSize: org.logoSize ?? 2,
+              logoOffsetY: org.logoOffsetY ?? 2,
               profileComplete: org.profileComplete ?? true,
               dashboardHiddenMetrics: org.dashboardHiddenMetrics ?? [],
             }
@@ -282,6 +284,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             organization?.slug === data.organization.slug ? (organization.logoPadding ?? 2) : 2,
           logoRadius:
             organization?.slug === data.organization.slug ? (organization.logoRadius ?? 2) : 2,
+          logoSize:
+            organization?.slug === data.organization.slug ? (organization.logoSize ?? 2) : 2,
+          logoOffsetY:
+            organization?.slug === data.organization.slug ? (organization.logoOffsetY ?? 2) : 2,
           profileComplete:
             organization?.slug === data.organization.slug
               ? (organization.profileComplete ?? true)

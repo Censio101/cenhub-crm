@@ -151,6 +151,8 @@ export function CompanyDetailsBoard() {
   const logoBackground: OrganizationLogoBackground = organization?.logoBackground ?? "white"
   const logoPadding = organization?.logoPadding ?? 2
   const logoRadius = organization?.logoRadius ?? 2
+  const logoSize = organization?.logoSize ?? 2
+  const logoOffsetY = organization?.logoOffsetY ?? 2
 
   const logoController = useCompanyLogo({
     uploadUrl: "/api/organization/logo",
@@ -158,6 +160,8 @@ export function CompanyDetailsBoard() {
     onLogoChange: () => void reloadOrg({ silent: true }),
     padding: logoPadding,
     radius: logoRadius,
+    size: logoSize,
+    offsetY: logoOffsetY,
     onBackgroundChange: (next) => patchOrganization({ logoBackground: next }),
     onStyleChange: (patch) => patchOrganization(patch),
     onError: setLogoError,
@@ -297,6 +301,7 @@ export function CompanyDetailsBoard() {
               background={logoBackground}
               padding={logoPadding}
               radius={logoRadius}
+              size={logoSize}
               canEdit={canEdit}
               controller={logoController}
             />
@@ -311,6 +316,8 @@ export function CompanyDetailsBoard() {
                   background={logoBackground}
                   padding={logoPadding}
                   radius={logoRadius}
+                  size={logoSize}
+                  offsetY={logoOffsetY}
                   controller={logoController}
                 />
               ) : null}

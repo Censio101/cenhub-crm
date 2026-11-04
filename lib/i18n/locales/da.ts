@@ -1585,6 +1585,8 @@ const daMessages = {
   logoBackgroundLabel: "Logobaggrund",
   logoPaddingLabel: "Afstand",
   logoRadiusLabel: "Hjørner",
+  logoSizeLabel: "Logostørrelse",
+  logoOffsetYLabel: "Placering op/ned",
   logoStepLess: "mindre",
   logoStepMore: "mere",
   logoBackgroundTransparent: "Gennemsigtig",

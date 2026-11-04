@@ -1576,6 +1576,8 @@ export const en: Messages = {
   logoBackgroundLabel: "Logo background",
   logoPaddingLabel: "Padding",
   logoRadiusLabel: "Corners",
+  logoSizeLabel: "Logo size",
+  logoOffsetYLabel: "Vertical position",
   logoStepLess: "less",
   logoStepMore: "more",
   logoBackgroundTransparent: "Transparent",

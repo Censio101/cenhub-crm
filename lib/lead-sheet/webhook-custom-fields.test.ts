@@ -120,4 +120,14 @@ describe("coerceWebhookCustomFields", () => {
   it("treats a missing container as nothing to do", () => {
     expect(coerceWebhookCustomFields(undefined, defs)).toEqual({ values: {}, warnings: [] })
   })
+
+  it("normalizes session_status on text columns", () => {
+    const sessionDefs = [def("session_status", "text")]
+    const { values, warnings } = coerceWebhookCustomFields(
+      { session_status: "Nej" },
+      sessionDefs
+    )
+    expect(warnings).toEqual([])
+    expect(values).toEqual({ session_status: "nej" })
+  })
 })

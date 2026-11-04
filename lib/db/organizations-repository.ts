@@ -152,6 +152,8 @@ export type OrganizationDetailsPatch = Partial<
     | "logo_background"
     | "logo_padding"
     | "logo_radius"
+    | "logo_size"
+    | "logo_offset_y"
     | "cvr"
     | "address"
     | "zip_code"

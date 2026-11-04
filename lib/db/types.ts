@@ -11,6 +11,8 @@ export type OrganizationRow = {
   /** Logo chip padding and corner radius, steps 0 to 4 (2 = original look). */
   logo_padding?: number | null
   logo_radius?: number | null
+  logo_size?: number | null
+  logo_offset_y?: number | null
   demo_mode: boolean
   lead_sheet_template_id?: string | null
   /** Set when the lead sheet changed while webhooks existed; cleared once reviewed. */

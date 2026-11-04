@@ -65,9 +65,17 @@ export async function PATCH(request: Request) {
       background?: unknown
       padding?: unknown
       radius?: unknown
+      size?: unknown
+      offsetY?: unknown
     }
-    // Any of the three can be sent on its own; only valid values are saved.
-    const patch: { logo_background?: string; logo_padding?: number; logo_radius?: number } = {}
+    // Any field can be sent on its own; only valid values are saved.
+    const patch: {
+      logo_background?: string
+      logo_padding?: number
+      logo_radius?: number
+      logo_size?: number
+      logo_offset_y?: number
+    } = {}
     if (body.background !== undefined) {
       if (!isOrganizationLogoBackground(body.background)) {
         return NextResponse.json({ error: "Invalid background" }, { status: 400 })
@@ -86,6 +94,18 @@ export async function PATCH(request: Request) {
       }
       patch.logo_radius = body.radius
     }
+    if (body.size !== undefined) {
+      if (!isLogoStep(body.size)) {
+        return NextResponse.json({ error: "Invalid size" }, { status: 400 })
+      }
+      patch.logo_size = body.size
+    }
+    if (body.offsetY !== undefined) {
+      if (!isLogoStep(body.offsetY)) {
+        return NextResponse.json({ error: "Invalid offsetY" }, { status: 400 })
+      }
+      patch.logo_offset_y = body.offsetY
+    }
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 })
     }
@@ -96,6 +116,8 @@ export async function PATCH(request: Request) {
       logoBackground: patch.logo_background,
       logoPadding: patch.logo_padding,
       logoRadius: patch.logo_radius,
+      logoSize: patch.logo_size,
+      logoOffsetY: patch.logo_offset_y,
     })
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)

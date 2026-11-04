@@ -5,6 +5,7 @@ import {
   isSessionStatusFieldKey,
   normalizeSessionStatusInCustomFields,
   normalizeSessionStatusStoredValue,
+  sessionStatusFieldOptions,
   sessionStatusValuesEqual,
 } from "./session-status-display"
 
@@ -33,6 +34,15 @@ describe("session-status-display", () => {
     expect(sessionStatusValuesEqual("Ja", "abandoned")).toBe(true)
     expect(sessionStatusValuesEqual("Nej", "nej")).toBe(true)
     expect(sessionStatusValuesEqual("Ja", "Nej")).toBe(false)
+  })
+
+  it("defaults select options to abandoned and nej", () => {
+    expect(sessionStatusFieldOptions(undefined)).toEqual(["abandoned", "nej"])
+    expect(sessionStatusFieldOptions({ options: ["abandoned"] })).toEqual(["abandoned", "nej"])
+    expect(sessionStatusFieldOptions({ options: ["abandoned", "nej"] })).toEqual([
+      "abandoned",
+      "nej",
+    ])
   })
 
   it("stores canonical abandoned / nej", () => {

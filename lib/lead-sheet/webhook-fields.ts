@@ -9,6 +9,10 @@ import {
   type WebhookCustomFieldSpec,
   type WebhookLeadSheetInfo,
 } from "@/lib/lead-sheet/webhook-spec"
+import {
+  isSessionStatusFieldKey,
+  sessionStatusFieldOptions,
+} from "@/lib/leads/session-status-display"
 
 /** Built-in sheet column → top-level webhook field (when present on the sheet). */
 export const BUILTIN_TO_WEBHOOK_STANDARD: Partial<
@@ -63,13 +67,16 @@ export function sheetEligibleCustomWebhookFields(
   return columns.flatMap((col) => {
     if (col.kind !== "custom") return []
     const def = col.customField
+    const sessionStatus = isSessionStatusFieldKey(def.fieldKey)
     return [
       {
         key: def.fieldKey,
         label: def.label,
-        type: def.fieldType,
+        type: sessionStatus ? "select" : def.fieldType,
         required: def.required,
-        ...(def.fieldType === "select" ? { options: def.config.options ?? [] } : {}),
+        ...(sessionStatus || def.fieldType === "select"
+          ? { options: sessionStatus ? sessionStatusFieldOptions(def.config) : def.config.options ?? [] }
+          : {}),
       },
     ]
   })

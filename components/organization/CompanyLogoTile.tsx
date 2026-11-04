@@ -9,6 +9,7 @@ import {
   LOGO_STEP_MAX,
   LOGO_STEP_MIN,
   logoChipStyle,
+  logoImageStyle,
   logoRadiusPx,
   ORGANIZATION_LOGO_MAX_BYTES,
   type OrganizationLogoBackground,
@@ -18,14 +19,21 @@ import { cn } from "cn"
 type UseCompanyLogoOptions = {
   uploadUrl: string
   background: OrganizationLogoBackground
-  /** Chip padding and corner radius (steps 0 to 4). */
+  /** Chip padding, corner radius, and menu vertical offset (steps 0 to 4). */
   padding: number
   radius: number
+  size: number
+  offsetY: number
   onLogoChange: (logoUrl: string | null) => void
   /** Apply a background choice in the UI immediately (also used to revert after a failed save). */
   onBackgroundChange: (background: OrganizationLogoBackground) => void
-  /** Apply a padding / radius choice in the UI immediately (also used to revert after a failed save). */
-  onStyleChange: (patch: { logoPadding?: number; logoRadius?: number }) => void
+  /** Apply a style choice in the UI immediately (also used to revert after a failed save). */
+  onStyleChange: (patch: {
+    logoPadding?: number
+    logoRadius?: number
+    logoSize?: number
+    logoOffsetY?: number
+  }) => void
   onError?: (message: string) => void
 }
 
@@ -35,6 +43,8 @@ export function useCompanyLogo({
   background,
   padding,
   radius,
+  size,
+  offsetY,
   onLogoChange,
   onBackgroundChange,
   onStyleChange,
@@ -133,23 +143,37 @@ export function useCompanyLogo({
 
   // Padding / radius: same idea as the background. Applied at once, saved in click order, only the
   // newest click per option is sent, and a failed save returns to the last confirmed step.
-  const styleRef = useRef({ padding, radius })
-  const styleConfirmedRef = useRef({ padding, radius })
-  const styleSeqRef = useRef({ padding: 0, radius: 0 })
+  const styleRef = useRef({ padding, radius, size, offsetY })
+  const styleConfirmedRef = useRef({ padding, radius, size, offsetY })
+  const styleSeqRef = useRef({ padding: 0, radius: 0, size: 0, offsetY: 0 })
   const stylePendingRef = useRef(0)
   const styleQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     if (stylePendingRef.current > 0) return
-    styleRef.current = { padding, radius }
-    styleConfirmedRef.current = { padding, radius }
-  }, [padding, radius])
+    styleRef.current = { padding, radius, size, offsetY }
+    styleConfirmedRef.current = { padding, radius, size, offsetY }
+  }, [padding, radius, size, offsetY])
 
-  function applyStyle(key: "padding" | "radius", value: number) {
-    onStyleChange(key === "padding" ? { logoPadding: value } : { logoRadius: value })
+  type StyleKey = "padding" | "radius" | "size" | "offsetY"
+
+  function applyStyle(key: StyleKey, value: number) {
+    onStyleChange(
+      key === "padding"
+        ? { logoPadding: value }
+        : key === "radius"
+          ? { logoRadius: value }
+          : key === "size"
+            ? { logoSize: value }
+            : { logoOffsetY: value }
+    )
   }
 
-  function stepStyle(key: "padding" | "radius", delta: 1 | -1) {
+  function patchBodyKey(key: StyleKey): string {
+    return key === "offsetY" ? "offsetY" : key
+  }
+
+  function stepStyle(key: StyleKey, delta: 1 | -1) {
     const next = Math.min(LOGO_STEP_MAX, Math.max(LOGO_STEP_MIN, styleRef.current[key] + delta))
     if (next === styleRef.current[key]) return
     styleRef.current = { ...styleRef.current, [key]: next }
@@ -163,7 +187,7 @@ export function useCompanyLogo({
         const response = await fetch(uploadUrl, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ [key]: next }),
+          body: JSON.stringify({ [patchBodyKey(key)]: next }),
         })
         const data = (await response.json()) as { error?: string }
         if (!response.ok) throw new Error(data.error ?? t("clientLogoUploadError"))
@@ -179,6 +203,8 @@ export function useCompanyLogo({
         if (stylePendingRef.current === 0) {
           applyStyle("padding", styleRef.current.padding)
           applyStyle("radius", styleRef.current.radius)
+          applyStyle("size", styleRef.current.size)
+          applyStyle("offsetY", styleRef.current.offsetY)
         }
       }
     })
@@ -204,6 +230,7 @@ export function CompanyLogoStage({
   background,
   padding,
   radius,
+  size,
   canEdit,
   controller,
   className,
@@ -212,6 +239,7 @@ export function CompanyLogoStage({
   background: OrganizationLogoBackground
   padding: number
   radius: number
+  size: number
   canEdit: boolean
   controller: CompanyLogoController
   className?: string
@@ -234,7 +262,8 @@ export function CompanyLogoStage({
       <img
         src={logoUrl}
         alt=""
-        className="max-h-14 w-auto max-w-[min(14rem,calc(100vw-8.5rem))] object-contain sm:max-h-[4.5rem] sm:max-w-[18rem]"
+        style={logoImageStyle("stage", size)}
+        className="h-auto w-auto object-contain"
       />
     </>
   ) : canEdit ? (
@@ -406,12 +435,16 @@ export function CompanyLogoControls({
   background,
   padding,
   radius,
+  size,
+  offsetY,
   controller,
 }: {
   hasLogo: boolean
   background: OrganizationLogoBackground
   padding: number
   radius: number
+  size: number
+  offsetY: number
   controller: CompanyLogoController
 }) {
   const { t } = useLanguage()
@@ -422,7 +455,7 @@ export function CompanyLogoControls({
   return (
     <div
       className={cn(
-        "flex flex-col items-start gap-1.5 sm:items-end",
+        "flex max-w-full flex-wrap content-start items-center gap-1.5 sm:max-w-[min(100%,26rem)] sm:justify-end",
         !hasLogo && "pointer-events-none opacity-40"
       )}
     >
@@ -464,19 +497,38 @@ export function CompanyLogoControls({
 
       <div className={pill}>
         <StepControl
+          label={t("logoSizeLabel")}
+          value={size}
+          disabled={!hasLogo}
+          onLess={() => stepStyle("size", -1)}
+          onMore={() => stepStyle("size", 1)}
+        />
+      </div>
+      <div className={pill}>
+        <StepControl
           label={t("logoPaddingLabel")}
           value={padding}
           disabled={!hasLogo}
           onLess={() => stepStyle("padding", -1)}
           onMore={() => stepStyle("padding", 1)}
         />
-        <span className="mx-0.5 h-4 w-px bg-white/25" aria-hidden="true" />
+      </div>
+      <div className={pill}>
         <StepControl
           label={t("logoRadiusLabel")}
           value={radius}
           disabled={!hasLogo}
           onLess={() => stepStyle("radius", -1)}
           onMore={() => stepStyle("radius", 1)}
+        />
+      </div>
+      <div className={pill}>
+        <StepControl
+          label={t("logoOffsetYLabel")}
+          value={offsetY}
+          disabled={!hasLogo}
+          onLess={() => stepStyle("offsetY", -1)}
+          onMore={() => stepStyle("offsetY", 1)}
         />
       </div>
     </div>
