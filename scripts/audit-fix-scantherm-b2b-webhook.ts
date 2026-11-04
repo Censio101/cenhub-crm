@@ -99,7 +99,7 @@ async function ensureB2bSheetColumns(
       const created = await createLibraryField(admin, {
         label: "Note",
         fieldKey: "note",
-        fieldType: "text",
+        fieldType: "textarea",
       })
       noteField = { kind: "custom", customField: created, templateCount: 0 }
       actions.push("Created library field note")
