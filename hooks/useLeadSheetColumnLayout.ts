@@ -8,6 +8,7 @@ import type { Lead, LeadSegmentId } from "@/lib/leads"
 import {
   filterColumnsForFormSourceProfile,
   funnelFormViewsToMap,
+  promotePlatformColumnAfterFormProgress,
   type FunnelFormViewConfig,
 } from "@/lib/leads/funnel-sheet-column-profile"
 import { filterColumnsForSegmentFilter } from "@/lib/leads/sheet-segment-columns"
@@ -103,11 +104,12 @@ export function useLeadSheetColumnLayout(input: {
 
   const visibleColumns = useMemo(() => {
     const bySegment = filterColumnsForSegmentFilter(input.columns, input.segmentFilter ?? "all")
-    return filterColumnsForFormSourceProfile(
+    const byForm = filterColumnsForFormSourceProfile(
       bySegment,
       input.formSourceFilter ?? "all",
       formViewMap
     )
+    return promotePlatformColumnAfterFormProgress(byForm)
   }, [formViewMap, input.columns, input.formSourceFilter, input.segmentFilter])
 
   const displayCtx = useMemo(

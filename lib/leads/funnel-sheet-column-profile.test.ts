@@ -7,7 +7,7 @@ import {
   filterColumnsForFormSourceProfile,
   formSourceFilterNarrowsColumns,
   funnelFormViewsToMap,
-  promotePlatformColumnAfterPhone,
+  promotePlatformColumnAfterFormProgress,
 } from "@/lib/leads/funnel-sheet-column-profile"
 
 const builtin = (key: string) =>
@@ -111,17 +111,18 @@ describe("filterColumnsForFormSourceProfile", () => {
   })
 })
 
-describe("promotePlatformColumnAfterPhone", () => {
-  it("moves utm_source immediately after phone", () => {
+describe("promotePlatformColumnAfterFormProgress", () => {
+  it("moves utm_source immediately after formProgress", () => {
     const cols = [
       builtin("date"),
       builtin("phone"),
-      builtin("companyName"),
+      builtin("formProgress"),
+      builtin("status"),
       custom("utm_source"),
     ]
-    const keys = promotePlatformColumnAfterPhone(cols).map((c) =>
+    const keys = promotePlatformColumnAfterFormProgress(cols).map((c) =>
       c.kind === "builtin" ? c.builtinKey : c.customField.fieldKey
     )
-    expect(keys).toEqual(["date", "phone", "utm_source", "companyName"])
+    expect(keys).toEqual(["date", "phone", "formProgress", "utm_source", "status"])
   })
 })

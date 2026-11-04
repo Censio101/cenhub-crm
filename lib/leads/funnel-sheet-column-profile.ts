@@ -23,6 +23,9 @@ export const PIPELINE_BUILTIN_KEYS = new Set<BuiltinColumnKey>([
   "ltv",
 ])
 
+/** Shown in compact Leadformular views even when not in webhook targets (Scantherm stepped forms). */
+export const COMPACT_ALWAYS_BUILTIN_KEYS = new Set<BuiltinColumnKey>(["formProgress"])
+
 function webhookKeyForBuiltin(builtinKey: BuiltinColumnKey): string | null {
   return standardKeyForBuiltinColumn(builtinKey)
 }
@@ -59,6 +62,7 @@ export function columnsForCompactProfile(
   return columns.filter((col) => {
     if (col.kind === "builtin") {
       if (PIPELINE_BUILTIN_KEYS.has(col.builtinKey)) return true
+      if (COMPACT_ALWAYS_BUILTIN_KEYS.has(col.builtinKey)) return true
       const webhookKey = webhookKeyForBuiltin(col.builtinKey)
       if (!webhookKey) return false
       return targets.has(webhookKey)
@@ -71,8 +75,8 @@ export function columnsForCompactProfile(
   })
 }
 
-/** Puts Platform right after phone so both Leadformular views show it without scrolling. */
-export function promotePlatformColumnAfterPhone(
+/** Puts Platform immediately after Form steps (fallback: before pipeline columns). */
+export function promotePlatformColumnAfterFormProgress(
   columns: readonly LeadSheetTemplateColumn[]
 ): LeadSheetTemplateColumn[] {
   const idx = columns.findIndex(
@@ -80,11 +84,24 @@ export function promotePlatformColumnAfterPhone(
       col.kind === "custom" && col.customField.fieldKey === PLATFORM_CUSTOM_FIELD_KEY
   )
   if (idx < 0) return [...columns]
-  const phoneIdx = columns.findIndex((col) => col.kind === "builtin" && col.builtinKey === "phone")
-  const insertAt = phoneIdx >= 0 ? phoneIdx + 1 : 0
+
+  const formIdx = columns.findIndex(
+    (col) => col.kind === "builtin" && col.builtinKey === "formProgress"
+  )
+  let insertAt: number
+  if (formIdx >= 0) {
+    insertAt = formIdx + 1
+  } else {
+    const firstPipeline = columns.findIndex(
+      (col) => col.kind === "builtin" && PIPELINE_BUILTIN_KEYS.has(col.builtinKey)
+    )
+    insertAt = firstPipeline >= 0 ? firstPipeline : columns.length
+  }
+
   if (idx === insertAt) return [...columns]
   const next = [...columns]
   const [platform] = next.splice(idx, 1)
+  if (insertAt > idx) insertAt -= 1
   next.splice(insertAt, 0, platform)
   return next
 }
@@ -103,11 +120,11 @@ export function filterColumnsForFormSourceProfile(
   const config = configsByLabel?.get(label)
   if (!config) return [...columns]
 
-  const narrowed = !formSourceFilterNarrowsColumns(config.webhookFieldTargets)
-    ? [...columns]
-    : columnsForCompactProfile(columns, config.webhookFieldTargets)
+  if (!formSourceFilterNarrowsColumns(config.webhookFieldTargets)) {
+    return [...columns]
+  }
 
-  return promotePlatformColumnAfterPhone(narrowed)
+  return columnsForCompactProfile(columns, config.webhookFieldTargets)
 }
 
 export function funnelFormViewsToMap(
