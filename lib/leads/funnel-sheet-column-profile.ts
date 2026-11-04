@@ -11,6 +11,9 @@ export type FunnelFormViewConfig = {
   webhookFieldTargets: readonly string[] | null
 }
 
+/** Lead sheet custom field for marketing platform / UTM source (label “Platform”). */
+export const PLATFORM_CUSTOM_FIELD_KEY = "utm_source"
+
 /** Always visible when Leadformular narrows columns (pipeline / CRM workflow). */
 export const PIPELINE_BUILTIN_KEYS = new Set<BuiltinColumnKey>([
   "status",
@@ -51,6 +54,8 @@ export function columnsForCompactProfile(
   const targets = targetSet(webhookFieldTargets)
   if (targets.size === 0) return [...columns]
 
+  const platformTarget = `${FUNNEL_TARGET_PREFIX}${PLATFORM_CUSTOM_FIELD_KEY}`
+
   return columns.filter((col) => {
     if (col.kind === "builtin") {
       if (PIPELINE_BUILTIN_KEYS.has(col.builtinKey)) return true
@@ -58,9 +63,30 @@ export function columnsForCompactProfile(
       if (!webhookKey) return false
       return targets.has(webhookKey)
     }
+    if (col.customField.fieldKey === PLATFORM_CUSTOM_FIELD_KEY) {
+      return targets.has(platformTarget) || targets.size > 0
+    }
     const customTarget = `${FUNNEL_TARGET_PREFIX}${col.customField.fieldKey}`
     return targets.has(customTarget)
   })
+}
+
+/** Puts Platform right after phone so both Leadformular views show it without scrolling. */
+export function promotePlatformColumnAfterPhone(
+  columns: readonly LeadSheetTemplateColumn[]
+): LeadSheetTemplateColumn[] {
+  const idx = columns.findIndex(
+    (col) =>
+      col.kind === "custom" && col.customField.fieldKey === PLATFORM_CUSTOM_FIELD_KEY
+  )
+  if (idx < 0) return [...columns]
+  const phoneIdx = columns.findIndex((col) => col.kind === "builtin" && col.builtinKey === "phone")
+  const insertAt = phoneIdx >= 0 ? phoneIdx + 1 : 0
+  if (idx === insertAt) return [...columns]
+  const next = [...columns]
+  const [platform] = next.splice(idx, 1)
+  next.splice(insertAt, 0, platform)
+  return next
 }
 
 /**
@@ -77,11 +103,11 @@ export function filterColumnsForFormSourceProfile(
   const config = configsByLabel?.get(label)
   if (!config) return [...columns]
 
-  if (!formSourceFilterNarrowsColumns(config.webhookFieldTargets)) {
-    return [...columns]
-  }
+  const narrowed = !formSourceFilterNarrowsColumns(config.webhookFieldTargets)
+    ? [...columns]
+    : columnsForCompactProfile(columns, config.webhookFieldTargets)
 
-  return columnsForCompactProfile(columns, config.webhookFieldTargets)
+  return promotePlatformColumnAfterPhone(narrowed)
 }
 
 export function funnelFormViewsToMap(

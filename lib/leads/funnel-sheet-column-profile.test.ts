@@ -7,6 +7,7 @@ import {
   filterColumnsForFormSourceProfile,
   formSourceFilterNarrowsColumns,
   funnelFormViewsToMap,
+  promotePlatformColumnAfterPhone,
 } from "@/lib/leads/funnel-sheet-column-profile"
 
 const builtin = (key: string) =>
@@ -67,6 +68,14 @@ describe("columnsForCompactProfile", () => {
     expect(keys).toEqual(["date", "fullName", "companyName", "salesPrice", "status", "note"])
   })
 
+  it("always includes Platform (utm_source) when the funnel uses a compact subset", () => {
+    const withPlatform = [...cols, custom("utm_source")]
+    const keys = columnsForCompactProfile(withPlatform, targets).map((c) =>
+      c.kind === "builtin" ? c.builtinKey : c.customField.fieldKey
+    )
+    expect(keys).toContain("utm_source")
+  })
+
   it("returns all columns when targets are missing", () => {
     expect(columnsForCompactProfile(cols, null)).toHaveLength(cols.length)
   })
@@ -99,5 +108,20 @@ describe("filterColumnsForFormSourceProfile", () => {
       c.kind === "builtin" ? c.builtinKey : c.customField.fieldKey
     )
     expect(keys).toEqual(["date", "status"])
+  })
+})
+
+describe("promotePlatformColumnAfterPhone", () => {
+  it("moves utm_source immediately after phone", () => {
+    const cols = [
+      builtin("date"),
+      builtin("phone"),
+      builtin("companyName"),
+      custom("utm_source"),
+    ]
+    const keys = promotePlatformColumnAfterPhone(cols).map((c) =>
+      c.kind === "builtin" ? c.builtinKey : c.customField.fieldKey
+    )
+    expect(keys).toEqual(["date", "phone", "utm_source", "companyName"])
   })
 })
