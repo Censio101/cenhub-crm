@@ -244,10 +244,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       // Drop in-flight /api/auth/me responses (e.g. right after login before the cookie clears).
       reloadSeqRef.current += 1
-      if (!normalized) {
-        setOrganization(null)
-        setIsAdminViewingClient(false)
-      }
 
       clearClientCaches()
 
@@ -258,7 +254,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ slug: normalized }),
       })
 
-      if (!response.ok) return false
+      // Client logins call this to drop a leftover admin cookie. The route is admin-only,
+      // so a 403 must restore the session from /api/auth/me instead of leaving the client blank.
+      if (!response.ok) {
+        void reload({ silent: true })
+        return false
+      }
 
       const data = (await response.json()) as {
         organization?: {
