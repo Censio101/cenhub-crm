@@ -2,6 +2,10 @@ import { buildImageLinkValue } from "@/lib/lead-sheet/image-link"
 import { isEmptyCustomFieldValue, validateCustomFieldValue } from "@/lib/lead-sheet/validate"
 import type { LeadSheetCustomFieldDef } from "@/lib/lead-sheet/types"
 import { normalizeLeadDate } from "@/lib/leads/inbound-payload"
+import {
+  isSessionStatusFieldKey,
+  normalizeSessionStatusStoredValue,
+} from "@/lib/leads/session-status-display"
 
 export type WebhookFieldWarning = {
   /** Custom field key (or `customFields` when the container itself is wrong). */
@@ -54,6 +58,12 @@ function coerceValue(def: LeadSheetCustomFieldDef, raw: unknown): Coerced {
       return { ok: false, message: "Expected a time (HH:MM)" }
     }
     case "select": {
+      if (isSessionStatusFieldKey(def.fieldKey)) {
+        const stored = normalizeSessionStatusStoredValue(raw)
+        return stored
+          ? { ok: true, value: stored }
+          : { ok: false, message: "Expected abandoned or nej" }
+      }
       const options = def.config.options ?? []
       const wanted = typeof raw === "string" ? raw.trim().toLocaleLowerCase() : null
       const match = wanted ? options.find((o) => o.toLocaleLowerCase() === wanted) : undefined

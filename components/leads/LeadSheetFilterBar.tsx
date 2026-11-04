@@ -14,7 +14,7 @@ import { LeadSheetScopeChips } from "@/components/leads/LeadSheetScopeChips"
 import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { StatusFilterGroups } from "@/components/leads/StatusFilterGroups"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import type { LeadSegmentId, LeadStatusId } from "@/lib/leads"
+import type { LeadStatusId } from "@/lib/leads"
 import type { FormFilterValue } from "@/lib/leads/form-filter"
 import type { StatusFilterValue } from "@/lib/leads/status-filter-groups"
 import type { FunnelId } from "@/lib/performance/funnels"
@@ -32,8 +32,6 @@ export function LeadSheetFilterBar({
   onStatusFilterChange,
   sheetService,
   onSheetServiceChange,
-  sheetSegment,
-  onSheetSegmentChange,
   sheetFunnel,
   onSheetFunnelChange,
   enabledServices,
@@ -66,8 +64,6 @@ export function LeadSheetFilterBar({
   onStatusFilterChange: (next: StatusFilterValue) => void
   sheetService: string | null
   onSheetServiceChange: (slug: string | null) => void
-  sheetSegment: LeadSegmentId | "all"
-  onSheetSegmentChange: (segment: LeadSegmentId | "all") => void
   sheetFunnel: FunnelId | "all"
   onSheetFunnelChange: (funnel: FunnelId | "all") => void
   enabledServices: readonly NamedService[]
@@ -97,7 +93,6 @@ export function LeadSheetFilterBar({
   function clearFilters() {
     onStatusFilterChange("all")
     onSheetServiceChange(null)
-    onSheetSegmentChange("all")
     onSheetFunnelChange("all")
     onSheetFormSourceChange?.("all")
     onFormFilterChange?.("all")
@@ -123,8 +118,6 @@ export function LeadSheetFilterBar({
         onChange={onStatusFilterChange}
       />
       <LeadSheetScopeChips
-        sheetSegment={sheetSegment}
-        onSheetSegmentChange={onSheetSegmentChange}
         sheetService={sheetService}
         onSheetServiceChange={onSheetServiceChange}
         sheetFunnel={sheetFunnel}
@@ -188,8 +181,6 @@ export function LeadSheetFilterBar({
       onStatusFilterChange={onStatusFilterChange}
       sheetService={sheetService}
       onSheetServiceChange={onSheetServiceChange}
-      sheetSegment={sheetSegment}
-      onSheetSegmentChange={onSheetSegmentChange}
       sheetFunnel={sheetFunnel}
       onSheetFunnelChange={onSheetFunnelChange}
       enabledServices={enabledServices}

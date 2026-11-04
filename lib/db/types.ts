@@ -99,6 +99,8 @@ export type LeadFunnelRow = {
   default_segment: "b2b" | "b2c" | null
   /** Label for the lead sheet Form filter; defaults to funnel name in the UI. */
   sheet_source_label: string | null
+  /** Lead sheet column set when Leadformular filter selects this funnel; null = full sheet. */
+  sheet_column_profile: "full" | "targets_and_pipeline" | null
   created_at: string
   updated_at: string
 }

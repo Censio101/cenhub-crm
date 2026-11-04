@@ -4,7 +4,7 @@ import { XIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
-import type { LeadSegmentId, LeadStatusId } from "@/lib/leads"
+import type { LeadStatusId } from "@/lib/leads"
 import type { FormFilterValue } from "@/lib/leads/form-filter"
 import {
   STATUS_FILTER_GROUPS,
@@ -70,8 +70,6 @@ export function LeadSheetActiveFilters({
   onStatusFilterChange,
   sheetService,
   onSheetServiceChange,
-  sheetSegment,
-  onSheetSegmentChange,
   sheetFunnel,
   onSheetFunnelChange,
   enabledServices,
@@ -94,8 +92,6 @@ export function LeadSheetActiveFilters({
   onStatusFilterChange: (next: StatusFilterValue) => void
   sheetService: string | null
   onSheetServiceChange: (slug: string | null) => void
-  sheetSegment: LeadSegmentId | "all"
-  onSheetSegmentChange: (segment: LeadSegmentId | "all") => void
   sheetFunnel: FunnelId | "all"
   onSheetFunnelChange: (funnel: FunnelId | "all") => void
   enabledServices: readonly NamedService[]
@@ -131,14 +127,6 @@ export function LeadSheetActiveFilters({
       key: "status",
       label: unionMeta ? t(unionMeta.labelKey) : t(leadStatusLabelKey(statusFilter as LeadStatusId)),
       onRemove: () => onStatusFilterChange("all"),
-    })
-  }
-
-  if (sheetSegment !== "all") {
-    chips.push({
-      key: "segment",
-      label: sheetSegment === "b2b" ? t("filterSegmentB2b") : t("filterSegmentB2c"),
-      onRemove: () => onSheetSegmentChange("all"),
     })
   }
 

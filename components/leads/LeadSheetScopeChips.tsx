@@ -1,22 +1,19 @@
 "use client"
 
-import { Building2Icon, MegaphoneIcon, WrenchIcon } from "lucide-react"
+import { MegaphoneIcon, WrenchIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import {
   LeadSheetFilterMenu,
   LeadSheetFilterMenuItem,
 } from "@/components/leads/LeadSheetFilterMenu"
-import type { LeadSegmentId } from "@/lib/leads"
 import { FUNNELS } from "@/lib/performance/funnels"
 import type { FunnelId } from "@/lib/performance/funnels"
 import { FUNNEL_MESSAGE_KEYS } from "@/lib/performance/funnel-i18n"
 import type { NamedService } from "@/lib/performance/services"
 
-/** Segment, service and lead-source filters — all built on the shared sheet filter menu. */
+/** Service and lead-source filters — built on the shared sheet filter menu. */
 export function LeadSheetScopeChips({
-  sheetSegment,
-  onSheetSegmentChange,
   sheetService,
   onSheetServiceChange,
   sheetFunnel,
@@ -26,8 +23,6 @@ export function LeadSheetScopeChips({
   showServiceFilter = true,
   showSourceFilter = true,
 }: {
-  sheetSegment: LeadSegmentId | "all"
-  onSheetSegmentChange: (segment: LeadSegmentId | "all") => void
   sheetService: string | null
   onSheetServiceChange: (slug: string | null) => void
   sheetFunnel: FunnelId | "all"
@@ -39,8 +34,6 @@ export function LeadSheetScopeChips({
 }) {
   const { t } = useLanguage()
 
-  const segmentValue =
-    sheetSegment === "b2b" ? t("filterSegmentB2b") : sheetSegment === "b2c" ? t("filterSegmentB2c") : ""
   const serviceValue = sheetService
     ? (enabledServices.find((s) => s.id === sheetService)?.label ?? sheetService)
     : ""
@@ -48,33 +41,6 @@ export function LeadSheetScopeChips({
 
   return (
     <>
-      <LeadSheetFilterMenu
-        icon={<Building2Icon />}
-        label={t("leadSheetFilterLabelSegment")}
-        ariaLabel={t("filterSegmentAria")}
-        active={sheetSegment !== "all"}
-        valueLabel={segmentValue}
-      >
-        <LeadSheetFilterMenuItem
-          selected={sheetSegment === "all"}
-          onSelect={() => onSheetSegmentChange("all")}
-        >
-          {t("filterSegmentAll")}
-        </LeadSheetFilterMenuItem>
-        <LeadSheetFilterMenuItem
-          selected={sheetSegment === "b2c"}
-          onSelect={() => onSheetSegmentChange("b2c")}
-        >
-          {t("filterSegmentB2c")}
-        </LeadSheetFilterMenuItem>
-        <LeadSheetFilterMenuItem
-          selected={sheetSegment === "b2b"}
-          onSelect={() => onSheetSegmentChange("b2b")}
-        >
-          {t("filterSegmentB2b")}
-        </LeadSheetFilterMenuItem>
-      </LeadSheetFilterMenu>
-
       {showServiceFilter ? (
         <LeadSheetFilterMenu
           icon={<WrenchIcon />}

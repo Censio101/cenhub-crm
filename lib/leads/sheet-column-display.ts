@@ -5,6 +5,10 @@ import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import type { MessageKey } from "@/lib/i18n"
 import { formatLeadServices, type Lead } from "@/lib/leads"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
+import {
+  formatSessionStatusDisplay,
+  isSessionStatusFieldKey,
+} from "@/lib/leads/session-status-display"
 import type { NamedService } from "@/lib/performance/services"
 
 /** Plain text shown in a cell (for auto-fit, compact mode, tooltips). */
@@ -18,6 +22,9 @@ export function leadSheetCellDisplayText(
 ): string {
   if (col.kind === "custom") {
     const value = lead.customFields?.[col.customField.fieldKey]
+    if (isSessionStatusFieldKey(col.customField.fieldKey)) {
+      return formatSessionStatusDisplay(value)
+    }
     if (value == null || value === "") return ""
     if (typeof value === "string") return value.trim()
     if (typeof value === "number") return String(value)

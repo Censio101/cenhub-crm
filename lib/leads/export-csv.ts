@@ -1,3 +1,8 @@
+import {
+  formatSessionStatusDisplay,
+  isSessionStatusFieldKey,
+} from "@/lib/leads/session-status-display"
+
 /** Semicolon-separated CSV with a UTF-8 BOM, so Danish Excel opens the file correctly. */
 
 function escapeCell(value: string): string {
@@ -22,6 +27,11 @@ export function plainCell(value: unknown): string {
     return typeof url === "string" ? url : ""
   }
   return ""
+}
+
+export function plainCustomFieldCell(fieldKey: string, value: unknown): string {
+  if (isSessionStatusFieldKey(fieldKey)) return formatSessionStatusDisplay(value)
+  return plainCell(value)
 }
 
 export function downloadCsv(filename: string, csv: string) {

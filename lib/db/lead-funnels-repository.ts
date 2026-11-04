@@ -50,6 +50,7 @@ export async function createLeadFunnel(
     webhookFieldTargets?: string[] | null
     defaultSegment?: LeadFunnelRow["default_segment"]
     sheetSourceLabel?: string | null
+    sheetColumnProfile?: LeadFunnelRow["sheet_column_profile"]
   }
 ): Promise<LeadFunnelRow> {
   const row = {
@@ -63,6 +64,7 @@ export async function createLeadFunnel(
     webhook_field_targets: input.webhookFieldTargets ?? null,
     default_segment: input.defaultSegment ?? null,
     sheet_source_label: input.sheetSourceLabel?.trim() || null,
+    sheet_column_profile: input.sheetColumnProfile ?? null,
     enabled: input.enabled ?? true,
   }
 
@@ -87,6 +89,7 @@ export async function updateLeadFunnel(
     webhookFieldTargets: string[] | null
     defaultSegment: LeadFunnelRow["default_segment"]
     sheetSourceLabel: string | null
+    sheetColumnProfile: LeadFunnelRow["sheet_column_profile"]
   }>
 ): Promise<LeadFunnelRow> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
@@ -112,6 +115,9 @@ export async function updateLeadFunnel(
   }
   if (patch.sheetSourceLabel !== undefined) {
     row.sheet_source_label = patch.sheetSourceLabel?.trim() || null
+  }
+  if (patch.sheetColumnProfile !== undefined) {
+    row.sheet_column_profile = patch.sheetColumnProfile
   }
 
   const { data, error } = await supabase

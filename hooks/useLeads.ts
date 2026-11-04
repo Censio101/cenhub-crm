@@ -22,6 +22,7 @@ import {
 import { createRequestGuard } from "@/lib/data/request-guard"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
 import { fetchCompanyConfig, leadSheetOrDefault } from "@/lib/data/company-config"
+import type { FunnelFormViewConfig } from "@/lib/leads/funnel-sheet-column-profile"
 import { buildDefaultLeadSheetConfig } from "@/lib/lead-sheet/default-config"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 import type { Lead } from "@/lib/leads"
@@ -77,13 +78,26 @@ const SHEET_REFRESH_MIN_MS = 60_000
 /** Collapses the focus and visibility events that fire together when the tab is opened again. */
 const LEADS_VISIBLE_REFRESH_DEBOUNCE_MS = 300
 
-/** `null` when the request fails, so a transient error never replaces a good config. */
-async function fetchLeadSheetConfigOrNull(): Promise<ResolvedLeadSheetConfig | null> {
-  return leadSheetOrDefault(await fetchCompanyConfig())
+type SheetConfigBundle = {
+  leadSheet: ResolvedLeadSheetConfig
+  funnelFormViews: FunnelFormViewConfig[]
 }
 
-async function fetchLeadSheetConfig(): Promise<ResolvedLeadSheetConfig> {
-  return (await fetchLeadSheetConfigOrNull()) ?? buildDefaultLeadSheetConfig()
+async function fetchSheetConfigBundle(): Promise<SheetConfigBundle> {
+  const config = await fetchCompanyConfig()
+  return {
+    leadSheet: leadSheetOrDefault(config) ?? buildDefaultLeadSheetConfig(),
+    funnelFormViews: config?.funnelFormViews ?? [],
+  }
+}
+
+async function fetchSheetConfigBundleOrNull(): Promise<SheetConfigBundle | null> {
+  const config = await fetchCompanyConfig()
+  if (!config) return null
+  return {
+    leadSheet: leadSheetOrDefault(config) ?? buildDefaultLeadSheetConfig(),
+    funnelFormViews: config.funnelFormViews ?? [],
+  }
 }
 
 export function useLeads(options?: { liveSync?: boolean }) {
@@ -96,6 +110,9 @@ export function useLeads(options?: { liveSync?: boolean }) {
     const cached = getLeadsCache(activeSlug)
     return cached?.leadSheet ?? buildDefaultLeadSheetConfig()
   })
+  const [funnelFormViews, setFunnelFormViews] = useState<FunnelFormViewConfig[]>(
+    () => getLeadsCache(activeSlug)?.funnelFormViews ?? []
+  )
   const [loading, setLoading] = useState(() => !hasLeadsCache(activeSlug))
   const [error, setError] = useState<MessageKey | null>(null)
   const [needsClientSelection, setNeedsClientSelection] = useState(false)
@@ -144,6 +161,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       setLeads(cached.leads)
       setDataSource(cached.source)
       if (cached.leadSheet) setLeadSheet(cached.leadSheet)
+      if (cached.funnelFormViews) setFunnelFormViews(cached.funnelFormViews)
     }
 
     const reconcileSilent = opts?.silent || paintFromCache
@@ -156,7 +174,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       // Ask for the sheet config at the same time as the leads (they do not depend on each
       // other). Starting it only after the leads arrived made the page wait for both in a row.
       const needsSheetFetch = !(reconcileSilent && cached?.leadSheet)
-      const sheetRequest = needsSheetFetch ? fetchLeadSheetConfig() : null
+      const sheetRequest = needsSheetFetch ? fetchSheetConfigBundle() : null
       // A failed config request is handled where it is awaited; avoid an unhandled rejection
       // when the leads request fails first.
       sheetRequest?.catch(() => undefined)
@@ -173,6 +191,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
           setError("leadsSelectClient")
           setLeadsCache({ leads: [], source: "supabase" })
           setLeadSheet(buildDefaultLeadSheetConfig())
+          setFunnelFormViews([])
           return
         }
 
@@ -189,19 +208,30 @@ export function useLeads(options?: { liveSync?: boolean }) {
       setLeads(data.leads)
       setDataSource(data.source)
       if (data.source === "supabase") {
-        const sheet = sheetRequest
-          ? await sheetRequest
-          : (cached?.leadSheet ?? (await fetchLeadSheetConfig()))
+        let bundle: SheetConfigBundle
+        if (sheetRequest) {
+          bundle = await sheetRequest
+        } else if (cached?.leadSheet && cached.funnelFormViews) {
+          bundle = { leadSheet: cached.leadSheet, funnelFormViews: cached.funnelFormViews }
+        } else {
+          const fetched = await fetchSheetConfigBundle()
+          bundle = {
+            leadSheet: cached?.leadSheet ?? fetched.leadSheet,
+            funnelFormViews: cached?.funnelFormViews ?? fetched.funnelFormViews,
+          }
+        }
         if (!isCurrent()) return
         if (!reconcileSilent || !cached?.leadSheet) {
           lastSheetFetchRef.current = Date.now()
         }
-        setLeadSheet(sheet)
+        setLeadSheet(bundle.leadSheet)
+        setFunnelFormViews(bundle.funnelFormViews)
         setLeadsCache({
           leads: data.leads,
           source: data.source,
           organizationSlug: data.organization?.slug ?? null,
-          leadSheet: sheet,
+          leadSheet: bundle.leadSheet,
+          funnelFormViews: bundle.funnelFormViews,
         })
       } else {
         setLeadsCache({
@@ -210,6 +240,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
           organizationSlug: data.organization?.slug ?? null,
         })
         setLeadSheet(buildDefaultLeadSheetConfig())
+        setFunnelFormViews([])
       }
       emitLeadsUpdated()
     } catch (loadError) {
@@ -253,10 +284,15 @@ export function useLeads(options?: { liveSync?: boolean }) {
 
       if (Date.now() - lastSheetFetchRef.current >= SHEET_REFRESH_MIN_MS) {
         lastSheetFetchRef.current = Date.now()
-        void fetchLeadSheetConfigOrNull().then((sheet) => {
-          if (!sheet) return
+        void fetchSheetConfigBundleOrNull().then((bundle) => {
+          if (!bundle) return
           setLeadSheet((current) =>
-            JSON.stringify(current) === JSON.stringify(sheet) ? current : sheet
+            JSON.stringify(current) === JSON.stringify(bundle.leadSheet) ? current : bundle.leadSheet
+          )
+          setFunnelFormViews((current) =>
+            JSON.stringify(current) === JSON.stringify(bundle.funnelFormViews)
+              ? current
+              : bundle.funnelFormViews
           )
         })
       }
@@ -271,9 +307,9 @@ export function useLeads(options?: { liveSync?: boolean }) {
     window.addEventListener("focus", refreshOnVisible)
     document.addEventListener("visibilitychange", refreshOnVisible)
     return () => {
-      if (leadsRefreshTimer) clearTimeout(leadsRefreshTimer)
       window.removeEventListener("focus", refreshOnVisible)
       document.removeEventListener("visibilitychange", refreshOnVisible)
+      if (leadsRefreshTimer) clearTimeout(leadsRefreshTimer)
     }
   }, [dataSource])
 
@@ -282,6 +318,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       // Drop the previous client's leads immediately; never show them while the new client loads.
       setLeads([])
       setLeadSheet(buildDefaultLeadSheetConfig())
+      setFunnelFormViews([])
       setLoading(true)
       void loadLeads()
     }
@@ -576,6 +613,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
   return {
     leads,
     leadSheet,
+    funnelFormViews,
     loading,
     error,
     needsClientSelection,

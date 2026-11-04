@@ -1,11 +1,13 @@
 import { buildDefaultLeadSheetConfig } from "@/lib/lead-sheet/default-config"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
+import type { FunnelFormViewConfig } from "@/lib/leads/funnel-sheet-column-profile"
 import type { ClientService } from "@/lib/services/types"
 
 /** Response of `GET /api/lead-sheet/config`: what the client dashboard needs about its client. */
 export type CompanyConfigResponse = {
   leadSheet: ResolvedLeadSheetConfig | null
   services: ClientService[]
+  funnelFormViews: FunnelFormViewConfig[]
 }
 
 export type ServicesSnapshot = { services: ClientService[]; loaded: boolean }
@@ -63,6 +65,7 @@ export function fetchCompanyConfig(): Promise<CompanyConfigResponse | null> {
       const result: CompanyConfigResponse = {
         leadSheet: data.leadSheet ?? null,
         services: Array.isArray(data.services) ? data.services : [],
+        funnelFormViews: Array.isArray(data.funnelFormViews) ? data.funnelFormViews : [],
       }
       if (!snapshot.loaded || !sameServices(snapshot.services, result.services)) {
         publish({ services: result.services, loaded: true })

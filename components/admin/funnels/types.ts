@@ -14,6 +14,8 @@ export type FunnelDto = {
   defaultSegment: "b2b" | "b2c" | null
   /** Label on the lead sheet Formular filter; empty = funnel name. */
   sheetSourceLabel: string | null
+  /** @deprecated Lead sheet uses webhookFieldTargets only; kept for DB/API compatibility. */
+  sheetColumnProfile: "full" | "targets_and_pipeline" | null
   webhookSecret: string
   hasSample: boolean
   sampleReceivedAt: string | null

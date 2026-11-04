@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2Icon, DownloadIcon, Maximize2Icon, MegaphoneIcon, WrenchIcon } from "lucide-react"
+import { DownloadIcon, Maximize2Icon, MegaphoneIcon, WrenchIcon } from "lucide-react"
 
 import { LeadSheetCompactDateFilter } from "@/components/leads/LeadSheetCompactDateFilter"
 import {
@@ -18,7 +18,6 @@ import { SheetSearchField } from "@/components/leads/SheetSearchField"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import type { MessageKey } from "@/lib/i18n"
 import type { CustomerSourceId } from "@/lib/customers"
-import type { LeadSegmentId } from "@/lib/leads"
 import { DATE_PRESET_MESSAGE_KEYS } from "@/lib/performance/date-preset-i18n"
 import { formatDateRangeLabel } from "@/lib/performance/format"
 import type { NamedService } from "@/lib/performance/services"
@@ -34,8 +33,6 @@ export function CustomersSheetFilterBar({
   onPresetChange,
   onCustomRange,
   onResetDate,
-  sheetSegment,
-  onSheetSegmentChange,
   sheetService,
   onSheetServiceChange,
   sourceFilter,
@@ -62,8 +59,6 @@ export function CustomersSheetFilterBar({
   onPresetChange: (preset: DatePreset) => void
   onCustomRange: (range: DateRange) => void
   onResetDate: () => void
-  sheetSegment: LeadSegmentId | "all"
-  onSheetSegmentChange: (segment: LeadSegmentId | "all") => void
   sheetService: string | null
   onSheetServiceChange: (slug: string | null) => void
   sourceFilter: CustomerSourceId | "all"
@@ -85,7 +80,6 @@ export function CustomersSheetFilterBar({
   const { locale, t } = useLanguage()
 
   function clearFilters() {
-    onSheetSegmentChange("all")
     onSheetServiceChange(null)
     onSourceFilterChange("all")
     onSheetFormSourceChange?.("all")
@@ -102,13 +96,6 @@ export function CustomersSheetFilterBar({
           ? formatDateRangeLabel(range.start, range.end, locale)
           : t(DATE_PRESET_MESSAGE_KEYS[preset]),
       onRemove: onResetDate,
-    })
-  }
-  if (sheetSegment !== "all") {
-    chips.push({
-      key: "segment",
-      label: sheetSegment === "b2b" ? t("filterSegmentB2b") : t("filterSegmentB2c"),
-      onRemove: () => onSheetSegmentChange("all"),
     })
   }
   if (showServiceFilter && sheetService) {
@@ -157,25 +144,6 @@ export function CustomersSheetFilterBar({
           onPresetChange={onPresetChange}
           onCustomRange={onCustomRange}
         />
-        <LeadSheetFilterMenu
-          icon={<Building2Icon />}
-          label={t("leadSheetFilterLabelSegment")}
-          ariaLabel={t("filterSegmentAria")}
-          active={sheetSegment !== "all"}
-          valueLabel={
-            sheetSegment === "b2b" ? t("filterSegmentB2b") : sheetSegment === "b2c" ? t("filterSegmentB2c") : ""
-          }
-        >
-          <LeadSheetFilterMenuItem selected={sheetSegment === "all"} onSelect={() => onSheetSegmentChange("all")}>
-            {t("filterSegmentAll")}
-          </LeadSheetFilterMenuItem>
-          <LeadSheetFilterMenuItem selected={sheetSegment === "b2c"} onSelect={() => onSheetSegmentChange("b2c")}>
-            {t("filterSegmentB2c")}
-          </LeadSheetFilterMenuItem>
-          <LeadSheetFilterMenuItem selected={sheetSegment === "b2b"} onSelect={() => onSheetSegmentChange("b2b")}>
-            {t("filterSegmentB2b")}
-          </LeadSheetFilterMenuItem>
-        </LeadSheetFilterMenu>
         {showServiceFilter ? (
           <LeadSheetFilterMenu
             icon={<WrenchIcon />}

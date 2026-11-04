@@ -117,10 +117,14 @@ import {
   getWonLeadRowClass,
   type Lead,
   type LeadPipelineStats,
-  type LeadSegmentId,
   type LeadStatusId,
 } from "@/lib/leads"
-import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
+import { downloadCsv, plainCustomFieldCell, toCsv } from "@/lib/leads/export-csv"
+import {
+  formatSessionStatusDisplay,
+  isSessionStatusFieldKey,
+  sessionStatusValuesEqual,
+} from "@/lib/leads/session-status-display"
 import { missingPriceCellClass } from "@/lib/leads/won-sales-price"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import {
@@ -287,6 +291,8 @@ function LeadSheetSelectCell({
   disabled,
   toneOf,
   clearLabel,
+  getDisplayLabel,
+  isOptionSelected,
 }: {
   value: string
   options: ReadonlyArray<{ id: string; label: string }>
@@ -298,13 +304,19 @@ function LeadSheetSelectCell({
   toneOf?: (value: string) => QualityTone | null
   /** Optional: adds an entry at the top that empties the cell (used for the quality column). */
   clearLabel?: string
+  /** Optional: format stored value when it is not an exact option id. */
+  getDisplayLabel?: (value: string) => string
+  /** Optional: match option to value when ids differ (e.g. abandoned vs Ja). */
+  isOptionSelected?: (optionId: string, value: string) => boolean
 }) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const currentTone = toneOf && value ? toneOf(value) : null
+  const optionMatches = (optionId: string) =>
+    isOptionSelected ? isOptionSelected(optionId, value) : optionId === value
   const display =
-    options.find((option) => option.id === value)?.label ??
-    (value ? value : null)
+    options.find((option) => optionMatches(option.id))?.label ??
+    (value ? (getDisplayLabel?.(value) ?? value) : null)
 
   return (
     <div className="w-full min-w-0 max-w-full py-0.5" data-lead-sheet-no-pan="true">
@@ -371,7 +383,7 @@ function LeadSheetSelectCell({
             <li className="px-2 py-2 text-sm text-muted-foreground">{t("leadSheetSelectEmpty")}</li>
           ) : (
             options.map((option) => {
-              const selected = option.id === value
+              const selected = optionMatches(option.id)
               return (
                 <li key={option.id} role="presentation">
                   <button
@@ -807,10 +819,24 @@ function renderLeadColumnCell(
       if (col.customField.fieldType === "select") {
         const options = col.customField.config.options ?? []
         const current = typeof value === "string" ? value : ""
+        const sessionStatus = isSessionStatusFieldKey(key)
         // A value whose option was removed from the column stays visible, marked "removed".
-        const cellOptions = options.map((o) => ({ id: o, label: o }))
-        if (current && !options.includes(current)) {
-          cellOptions.push({ id: current, label: `${current} (${t("leadSheetSelectRemoved")})` })
+        const cellOptions = options.map((o) => ({
+          id: o,
+          label: sessionStatus ? formatSessionStatusDisplay(o) : o,
+        }))
+        const currentMatchesOption =
+          sessionStatus && current
+            ? options.some((o) => sessionStatusValuesEqual(o, current))
+            : options.includes(current)
+        if (current && !currentMatchesOption) {
+          const removedLabel = sessionStatus
+            ? formatSessionStatusDisplay(current)
+            : current
+          cellOptions.push({
+            id: current,
+            label: `${removedLabel} (${t("leadSheetSelectRemoved")})`,
+          })
         }
         return (
           <TableCell key={col.id} className={cn("min-w-0 max-w-full px-1", priceCue)}>
@@ -830,6 +856,14 @@ function renderLeadColumnCell(
               clearLabel={
                 isQualityFieldKey(col.customField.fieldKey)
                   ? t("leadSheetQualityNotRated")
+                  : undefined
+              }
+              getDisplayLabel={
+                sessionStatus ? (v) => formatSessionStatusDisplay(v) : undefined
+              }
+              isOptionSelected={
+                sessionStatus
+                  ? (optionId, v) => sessionStatusValuesEqual(optionId, v)
                   : undefined
               }
             />
@@ -1398,6 +1432,7 @@ export function LeadsBoard() {
   const {
     leads,
     leadSheet,
+    funnelFormViews,
     loading,
     error,
     dataSource,
@@ -1453,7 +1488,6 @@ export function LeadsBoard() {
   }, [leads])
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all")
   const [sheetService, setSheetService] = useState<string | null>(null)
-  const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
   const [sheetFunnel, setSheetFunnel] = useState<FunnelId | "all">("all")
   const [sheetFormSource, setSheetFormSource] = useState<string | "all">("all")
   const [formFilter, setFormFilter] = useState<FormFilterValue>("all")
@@ -1491,7 +1525,6 @@ export function LeadsBoard() {
   const sheetScoped = useMemo(
     () =>
       scoped.filter((lead) => {
-        if (sheetSegment !== "all" && lead.segment !== sheetSegment) return false
         if (!leadMatchesServiceFilter(lead, sheetService, enabledServices)) return false
         if (sheetFunnel !== "all" && lead.platform !== sheetFunnel) return false
         if (!matchesLeadFormSourceFilter(lead, sheetFormSource)) return false
@@ -1505,7 +1538,6 @@ export function LeadsBoard() {
       scoped,
       sheetFormSource,
       sheetFunnel,
-      sheetSegment,
       sheetService,
     ]
   )
@@ -1570,8 +1602,9 @@ export function LeadsBoard() {
     leads: filtered,
     enabledServices,
     t,
-    segmentFilter: sheetSegment,
+    segmentFilter: "all",
     formSourceFilter: sheetFormSource,
+    funnelFormViews,
   })
 
   const sheetViewToolbar = (
@@ -1610,7 +1643,6 @@ export function LeadsBoard() {
       !dateIsAllTime &&
       !search.trim() &&
       statusFilter === "all" &&
-      sheetSegment === "all" &&
       sheetFunnel === "all" &&
       sheetFormSource === "all" &&
       formFilter === "all" &&
@@ -1625,7 +1657,6 @@ export function LeadsBoard() {
     search,
     sheetFormSource,
     sheetFunnel,
-    sheetSegment,
     sheetService,
     statusFilter,
     t,
@@ -1635,7 +1666,12 @@ export function LeadsBoard() {
     const headers = leadSheet.columns.map((col) => columnDisplayLabel(col, t))
     const rows = filtered.map((lead) =>
       leadSheet.columns.map((col) => {
-        if (col.kind === "custom") return plainCell(lead.customFields?.[col.customField.fieldKey])
+        if (col.kind === "custom") {
+          return plainCustomFieldCell(
+            col.customField.fieldKey,
+            lead.customFields?.[col.customField.fieldKey]
+          )
+        }
         switch (col.builtinKey) {
           case "date":
             return formatLeadDateTime(lead.date, lead.time)
@@ -1729,8 +1765,6 @@ export function LeadsBoard() {
             onStatusFilterChange={setStatusFilter}
             sheetService={sheetService}
             onSheetServiceChange={setSheetService}
-            sheetSegment={sheetSegment}
-            onSheetSegmentChange={setSheetSegment}
             sheetFunnel={sheetFunnel}
             onSheetFunnelChange={setSheetFunnel}
             enabledServices={enabledServices}
@@ -1815,8 +1849,6 @@ export function LeadsBoard() {
           onStatusFilterChange={setStatusFilter}
           sheetService={sheetService}
           onSheetServiceChange={setSheetService}
-          sheetSegment={sheetSegment}
-          onSheetSegmentChange={setSheetSegment}
           sheetFunnel={sheetFunnel}
           onSheetFunnelChange={setSheetFunnel}
           enabledServices={enabledServices}

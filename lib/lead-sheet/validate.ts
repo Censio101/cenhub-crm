@@ -11,6 +11,10 @@ import {
   type LeadSheetCustomFieldDef,
   isCustomFieldType,
 } from "@/lib/lead-sheet/types"
+import {
+  isSessionStatusFieldKey,
+  normalizeSessionStatusStoredValue,
+} from "@/lib/leads/session-status-display"
 
 export function assertAllBuiltinsPresent(builtinKeys: readonly string[]): string | null {
   const set = new Set(builtinKeys)
@@ -91,6 +95,18 @@ export function sanitizeCustomFieldsPatch(
   for (const [key, value] of Object.entries(patch)) {
     const def = defByKey.get(key)
     if (!def) continue
+    if (isSessionStatusFieldKey(key)) {
+      if (isEmptyCustomFieldValue(value)) {
+        cleared.push(key)
+        continue
+      }
+      const stored = normalizeSessionStatusStoredValue(value)
+      if (!stored) {
+        return { values: {}, cleared: [], error: "session_status is invalid" }
+      }
+      values[key] = stored
+      continue
+    }
     const err = validateCustomFieldValue(def, value)
     if (err) return { values: {}, cleared: [], error: err }
     if (isEmptyCustomFieldValue(value)) {

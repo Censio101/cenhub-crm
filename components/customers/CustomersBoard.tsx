@@ -40,7 +40,7 @@ import { formatLeadServices, type Lead, type LeadPlatformId } from "@/lib/leads"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
 import { formProgressText } from "@/lib/lead-sheet/form-steps"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
-import { downloadCsv, plainCell, toCsv } from "@/lib/leads/export-csv"
+import { downloadCsv, plainCustomFieldCell, toCsv } from "@/lib/leads/export-csv"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import {
   distinctLeadFormSourceLabels,
@@ -60,7 +60,6 @@ import {
 } from "@/lib/leads/sheet-sort"
 import { formatCurrencyDKK } from "@/lib/performance/format"
 import type { DateRange } from "@/lib/performance/types"
-import type { LeadSegmentId } from "@/lib/leads"
 import { cn } from "cn"
 
 function sourceToPlatform(source: CustomerSourceId): LeadPlatformId | "" {
@@ -120,10 +119,18 @@ export function CustomersBoard() {
   const resetDate = useCallback(() => onPresetChange("all_time"), [onPresetChange])
   const { customers, organizationName, loading, error, reload } = useCustomers()
   // Customers mirror won leads; the lead record is what the edit popup changes.
-  const { leads, leadSheet, saveLead, saveStatus, updateLead, deleteLead, deleteLeadsBulk } =
-    useLeads({
-      liveSync: true,
-    })
+  const {
+    leads,
+    leadSheet,
+    funnelFormViews,
+    saveLead,
+    saveStatus,
+    updateLead,
+    deleteLead,
+    deleteLeadsBulk,
+  } = useLeads({
+    liveSync: true,
+  })
 
   const { organization, role } = useActiveOrganization()
   const canBulkDeleteLeads = role === "censio_admin"
@@ -156,7 +163,6 @@ export function CustomersBoard() {
     if (!loading) markWorkspaceWarm()
   }, [loading, markWorkspaceWarm])
 
-  const [sheetSegment, setSheetSegment] = useState<LeadSegmentId | "all">("all")
   const [sheetService, setSheetService] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState<CustomerSourceId | "all">("all")
   const [sheetFormSource, setSheetFormSource] = useState<string | "all">("all")
@@ -203,7 +209,7 @@ export function CustomersBoard() {
         range: view.range,
         ignoreDate: dateIsAllTime,
         service: sheetService,
-        segment: sheetSegment === "all" ? null : sheetSegment,
+        segment: null,
       })
         .filter((customer) => sourceFilter === "all" || customer.source === sourceFilter)
         .filter((customer) => {
@@ -216,7 +222,6 @@ export function CustomersBoard() {
       dateIsAllTime,
       leadsById,
       sheetFormSource,
-      sheetSegment,
       sheetService,
       sourceFilter,
       view.range,
@@ -286,8 +291,9 @@ export function CustomersBoard() {
     leads: shownLeads,
     enabledServices,
     t,
-    segmentFilter: sheetSegment,
+    segmentFilter: "all",
     formSourceFilter: sheetFormSource,
+    funnelFormViews,
   })
 
   const sheetViewToolbar = (
@@ -315,13 +321,12 @@ export function CustomersBoard() {
       !search.trim() &&
       sourceFilter === "all" &&
       sheetFormSource === "all" &&
-      sheetSegment === "all" &&
       !sheetService
     ) {
       return t("customersEmptyPeriod")
     }
     return t("customersEmpty")
-  }, [dateIsAllTime, search, sheetFormSource, sheetSegment, sheetService, sourceFilter, t])
+  }, [dateIsAllTime, search, sheetFormSource, sheetService, sourceFilter, t])
 
   const totals = useMemo(() => {
     const base = sumCustomerValue(filtered)
@@ -333,7 +338,12 @@ export function CustomersBoard() {
     const headers = leadSheet.columns.map((col) => columnDisplayLabel(col, t))
     const rows = shownLeads.map((lead) =>
       leadSheet.columns.map((col) => {
-        if (col.kind === "custom") return plainCell(lead.customFields?.[col.customField.fieldKey])
+        if (col.kind === "custom") {
+          return plainCustomFieldCell(
+            col.customField.fieldKey,
+            lead.customFields?.[col.customField.fieldKey]
+          )
+        }
         switch (col.builtinKey) {
           case "date":
             return formatLeadDateTime(lead.date, lead.time)
@@ -444,8 +454,6 @@ export function CustomersBoard() {
                   onPresetChange={onPresetChange}
                   onCustomRange={onSheetCustomRange}
                   onResetDate={resetDate}
-                  sheetSegment={sheetSegment}
-                  onSheetSegmentChange={setSheetSegment}
                   sheetService={sheetService}
                   onSheetServiceChange={setSheetService}
                   sourceFilter={sourceFilter}
@@ -526,8 +534,6 @@ export function CustomersBoard() {
                 onPresetChange={onPresetChange}
                 onCustomRange={onSheetCustomRange}
                 onResetDate={resetDate}
-                sheetSegment={sheetSegment}
-                onSheetSegmentChange={setSheetSegment}
                 sheetService={sheetService}
                 onSheetServiceChange={setSheetService}
                 sourceFilter={sourceFilter}

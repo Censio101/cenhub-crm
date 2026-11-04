@@ -1,5 +1,6 @@
 import type { Customer } from "@/lib/customers"
 import type { Lead } from "@/lib/leads"
+import type { FunnelFormViewConfig } from "@/lib/leads/funnel-sheet-column-profile"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 import { clearInFlightRequests } from "@/lib/data/in-flight"
 
@@ -8,6 +9,7 @@ type LeadsCacheEntry = {
   source: "mock" | "supabase"
   organizationSlug?: string | null
   leadSheet?: ResolvedLeadSheetConfig | null
+  funnelFormViews?: FunnelFormViewConfig[] | null
   /** Partial steps total of the client's sheet (null = none). */
   formStepsTotal?: number | null
   cachedAt?: number
@@ -65,6 +67,7 @@ export function setLeadsCache(entry: LeadsCacheEntry) {
 export function replaceCachedLeads(leads: Lead[], source: "mock" | "supabase") {
   leadsCache = {
     leadSheet: leadsCache?.leadSheet ?? null,
+    funnelFormViews: leadsCache?.funnelFormViews ?? null,
     formStepsTotal: leadsCache?.formStepsTotal,
     organizationSlug: leadsCache?.organizationSlug ?? null,
     leads,

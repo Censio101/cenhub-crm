@@ -35,6 +35,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       dataFormat?: "ours" | "own"
       webhookFieldTargets?: string[] | null
       sheetSourceLabel?: string | null
+      sheetColumnProfile?: "full" | "targets_and_pipeline" | null
     }
 
     const admin = createAdminClient()
@@ -82,6 +83,15 @@ export async function PATCH(request: Request, context: RouteContext) {
       }
     }
 
+    if (
+      body.sheetColumnProfile !== undefined &&
+      body.sheetColumnProfile !== null &&
+      body.sheetColumnProfile !== "full" &&
+      body.sheetColumnProfile !== "targets_and_pipeline"
+    ) {
+      return NextResponse.json({ error: "Unknown sheet column profile" }, { status: 400 })
+    }
+
     const funnel = await updateLeadFunnel(admin, funnelId, organization.id, {
       name: body.name,
       slug: body.slug,
@@ -94,6 +104,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       sheetSourceLabel:
         body.sheetSourceLabel !== undefined
           ? body.sheetSourceLabel?.trim() || null
+          : undefined,
+      sheetColumnProfile:
+        body.sheetColumnProfile !== undefined
+          ? body.sheetColumnProfile === "full"
+            ? null
+            : body.sheetColumnProfile
           : undefined,
     })
 

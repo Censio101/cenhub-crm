@@ -5,7 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import type { MessageKey } from "@/lib/i18n"
 import type { Lead, LeadSegmentId } from "@/lib/leads"
-import { filterColumnsForFormSourceFilter } from "@/lib/leads/sheet-form-source-columns"
+import {
+  filterColumnsForFormSourceProfile,
+  funnelFormViewsToMap,
+  type FunnelFormViewConfig,
+} from "@/lib/leads/funnel-sheet-column-profile"
 import { filterColumnsForSegmentFilter } from "@/lib/leads/sheet-segment-columns"
 import {
   autoFitSampleText,
@@ -75,8 +79,9 @@ export function useLeadSheetColumnLayout(input: {
   t: (key: MessageKey) => string
   /** Type filter on the sheet: B2B narrows which columns are shown. */
   segmentFilter?: LeadSegmentId | "all"
-  /** Leadformular filter: Quick-Heat hides calculation-only columns. */
+  /** Leadformular filter: narrows columns from each funnel’s webhook field targets. */
   formSourceFilter?: string | "all"
+  funnelFormViews?: readonly FunnelFormViewConfig[] | null
 }): LeadSheetColumnLayout {
   const storageKey = layoutStorageKey(input.organizationId ?? "local", input.page)
   const columnCount = input.columns.length
@@ -91,10 +96,19 @@ export function useLeadSheetColumnLayout(input: {
 
   const displayMode = normalizeDisplayMode(saved.displayMode, columnCount)
 
+  const formViewMap = useMemo(
+    () => funnelFormViewsToMap(input.funnelFormViews ?? []),
+    [input.funnelFormViews]
+  )
+
   const visibleColumns = useMemo(() => {
     const bySegment = filterColumnsForSegmentFilter(input.columns, input.segmentFilter ?? "all")
-    return filterColumnsForFormSourceFilter(bySegment, input.formSourceFilter ?? "all")
-  }, [input.columns, input.formSourceFilter, input.segmentFilter])
+    return filterColumnsForFormSourceProfile(
+      bySegment,
+      input.formSourceFilter ?? "all",
+      formViewMap
+    )
+  }, [formViewMap, input.columns, input.formSourceFilter, input.segmentFilter])
 
   const displayCtx = useMemo(
     () => ({ t: input.t, enabledServices: input.enabledServices }),

@@ -4,6 +4,8 @@ import {
   organizationErrorResponse,
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
+import { serializeFunnelFormViews } from "@/lib/db/funnel-form-views"
+import { listLeadFunnelsForOrganization } from "@/lib/db/lead-funnels-repository"
 import { resolveClientDashboardSheet } from "@/lib/db/lead-sheet-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
 import { createAdminClient } from "@/lib/supabase/admin"

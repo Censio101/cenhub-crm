@@ -2,6 +2,7 @@ import type { LeadPatch } from "@/lib/db/lead-mapper"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 import { listCustomFieldDefs } from "@/lib/db/lead-sheet-repository"
 import { sanitizeCustomFieldsPatch } from "@/lib/lead-sheet/validate"
+import { normalizeSessionStatusInCustomFields } from "@/lib/leads/session-status-display"
 
 /** Merges accepted values into the stored object and drops keys the client cleared. */
 export function mergeCustomFields(
@@ -11,7 +12,7 @@ export function mergeCustomFields(
 ): Record<string, unknown> {
   const merged = { ...existing, ...values }
   for (const key of cleared) delete merged[key]
-  return merged
+  return normalizeSessionStatusInCustomFields(merged)
 }
 
 export function applyCustomFieldsToPatch(

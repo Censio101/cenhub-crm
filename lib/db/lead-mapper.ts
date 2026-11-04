@@ -13,6 +13,7 @@ import {
 import { wonDateForNewLead } from "@/lib/db/won-date"
 import { leadFieldHasValue } from "@/lib/leads/lead-field-values"
 import { isServiceId, type ServiceId } from "@/lib/performance/services"
+import { normalizeSessionStatusInCustomFields } from "@/lib/leads/session-status-display"
 
 export const META_LOCKED_FIELDS = [
   "date",
@@ -79,7 +80,7 @@ export function leadRowToLead(row: LeadRow): Lead {
     ltv: row.ltv,
     source: row.source,
     lockedFields: row.locked_fields ?? [],
-    customFields: row.custom_fields ?? {},
+    customFields: normalizeSessionStatusInCustomFields(row.custom_fields ?? {}),
     formStepsDone: row.form_steps_done ?? null,
     leadFunnelId: row.lead_funnel_id ?? null,
     funnelSourceLabel: row.funnel_source_label ?? null,
@@ -142,7 +143,9 @@ export function leadPatchToRow(
   if (patch.salesPrice !== undefined) next.sales_price = patch.salesPrice
   if (patch.profit !== undefined) next.profit = patch.profit
   if (patch.ltv !== undefined) next.ltv = patch.ltv
-  if (patch.customFields !== undefined) next.custom_fields = patch.customFields
+  if (patch.customFields !== undefined) {
+    next.custom_fields = normalizeSessionStatusInCustomFields(patch.customFields)
+  }
   if (patch.formStepsDone !== undefined) next.form_steps_done = patch.formStepsDone
 
   return next
@@ -187,7 +190,7 @@ export function leadToInsertRow(
     locked_fields: source === "meta" ? [...META_LOCKED_FIELDS] : [],
     meta_form_id: lead.metaFormId ?? null,
     meta_extra: lead.metaExtra ?? {},
-    custom_fields: lead.customFields ?? {},
+    custom_fields: normalizeSessionStatusInCustomFields(lead.customFields ?? {}),
     form_steps_done: lead.formStepsDone ?? null,
     import_id: null,
     lead_funnel_id: options.leadFunnelId ?? lead.leadFunnelId ?? null,

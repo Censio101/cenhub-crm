@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import {
   CheckIcon,
   CopyIcon,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { adminOutlineButtonClass } from "@/components/admin/admin-ui-styles"
+import { FunnelSheetFilterSummary } from "@/components/admin/funnels/FunnelSheetFilterSummary"
 import type { FunnelDto } from "@/components/admin/funnels/types"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
@@ -63,10 +64,6 @@ export function FunnelSetupTab({
 }: Props) {
   const { t } = useLanguage()
   const [secretShown, setSecretShown] = useState(false)
-  const [sheetLabelDraft, setSheetLabelDraft] = useState(funnel.sheetSourceLabel ?? "")
-  useEffect(() => {
-    setSheetLabelDraft(funnel.sheetSourceLabel ?? "")
-  }, [funnel.id, funnel.sheetSourceLabel])
   const urlCopyKey = `${funnel.id}-url`
   const secretCopyKey = `${funnel.id}-secret`
   const curlCopyKey = `${funnel.id}-connect-curl`
@@ -179,37 +176,7 @@ export function FunnelSetupTab({
         </div>
       </div>
 
-      <div className={panelClass}>
-        <label className="text-sm font-semibold text-foreground" htmlFor={`${funnel.id}-sheet-label`}>
-          {t("funnelSheetSourceLabel")}
-        </label>
-        <p className="mt-1 text-sm text-muted-foreground">{t("funnelSheetSourceLabelHint")}</p>
-        <input
-          id={`${funnel.id}-sheet-label`}
-          type="text"
-          className="mt-3 w-full rounded-lg border border-[#e8e0d8] bg-white px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-          value={sheetLabelDraft}
-          placeholder={funnel.name}
-          onChange={(event) => setSheetLabelDraft(event.target.value)}
-          onBlur={async () => {
-            const next = sheetLabelDraft.trim() || null
-            if (next === (funnel.sheetSourceLabel?.trim() || null)) return
-            const previous = funnel.sheetSourceLabel
-            onFunnelChange({ sheetSourceLabel: next })
-            try {
-              const response = await fetch(`/api/admin/organizations/${slug}/funnels/${funnel.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sheetSourceLabel: next }),
-              })
-              if (!response.ok) throw new Error("label")
-            } catch {
-              onFunnelChange({ sheetSourceLabel: previous })
-              setSheetLabelDraft(previous ?? "")
-            }
-          }}
-        />
-      </div>
+      <FunnelSheetFilterSummary slug={slug} funnel={funnel} onFunnelChange={onFunnelChange} />
     </div>
   )
 }
