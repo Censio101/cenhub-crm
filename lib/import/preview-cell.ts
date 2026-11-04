@@ -48,6 +48,8 @@ export function previewCellText(
       return lead.city
     case "serviceIds":
       return lead.serviceIds.map((id) => resolveServiceLabel(id)).join(", ")
+    case "metaAdId":
+      return lead.metaAdId
     case "status":
       return t(`leadStatus_${lead.status}` as MessageKey)
     case "salesPrice":

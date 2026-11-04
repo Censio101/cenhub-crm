@@ -274,6 +274,12 @@ const daMessages = {
   importSkipDuplicates: "Spring rækker over, der allerede findes i CRM'et",
   importSkipDuplicatesHint:
     "Rækker med samme e-mail eller telefon som et eksisterende lead eller en tidligere række i filen springes over.",
+  importSkipDuplicatesHintMultiForm:
+    "Slå fra for at oprette en ny lead, selv om samme e-mail eller telefon findes på en anden formular (fx Beregning vs Quick-Heat).",
+  importTagFunnel: "Leadformular",
+  importTagFunnelNone: "Ingen tagging",
+  importTagFunnelHint:
+    "Markerer alle importerede rækker til Leadformular-filteret og bruger funnelens standardsegment, hvis filen ikke har segmentkolonne.",
   importQuickTitle: "De første rækker som leads",
   importQuickEmpty: "Knyt mindst én kolonne for at se hvordan leadsene ser ud.",
   importQuickNone: "Ingen af de første rækker kan blive til et lead med denne knytning.",

@@ -28,7 +28,12 @@ import type { MessageKey } from "@/lib/i18n"
 import { builtinColumnLabelKey } from "@/lib/lead-sheet/lead-labels"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import { LEAD_STATUSES, type LeadPlatformId, type LeadStatusId } from "@/lib/leads"
+import type { FunnelDto } from "@/components/admin/funnels/types"
 import type { ClientService, Service } from "@/lib/services/types"
+
+function funnelFormLabel(funnel: FunnelDto): string {
+  return funnel.sheetSourceLabel?.trim() || funnel.name
+}
 
 const NONE = "__none__"
 
@@ -47,6 +52,7 @@ type Props = {
   sheetColumns: LeadSheetTemplateColumn[]
   enabledServices: readonly ClientService[]
   serviceCatalog: readonly Pick<Service, "id" | "slug" | "nameDa" | "nameEn">[]
+  importFunnels: readonly FunnelDto[]
   onBack: () => void
   onContinue: () => void
 }
@@ -72,6 +78,7 @@ export function ImportMapStep({
   sheetColumns,
   enabledServices,
   serviceCatalog,
+  importFunnels,
   onBack,
   onContinue,
 }: Props) {
@@ -232,6 +239,45 @@ export function ImportMapStep({
 
       <section className="space-y-3 rounded-2xl border border-[#e8e0d8] bg-[#faf8f6] p-4">
         <h4 className="text-sm font-semibold">{t("importOptions")}</h4>
+        {importFunnels.length > 0 ? (
+          <div className="grid gap-1.5 text-sm">
+            <span className="font-medium">{t("importTagFunnel")}</span>
+            <Select
+              value={options.leadFunnelId ?? NONE}
+              onValueChange={(v) =>
+                v != null &&
+                onOptions({
+                  ...options,
+                  leadFunnelId: v === NONE ? null : v,
+                })
+              }
+            >
+              <SelectTrigger className={adminSelectTriggerClass}>
+                <SelectValue>
+                  {options.leadFunnelId
+                    ? funnelFormLabel(
+                        importFunnels.find((f) => f.id === options.leadFunnelId) ??
+                          importFunnels[0]
+                      )
+                    : t("importTagFunnelNone")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent
+                alignItemWithTrigger={false}
+                align="start"
+                style={{ minWidth: "var(--anchor-width)" }}
+              >
+                <SelectItem value={NONE}>{t("importTagFunnelNone")}</SelectItem>
+                {importFunnels.map((funnel) => (
+                  <SelectItem key={funnel.id} value={funnel.id}>
+                    {funnelFormLabel(funnel)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{t("importTagFunnelHint")}</p>
+          </div>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5 text-sm">
             <span className="font-medium">{t("importDefaultStatus")}</span>
@@ -301,7 +347,9 @@ export function ImportMapStep({
           <span>
             <span className="font-medium">{t("importSkipDuplicates")}</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              {t("importSkipDuplicatesHint")}
+              {options.leadFunnelId
+                ? t("importSkipDuplicatesHintMultiForm")
+                : t("importSkipDuplicatesHint")}
             </span>
           </span>
         </label>

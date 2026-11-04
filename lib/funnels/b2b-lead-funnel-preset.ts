@@ -11,6 +11,7 @@ export const B2B_FUNNEL_DANISH_FIELD_MAPPING: FieldMapping = {
   email: "E-mail",
   phone: "Telefon",
   companyName: "Virksomheds navn",
+  "customFields.utm_source": "Platform",
   "customFields.note": "Note",
 }
 
@@ -21,6 +22,7 @@ export const B2B_FUNNEL_WEBHOOK_FIELD_TARGETS: readonly string[] = [
   "email",
   "phone",
   "companyName",
+  "customFields.utm_source",
   "customFields.note",
 ]
 

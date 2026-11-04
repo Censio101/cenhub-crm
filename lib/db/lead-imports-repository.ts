@@ -189,7 +189,10 @@ export async function insertImportedLeads(
 ): Promise<number> {
   if (leads.length === 0) return 0
   const rows = leads.map((lead) => ({
-    ...leadToInsertRow(lead, organizationId, "import", {}),
+    ...leadToInsertRow(lead, organizationId, "import", {
+      leadFunnelId: lead.leadFunnelId ?? null,
+      funnelSourceLabel: lead.funnelSourceLabel ?? null,
+    }),
     import_id: importId,
   }))
   const { data, error } = await supabase.from("leads").insert(rows).select("*")

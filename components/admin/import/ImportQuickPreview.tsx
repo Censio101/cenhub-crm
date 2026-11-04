@@ -36,7 +36,14 @@ export function ImportQuickPreview({ slug, rows, mapping, options, columns }: Pr
   const firstRun = useRef(true)
 
   const sample = rows.slice(0, SAMPLE)
-  const key = JSON.stringify([sample, mapping, options.defaultStatus, options.defaultPlatform])
+  const key = JSON.stringify([
+    sample,
+    mapping,
+    options.defaultStatus,
+    options.defaultPlatform,
+    options.leadFunnelId,
+    options.skipDuplicates,
+  ])
   const hasMapping = Object.keys(mapping).length > 0
 
   useEffect(() => {

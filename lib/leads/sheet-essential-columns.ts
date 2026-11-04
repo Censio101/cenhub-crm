@@ -21,6 +21,7 @@ const ESSENTIAL_CUSTOM_KEYS = new Set([
   "lead_id",
   "stage",
   "session_status",
+  "utm_source",
   "kvalitet",
   "quality",
   "energy_label",

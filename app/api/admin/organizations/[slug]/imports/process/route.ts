@@ -49,6 +49,12 @@ export async function POST(request: Request, context: RouteContext) {
     })
     return NextResponse.json(response)
   } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "Invalid funnel" || error.message === "Funnel is disabled")
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
     return adminErrorResponse(error)
   }
 }

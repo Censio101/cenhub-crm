@@ -24,6 +24,8 @@ const lead = {
   salesPrice: null,
   profit: null,
   platform: "",
+  metaAdId: "",
+  funnelSourceLabel: null,
   customFields: {},
 }
 

@@ -11,6 +11,7 @@ import { contactKeys } from "@/lib/import/dedupe"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
 import { buildImportLead } from "@/lib/import/import-row"
+import { resolveImportOptions } from "@/lib/import/resolve-import-options"
 import { mergeImportRowIntoExistingLead } from "@/lib/import/merge-into-existing-lead"
 import { readMapped } from "@/lib/import/read-mapped"
 import type {
@@ -42,6 +43,8 @@ function preview(lead: Lead): ImportLeadPreview {
     salesPrice: lead.salesPrice,
     profit: lead.profit,
     platform: lead.platform,
+    metaAdId: lead.metaAdId,
+    funnelSourceLabel: lead.funnelSourceLabel?.trim() || null,
     customFields: lead.customFields ?? {},
   }
 }
@@ -61,7 +64,11 @@ export async function processImportChunk(input: {
   /** How many leads to include in full in the response (for the "how leads will look" table). */
   previewCount: number
 }): Promise<ImportChunkResponse> {
-  const { supabase, organizationId, rows, mapping, options, dryRun } = input
+  const { supabase, organizationId, rows, mapping, dryRun } = input
+
+  const resolved = await resolveImportOptions(supabase, organizationId, input.options)
+  if (!resolved.ok) throw new Error(resolved.error)
+  const options = resolved.options
 
   const [sheet, services, serviceAliasMap] = await Promise.all([
     resolveLeadSheetForOrganization(supabase, organizationId),

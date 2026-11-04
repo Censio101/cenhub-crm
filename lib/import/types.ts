@@ -1,4 +1,4 @@
-import type { LeadPlatformId, LeadStatusId } from "@/lib/leads"
+import type { LeadPlatformId, LeadSegmentId, LeadStatusId } from "@/lib/leads"
 
 /** A cell as it travels between the browser and the server (dates are already text). */
 export type CellValue = string | number | boolean | null
@@ -18,6 +18,12 @@ export type ImportOptions = {
   skipDuplicates: boolean
   /** When skipping an existing contact, fill empty service / address / custom fields from the file. */
   fillExistingFromImport: boolean
+  /** Tag imported rows as this funnel (Leadformular filter). Empty = untagged. */
+  leadFunnelId?: string | null
+  /** Filled on the server from `leadFunnelId`; do not send from the browser. */
+  funnelSourceLabel?: string | null
+  /** Default segment from the funnel when the row has no segment column. Server-only. */
+  funnelDefaultSegment?: LeadSegmentId | ""
 }
 
 export type ImportRowInput = {
@@ -62,6 +68,8 @@ export type ImportLeadPreview = {
   salesPrice: number | null
   profit: number | null
   platform: string
+  metaAdId: string
+  funnelSourceLabel: string | null
   customFields: Record<string, unknown>
 }
 

@@ -3,6 +3,8 @@ import { IMPORT_CHUNK_SIZE } from "@/lib/import/types"
 import { isLeadStatusId } from "@/lib/leads"
 
 const PLATFORMS = new Set(["", "meta", "website", "landing"])
+const FUNNEL_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_COLUMNS = 200
 const MAX_TARGETS = 100
 
@@ -78,6 +80,16 @@ export function parseImportRequest(
     return { ok: false, error: "Invalid default source" }
   }
 
+  let leadFunnelId: string | null = null
+  const rawFunnel = body.options.leadFunnelId
+  if (rawFunnel === null || rawFunnel === undefined || rawFunnel === "") {
+    leadFunnelId = null
+  } else if (typeof rawFunnel === "string" && FUNNEL_ID.test(rawFunnel)) {
+    leadFunnelId = rawFunnel
+  } else {
+    return { ok: false, error: "Invalid funnel" }
+  }
+
   const dryRun = body.dryRun !== false
   const importId = typeof body.importId === "string" && body.importId ? body.importId : null
   if (!dryRun && !importId) return { ok: false, error: "An import id is required" }
@@ -96,6 +108,7 @@ export function parseImportRequest(
         defaultPlatform: defaultPlatform as ImportOptions["defaultPlatform"],
         skipDuplicates: skipDuplicates !== false,
         fillExistingFromImport: fillExistingFromImport !== false,
+        leadFunnelId,
       },
       previewCount,
     },

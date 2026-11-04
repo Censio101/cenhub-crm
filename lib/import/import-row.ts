@@ -106,6 +106,8 @@ export function buildImportLead(input: {
         message: `Unknown segment “${cellText(rawSegment, 40)}” (use Privat/Erhverv or b2c/b2b)`,
       })
     }
+  } else if (options.funnelDefaultSegment) {
+    segment = options.funnelDefaultSegment
   }
 
   // Services
@@ -184,7 +186,7 @@ export function buildImportLead(input: {
     serviceIds: serviceMatch.ids,
     service: serviceMatch.ids[0] as Lead["service"],
     platform: options.defaultPlatform,
-    metaAdId: "",
+    metaAdId: cellText(read("metaAdId"), 120),
     status,
     salesPrice,
     profit,
@@ -192,6 +194,8 @@ export function buildImportLead(input: {
     source: "import",
     lockedFields: [],
     customFields: custom.values,
+    leadFunnelId: options.leadFunnelId ?? null,
+    funnelSourceLabel: options.funnelSourceLabel ?? null,
   }
   return { ok: true, lead, warnings, changes }
 }

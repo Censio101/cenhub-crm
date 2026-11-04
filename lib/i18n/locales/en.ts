@@ -274,6 +274,12 @@ export const en: Messages = {
   importSkipDuplicates: "Skip rows already in the CRM",
   importSkipDuplicatesHint:
     "Rows with the same email or phone as an existing lead, or as an earlier row in the file, are skipped.",
+  importSkipDuplicatesHintMultiForm:
+    "Uncheck to create a new lead even when the same email or phone exists on another form (e.g. Beregning vs Quick-Heat).",
+  importTagFunnel: "Leadformular (form)",
+  importTagFunnelNone: "Do not tag",
+  importTagFunnelHint:
+    "Tags every imported row for the Leadformular filter and applies the funnel’s default segment when the file has no segment column.",
   importQuickTitle: "First rows as leads",
   importQuickEmpty: "Map at least one column to see how the leads will look.",
   importQuickNone: "None of the first rows can become a lead with this mapping.",

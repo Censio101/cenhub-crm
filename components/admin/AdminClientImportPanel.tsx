@@ -35,6 +35,7 @@ import { sheetTable } from "@/lib/import/sheet-table"
 import type { ColumnMapping, ImportOptions } from "@/lib/import/types"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
+import type { FunnelDto } from "@/components/admin/funnels/types"
 import type { ClientService, Service } from "@/lib/services/types"
 
 const STEP_ORDER: ImportStep[] = ["upload", "map", "test", "import"]
@@ -44,6 +45,7 @@ const DEFAULT_OPTIONS: ImportOptions = {
   defaultPlatform: "",
   skipDuplicates: true,
   fillExistingFromImport: true,
+  leadFunnelId: null,
 }
 
 const IDLE_TEST: TestState = { status: "idle", done: 0, total: 0, summary: null, error: null }
@@ -65,6 +67,7 @@ export function AdminClientImportPanel() {
   const [serviceCatalog, setServiceCatalog] = useState<
     Pick<Service, "id" | "slug" | "nameDa" | "nameEn">[]
   >([])
+  const [importFunnels, setImportFunnels] = useState<FunnelDto[]>([])
   const [history, setHistory] = useState<LeadImportRecord[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [test, setTest] = useState<TestState>(IDLE_TEST)
@@ -94,21 +97,24 @@ export function AdminClientImportPanel() {
   useAsyncEffect(
     async (signal) => {
       try {
-        const [sheetRes, servicesRes] = await Promise.all([
+        const [sheetRes, servicesRes, funnelsRes] = await Promise.all([
           fetch(`/api/admin/organizations/${slug}/lead-sheet`),
           fetch(`/api/admin/organizations/${slug}/services`),
+          fetch(`/api/admin/organizations/${slug}/funnels`),
         ])
-        if (!sheetRes.ok || !servicesRes.ok) throw new Error("load")
+        if (!sheetRes.ok || !servicesRes.ok || !funnelsRes.ok) throw new Error("load")
         const sheetData = (await sheetRes.json()) as { resolved: ResolvedLeadSheetConfig | null }
         const servicesData = (await servicesRes.json()) as {
           services: ClientService[]
           catalog: Service[]
           manual: Service[]
         }
+        const funnelsData = (await funnelsRes.json()) as { funnels: FunnelDto[] }
         if (!signal.cancelled) {
           setResolved(sheetData.resolved)
           setEnabledServices(servicesData.services ?? [])
           setServiceCatalog([...(servicesData.catalog ?? []), ...(servicesData.manual ?? [])])
+          setImportFunnels((funnelsData.funnels ?? []).filter((f) => f.enabled))
         }
       } catch {
         if (!signal.cancelled) setError(t("funnelsLoadError"))
@@ -432,6 +438,7 @@ export function AdminClientImportPanel() {
             sheetColumns={sheetColumns}
             enabledServices={enabledServices}
             serviceCatalog={serviceCatalog}
+            importFunnels={importFunnels}
             onBack={() => goTo("upload")}
             onContinue={() => void startTest()}
           />
