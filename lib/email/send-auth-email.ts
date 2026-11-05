@@ -31,9 +31,7 @@ export async function sendMagicLinkLoginEmail(
   }
 
   const user = await findUserByEmail(admin, email)
-  if (!user) {
-    throw new Error("Der findes ingen bruger med den e-mail.")
-  }
+  if (!user) return
 
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
@@ -64,9 +62,7 @@ export async function sendPasswordResetLoginEmail(
   }
 
   const user = await findUserByEmail(admin, email)
-  if (!user) {
-    throw new Error("Der findes ingen bruger med den e-mail.")
-  }
+  if (!user) return
 
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",

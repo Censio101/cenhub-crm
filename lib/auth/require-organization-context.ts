@@ -18,7 +18,7 @@ export async function requireOrganizationContext(): Promise<
 > {
   const ctx = await getSessionContext()
 
-  if (!ctx.organization?.id) {
+  if (!ctx.userId || !ctx.organization?.id) {
     throw new OrganizationContextError(
       NO_ACTIVE_ORGANIZATION_ERROR,
       ctx.role === "censio_admin"

@@ -62,13 +62,23 @@ export async function getMetaConfigRow(
   return (data as MetaConfigRow | null) ?? null
 }
 
+/** Columns a signed-in client may read. Token columns stay on the service role only. */
+const META_CONFIG_PUBLIC_COLUMNS =
+  "organization_id, meta_ad_account_id, meta_page_id, meta_pixel_id, meta_pixel_name, meta_pixel_is_crm, meta_sync_status, meta_sync_error, meta_last_synced_at, enabled, capi_enabled"
+
 export async function getMetaConfig(
   supabase: SupabaseClient,
   organizationId: string
 ): Promise<ClientMetaConfig | null> {
-  const data = await getMetaConfigRow(supabase, organizationId)
+  const { data, error } = await supabase
+    .from("client_meta_config")
+    .select(META_CONFIG_PUBLIC_COLUMNS)
+    .eq("organization_id", organizationId)
+    .maybeSingle()
+
+  if (error) throw error
   if (!data) return null
-  return rowToConfig(data)
+  return rowToConfig(data as MetaConfigRow)
 }
 
 export async function getOrganizationIdByPageId(

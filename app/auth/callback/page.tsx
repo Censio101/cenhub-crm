@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { safeNextPath } from "@/lib/auth/safe-next-path"
 import { createClient, isBrowserSupabaseConfigured } from "@/lib/supabase/client"
 
 function AuthCallbackHandler() {
@@ -21,7 +22,7 @@ function AuthCallbackHandler() {
         return
       }
 
-      const next = searchParams.get("next") ?? "/auth/setup-password"
+      const next = safeNextPath(searchParams.get("next"), "/auth/setup-password")
       const queryError = searchParams.get("error")
       const queryErrorCode = searchParams.get("error_code")
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))

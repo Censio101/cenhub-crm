@@ -49,8 +49,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Funnel not found" }, { status: 404 })
   }
 
-  const url = new URL(request.url)
-  const token = readBearerSecret(request) ?? url.searchParams.get("token")?.trim() ?? ""
+  const token = readBearerSecret(request) ?? ""
 
   if (!token || token !== funnel.webhook_secret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

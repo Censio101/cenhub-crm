@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 
 import { loadWorkspaceIntegrations } from "@/lib/admin/workspace-integrations"
+import { createInviteRedeemToken } from "@/lib/auth/invite-redeem-token"
 import { sendInviteEmail } from "@/lib/email/invite-email"
 import type { UserRole } from "@/lib/db/types"
 
@@ -72,11 +73,20 @@ export async function sendUserInviteEmail(
 
   if (error) throw error
 
-  if (!data.properties.action_link) {
+  if (!data.user?.id) {
     throw new Error("Invite link could not be generated")
   }
 
-  const actionLink = `${settings.inviteAcceptUrl}?email=${encodeURIComponent(email)}`
+  const { token, hash } = createInviteRedeemToken()
+  const { error: tokenError } = await admin.auth.admin.updateUserById(data.user.id, {
+    user_metadata: {
+      ...(data.user.user_metadata ?? {}),
+      invite_redeem_token_hash: hash,
+    },
+  })
+  if (tokenError) throw tokenError
+
+  const actionLink = `${settings.inviteAcceptUrl}?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`
 
   await sendInviteEmail(settings, {
     to: email,

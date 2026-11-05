@@ -109,6 +109,19 @@ describe("funnel webhook", () => {
     expect(mocks.createLead).not.toHaveBeenCalled()
   })
 
+  it("rejects the webhook secret when it is only in the query string", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/webhooks/funnels/f1?token=secret", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(base),
+      }),
+      context
+    )
+    expect(res.status).toBe(401)
+    expect(mocks.createLead).not.toHaveBeenCalled()
+  })
+
   it("creates a lead without protection when no externalId is sent", async () => {
     const res = await post(base)
     expect(res.status).toBe(201)

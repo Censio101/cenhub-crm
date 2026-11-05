@@ -13,6 +13,7 @@ export function InviteAcceptForm() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const emailParam = searchParams.get("email")?.trim().toLowerCase() ?? ""
+  const tokenParam = searchParams.get("token")?.trim().toLowerCase() ?? ""
   const [email, setEmail] = useSyncedState(emailParam)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +31,10 @@ export function InviteAcceptForm() {
       setError(t("inviteAcceptEmailRequired"))
       return
     }
+    if (!tokenParam) {
+      setError(t("inviteAcceptError"))
+      return
+    }
 
     setSubmitting(true)
     setError(null)
@@ -39,7 +44,7 @@ export function InviteAcceptForm() {
       const response = await fetch("/api/auth/redeem-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: nextEmail }),
+        body: JSON.stringify({ email: nextEmail, token: tokenParam }),
       })
       const data = (await response.json()) as {
         error?: string

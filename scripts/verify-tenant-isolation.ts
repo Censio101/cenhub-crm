@@ -262,6 +262,30 @@ async function main() {
         name: "ATTACK: switch on sending to Meta yourself",
         blocked: cfg?.capi_enabled !== true,
       })
+      await admin.from("client_meta_config").upsert({
+        organization_id: orgA,
+        meta_system_user_token_encrypted: "enc:isolation-secret",
+        enabled: false,
+      })
+      const tokenRead = await anon
+        .from("client_meta_config")
+        .select("meta_system_user_token_encrypted")
+        .eq("organization_id", orgA)
+        .maybeSingle()
+      results.push({
+        name: "ATTACK: read this client's Meta access token",
+        blocked:
+          Boolean(tokenRead.error) ||
+          tokenRead.data?.meta_system_user_token_encrypted !== "enc:isolation-secret",
+      })
+      const stranger = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+      const anonRpc = await stranger.rpc("is_censio_admin")
+      results.push({
+        name: "ATTACK: anonymous caller runs is_censio_admin",
+        blocked: Boolean(anonRpc.error),
+      })
     }
 
     // --- attacks (blocked = true means the attack failed, which is what we want) -------------

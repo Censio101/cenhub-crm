@@ -22,15 +22,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { safeNextPath } from "@/lib/auth/safe-next-path"
 import { cn } from "cn"
 
 const fieldClass =
   "h-10 w-full rounded-[15px] border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:ring-1 focus:ring-ring"
 
 function safeLoginNextPath(raw: string | null): string {
-  const next = raw?.trim() || "/"
-  if (!next.startsWith("/") || next.startsWith("//")) return "/"
-  return next
+  return safeNextPath(raw, "/")
 }
 
 export function LoginForm() {

@@ -5,6 +5,7 @@ import {
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
 import type { LeadRow } from "@/lib/db/types"
+import { isOrgStoragePath } from "@/lib/lead-sheet/org-storage-path"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
@@ -30,7 +31,7 @@ export async function GET(_request: Request, context: Ctx) {
     }
 
     const path = (existing as Pick<LeadRow, "custom_fields">).custom_fields?.[fieldKey]
-    if (typeof path !== "string" || !path) {
+    if (typeof path !== "string" || !isOrgStoragePath(path, ctx.organization.id)) {
       return NextResponse.json({ url: null })
     }
 
