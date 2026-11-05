@@ -221,11 +221,21 @@ async function main() {
       results.push({ name: "ROLE: client admin cannot delete another client's lead", blocked: row != null })
     }
     {
-      await anonAdmin.from("leads").delete().eq("id", leadForAdmin)
-      const row = (await admin.from("leads").select("id").eq("id", leadForAdmin).maybeSingle()).data
+      const softDelete = await anonAdmin.rpc("soft_delete_lead", { p_lead_id: leadForAdmin })
+      const { data: visibleToAdmin } = await anonAdmin
+        .from("leads")
+        .select("id")
+        .eq("id", leadForAdmin)
+      const archived = (
+        await admin.from("leads").select("deleted_at").eq("id", leadForAdmin).maybeSingle()
+      ).data
       results.push({
-        name: "CONTROL: client admin can delete a lead in its own client",
-        blocked: row == null,
+        name: "CONTROL: client admin can soft-delete a lead in its own client",
+        blocked:
+          !softDelete.error &&
+          (visibleToAdmin?.length ?? 0) === 0 &&
+          archived?.deleted_at != null,
+        detail: softDelete.error?.message,
       })
     }
     {

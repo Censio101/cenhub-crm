@@ -8,6 +8,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Security
+
+- Docs: [docs/SECURITY.md](docs/SECURITY.md), release QA: [docs/RELEASE-REGRESSION.md](docs/RELEASE-REGRESSION.md).
+- Before prod security deploy: `npm test`, `npm run security:verify-admin-routes`, `npm run db:verify-tenant-isolation` (when DB linked).
+- Client lead delete is **soft** (`deleted_at`); Censio restore: `POST /api/admin/organizations/{slug}/leads/{id}/restore`.
+
 ## Admin shell UX
 
 - The admin area uses a persistent sidebar (`AdminSidebar`). Do **not** add “back to …” links or breadcrumb back navigation on admin pages — use sidebar navigation only.

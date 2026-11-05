@@ -4,7 +4,7 @@ import {
   organizationErrorResponse,
   requireOrganizationContext,
 } from "@/lib/auth/require-organization-context"
-import { deleteLeadsByIds, usesDatabaseLeads } from "@/lib/db/leads-repository"
+import { hardDeleteLeadsByIds, usesDatabaseLeads } from "@/lib/db/leads-repository"
 import { parseUuidList } from "@/lib/services/types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -36,7 +36,11 @@ export async function POST(request: Request) {
         ? createAdminClient()
         : await createClient()
 
-    const deleted = await deleteLeadsByIds(supabase, session.organization.id, ids)
+    const deleted = await hardDeleteLeadsByIds(supabase, session.organization.id, ids, {
+      actorUserId: session.userId,
+      actorRole: session.role,
+      source: "api",
+    })
     return NextResponse.json({ ok: true, deleted, source: "supabase" })
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)

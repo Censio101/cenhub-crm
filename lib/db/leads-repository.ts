@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { syncCustomerForWonLead } from "@/lib/db/customers-sync"
+import {
+  recordLeadAuditEvent,
+  type LeadAuditContext,
+} from "@/lib/db/lead-audit-repository"
 import { applyWonDateForStatusChange } from "@/lib/db/won-date"
 import {
   filterPatchForLockedLead,
@@ -12,6 +16,7 @@ import {
 import type { LeadRow } from "@/lib/db/types"
 import { MOCK_LEADS, type Lead } from "@/lib/leads"
 import { queueLeadStageEventsAfterResponse } from "@/lib/meta/capi-outbox"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 
 export async function listLeadsForOrganization(
@@ -22,6 +27,7 @@ export async function listLeadsForOrganization(
     .from("leads")
     .select("*")
     .eq("organization_id", organizationId)
+    .is("deleted_at", null)
     .order("lead_date", { ascending: false })
     .order("lead_time", { ascending: false, nullsFirst: false })
 
@@ -41,9 +47,11 @@ export async function createLead(
     legacyId?: string | null
     leadFunnelId?: string | null
     funnelSourceLabel?: string | null
+    audit?: LeadAuditContext
   } = {}
 ): Promise<Lead> {
-  const row = leadToInsertRow(lead, organizationId, lead.source ?? "manual", options)
+  const { audit, ...insertOptions } = options
+  const row = leadToInsertRow(lead, organizationId, lead.source ?? "manual", insertOptions)
   const { data, error } = await supabase
     .from("leads")
     .insert(row)
@@ -54,6 +62,10 @@ export async function createLead(
   const inserted = data as LeadRow
   await syncCustomerForWonLead(inserted)
   queueLeadStageEventsAfterResponse(inserted, null)
+  await recordLeadAuditEvent(supabase, organizationId, inserted.id, "created", {
+    ...audit,
+    source: audit?.source ?? "api",
+  })
   return leadRowToLead(inserted)
 }
 
@@ -61,13 +73,15 @@ export async function updateLeadById(
   supabase: SupabaseClient,
   organizationId: string,
   leadId: string,
-  patch: LeadPatch
+  patch: LeadPatch,
+  audit: LeadAuditContext = {}
 ): Promise<Lead> {
   const { data: existing, error: fetchError } = await supabase
     .from("leads")
     .select("*")
     .eq("id", leadId)
     .eq("organization_id", organizationId)
+    .is("deleted_at", null)
     .maybeSingle()
 
   if (fetchError) throw fetchError
@@ -76,6 +90,8 @@ export async function updateLeadById(
   const row = existing as LeadRow
   const safePatch = filterPatchForLockedLead(patch, row)
   const rowPatch = leadPatchToRow(safePatch)
+  delete (rowPatch as Record<string, unknown>).deleted_at
+  delete (rowPatch as Record<string, unknown>).deleted_by
 
   const nextStatus = (rowPatch.status ?? row.status) as string
   const wonDateChange = applyWonDateForStatusChange(
@@ -96,6 +112,7 @@ export async function updateLeadById(
     .update(rowPatch)
     .eq("id", leadId)
     .eq("organization_id", organizationId)
+    .is("deleted_at", null)
     .select("*")
     .single()
 
@@ -103,8 +120,11 @@ export async function updateLeadById(
 
   const updatedRow = updated as LeadRow
   await syncCustomerForWonLead(updatedRow)
-  // Meta leads that became qualified or won are reported back to Meta (after the response).
   queueLeadStageEventsAfterResponse(updatedRow, row.status)
+  await recordLeadAuditEvent(supabase, organizationId, leadId, "updated", {
+    ...audit,
+    source: audit.source ?? "api",
+  })
 
   return leadRowToLead(updatedRow)
 }
@@ -112,23 +132,45 @@ export async function updateLeadById(
 export async function deleteLeadById(
   supabase: SupabaseClient,
   organizationId: string,
-  leadId: string
+  leadId: string,
+  audit: LeadAuditContext = {}
 ): Promise<void> {
-  const { error } = await supabase
-    .from("leads")
-    .delete()
-    .eq("id", leadId)
-    .eq("organization_id", organizationId)
+  const { error: rpcError } = await supabase.rpc("soft_delete_lead", { p_lead_id: leadId })
+  if (rpcError) {
+    const msg = rpcError.message ?? "Failed to delete lead"
+    if (msg.includes("forbidden")) throw new Error("forbidden")
+    if (msg.includes("not found")) throw new Error("Lead not found")
+    throw rpcError
+  }
 
-  if (error) throw error
+  const admin = createAdminClient()
+  await admin.from("customers").delete().eq("lead_id", leadId)
+
+  await recordLeadAuditEvent(supabase, organizationId, leadId, "soft_deleted", {
+    ...audit,
+    source: audit.source ?? "api",
+  })
 }
 
-export async function deleteLeadsByIds(
+/** Censio admin: permanently remove rows (bulk cleanup). */
+export async function hardDeleteLeadsByIds(
   supabase: SupabaseClient,
   organizationId: string,
-  leadIds: readonly string[]
+  leadIds: readonly string[],
+  audit: LeadAuditContext = {}
 ): Promise<number> {
   if (leadIds.length === 0) return 0
+
+  for (const leadId of leadIds) {
+    await recordLeadAuditEvent(supabase, organizationId, leadId, "hard_deleted", {
+      ...audit,
+      source: audit.source ?? "api",
+    })
+  }
+
+  const admin = createAdminClient()
+  await admin.from("customers").delete().in("lead_id", [...leadIds])
+
   const { error, count } = await supabase
     .from("leads")
     .delete({ count: "exact" })
@@ -137,6 +179,46 @@ export async function deleteLeadsByIds(
 
   if (error) throw error
   return count ?? leadIds.length
+}
+
+/** @deprecated Prefer deleteLeadById (soft). Kept for call sites that expect a count. */
+export async function deleteLeadsByIds(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadIds: readonly string[],
+  audit: LeadAuditContext = {}
+): Promise<number> {
+  let deleted = 0
+  for (const id of leadIds) {
+    await deleteLeadById(supabase, organizationId, id, audit)
+    deleted += 1
+  }
+  return deleted
+}
+
+export async function restoreLeadById(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadId: string,
+  audit: LeadAuditContext = {}
+): Promise<Lead> {
+  const { data, error } = await supabase
+    .from("leads")
+    .update({ deleted_at: null, deleted_by: null })
+    .eq("id", leadId)
+    .eq("organization_id", organizationId)
+    .not("deleted_at", "is", null)
+    .select("*")
+    .single()
+
+  if (error) throw error
+  const row = data as LeadRow
+  await syncCustomerForWonLead(row)
+  await recordLeadAuditEvent(supabase, organizationId, leadId, "restored", {
+    ...audit,
+    source: audit.source ?? "api",
+  })
+  return leadRowToLead(row)
 }
 
 export function usesDatabaseLeads(): boolean {
@@ -154,6 +236,7 @@ export async function findLeadIdByLegacyId(
     .select("id")
     .eq("organization_id", organizationId)
     .eq("legacy_id", legacyId)
+    .is("deleted_at", null)
     .maybeSingle()
 
   if (error) throw error

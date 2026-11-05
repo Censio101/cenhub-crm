@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/meta-capi-flush",
       "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/purge-auth-request-log",
+      "schedule": "30 3 * * *"
     }
   ]
 }

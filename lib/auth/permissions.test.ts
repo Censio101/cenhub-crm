@@ -61,7 +61,12 @@ describe("DELETE /api/leads/[id]", () => {
     mocks.session = { role: "client_admin", isDemoFallback: false }
     const res = await callDelete()
     expect(res.status).toBe(200)
-    expect(mocks.deleteLeadById).toHaveBeenCalledWith(expect.anything(), "org1", "l1")
+    expect(mocks.deleteLeadById).toHaveBeenCalledWith(
+      expect.anything(),
+      "org1",
+      "l1",
+      expect.objectContaining({ actorUserId: "u1", actorRole: "client_admin", source: "api" })
+    )
   })
 
   it("lets a Censio admin delete", async () => {

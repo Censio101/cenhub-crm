@@ -101,7 +101,11 @@ export async function DELETE(_request: Request, context: RouteContext) {
         ? createAdminClient()
         : await createClient()
 
-    await deleteLeadById(supabase, session.organization.id, id)
+    await deleteLeadById(supabase, session.organization.id, id, {
+      actorUserId: session.userId,
+      actorRole: session.role,
+      source: "api",
+    })
     return NextResponse.json({ ok: true, source: "supabase" })
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)

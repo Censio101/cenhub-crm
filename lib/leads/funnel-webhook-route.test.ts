@@ -130,6 +130,7 @@ describe("funnel webhook", () => {
       legacyId: null,
       leadFunnelId: "f1",
       funnelSourceLabel: "Test Funnel",
+      audit: { source: "webhook" },
     })
   })
 
@@ -140,6 +141,7 @@ describe("funnel webhook", () => {
       legacyId: "hook:f1:form-123",
       leadFunnelId: "f1",
       funnelSourceLabel: "Test Funnel",
+      audit: { source: "webhook" },
     })
   })
 

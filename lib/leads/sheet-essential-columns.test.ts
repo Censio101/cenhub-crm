@@ -32,7 +32,7 @@ describe("essentialSheetColumns", () => {
       custom("utm_source", "4"),
       builtin("status", "5"),
     ]
-    expect(essentialSheetColumns(cols).map((c) => c.id)).toEqual(["1", "2", "3", "5"])
+    expect(essentialSheetColumns(cols).map((c) => c.id)).toEqual(["1", "2", "3", "4", "5"])
   })
 
   it("keeps postcode and city for calling", () => {

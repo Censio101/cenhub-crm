@@ -25,6 +25,7 @@ import { applyFunnelDefaultSegment } from "@/lib/leads/funnel-default-segment"
 import { funnelSheetSourceLabel } from "@/lib/funnels/funnel-sheet-source-label"
 import { buildInboundLead, parseInbound } from "@/lib/leads/process-inbound"
 import { readWebhookBody } from "@/lib/leads/read-webhook-body"
+import { timingSafeEqualString } from "@/lib/security/timing-safe-equal"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type RouteContext = { params: Promise<{ funnelId: string }> }
@@ -51,7 +52,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const token = readBearerSecret(request) ?? ""
 
-  if (!token || token !== funnel.webhook_secret) {
+  if (!token || !timingSafeEqualString(token, funnel.webhook_secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -178,6 +179,7 @@ export async function POST(request: Request, context: RouteContext) {
         legacyId: legacyId ?? metaLegacyId,
         leadFunnelId: funnel.id,
         funnelSourceLabel: funnelSheetSourceLabel(funnel),
+        audit: { source: "webhook" },
       })
     } catch (insertError) {
       // Two identical requests can race past the check above; the unique index decides.
