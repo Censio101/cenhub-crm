@@ -16,12 +16,11 @@ export async function POST(_request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 })
     }
 
-    const org = await getOrganizationBySlug(slug)
+    const admin = createAdminClient()
+    const org = await getOrganizationBySlug(admin, slug)
     if (!org) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
-
-    const admin = createAdminClient()
     const lead = await restoreLeadById(admin, org.id, id, {
       source: "api",
       actorRole: "censio_admin",
