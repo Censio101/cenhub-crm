@@ -144,7 +144,6 @@ export function useLeads(options?: { liveSync?: boolean }) {
   const loadLeads = useCallback(async (opts?: LoadLeadsOptions) => {
     const isCurrent = guard.begin()
     if (!sessionReady) {
-      if (isCurrent() && !opts?.silent) setLoading(true)
       return
     }
     if (adminMustPickClient) {
@@ -252,7 +251,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       // Keep the leads already on screen; only surface the error (with a retry in the UI).
       setError("leadsLoadError")
     } finally {
-      if (isCurrent() && showLoading) setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
   }, [activeSlug, guard, adminMustPickClient, sessionReady])
 
