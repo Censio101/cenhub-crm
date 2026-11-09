@@ -110,6 +110,23 @@ export async function DELETE(_request: Request, context: RouteContext) {
   } catch (error) {
     const orgResponse = organizationErrorResponse(error)
     if (orgResponse.status !== 500) return orgResponse
+    if (error instanceof Error) {
+      if (error.message === "forbidden" || error.message.includes("forbidden")) {
+        return NextResponse.json(
+          { error: "forbidden", message: "You are not allowed to delete this lead." },
+          { status: 403 }
+        )
+      }
+      if (error.message === "Lead not found" || error.message.includes("not found")) {
+        return NextResponse.json({ error: "not_found", message: "Lead not found." }, { status: 404 })
+      }
+      if (
+        error.message.includes("soft_delete_lead") ||
+        error.message.includes("Could not find the function")
+      ) {
+        console.error("DELETE /api/leads/[id]: soft_delete_lead missing — run DB migrations 074–076")
+      }
+    }
     console.error("DELETE /api/leads/[id] failed:", error)
     return NextResponse.json({ error: "Failed to delete lead" }, { status: 500 })
   }

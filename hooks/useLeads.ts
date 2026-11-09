@@ -559,24 +559,30 @@ export function useLeads(options?: { liveSync?: boolean }) {
 
   const deleteLead = useCallback(
     async (id: string) => {
-      setLeads((current) => {
-        const next = current.filter((lead) => lead.id !== id)
-        replaceCachedLeads(next, dataSource)
-        return next
-      })
-
-      if (dataSource === "mock") return
+      if (dataSource === "mock") {
+        setLeads((current) => {
+          const next = current.filter((lead) => lead.id !== id)
+          replaceCachedLeads(next, dataSource)
+          return next
+        })
+        return
+      }
 
       try {
         const response = await fetch(`/api/leads/${id}`, { method: "DELETE" })
         if (!response.ok) {
           throw new Error("leadsDeleteError")
         }
+        setLeads((current) => {
+          const next = current.filter((lead) => lead.id !== id)
+          replaceCachedLeads(next, dataSource)
+          return next
+        })
         emitCustomersRefresh()
       } catch (deleteError) {
         console.error(deleteError)
         setError("leadsDeleteError")
-        await loadLeads()
+        await loadLeads({ force: true, silent: true })
       }
     },
     [dataSource, loadLeads]
@@ -586,13 +592,15 @@ export function useLeads(options?: { liveSync?: boolean }) {
     async (ids: readonly string[]) => {
       if (ids.length === 0) return
       const remove = new Set(ids)
-      setLeads((current) => {
-        const next = current.filter((lead) => !remove.has(lead.id))
-        replaceCachedLeads(next, dataSource)
-        return next
-      })
 
-      if (dataSource === "mock") return
+      if (dataSource === "mock") {
+        setLeads((current) => {
+          const next = current.filter((lead) => !remove.has(lead.id))
+          replaceCachedLeads(next, dataSource)
+          return next
+        })
+        return
+      }
 
       try {
         const response = await fetch("/api/leads/bulk-delete", {
@@ -603,11 +611,16 @@ export function useLeads(options?: { liveSync?: boolean }) {
         if (!response.ok) {
           throw new Error("leadsDeleteError")
         }
+        setLeads((current) => {
+          const next = current.filter((lead) => !remove.has(lead.id))
+          replaceCachedLeads(next, dataSource)
+          return next
+        })
         emitCustomersRefresh()
       } catch (deleteError) {
         console.error(deleteError)
         setError("leadsDeleteError")
-        await loadLeads()
+        await loadLeads({ force: true, silent: true })
       }
     },
     [dataSource, loadLeads]

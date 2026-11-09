@@ -37,7 +37,7 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const { t } = useLanguage()
   const { configured, isAuthenticated, loading } = useSupabaseSession()
-  const { setActiveOrganization } = useSession()
+  const { reload } = useSession()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordVisible, setPasswordVisible] = useState(false)
@@ -121,11 +121,11 @@ export function LoginForm() {
 
       setLoginProgress("session")
 
-      // Post-sign-in setup must not surface "wrong password" — auth already succeeded.
+      // Load CRM session from /api/auth/me before navigation (client org + header branding).
+      // Do not call admin-only active-organization clear here — that 403s for client users and raced ahead of reload.
       try {
-        await setActiveOrganization(null)
+        await reload({ silent: false })
         await supabase.auth.updateUser({ data: { password_setup_complete: true } })
-        await supabase.auth.refreshSession()
       } catch {
         // Non-fatal after successful sign-in; redirect anyway.
       }

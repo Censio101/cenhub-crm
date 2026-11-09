@@ -144,6 +144,19 @@ export async function deleteLeadById(
   }
 
   const admin = createAdminClient()
+  const { data: archived } = await admin
+    .from("leads")
+    .select("deleted_at")
+    .eq("id", leadId)
+    .eq("organization_id", organizationId)
+    .maybeSingle()
+  const hasDeletedAt = Boolean(
+    archived && typeof archived === "object" && "deleted_at" in archived && archived.deleted_at
+  )
+  if (!hasDeletedAt) {
+    throw new Error("soft delete not applied")
+  }
+
   await admin.from("customers").delete().eq("lead_id", leadId)
 
   await recordLeadAuditEvent(supabase, organizationId, leadId, "soft_deleted", {

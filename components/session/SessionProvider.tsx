@@ -257,7 +257,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Client logins call this to drop a leftover admin cookie. The route is admin-only,
       // so a 403 must restore the session from /api/auth/me instead of leaving the client blank.
       if (!response.ok) {
-        void reload({ silent: true })
+        await reload({ silent: true })
         return false
       }
 
