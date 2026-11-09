@@ -136,10 +136,17 @@ export function AppTopbarShell() {
           : "2xl:min-h-[4.5rem] 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:py-2"
       )}
     >
-      <div className="z-20 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start">
+      <div
+        className={cn(
+          "z-10 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start overflow-hidden",
+          showClientBranding &&
+            showNavRow &&
+            "2xl:max-w-[min(280px,34vw)]"
+        )}
+      >
         <Link
           href={homeHref}
-          className="flex min-w-0 items-center gap-3.5 sm:gap-4"
+          className="flex min-w-0 max-w-full items-center gap-3.5 sm:gap-4"
           aria-label={showClientBranding ? `Censio × ${clientName}` : "Censio"}
         >
           <Image
@@ -174,7 +181,7 @@ export function AppTopbarShell() {
 
       {showNavRow ? (
         <nav
-          className="z-10 col-span-2 row-start-2 flex min-w-0 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto border-t border-white/10 pt-1 [scrollbar-width:none] sm:gap-2 sm:justify-center 2xl:col-span-1 2xl:col-start-2 2xl:row-start-1 2xl:justify-center 2xl:border-t-0 2xl:pt-0 [&::-webkit-scrollbar]:hidden"
+          className="relative z-30 col-span-2 row-start-2 flex min-w-0 w-full max-w-full items-center justify-start gap-0.5 overflow-x-auto border-t border-white/10 pt-1 [scrollbar-width:none] sm:gap-2 sm:justify-center 2xl:col-span-1 2xl:col-start-2 2xl:row-start-1 2xl:justify-center 2xl:border-t-0 2xl:pt-0 [&::-webkit-scrollbar]:hidden"
           aria-label={t("navMainAria")}
         >
           {showAdminHeaderNav ? <AdminHeaderNav /> : null}

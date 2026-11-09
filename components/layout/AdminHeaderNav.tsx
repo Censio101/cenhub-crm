@@ -31,8 +31,9 @@ function AdminHeaderLink({
   return (
     <Link
       href={href}
+      prefetch
       className={cn(
-        "inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
+        "relative z-10 inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
         "border-b-2 focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none",
         active
           ? "border-primary text-white"
