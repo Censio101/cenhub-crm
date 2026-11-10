@@ -3,21 +3,17 @@ import { describe, expect, it, vi } from "vitest"
 import { recordLeadNotifyDelivery } from "@/lib/db/lead-notify-deliveries-repository"
 
 describe("recordLeadNotifyDelivery", () => {
-  it("inserts a delivery row", async () => {
+  it("inserts a delivery row and trims by age", async () => {
     const insert = vi.fn().mockResolvedValue({ error: null })
-    const select = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({ data: [{ id: "only" }], error: null }),
-      }),
-    })
     const del = vi.fn().mockReturnValue({
-      in: vi.fn().mockResolvedValue({ error: null }),
+      eq: vi.fn().mockReturnValue({
+        lt: vi.fn().mockResolvedValue({ error: null }),
+      }),
     })
 
     const supabase = {
       from: vi.fn(() => ({
         insert,
-        select,
         delete: del,
       })),
     }
@@ -37,5 +33,6 @@ describe("recordLeadNotifyDelivery", () => {
         skip_reason: "notify_disabled",
       })
     )
+    expect(del).toHaveBeenCalled()
   })
 })

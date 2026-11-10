@@ -78,6 +78,8 @@ const mailgunPillClientClass = "border-blue-200 bg-blue-50 text-blue-900 ring-bl
 const mailgunEmailPillClass =
   "border-emerald-200/90 bg-emerald-50 font-mono text-[11px] font-semibold text-emerald-950 sm:text-xs"
 
+const EMAIL_HISTORY_PAGE_SIZE = 10
+
 function EmailSettingsPanelSkeleton() {
   return (
     <div className="contents" aria-busy="true">
@@ -172,6 +174,10 @@ export function AdminClientEmailSettingsPanel() {
   const emailTabBarRef = useRef<HTMLDivElement>(null)
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([])
   const [deliveriesError, setDeliveriesError] = useState<string | null>(null)
+  const [deliveriesPage, setDeliveriesPage] = useState(1)
+  const [deliveriesTotal, setDeliveriesTotal] = useState(0)
+  const [deliveriesTotalPages, setDeliveriesTotalPages] = useState(1)
+  const [deliveriesLoading, setDeliveriesLoading] = useState(false)
   const [resendingLeadId, setResendingLeadId] = useState<string | null>(null)
 
   const selectedFunnels = useMemo(
@@ -209,12 +215,14 @@ export function AdminClientEmailSettingsPanel() {
     setMailgunApiKey("")
   }
 
-  async function loadDeliveries() {
+  async function loadDeliveries(page = deliveriesPage) {
     setDeliveriesError(null)
+    setDeliveriesLoading(true)
     try {
-      const response = await fetch(`/api/admin/organizations/${slug}/lead-notify-deliveries`, {
-        cache: "no-store",
-      })
+      const response = await fetch(
+        `/api/admin/organizations/${slug}/lead-notify-deliveries?page=${page}&pageSize=${EMAIL_HISTORY_PAGE_SIZE}`,
+        { cache: "no-store" }
+      )
       const data = (await response.json()) as {
         deliveries?: {
           id: string
@@ -228,6 +236,9 @@ export function AdminClientEmailSettingsPanel() {
           mailgun_message_id: string | null
           created_at: string
         }[]
+        page?: number
+        total?: number
+        totalPages?: number
         error?: string
       }
       if (!response.ok) throw new Error(data.error ?? t("clientEmailDeliveriesLoadError"))
@@ -245,10 +256,15 @@ export function AdminClientEmailSettingsPanel() {
           createdAt: row.created_at,
         }))
       )
+      setDeliveriesPage(data.page ?? page)
+      setDeliveriesTotal(data.total ?? 0)
+      setDeliveriesTotalPages(data.totalPages ?? 1)
     } catch (loadError) {
       setDeliveriesError(
         loadError instanceof Error ? loadError.message : t("clientEmailDeliveriesLoadError")
       )
+    } finally {
+      setDeliveriesLoading(false)
     }
   }
 
@@ -273,14 +289,61 @@ export function AdminClientEmailSettingsPanel() {
   function formatDeliveryTime(iso: string): string {
     try {
       return new Intl.DateTimeFormat("da-DK", {
-        dateStyle: "short",
-        timeStyle: "short",
+        hour: "2-digit",
+        minute: "2-digit",
         timeZone: "Europe/Copenhagen",
       }).format(new Date(iso))
     } catch {
       return iso
     }
   }
+
+  function deliveryDayKey(iso: string): string {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Copenhagen",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(iso))
+    } catch {
+      return iso.slice(0, 10)
+    }
+  }
+
+  function deliveryDayLabel(iso: string): string {
+    const key = deliveryDayKey(iso)
+    const today = deliveryDayKey(new Date().toISOString())
+    const yesterdayDate = new Date()
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+    const yesterday = deliveryDayKey(yesterdayDate.toISOString())
+    if (key === today) return t("clientEmailDeliveriesToday")
+    if (key === yesterday) return t("clientEmailDeliveriesYesterday")
+    try {
+      return new Intl.DateTimeFormat("da-DK", {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+        timeZone: "Europe/Copenhagen",
+      }).format(new Date(iso))
+    } catch {
+      return key
+    }
+  }
+
+  const deliveryGroups = useMemo(() => {
+    const groups: { key: string; label: string; rows: DeliveryRow[] }[] = []
+    for (const row of deliveries) {
+      const key = deliveryDayKey(row.createdAt)
+      const last = groups[groups.length - 1]
+      if (last && last.key === key) {
+        last.rows.push(row)
+      } else {
+        groups.push({ key, label: deliveryDayLabel(row.createdAt), rows: [row] })
+      }
+    }
+    return groups
+  }, [deliveries, t])
 
   function deliveryDetail(row: DeliveryRow): string {
     if (row.status === "failed") return row.errorMessage ?? "—"
@@ -382,7 +445,7 @@ export function AdminClientEmailSettingsPanel() {
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error ?? t("clientEmailDeliveryResendError"))
       setNotice(t("clientEmailDeliveryResendOk"))
-      await loadDeliveries()
+      await loadDeliveries(deliveriesPage)
     } catch (resendError) {
       setError(
         resendError instanceof Error ? resendError.message : t("clientEmailDeliveryResendError")
@@ -795,83 +858,146 @@ export function AdminClientEmailSettingsPanel() {
       </div>
         </>
       ) : (
-        <section className={cn(adminSectionCardClass, "space-y-3 p-5 text-sm")}>
+        <section className="space-y-4">
           <div className="space-y-1">
-            <h2 className="font-semibold text-foreground">{t("clientEmailDeliveriesTitle")}</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("clientEmailDeliveriesTitle")}</h2>
             <p className="text-xs text-muted-foreground">{t("clientEmailDeliveriesHint")}</p>
           </div>
           {deliveriesError ? (
             <p className="text-sm text-destructive">{deliveriesError}</p>
+          ) : deliveriesLoading && deliveries.length === 0 ? (
+            <div className={cn(adminSectionCardClass, "space-y-3 p-5")}>
+              <div className="skeleton-shimmer h-4 w-24 rounded-md" />
+              <div className="skeleton-shimmer h-16 w-full rounded-xl" />
+              <div className="skeleton-shimmer h-16 w-full rounded-xl" />
+            </div>
           ) : deliveries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("clientEmailDeliveriesEmpty")}</p>
+            <div className={cn(adminSectionCardClass, "px-5 py-10 text-center")}>
+              <p className="text-sm text-muted-foreground">{t("clientEmailDeliveriesEmpty")}</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-[#e8e0d8]">
-              <table className="w-full min-w-[720px] text-left text-xs">
-                <thead className="border-b border-[#e8e0d8] bg-[#faf8f6] text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColTime")}</th>
-                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColLead")}</th>
-                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColFunnel")}</th>
-                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColStatus")}</th>
-                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColRecipients")}</th>
-                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColDetail")}</th>
-                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColActions")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e8e0d8]">
-                  {deliveries.map((row) => (
-                    <tr key={row.id} className="bg-white">
-                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                        {formatDeliveryTime(row.createdAt)}
-                      </td>
-                      <td className="px-3 py-2 font-medium text-foreground">
-                        {row.leadName.trim() || "—"}
-                      </td>
-                      <td className="px-3 py-2 text-foreground">{row.funnelName?.trim() || "—"}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full px-2 py-0.5 font-medium",
-                            row.status === "sent" && "bg-emerald-50 text-emerald-800",
-                            row.status === "skipped" && "bg-muted text-muted-foreground",
-                            row.status === "failed" && "bg-red-50 text-red-800"
-                          )}
+            <div className="space-y-5">
+              {deliveryGroups.map((group) => (
+                <div key={group.key} className="space-y-2">
+                  <p className="px-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {group.label}
+                  </p>
+                  <ul className="space-y-2">
+                    {group.rows.map((row) => {
+                      const detail = deliveryDetail(row)
+                      const showDetail =
+                        row.status !== "sent" || Boolean(row.skipReason) || Boolean(row.errorMessage)
+                      return (
+                        <li
+                          key={row.id}
+                          className={cn(adminSectionCardClass, "px-4 py-3.5")}
                         >
-                          {deliveryStatusLabel(row.status)}
-                        </span>
-                      </td>
-                      <td className="max-w-[160px] truncate px-3 py-2 text-muted-foreground">
-                        {row.recipients.length > 0 ? row.recipients.join(", ") : "—"}
-                      </td>
-                      <td
-                        className="max-w-[200px] truncate px-3 py-2 text-muted-foreground"
-                        title={deliveryDetail(row)}
-                      >
-                        {deliveryDetail(row)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {row.leadId ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className={cn(adminOutlineButtonClass, "h-8 text-xs")}
-                            disabled={resendingLeadId === row.leadId}
-                            onClick={() => void resendLeadNotify(row.leadId!)}
-                          >
-                            {resendingLeadId === row.leadId ? (
-                              <Loader2Icon className="size-3.5 animate-spin" />
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-semibold text-foreground">
+                                  {row.leadName.trim() || "—"}
+                                </p>
+                                <span
+                                  className={cn(
+                                    "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                                    row.status === "sent" && "bg-emerald-50 text-emerald-800",
+                                    row.status === "skipped" && "bg-[#f3ebe3] text-muted-foreground",
+                                    row.status === "failed" && "bg-red-50 text-red-800"
+                                  )}
+                                  title={row.mailgunMessageId ?? undefined}
+                                >
+                                  {deliveryStatusLabel(row.status)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDeliveryTime(row.createdAt)}
+                                {row.funnelName?.trim() ? ` · ${row.funnelName.trim()}` : ""}
+                              </p>
+                              {row.recipients.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {row.recipients.map((email) => (
+                                    <span
+                                      key={email}
+                                      className="inline-flex max-w-full truncate rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-mono text-[11px] text-emerald-950"
+                                    >
+                                      {email}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                              {showDetail && detail !== "—" ? (
+                                <p className="text-xs text-muted-foreground">{detail}</p>
+                              ) : null}
+                            </div>
+                            {row.leadId ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className={cn(adminOutlineButtonClass, "h-8 shrink-0 self-start text-xs")}
+                                disabled={resendingLeadId === row.leadId}
+                                onClick={() => void resendLeadNotify(row.leadId!)}
+                              >
+                                {resendingLeadId === row.leadId ? (
+                                  <Loader2Icon className="size-3.5 animate-spin" />
+                                ) : null}
+                                {t("clientEmailDeliveryResend")}
+                              </Button>
                             ) : null}
-                            {t("clientEmailDeliveryResend")}
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+
+              {deliveriesTotal > EMAIL_HISTORY_PAGE_SIZE ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {t("clientEmailDeliveriesPaginationSummary")
+                      .replace(
+                        "{from}",
+                        String((deliveriesPage - 1) * EMAIL_HISTORY_PAGE_SIZE + 1)
+                      )
+                      .replace(
+                        "{to}",
+                        String(
+                          Math.min(deliveriesPage * EMAIL_HISTORY_PAGE_SIZE, deliveriesTotal)
+                        )
+                      )
+                      .replace("{total}", String(deliveriesTotal))}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={adminOutlineButtonClass}
+                      disabled={deliveriesLoading || deliveriesPage <= 1}
+                      onClick={() => void loadDeliveries(deliveriesPage - 1)}
+                    >
+                      {t("businessCategoriesPaginationPrev")}
+                    </Button>
+                    <span className="text-xs font-medium tabular-nums">
+                      {t("clientEmailDeliveriesPaginationPage")
+                        .replace("{page}", String(deliveriesPage))
+                        .replace("{pages}", String(deliveriesTotalPages))}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={adminOutlineButtonClass}
+                      disabled={deliveriesLoading || deliveriesPage >= deliveriesTotalPages}
+                      onClick={() => void loadDeliveries(deliveriesPage + 1)}
+                    >
+                      {t("businessCategoriesPaginationNext")}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </section>
