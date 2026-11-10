@@ -9,10 +9,14 @@ export type SendMailInput = {
   replyTo?: string
 }
 
+export type SendMailResult = {
+  messageId: string | null
+}
+
 export async function sendMailWithMailgunSettings(
   settings: MailgunDeliverySettings,
   input: SendMailInput
-): Promise<void> {
+): Promise<SendMailResult> {
   const from = `${settings.mailFromName} <${settings.mailFrom}>`
   const body = new URLSearchParams({
     from,
@@ -45,6 +49,16 @@ export async function sendMailWithMailgunSettings(
         ? `Mailgun request failed: ${detail.slice(0, 240)}`
         : `Mailgun request failed (${response.status})`
     )
+  }
+
+  const raw = await response.text().catch(() => "")
+  if (!raw.trim()) return { messageId: null }
+  try {
+    const parsed = JSON.parse(raw) as { id?: string; message?: string }
+    const id = typeof parsed.id === "string" ? parsed.id : null
+    return { messageId: id }
+  } catch {
+    return { messageId: null }
   }
 }
 

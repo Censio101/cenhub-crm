@@ -45,8 +45,15 @@ vi.mock("@/lib/db/lead-sheet-repository", () => ({
   resolveLeadSheetForOrganization: mocks.resolveLeadSheetForOrganization,
   listCustomFieldDefs: mocks.listCustomFieldDefs,
 }))
+vi.mock("@/lib/meta/capi-outbox", () => ({
+  runAfterResponse: (task: () => Promise<void>) => {
+    void task()
+  },
+}))
 vi.mock("@/lib/leads/notify-new-lead", () => ({
   notifyNewLeadFromFunnelWebhook: vi.fn().mockResolvedValue(undefined),
+  logLeadNotifySkippedFromWebhook: vi.fn().mockResolvedValue(undefined),
+  logLeadNotifySteppedFormDisabled: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock("@/lib/leads/funnel-webhook-meta-merge", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/leads/funnel-webhook-meta-merge")>()

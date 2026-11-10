@@ -118,6 +118,9 @@ export async function buildOrganizationEmailSettingsResponse(
     mailgunApiKeyMasked: maskSecret(settingsRow?.mailgun_api_key ?? null),
     orgMailConfigured,
     workspaceMailConfigured: workspace.mailConfigured,
+    workspaceMailgunDomain: workspace.mailgunDomain ?? "",
+    workspaceMailFrom: workspace.mailFrom,
+    workspaceMailFromName: workspace.mailFromName,
     mailSource: mailgun?.source ?? null,
     funnels: funnels.map((funnel) => ({
       id: funnel.id,

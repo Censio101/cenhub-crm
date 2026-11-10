@@ -16,7 +16,12 @@ import { customFieldDefsForFunnel } from "@/lib/lead-sheet/webhook-fields"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
-import { notifyNewLeadFromFunnelWebhook } from "@/lib/leads/notify-new-lead"
+import {
+  logLeadNotifySkippedFromWebhook,
+  logLeadNotifySteppedFormDisabled,
+  notifyNewLeadFromFunnelWebhook,
+} from "@/lib/leads/notify-new-lead"
+import { runAfterResponse } from "@/lib/meta/capi-outbox"
 import {
   mergeFunnelWebhookIntoExistingMetaLead,
   metaLeadgenLegacyId,
@@ -45,10 +50,11 @@ export async function POST(request: Request, context: RouteContext) {
   const { funnelId } = await context.params
   const admin = createAdminClient()
 
-  const funnel = await getLeadFunnelById(admin, funnelId)
-  if (!funnel || !funnel.enabled) {
+  const funnelRow = await getLeadFunnelById(admin, funnelId)
+  if (!funnelRow || !funnelRow.enabled) {
     return NextResponse.json({ error: "Funnel not found" }, { status: 404 })
   }
+  const funnel = funnelRow
 
   const token = readBearerSecret(request) ?? ""
 
@@ -140,8 +146,28 @@ export async function POST(request: Request, context: RouteContext) {
           stepsCompleted,
           formStepsTotal
         )
+        runAfterResponse(() =>
+          logLeadNotifySkippedFromWebhook(admin, {
+            organizationId,
+            funnelId: funnel.id,
+            funnelName: funnel.name,
+            leadId,
+            leadName: lead.fullName,
+            skipReason: "step_merge",
+          })
+        )
         return NextResponse.json({ ok: true, leadId, updated }, { status: 200 })
       }
+      runAfterResponse(() =>
+        logLeadNotifySkippedFromWebhook(admin, {
+          organizationId,
+          funnelId: funnel.id,
+          funnelName: funnel.name,
+          leadId,
+          leadName: lead.fullName,
+          skipReason: "duplicate_lead",
+        })
+      )
       return duplicateResponse(leadId)
     }
 
@@ -169,6 +195,16 @@ export async function POST(request: Request, context: RouteContext) {
           lead,
           built.customFields
         )
+        runAfterResponse(() =>
+          logLeadNotifySkippedFromWebhook(admin, {
+            organizationId,
+            funnelId: funnel.id,
+            funnelName: funnel.name,
+            leadId: existingMetaLeadId,
+            leadName: lead.fullName,
+            skipReason: "duplicate_lead",
+          })
+        )
         return duplicateResponse(existingMetaLeadId)
       }
     }
@@ -190,21 +226,28 @@ export async function POST(request: Request, context: RouteContext) {
       throw insertError
     }
 
-    // A stepped form creates its lead at the first step, so no "new lead" email is sent for it.
-    void (formStepsTotal ? Promise.resolve(null) : getOrganizationById(admin, funnel.organization_id))
-      .then((org) => {
-        if (!org) return
-        return notifyNewLeadFromFunnelWebhook(admin, {
-          organizationId: funnel.organization_id,
-          primaryContactEmail: org.primary_contact_email ?? null,
-          funnelId: funnel.id,
-          funnelName: funnel.name,
-          lead: created,
+    const notifyContext = {
+      organizationId: funnel.organization_id,
+      funnelId: funnel.id,
+      funnelName: funnel.name,
+      lead: created,
+    }
+
+    runAfterResponse(async () => {
+      if (formStepsTotal) {
+        await logLeadNotifySteppedFormDisabled(admin, {
+          ...notifyContext,
+          primaryContactEmail: null,
         })
+        return
+      }
+      const org = await getOrganizationById(admin, funnel.organization_id)
+      if (!org) return
+      await notifyNewLeadFromFunnelWebhook(admin, {
+        ...notifyContext,
+        primaryContactEmail: org.primary_contact_email ?? null,
       })
-      .catch((notifyError) => {
-        console.error("lead notify email failed", funnelId, notifyError)
-      })
+    })
 
     return NextResponse.json(
       { ok: true, leadId: created.id, ...(warnings.length > 0 ? { warnings } : {}) },

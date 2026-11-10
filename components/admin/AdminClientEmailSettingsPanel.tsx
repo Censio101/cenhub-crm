@@ -25,6 +25,19 @@ type FunnelRow = {
   notifyEnabled: boolean
 }
 
+type DeliveryRow = {
+  id: string
+  leadId: string | null
+  funnelName: string | null
+  leadName: string
+  recipients: string[]
+  status: "sent" | "skipped" | "failed"
+  skipReason: string | null
+  errorMessage: string | null
+  mailgunMessageId: string | null
+  createdAt: string
+}
+
 type SettingsDto = {
   leadNotifyEnabled: boolean
   usePrimaryContact: boolean
@@ -41,6 +54,9 @@ type SettingsDto = {
   mailgunApiKeyMasked: string | null
   orgMailConfigured: boolean
   workspaceMailConfigured: boolean
+  workspaceMailgunDomain: string
+  workspaceMailFrom: string
+  workspaceMailFromName: string
   mailSource: "organization" | "workspace" | null
   funnels: FunnelRow[]
   emailColumns: EmailColumn[]
@@ -62,15 +78,12 @@ function EmailSettingsPanelSkeleton() {
         <div className="skeleton-shimmer h-5 w-44 rounded-md" />
         <div className="skeleton-shimmer h-6 w-10 shrink-0 rounded-full" />
       </div>
-      <div className={cn(adminSectionCardClass, "space-y-3 p-5")}>
-        <div className="skeleton-shimmer h-5 w-36 rounded-md" />
-        <div className="skeleton-shimmer h-10 w-full rounded-lg" />
-        <div className="skeleton-shimmer h-10 w-full rounded-lg" />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="skeleton-shimmer h-10 rounded-lg sm:col-span-2" />
-          <div className="skeleton-shimmer h-10 rounded-lg" />
-          <div className="skeleton-shimmer h-10 rounded-lg" />
+      <div className={cn(adminSectionCardClass, "flex items-center justify-between gap-3 p-5")}>
+        <div className="space-y-2">
+          <div className="skeleton-shimmer h-5 w-24 rounded-md" />
+          <div className="skeleton-shimmer h-4 w-48 rounded-md" />
         </div>
+        <div className="skeleton-shimmer h-9 w-20 rounded-xl" />
       </div>
       <div className={cn(adminSectionCardClass, "space-y-3 p-5")}>
         <div className="skeleton-shimmer h-5 w-32 rounded-md" />
@@ -127,6 +140,17 @@ export function AdminClientEmailSettingsPanel() {
   const [mailgunApiKeyMasked, setMailgunApiKeyMasked] = useState<string | null>(null)
   const [orgMailConfigured, setOrgMailConfigured] = useState(false)
   const [workspaceMailConfigured, setWorkspaceMailConfigured] = useState(false)
+  const [workspaceMailgunDomain, setWorkspaceMailgunDomain] = useState("")
+  const [workspaceMailFrom, setWorkspaceMailFrom] = useState("")
+  const [workspaceMailFromName, setWorkspaceMailFromName] = useState("")
+  const [mailgunMode, setMailgunMode] = useState<"workspace" | "organization">("workspace")
+  const [mailgunModalOpen, setMailgunModalOpen] = useState(false)
+  const [mailgunModalMode, setMailgunModalMode] = useState<"workspace" | "organization">("workspace")
+  const [mailgunModalDomain, setMailgunModalDomain] = useState("")
+  const [mailgunModalApiKey, setMailgunModalApiKey] = useState("")
+  const [mailgunModalApiBase, setMailgunModalApiBase] = useState("https://api.mailgun.net")
+  const [mailgunModalFrom, setMailgunModalFrom] = useState("")
+  const [mailgunModalFromName, setMailgunModalFromName] = useState("")
   const [funnels, setFunnels] = useState<FunnelRow[]>([])
   const [emailColumns, setEmailColumns] = useState<EmailColumn[]>([])
   const [preview, setPreview] = useState<SettingsDto["emailPreview"] | null>(null)
@@ -136,6 +160,8 @@ export function AdminClientEmailSettingsPanel() {
   const [webhooksOpen, setWebhooksOpen] = useState(false)
   const [webhooksDraft, setWebhooksDraft] = useState<string[]>([])
   const [removeFunnelTarget, setRemoveFunnelTarget] = useState<FunnelRow | null>(null)
+  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([])
+  const [deliveriesError, setDeliveriesError] = useState<string | null>(null)
 
   const selectedFunnels = useMemo(
     () => funnels.filter((funnel) => funnel.notifyEnabled),
@@ -162,27 +188,121 @@ export function AdminClientEmailSettingsPanel() {
     setMailgunApiKeyMasked(settings.mailgunApiKeyMasked)
     setOrgMailConfigured(settings.orgMailConfigured)
     setWorkspaceMailConfigured(settings.workspaceMailConfigured)
+    setWorkspaceMailgunDomain(settings.workspaceMailgunDomain)
+    setWorkspaceMailFrom(settings.workspaceMailFrom)
+    setWorkspaceMailFromName(settings.workspaceMailFromName)
+    setMailgunMode(settings.orgMailConfigured ? "organization" : "workspace")
     setFunnels(settings.funnels)
     setEmailColumns(settings.emailColumns)
     setPreview(settings.emailPreview)
     setMailgunApiKey("")
   }
 
+  async function loadDeliveries() {
+    setDeliveriesError(null)
+    try {
+      const response = await fetch(`/api/admin/organizations/${slug}/lead-notify-deliveries`, {
+        cache: "no-store",
+      })
+      const data = (await response.json()) as {
+        deliveries?: {
+          id: string
+          lead_id: string | null
+          funnel_name: string | null
+          lead_name: string
+          recipients: string[]
+          status: DeliveryRow["status"]
+          skip_reason: string | null
+          error_message: string | null
+          mailgun_message_id: string | null
+          created_at: string
+        }[]
+        error?: string
+      }
+      if (!response.ok) throw new Error(data.error ?? t("clientEmailDeliveriesLoadError"))
+      setDeliveries(
+        (data.deliveries ?? []).map((row) => ({
+          id: row.id,
+          leadId: row.lead_id,
+          funnelName: row.funnel_name,
+          leadName: row.lead_name,
+          recipients: row.recipients,
+          status: row.status,
+          skipReason: row.skip_reason,
+          errorMessage: row.error_message,
+          mailgunMessageId: row.mailgun_message_id,
+          createdAt: row.created_at,
+        }))
+      )
+    } catch (loadError) {
+      setDeliveriesError(
+        loadError instanceof Error ? loadError.message : t("clientEmailDeliveriesLoadError")
+      )
+    }
+  }
+
   async function load() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/admin/organizations/${slug}/email-settings`, {
-        cache: "no-store",
-      })
-      const data = (await response.json()) as { settings?: SettingsDto; error?: string }
-      if (!response.ok) throw new Error(data.error ?? t("clientEmailLoadError"))
+      const [settingsRes] = await Promise.all([
+        fetch(`/api/admin/organizations/${slug}/email-settings`, { cache: "no-store" }),
+        loadDeliveries(),
+      ])
+      const data = (await settingsRes.json()) as { settings?: SettingsDto; error?: string }
+      if (!settingsRes.ok) throw new Error(data.error ?? t("clientEmailLoadError"))
       applySettings(data.settings!)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("clientEmailLoadError"))
     } finally {
       setLoading(false)
     }
+  }
+
+  function formatDeliveryTime(iso: string): string {
+    try {
+      return new Intl.DateTimeFormat("da-DK", {
+        dateStyle: "short",
+        timeStyle: "short",
+        timeZone: "Europe/Copenhagen",
+      }).format(new Date(iso))
+    } catch {
+      return iso
+    }
+  }
+
+  function deliveryDetail(row: DeliveryRow): string {
+    if (row.status === "failed") return row.errorMessage ?? "—"
+    if (row.status === "sent" && row.mailgunMessageId) return row.mailgunMessageId
+    if (row.skipReason) {
+      switch (row.skipReason) {
+        case "notify_disabled":
+          return t("clientEmailDeliverySkip_notify_disabled")
+        case "funnel_not_selected":
+          return t("clientEmailDeliverySkip_funnel_not_selected")
+        case "no_recipients":
+          return t("clientEmailDeliverySkip_no_recipients")
+        case "mailgun_missing":
+          return t("clientEmailDeliverySkip_mailgun_missing")
+        case "no_sheet":
+          return t("clientEmailDeliverySkip_no_sheet")
+        case "duplicate_lead":
+          return t("clientEmailDeliverySkip_duplicate_lead")
+        case "stepped_form_disabled":
+          return t("clientEmailDeliverySkip_stepped_form_disabled")
+        case "step_merge":
+          return t("clientEmailDeliverySkip_step_merge")
+        default:
+          return row.skipReason
+      }
+    }
+    return "—"
+  }
+
+  function deliveryStatusLabel(status: DeliveryRow["status"]): string {
+    if (status === "sent") return t("clientEmailDeliveryStatusSent")
+    if (status === "failed") return t("clientEmailDeliveryStatusFailed")
+    return t("clientEmailDeliveryStatusSkipped")
   }
 
   useAsyncEffect(() => {
@@ -211,11 +331,21 @@ export function AdminClientEmailSettingsPanel() {
           notifyClosingTemplate,
           notifyIncludedColumnKeys: includedKeys,
           notifyFunnelIds,
-          mailgunApiKey: mailgunApiKey.trim() || undefined,
-          mailgunDomain,
-          mailgunApiBase,
-          mailFrom,
-          mailFromName,
+          ...(mailgunMode === "workspace"
+            ? {
+                mailgunApiKey: null,
+                mailgunDomain: "",
+                mailgunApiBase: "https://api.mailgun.net",
+                mailFrom: "",
+                mailFromName: "",
+              }
+            : {
+                mailgunApiKey: mailgunApiKey.trim() || undefined,
+                mailgunDomain,
+                mailgunApiBase,
+                mailFrom,
+                mailFromName,
+              }),
         }),
       })
       const data = (await response.json()) as { settings?: SettingsDto; error?: string }
@@ -285,11 +415,40 @@ export function AdminClientEmailSettingsPanel() {
     setFieldsOpen(false)
   }
 
-  const mailBadge = orgMailConfigured
-    ? t("clientEmailMailgunOrgBadge")
-    : workspaceMailConfigured
-      ? t("clientEmailMailgunWorkspaceBadge")
-      : null
+  function openMailgunModal() {
+    setMailgunModalMode(mailgunMode)
+    setMailgunModalDomain(mailgunDomain)
+    setMailgunModalApiKey("")
+    setMailgunModalApiBase(mailgunApiBase || "https://api.mailgun.net")
+    setMailgunModalFrom(mailFrom)
+    setMailgunModalFromName(mailFromName)
+    setMailgunModalOpen(true)
+  }
+
+  function applyMailgunModal() {
+    setMailgunMode(mailgunModalMode)
+    if (mailgunModalMode === "organization") {
+      setMailgunDomain(mailgunModalDomain)
+      if (mailgunModalApiKey.trim()) setMailgunApiKey(mailgunModalApiKey)
+      setMailgunApiBase(mailgunModalApiBase)
+      setMailFrom(mailgunModalFrom)
+      setMailFromName(mailgunModalFromName)
+    }
+    setMailgunModalOpen(false)
+  }
+
+  const mailgunStatusPrimary =
+    mailgunMode === "organization"
+      ? t("clientEmailMailgunStatusClient")
+      : t("clientEmailMailgunStatusWorkspace")
+
+  const mailgunStatusDetail =
+    mailgunMode === "organization"
+      ? [mailFromName, mailFrom, mailgunDomain].filter(Boolean).join(" · ") ||
+        t("clientEmailMailgunOrgBadge")
+      : workspaceMailConfigured
+        ? `${workspaceMailFromName} <${workspaceMailFrom}> · ${workspaceMailgunDomain}`
+        : t("clientEmailMailgunWorkspaceMissing")
 
   const sectionsDisabled = !leadNotifyEnabled
 
@@ -347,57 +506,33 @@ export function AdminClientEmailSettingsPanel() {
       </section>
 
       <section
-        className={cn(adminSectionCardClass, "space-y-4 p-5", sectionsDisabled && "opacity-60")}
+        className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
         aria-disabled={sectionsDisabled || undefined}
       >
-        <div className="space-y-1">
-          <h2 className="text-sm font-semibold text-foreground">{t("clientEmailMailgunTitle")}</h2>
-          {mailBadge ? (
-            <p className="text-xs text-primary">{mailBadge}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground">{t("clientEmailMailgunWorkspaceHint")}</p>
-          )}
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm sm:col-span-2">
-            <span className="text-muted-foreground">{t("integrationsMailgunDomain")}</span>
-            <input
-              className={inputClass}
-              value={mailgunDomain}
-              disabled={sectionsDisabled}
-              onChange={(e) => setMailgunDomain(e.target.value)}
-            />
-          </label>
-          <label className="grid gap-1 text-sm sm:col-span-2">
-            <span className="text-muted-foreground">{t("integrationsMailgunApiKey")}</span>
-            <input
-              className={inputClass}
-              type="password"
-              autoComplete="off"
-              placeholder={mailgunApiKeyMasked ?? ""}
-              value={mailgunApiKey}
-              disabled={sectionsDisabled}
-              onChange={(e) => setMailgunApiKey(e.target.value)}
-            />
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="text-muted-foreground">{t("integrationsMailFrom")}</span>
-            <input
-              className={inputClass}
-              value={mailFrom}
-              disabled={sectionsDisabled}
-              onChange={(e) => setMailFrom(e.target.value)}
-            />
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="text-muted-foreground">{t("integrationsMailFromName")}</span>
-            <input
-              className={inputClass}
-              value={mailFromName}
-              disabled={sectionsDisabled}
-              onChange={(e) => setMailFromName(e.target.value)}
-            />
-          </label>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-sm font-semibold text-foreground">{t("clientEmailMailgunTitle")}</h2>
+            <p className="text-sm font-medium text-foreground">{mailgunStatusPrimary}</p>
+            <p
+              className={cn(
+                "text-xs",
+                mailgunMode === "workspace" && !workspaceMailConfigured
+                  ? "text-amber-800"
+                  : "text-muted-foreground"
+              )}
+            >
+              {mailgunStatusDetail}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className={adminOutlineButtonClass}
+            disabled={sectionsDisabled}
+            onClick={openMailgunModal}
+          >
+            {t("clientEmailMailgunChange")}
+          </Button>
         </div>
       </section>
 
@@ -526,6 +661,64 @@ export function AdminClientEmailSettingsPanel() {
         </label>
       </section>
 
+      <section className={cn(adminSectionCardClass, "space-y-3 p-5 text-sm")}>
+        <div className="space-y-1">
+          <h2 className="font-semibold text-foreground">{t("clientEmailDeliveriesTitle")}</h2>
+          <p className="text-xs text-muted-foreground">{t("clientEmailDeliveriesHint")}</p>
+        </div>
+        {deliveriesError ? (
+          <p className="text-sm text-destructive">{deliveriesError}</p>
+        ) : deliveries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("clientEmailDeliveriesEmpty")}</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-[#e8e0d8]">
+            <table className="w-full min-w-[640px] text-left text-xs">
+              <thead className="border-b border-[#e8e0d8] bg-[#faf8f6] text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColTime")}</th>
+                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColLead")}</th>
+                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColFunnel")}</th>
+                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColStatus")}</th>
+                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColRecipients")}</th>
+                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColDetail")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e8e0d8]">
+                {deliveries.map((row) => (
+                  <tr key={row.id} className="bg-white">
+                    <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                      {formatDeliveryTime(row.createdAt)}
+                    </td>
+                    <td className="px-3 py-2 font-medium text-foreground">
+                      {row.leadName.trim() || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-foreground">{row.funnelName?.trim() || "—"}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2 py-0.5 font-medium",
+                          row.status === "sent" && "bg-emerald-50 text-emerald-800",
+                          row.status === "skipped" && "bg-muted text-muted-foreground",
+                          row.status === "failed" && "bg-red-50 text-red-800"
+                        )}
+                      >
+                        {deliveryStatusLabel(row.status)}
+                      </span>
+                    </td>
+                    <td className="max-w-[180px] truncate px-3 py-2 text-muted-foreground">
+                      {row.recipients.length > 0 ? row.recipients.join(", ") : "—"}
+                    </td>
+                    <td className="max-w-[220px] truncate px-3 py-2 text-muted-foreground" title={deliveryDetail(row)}>
+                      {deliveryDetail(row)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
       {preview ? (
         <section
           className={cn(
@@ -569,6 +762,114 @@ export function AdminClientEmailSettingsPanel() {
           {t("clientEmailTest")}
         </Button>
       </div>
+
+      {mailgunModalOpen ? (
+        <ModalShell
+          title={t("clientEmailMailgunModalTitle")}
+          subtitle={t("clientEmailMailgunModalHint")}
+          onClose={() => setMailgunModalOpen(false)}
+          footer={
+            <>
+              <Button type="button" variant="ghost" onClick={() => setMailgunModalOpen(false)}>
+                {t("leadSheetCancel")}
+              </Button>
+              <Button type="button" onClick={applyMailgunModal}>
+                {t("clientEmailMailgunModalApply")}
+              </Button>
+            </>
+          }
+        >
+          <fieldset className="space-y-4">
+            <legend className="sr-only">{t("clientEmailMailgunModalTitle")}</legend>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#e8e0d8] bg-white p-3">
+              <input
+                type="radio"
+                name="mailgunMode"
+                className="mt-1 size-4"
+                checked={mailgunModalMode === "workspace"}
+                onChange={() => setMailgunModalMode("workspace")}
+              />
+              <span className="text-sm">
+                <span className="font-medium text-foreground">
+                  {t("clientEmailMailgunOptionWorkspace")}
+                </span>
+                {workspaceMailConfigured ? (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {workspaceMailFromName} &lt;{workspaceMailFrom}&gt; · {workspaceMailgunDomain}
+                  </span>
+                ) : (
+                  <span className="mt-1 block text-xs text-amber-800">
+                    {t("clientEmailMailgunWorkspaceMissing")}
+                  </span>
+                )}
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#e8e0d8] bg-white p-3">
+              <input
+                type="radio"
+                name="mailgunMode"
+                className="mt-1 size-4"
+                checked={mailgunModalMode === "organization"}
+                onChange={() => setMailgunModalMode("organization")}
+              />
+              <span className="text-sm font-medium text-foreground">
+                {t("clientEmailMailgunOptionClient")}
+              </span>
+            </label>
+          </fieldset>
+
+          {mailgunModalMode === "organization" ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm sm:col-span-2">
+                <span className="text-muted-foreground">{t("integrationsMailgunDomain")}</span>
+                <input
+                  className={inputClass}
+                  value={mailgunModalDomain}
+                  onChange={(e) => setMailgunModalDomain(e.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-sm sm:col-span-2">
+                <span className="text-muted-foreground">{t("integrationsMailgunApiKey")}</span>
+                <input
+                  className={inputClass}
+                  type="password"
+                  autoComplete="off"
+                  placeholder={mailgunApiKeyMasked ?? t("integrationsMailgunApiKeyPlaceholder")}
+                  value={mailgunModalApiKey}
+                  onChange={(e) => setMailgunModalApiKey(e.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-sm sm:col-span-2">
+                <span className="text-muted-foreground">{t("integrationsMailgunRegion")}</span>
+                <select
+                  className={inputClass}
+                  value={mailgunModalApiBase}
+                  onChange={(e) => setMailgunModalApiBase(e.target.value)}
+                >
+                  <option value="https://api.mailgun.net">{t("integrationsMailgunRegionUs")}</option>
+                  <option value="https://api.eu.mailgun.net">{t("integrationsMailgunRegionEu")}</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="text-muted-foreground">{t("integrationsMailFrom")}</span>
+                <input
+                  className={inputClass}
+                  value={mailgunModalFrom}
+                  onChange={(e) => setMailgunModalFrom(e.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="text-muted-foreground">{t("integrationsMailFromName")}</span>
+                <input
+                  className={inputClass}
+                  value={mailgunModalFromName}
+                  onChange={(e) => setMailgunModalFromName(e.target.value)}
+                />
+              </label>
+            </div>
+          ) : null}
+        </ModalShell>
+      ) : null}
 
       {webhooksOpen ? (
         <ModalShell
