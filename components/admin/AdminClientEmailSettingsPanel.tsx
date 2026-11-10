@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { Loader2Icon, XIcon } from "lucide-react"
 
+import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { ModalShell } from "@/components/admin/ModalShell"
@@ -71,6 +72,12 @@ type SettingsDto = {
 const inputClass =
   "w-full rounded-lg border border-[#d3c3b2] bg-white px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
 
+const mailgunPillCensioClass =
+  "border-emerald-200 bg-emerald-50 text-emerald-900 ring-emerald-100"
+const mailgunPillClientClass = "border-blue-200 bg-blue-50 text-blue-900 ring-blue-100"
+const mailgunEmailPillClass =
+  "border-emerald-200/90 bg-emerald-50 font-mono text-[11px] font-semibold text-emerald-950 sm:text-xs"
+
 function EmailSettingsPanelSkeleton() {
   return (
     <div className="contents" aria-busy="true">
@@ -78,12 +85,13 @@ function EmailSettingsPanelSkeleton() {
         <div className="skeleton-shimmer h-5 w-44 rounded-md" />
         <div className="skeleton-shimmer h-6 w-10 shrink-0 rounded-full" />
       </div>
-      <div className={cn(adminSectionCardClass, "flex items-center justify-between gap-3 p-5")}>
-        <div className="space-y-2">
-          <div className="skeleton-shimmer h-5 w-24 rounded-md" />
-          <div className="skeleton-shimmer h-4 w-48 rounded-md" />
+      <div className={cn(adminSectionCardClass, "space-y-3 p-5")}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="skeleton-shimmer h-5 w-20 rounded-md" />
+          <div className="skeleton-shimmer h-7 w-28 rounded-full" />
         </div>
-        <div className="skeleton-shimmer h-9 w-20 rounded-xl" />
+        <div className="skeleton-shimmer h-8 w-56 max-w-full rounded-full" />
+        <div className="skeleton-shimmer h-3 w-40 rounded-md" />
       </div>
       <div className={cn(adminSectionCardClass, "space-y-3 p-5")}>
         <div className="skeleton-shimmer h-5 w-32 rounded-md" />
@@ -160,8 +168,10 @@ export function AdminClientEmailSettingsPanel() {
   const [webhooksOpen, setWebhooksOpen] = useState(false)
   const [webhooksDraft, setWebhooksDraft] = useState<string[]>([])
   const [removeFunnelTarget, setRemoveFunnelTarget] = useState<FunnelRow | null>(null)
+  const [emailTab, setEmailTab] = useState<"settings" | "history">("settings")
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([])
   const [deliveriesError, setDeliveriesError] = useState<string | null>(null)
+  const [resendingLeadId, setResendingLeadId] = useState<string | null>(null)
 
   const selectedFunnels = useMemo(
     () => funnels.filter((funnel) => funnel.notifyEnabled),
@@ -359,6 +369,28 @@ export function AdminClientEmailSettingsPanel() {
     }
   }
 
+  async function resendLeadNotify(leadId: string) {
+    setResendingLeadId(leadId)
+    setError(null)
+    setNotice(null)
+    try {
+      const response = await fetch(
+        `/api/admin/organizations/${slug}/leads/${leadId}/resend-notify`,
+        { method: "POST" }
+      )
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? t("clientEmailDeliveryResendError"))
+      setNotice(t("clientEmailDeliveryResendOk"))
+      await loadDeliveries()
+    } catch (resendError) {
+      setError(
+        resendError instanceof Error ? resendError.message : t("clientEmailDeliveryResendError")
+      )
+    } finally {
+      setResendingLeadId(null)
+    }
+  }
+
   async function sendTest() {
     setTesting(true)
     setError(null)
@@ -437,18 +469,15 @@ export function AdminClientEmailSettingsPanel() {
     setMailgunModalOpen(false)
   }
 
-  const mailgunStatusPrimary =
-    mailgunMode === "organization"
-      ? t("clientEmailMailgunStatusClient")
-      : t("clientEmailMailgunStatusWorkspace")
-
-  const mailgunStatusDetail =
-    mailgunMode === "organization"
-      ? [mailFromName, mailFrom, mailgunDomain].filter(Boolean).join(" · ") ||
-        t("clientEmailMailgunOrgBadge")
-      : workspaceMailConfigured
-        ? `${workspaceMailFromName} <${workspaceMailFrom}> · ${workspaceMailgunDomain}`
-        : t("clientEmailMailgunWorkspaceMissing")
+  const mailgunUsesWorkspace = mailgunMode === "workspace"
+  const activeFromEmail = mailgunUsesWorkspace ? workspaceMailFrom : mailFrom
+  const activeFromName = mailgunUsesWorkspace ? workspaceMailFromName : mailFromName
+  const activeDomain = mailgunUsesWorkspace ? workspaceMailgunDomain : mailgunDomain
+  const mailgunPillLabel = mailgunUsesWorkspace
+    ? t("clientEmailMailgunPillCensio")
+    : t("clientEmailMailgunPillClient")
+  const mailgunPillClass = mailgunUsesWorkspace ? mailgunPillCensioClass : mailgunPillClientClass
+  const mailgunNotReady = mailgunUsesWorkspace && !workspaceMailConfigured
 
   const sectionsDisabled = !leadNotifyEnabled
 
@@ -479,6 +508,17 @@ export function AdminClientEmailSettingsPanel() {
         </>
       ) : (
         <>
+      <AdminPillTabs
+        value={emailTab}
+        onChange={setEmailTab}
+        options={[
+          { id: "settings", label: t("clientEmailTabSettings") },
+          { id: "history", label: t("clientEmailTabHistory") },
+        ]}
+      />
+
+      {emailTab === "settings" ? (
+        <>
       <section className={cn(adminSectionCardClass, "space-y-3 p-5")}>
         <label className="flex cursor-pointer items-center justify-between gap-3">
           <span className="text-sm font-medium text-foreground">{t("clientEmailMasterLabel")}</span>
@@ -506,28 +546,63 @@ export function AdminClientEmailSettingsPanel() {
       </section>
 
       <section
-        className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
+        className={cn(adminSectionCardClass, "p-5", sectionsDisabled && "opacity-60")}
         aria-disabled={sectionsDisabled || undefined}
       >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <h2 className="text-sm font-semibold text-foreground">{t("clientEmailMailgunTitle")}</h2>
-            <p className="text-sm font-medium text-foreground">{mailgunStatusPrimary}</p>
-            <p
-              className={cn(
-                "text-xs",
-                mailgunMode === "workspace" && !workspaceMailConfigured
-                  ? "text-amber-800"
-                  : "text-muted-foreground"
-              )}
-            >
-              {mailgunStatusDetail}
-            </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-foreground">{t("clientEmailMailgunTitle")}</h2>
+              <span
+                className={cn(
+                  "inline-flex max-w-full items-center rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm ring-1 ring-inset",
+                  mailgunPillClass
+                )}
+              >
+                {mailgunPillLabel}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {t("clientEmailMailgunFromLabel")}
+              </span>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                {activeFromName ? (
+                  <span className="text-sm font-medium text-foreground">{activeFromName}</span>
+                ) : null}
+                {activeFromEmail ? (
+                  <span
+                    className={cn(
+                      "inline-flex max-w-full items-center truncate rounded-full border px-2.5 py-1",
+                      mailgunEmailPillClass
+                    )}
+                  >
+                    {activeFromEmail}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">—</span>
+                )}
+              </div>
+            </div>
+
+            {activeDomain ? (
+              <p className="text-xs text-muted-foreground">
+                {t("clientEmailMailgunViaDomain", { domain: activeDomain })}
+              </p>
+            ) : null}
+
+            {mailgunNotReady ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {t("clientEmailMailgunWorkspaceMissing")}
+              </p>
+            ) : null}
           </div>
+
           <Button
             type="button"
             variant="outline"
-            className={adminOutlineButtonClass}
+            className={cn(adminOutlineButtonClass, "shrink-0 self-start")}
             disabled={sectionsDisabled}
             onClick={openMailgunModal}
           >
@@ -661,64 +736,6 @@ export function AdminClientEmailSettingsPanel() {
         </label>
       </section>
 
-      <section className={cn(adminSectionCardClass, "space-y-3 p-5 text-sm")}>
-        <div className="space-y-1">
-          <h2 className="font-semibold text-foreground">{t("clientEmailDeliveriesTitle")}</h2>
-          <p className="text-xs text-muted-foreground">{t("clientEmailDeliveriesHint")}</p>
-        </div>
-        {deliveriesError ? (
-          <p className="text-sm text-destructive">{deliveriesError}</p>
-        ) : deliveries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("clientEmailDeliveriesEmpty")}</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-[#e8e0d8]">
-            <table className="w-full min-w-[640px] text-left text-xs">
-              <thead className="border-b border-[#e8e0d8] bg-[#faf8f6] text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColTime")}</th>
-                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColLead")}</th>
-                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColFunnel")}</th>
-                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColStatus")}</th>
-                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColRecipients")}</th>
-                  <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColDetail")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8e0d8]">
-                {deliveries.map((row) => (
-                  <tr key={row.id} className="bg-white">
-                    <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                      {formatDeliveryTime(row.createdAt)}
-                    </td>
-                    <td className="px-3 py-2 font-medium text-foreground">
-                      {row.leadName.trim() || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-foreground">{row.funnelName?.trim() || "—"}</td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 font-medium",
-                          row.status === "sent" && "bg-emerald-50 text-emerald-800",
-                          row.status === "skipped" && "bg-muted text-muted-foreground",
-                          row.status === "failed" && "bg-red-50 text-red-800"
-                        )}
-                      >
-                        {deliveryStatusLabel(row.status)}
-                      </span>
-                    </td>
-                    <td className="max-w-[180px] truncate px-3 py-2 text-muted-foreground">
-                      {row.recipients.length > 0 ? row.recipients.join(", ") : "—"}
-                    </td>
-                    <td className="max-w-[220px] truncate px-3 py-2 text-muted-foreground" title={deliveryDetail(row)}>
-                      {deliveryDetail(row)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
       {preview ? (
         <section
           className={cn(
@@ -762,6 +779,89 @@ export function AdminClientEmailSettingsPanel() {
           {t("clientEmailTest")}
         </Button>
       </div>
+        </>
+      ) : (
+        <section className={cn(adminSectionCardClass, "space-y-3 p-5 text-sm")}>
+          <div className="space-y-1">
+            <h2 className="font-semibold text-foreground">{t("clientEmailDeliveriesTitle")}</h2>
+            <p className="text-xs text-muted-foreground">{t("clientEmailDeliveriesHint")}</p>
+          </div>
+          {deliveriesError ? (
+            <p className="text-sm text-destructive">{deliveriesError}</p>
+          ) : deliveries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("clientEmailDeliveriesEmpty")}</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-[#e8e0d8]">
+              <table className="w-full min-w-[720px] text-left text-xs">
+                <thead className="border-b border-[#e8e0d8] bg-[#faf8f6] text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColTime")}</th>
+                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColLead")}</th>
+                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColFunnel")}</th>
+                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColStatus")}</th>
+                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColRecipients")}</th>
+                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColDetail")}</th>
+                    <th className="px-3 py-2 font-medium">{t("clientEmailDeliveriesColActions")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e8e0d8]">
+                  {deliveries.map((row) => (
+                    <tr key={row.id} className="bg-white">
+                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                        {formatDeliveryTime(row.createdAt)}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-foreground">
+                        {row.leadName.trim() || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-foreground">{row.funnelName?.trim() || "—"}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 font-medium",
+                            row.status === "sent" && "bg-emerald-50 text-emerald-800",
+                            row.status === "skipped" && "bg-muted text-muted-foreground",
+                            row.status === "failed" && "bg-red-50 text-red-800"
+                          )}
+                        >
+                          {deliveryStatusLabel(row.status)}
+                        </span>
+                      </td>
+                      <td className="max-w-[160px] truncate px-3 py-2 text-muted-foreground">
+                        {row.recipients.length > 0 ? row.recipients.join(", ") : "—"}
+                      </td>
+                      <td
+                        className="max-w-[200px] truncate px-3 py-2 text-muted-foreground"
+                        title={deliveryDetail(row)}
+                      >
+                        {deliveryDetail(row)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.leadId ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={cn(adminOutlineButtonClass, "h-8 text-xs")}
+                            disabled={resendingLeadId === row.leadId}
+                            onClick={() => void resendLeadNotify(row.leadId!)}
+                          >
+                            {resendingLeadId === row.leadId ? (
+                              <Loader2Icon className="size-3.5 animate-spin" />
+                            ) : null}
+                            {t("clientEmailDeliveryResend")}
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {mailgunModalOpen ? (
         <ModalShell
@@ -779,41 +879,83 @@ export function AdminClientEmailSettingsPanel() {
             </>
           }
         >
-          <fieldset className="space-y-4">
+          <fieldset className="grid gap-3 sm:grid-cols-1">
             <legend className="sr-only">{t("clientEmailMailgunModalTitle")}</legend>
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#e8e0d8] bg-white p-3">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors",
+                mailgunModalMode === "workspace"
+                  ? "border-emerald-300 bg-emerald-50/60 ring-2 ring-emerald-200"
+                  : "border-[#e8e0d8] bg-white hover:bg-[#faf8f6]"
+              )}
+            >
               <input
                 type="radio"
                 name="mailgunMode"
-                className="mt-1 size-4"
+                className="mt-1 size-4 shrink-0"
                 checked={mailgunModalMode === "workspace"}
                 onChange={() => setMailgunModalMode("workspace")}
               />
-              <span className="text-sm">
-                <span className="font-medium text-foreground">
-                  {t("clientEmailMailgunOptionWorkspace")}
+              <span className="flex min-w-0 flex-1 flex-col gap-2">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    {t("clientEmailMailgunOptionWorkspace")}
+                  </span>
+                  <span
+                    className={cn(
+                      "inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                      mailgunPillCensioClass
+                    )}
+                  >
+                    {t("clientEmailMailgunPillCensio")}
+                  </span>
                 </span>
                 {workspaceMailConfigured ? (
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {workspaceMailFromName} &lt;{workspaceMailFrom}&gt; · {workspaceMailgunDomain}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-foreground">{workspaceMailFromName}</span>
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full border px-2 py-0.5",
+                        mailgunEmailPillClass
+                      )}
+                    >
+                      {workspaceMailFrom}
+                    </span>
                   </span>
                 ) : (
-                  <span className="mt-1 block text-xs text-amber-800">
+                  <span className="text-xs text-amber-800">
                     {t("clientEmailMailgunWorkspaceMissing")}
                   </span>
                 )}
               </span>
             </label>
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#e8e0d8] bg-white p-3">
+            <label
+              className={cn(
+                "flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors",
+                mailgunModalMode === "organization"
+                  ? "border-blue-300 bg-blue-50/50 ring-2 ring-blue-200"
+                  : "border-[#e8e0d8] bg-white hover:bg-[#faf8f6]"
+              )}
+            >
               <input
                 type="radio"
                 name="mailgunMode"
-                className="mt-1 size-4"
+                className="mt-1 size-4 shrink-0"
                 checked={mailgunModalMode === "organization"}
                 onChange={() => setMailgunModalMode("organization")}
               />
-              <span className="text-sm font-medium text-foreground">
-                {t("clientEmailMailgunOptionClient")}
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-foreground">
+                  {t("clientEmailMailgunOptionClient")}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                    mailgunPillClientClass
+                  )}
+                >
+                  {t("clientEmailMailgunPillClient")}
+                </span>
               </span>
             </label>
           </fieldset>

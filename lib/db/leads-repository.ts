@@ -19,6 +19,23 @@ import { queueLeadStageEventsAfterResponse } from "@/lib/meta/capi-outbox"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 
+export async function getLeadById(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadId: string
+): Promise<Lead | null> {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .eq("organization_id", organizationId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (error) throw error
+  return data ? leadRowToLead(data as LeadRow) : null
+}
+
 export async function listLeadsForOrganization(
   supabase: SupabaseClient,
   organizationId: string
