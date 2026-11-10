@@ -262,7 +262,10 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
               ? heroWidthClass
               : isLeadSheet || isFunnels || section === "import"
                 ? heroWidthClass
-                : isIndustries || section === "services" || section === "company"
+                : isIndustries ||
+                    section === "services" ||
+                    section === "company" ||
+                    section === "email"
                   ? cn(contentWidthClass, "max-w-4xl")
                   : contentWidthClass
         }

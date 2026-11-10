@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Loader2Icon, XIcon } from "lucide-react"
 
 import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
@@ -169,6 +169,7 @@ export function AdminClientEmailSettingsPanel() {
   const [webhooksDraft, setWebhooksDraft] = useState<string[]>([])
   const [removeFunnelTarget, setRemoveFunnelTarget] = useState<FunnelRow | null>(null)
   const [emailTab, setEmailTab] = useState<"settings" | "history">("settings")
+  const emailTabBarRef = useRef<HTMLDivElement>(null)
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([])
   const [deliveriesError, setDeliveriesError] = useState<string | null>(null)
   const [resendingLeadId, setResendingLeadId] = useState<string | null>(null)
@@ -481,8 +482,19 @@ export function AdminClientEmailSettingsPanel() {
 
   const sectionsDisabled = !leadNotifyEnabled
 
+  function selectEmailTab(next: "settings" | "history") {
+    const before = emailTabBarRef.current?.getBoundingClientRect().top ?? 0
+    setEmailTab(next)
+    requestAnimationFrame(() => {
+      const bar = emailTabBarRef.current
+      if (!bar) return
+      const delta = bar.getBoundingClientRect().top - before
+      if (Math.abs(delta) > 1) window.scrollBy(0, delta)
+    })
+  }
+
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-5">
+    <div className="mx-auto grid w-full gap-5">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           {t("clientEmailTitle")}
@@ -508,14 +520,16 @@ export function AdminClientEmailSettingsPanel() {
         </>
       ) : (
         <>
+      <div ref={emailTabBarRef}>
       <AdminPillTabs
         value={emailTab}
-        onChange={setEmailTab}
+        onChange={selectEmailTab}
         options={[
           { id: "settings", label: t("clientEmailTabSettings") },
           { id: "history", label: t("clientEmailTabHistory") },
         ]}
       />
+      </div>
 
       {emailTab === "settings" ? (
         <>
