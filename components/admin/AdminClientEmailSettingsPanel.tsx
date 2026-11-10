@@ -1,8 +1,9 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
-import { Loader2Icon, XIcon } from "lucide-react"
+import { HistoryIcon, Loader2Icon, Settings2Icon, XIcon } from "lucide-react"
 
+import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { ModalShell } from "@/components/admin/ModalShell"
@@ -562,34 +563,15 @@ export function AdminClientEmailSettingsPanel() {
           </p>
         ) : null}
 
-        <div ref={emailTabBarRef} className="border-b border-[#e8e0d8]">
-          <nav role="tablist" className="flex gap-6">
-            {(
-              [
-                { id: "settings" as const, label: t("clientEmailTabSettings") },
-                { id: "history" as const, label: t("clientEmailTabHistory") },
-              ] as const
-            ).map((tab) => {
-              const selected = emailTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  onClick={() => selectEmailTab(tab.id)}
-                  className={cn(
-                    "-mb-px border-b-2 pb-2.5 text-sm transition-colors",
-                    selected
-                      ? "border-foreground font-medium text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
+        <div ref={emailTabBarRef}>
+          <AdminPillTabs
+            value={emailTab}
+            onChange={selectEmailTab}
+            options={[
+              { id: "settings", label: t("clientEmailTabSettings"), icon: Settings2Icon },
+              { id: "history", label: t("clientEmailTabHistory"), icon: HistoryIcon },
+            ]}
+          />
         </div>
       </header>
 
