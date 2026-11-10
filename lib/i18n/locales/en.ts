@@ -555,8 +555,7 @@ export const en: Messages = {
   clientEmailDeliveryResendOk: "Notification email sent again.",
   clientEmailDeliveryResendError: "Could not resend notification email.",
   clientEmailDeliveriesColActions: "Actions",
-  clientEmailDeliveriesHint:
-    "Webhook notification emails from the last 7 days (sent, skipped, or failed). Test emails are not logged here.",
+  clientEmailDeliveriesHint: "Last 7 days. Test emails are not listed.",
   clientEmailDeliveriesEmpty: "No emails in the last 7 days. They appear when webhooks create or update leads.",
   clientEmailDeliveriesToday: "Today",
   clientEmailDeliveriesYesterday: "Yesterday",

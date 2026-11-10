@@ -561,8 +561,7 @@ const daMessages = {
   clientEmailDeliveryResendOk: "Notifikations-e-mail sendt igen.",
   clientEmailDeliveryResendError: "Kunne ikke sende notifikation igen.",
   clientEmailDeliveriesColActions: "Handlinger",
-  clientEmailDeliveriesHint:
-    "Webhook-notifikationer fra de sidste 7 dage (sendt, sprunget over eller fejlet). Test-e-mails logges ikke her.",
+  clientEmailDeliveriesHint: "Sidste 7 dage. Test-e-mails vises ikke.",
   clientEmailDeliveriesEmpty: "Ingen e-mails de sidste 7 dage. De vises når webhooks opretter eller opdaterer leads.",
   clientEmailDeliveriesToday: "I dag",
   clientEmailDeliveriesYesterday: "I går",
