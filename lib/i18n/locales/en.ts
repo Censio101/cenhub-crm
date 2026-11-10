@@ -771,6 +771,7 @@ export const en: Messages = {
   inviteClientUserCallout:
     "This person will only access this client's dashboard — not the Censio admin area or other clients.",
   inviteClientUserButton: "Invite to client",
+  createClientUserButton: "Create client",
   inviteClientSent: "Client invitation sent to {email} for {name}",
   clientUserCreated: "Client user created for {email} on {name}",
   clientUserRemove: "Remove user",

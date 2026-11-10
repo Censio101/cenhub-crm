@@ -25,6 +25,33 @@ import type { UserRole } from "@/lib/db/types"
 
 type ClientRole = Extract<UserRole, "client_admin" | "client_user">
 
+function SubmitActionLabel({
+  inviteLabel,
+  createLabel,
+  method,
+}: {
+  inviteLabel: string
+  createLabel: string
+  method: "email" | "password"
+}) {
+  const active = method === "email" ? inviteLabel : createLabel
+  const wider = inviteLabel.length >= createLabel.length ? inviteLabel : createLabel
+
+  return (
+    <span className="relative inline-grid justify-items-center">
+      <span className="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden="true">
+        {wider}
+      </span>
+      <span
+        key={active}
+        className="col-start-1 row-start-1 whitespace-nowrap motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200"
+      >
+        {active}
+      </span>
+    </span>
+  )
+}
+
 type AdminInviteUserFormProps =
   | {
       mode: "admin"
@@ -219,15 +246,23 @@ export function AdminInviteUserForm(props: AdminInviteUserFormProps) {
             disabled={submitting || !isPortalAccessDraftValid(access)}
           >
             {isAdminInvite ? (
-              <ShieldCheckIcon className="size-4" aria-hidden="true" />
+              <ShieldCheckIcon className="size-4 shrink-0" aria-hidden="true" />
+            ) : access.method === "email" ? (
+              <SendIcon className="size-4 shrink-0" aria-hidden="true" />
             ) : (
-              <SendIcon className="size-4" aria-hidden="true" />
+              <UserPlusIcon className="size-4 shrink-0" aria-hidden="true" />
             )}
-            {submitting
-              ? t("sending")
-              : isAdminInvite
-                ? t("inviteAdminButton")
-                : t("inviteClientUserButton")}
+            {submitting ? (
+              t("sending")
+            ) : isAdminInvite ? (
+              t("inviteAdminButton")
+            ) : (
+              <SubmitActionLabel
+                inviteLabel={t("inviteClientUserButton")}
+                createLabel={t("createClientUserButton")}
+                method={access.method}
+              />
+            )}
           </Button>
         </form>
       </div>

@@ -775,6 +775,7 @@ const daMessages = {
   inviteClientUserCallout:
     "Denne person får kun adgang til denne klient — ikke Censio admin eller andre klienter.",
   inviteClientUserButton: "Inviter til klient",
+  createClientUserButton: "Opret klient",
   inviteClientSent: "Klientinvitation sendt til {email} for {name}",
   clientUserCreated: "Klientbruger oprettet for {email} på {name}",
   clientUserRemove: "Fjern bruger",
