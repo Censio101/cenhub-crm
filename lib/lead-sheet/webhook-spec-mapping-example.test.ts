@@ -4,7 +4,7 @@ import { buildFilteredMappingInboundExample } from "@/lib/lead-sheet/webhook-spe
 import type { ClientService } from "@/lib/services/types"
 
 const services: ClientService[] = [
-  { id: "tag", nameDa: "Tag", nameEn: "Tag", source: "library", categoryNames: [] },
+  { id: "tag", nameDa: "Tag", nameEn: "Tag", source: "category", categoryNames: [] },
 ]
 
 describe("buildFilteredMappingInboundExample", () => {

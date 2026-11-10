@@ -425,7 +425,7 @@ export function AdminClientServicesPanel() {
           id: row.slug,
           nameDa: row.nameDa,
           nameEn: row.nameEn,
-          source: data.manual.some((m) => m.id === id) ? ("manual" as const) : ("library" as const),
+          source: data.manual.some((m) => m.id === id) ? ("manual" as const) : ("category" as const),
           categoryNames: [],
         },
       ]
