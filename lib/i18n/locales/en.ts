@@ -487,8 +487,6 @@ export const en: Messages = {
   clientNavFunnels: "Webhooks",
   clientNavEmail: "Email settings",
   clientEmailTitle: "Lead email notifications",
-  clientEmailIntro:
-    "Send Danish email to the client when selected webhooks create a new lead. Leads are always saved in CRM first.",
   clientEmailMasterLabel: "Send lead emails from Censio",
   clientEmailMasterHintOff:
     "Turn off when Make, Elementor, or another tool already emails the client.",

@@ -489,8 +489,6 @@ const daMessages = {
   clientNavFunnels: "Webhooks",
   clientNavEmail: "E-mail-indstillinger",
   clientEmailTitle: "Lead-e-mail til klient",
-  clientEmailIntro:
-    "Send dansk e-mail til klienten, når valgte webhooks opretter et nyt lead. Leadet gemmes altid i CRM først.",
   clientEmailMasterLabel: "Send lead-e-mails fra Censio",
   clientEmailMasterHintOff:
     "Slå fra hvis Make, Elementor eller et andet værktøj allerede sender mail til klienten.",

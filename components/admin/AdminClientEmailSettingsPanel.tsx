@@ -547,14 +547,9 @@ export function AdminClientEmailSettingsPanel() {
   return (
     <div className="mx-auto grid w-full gap-6">
       <header className="space-y-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {t("clientEmailTitle")}
-          </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {t("clientEmailIntro")}
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {t("clientEmailTitle")}
+        </h1>
 
         {error ? (
           <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
