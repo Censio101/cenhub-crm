@@ -412,6 +412,26 @@ export function AdminClientServicesPanel() {
       ].filter((s) => s.groups.length > 0)
     : []
 
+  const enabledClientServices = useMemo((): ClientService[] => {
+    if (!data) return []
+    const byId = new Map(
+      [...data.catalog, ...data.manual].map((service) => [service.id, service] as const)
+    )
+    return data.selectedIds.flatMap((id) => {
+      const row = byId.get(id)
+      if (!row) return []
+      return [
+        {
+          id: row.slug,
+          nameDa: row.nameDa,
+          nameEn: row.nameEn,
+          source: data.manual.some((m) => m.id === id) ? ("manual" as const) : ("library" as const),
+          categoryNames: [],
+        },
+      ]
+    })
+  }, [data])
+
   const manualNeedle = fold(manualDraft)
   const sameDraft = (service: { nameDa: string; nameEn: string }) =>
     fold(service.nameDa) === manualNeedle || fold(service.nameEn) === manualNeedle
@@ -817,6 +837,21 @@ export function AdminClientServicesPanel() {
             </div>
           </footer>
         ) : null}
+      </section>
+
+      <section className={cn(adminSectionCardClass, "space-y-3 p-4 sm:p-5")}>
+        <div>
+          <h3 className="text-base font-semibold text-foreground">{t("serviceAliasesTitle")}</h3>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            {t("funnelServiceMappingIntro")}
+          </p>
+        </div>
+        <ServiceInboundAliasesPanel
+          slug={slug}
+          catalog={[...data.catalog, ...data.manual]}
+          enabledServices={enabledClientServices}
+          embedded
+        />
       </section>
     </div>
   )

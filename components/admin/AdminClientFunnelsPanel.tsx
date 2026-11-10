@@ -18,7 +18,10 @@ import { adminFormNoticeDefaults } from "@/lib/admin/form-notice-defaults"
 import { FUNNEL_TARGET_PREFIX, findDanglingCustomTargets } from "@/lib/lead-sheet/mapping-review"
 import type { WebhookLeadSheetInfo, WebhookServiceSpec } from "@/lib/lead-sheet/webhook-spec"
 import { useAsyncEffect } from "@/lib/react/use-async-effect"
+import type { Service } from "@/lib/services/types"
 import { cn } from "cn"
+
+type ServiceCatalogRow = Pick<Service, "id" | "slug" | "nameDa" | "nameEn">
 
 function FunnelsPanelSkeleton() {
   return (
@@ -43,6 +46,7 @@ export function AdminClientFunnelsPanel() {
   const [funnels, setFunnels] = useState<FunnelDto[]>([])
   const [leadSheet, setLeadSheet] = useState<WebhookLeadSheetInfo | null>(null)
   const [webhookServices, setWebhookServices] = useState<WebhookServiceSpec[]>([])
+  const [serviceCatalog, setServiceCatalog] = useState<ServiceCatalogRow[]>([])
   const [staleSince, setStaleSince] = useState<string | null>(null)
   const [acknowledging, setAcknowledging] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -82,11 +86,13 @@ export function AdminClientFunnelsPanel() {
           funnels: FunnelDto[]
           leadSheet: WebhookLeadSheetInfo | null
           webhookServices?: WebhookServiceSpec[]
+          serviceCatalog?: ServiceCatalogRow[]
           webhookStaleSince?: string | null
         }
         setFunnels(data.funnels)
         setLeadSheet(data.leadSheet ?? null)
         setWebhookServices(data.webhookServices ?? [])
+        setServiceCatalog(data.serviceCatalog ?? [])
         setStaleSince(data.webhookStaleSince ?? null)
       } catch {
         if (!options?.silent) setError(t("funnelsLoadError"))
@@ -347,6 +353,7 @@ export function AdminClientFunnelsPanel() {
               url={webhookUrl(selected.id)}
               leadSheet={leadSheet}
               webhookServices={webhookServices}
+              serviceCatalog={serviceCatalog}
               copiedKey={copiedKey}
               onCopy={(key, value) => void copyText(key, value)}
               onRegenerateSecret={() => void regenerateSecret(selected.id)}

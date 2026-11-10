@@ -11,14 +11,12 @@ import { useLanguage } from "@/components/i18n/LanguageProvider"
 export type { FunnelFormat }
 import type { useFunnelSample } from "@/hooks/useFunnelSample"
 import {
-  buildExamplePayload,
-  buildFilteredStandardInboundExample,
   buildFilteredMappingInboundExample,
   type WebhookCustomFieldSpec,
   type WebhookLeadSheetInfo,
   type WebhookServiceSpec,
 } from "@/lib/lead-sheet/webhook-spec"
-import type { ClientService } from "@/lib/services/types"
+import type { ClientService, Service } from "@/lib/services/types"
 import { cn } from "cn"
 
 type Props = {
@@ -30,6 +28,7 @@ type Props = {
   standardFieldKeys: readonly string[]
   enabledServices: readonly ClientService[]
   webhookServices: readonly WebhookServiceSpec[]
+  serviceCatalog: readonly Pick<Service, "id" | "slug" | "nameDa" | "nameEn">[]
   format: FunnelFormat
   onChooseFormat: (format: FunnelFormat) => void
   formatError: boolean
@@ -56,6 +55,7 @@ export function FunnelFieldsTab({
   standardFieldKeys,
   enabledServices,
   webhookServices,
+  serviceCatalog,
   format,
   onChooseFormat,
   formatError,
@@ -70,15 +70,13 @@ export function FunnelFieldsTab({
   const { t } = useLanguage()
   const { state } = sampleApi
   const sectionClass = "rounded-xl border border-[#e8e0d8] bg-white p-4 shadow-sm sm:p-5"
-  const fixedPayload = buildExamplePayload(
-    buildFilteredStandardInboundExample(enabledServices, standardFieldKeys),
-    customFields
-  )
-  const mappingPayload = buildFilteredMappingInboundExample(
+  const crmExamplePayload = buildFilteredMappingInboundExample(
     enabledServices,
     standardFieldKeys,
     customFields
   )
+  const fixedPayload = crmExamplePayload
+  const mappingPayload = crmExamplePayload
 
   return (
     <div className="space-y-3">
@@ -164,6 +162,8 @@ export function FunnelFieldsTab({
               standardFieldKeys={standardFieldKeys}
               sample={state.sample}
               webhookServices={webhookServices}
+              serviceCatalog={serviceCatalog}
+              enabledServices={enabledServices}
               onSaved={onMappingSaved}
             />
           </section>

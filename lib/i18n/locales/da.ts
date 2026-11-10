@@ -1454,7 +1454,7 @@ const daMessages = {
   funnelMakeHttpBodyFixed:
     "Brug denne JSON som request body. Map hvert Make-felt til en nøgle.",
   funnelMakeHttpBodyMapping:
-    "POST JSON i denne form. Map stier efter du har optaget en prøve under Felter.",
+    "POST JSON med disse CRM-feltnavne. I Make mapper du Facebook (eller andre) værdier ind i hver nøgle. Map stier under Felter kun hvis din body har anden struktur.",
   funnelMakeHttpMethodMeta: "Metode: POST · Content-Type: application/json",
   funnelMakeHttpMethodLine: "Metode: POST",
   funnelMakeHttpContentTypeLine: "Content-Type: application/json",

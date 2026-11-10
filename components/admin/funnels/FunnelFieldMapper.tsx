@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { AlertTriangleIcon, Loader2Icon, SparklesIcon, Trash2Icon } from "lucide-react"
 
 import { adminOutlineButtonClass } from "@/components/admin/admin-ui-styles"
+import { FunnelServiceValueMap } from "@/components/admin/funnels/FunnelServiceValueMap"
 import { FunnelTestPanel } from "@/components/admin/funnels/FunnelTestPanel"
 import { WebhookServicesReference } from "@/components/admin/funnels/WebhookServicesReference"
 import { fieldTypeLabelKey } from "@/components/admin/lead-sheets/field-type-meta"
@@ -30,8 +31,11 @@ import {
 } from "@/lib/lead-sheet/webhook-spec"
 import { flattenPayloadPaths, suggestMappings, type PayloadPath } from "@/lib/leads/payload-paths"
 import { getByPath } from "@/lib/leads/source-path"
+import type { ClientService, Service } from "@/lib/services/types"
 
 type Mapping = Record<string, string>
+
+type CatalogService = Pick<Service, "id" | "slug" | "nameDa" | "nameEn">
 
 type Props = {
   slug: string
@@ -42,6 +46,8 @@ type Props = {
   /** The captured body, or null when there is none yet (paths can still be typed). */
   sample: Record<string, unknown> | null
   webhookServices?: readonly WebhookServiceSpec[]
+  serviceCatalog?: readonly CatalogService[]
+  enabledServices?: readonly ClientService[]
   onSaved: (mapping: Mapping) => void
 }
 
@@ -77,6 +83,8 @@ export function FunnelFieldMapper({
   standardFieldKeys,
   sample,
   webhookServices = [],
+  serviceCatalog = [],
+  enabledServices = [],
   onSaved,
 }: Props) {
   const { t } = useLanguage()
@@ -353,12 +361,22 @@ export function FunnelFieldMapper({
       {allowedStandard.has("serviceIds") ? (
       <div className="space-y-2.5 rounded-xl border border-[#e8e0d8] bg-[#faf8f6] p-3.5">
         <p className="text-xs font-medium text-muted-foreground">{t("funnelOwnServicesSection")}</p>
+        <p className="text-xs text-muted-foreground">{t("funnelMapServiceIdsHint")}</p>
         {row("serviceIds", "serviceIds")}
         <WebhookServicesReference
           services={webhookServices}
           flat
           introKey="funnelMappingServicesIntro"
         />
+        {enabledServices.length > 0 ? (
+          <FunnelServiceValueMap
+            slug={slug}
+            sample={sample}
+            serviceIdsPath={draft.serviceIds ?? ""}
+            catalog={serviceCatalog}
+            enabledServices={enabledServices}
+          />
+        ) : null}
       </div>
       ) : null}
 

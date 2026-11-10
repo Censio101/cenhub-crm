@@ -20,7 +20,7 @@ Admin webhooks (`/admin/clients/{slug}/funnels`) have two **data formats** on th
 - **Services block** inside the mapper only:
   - Optional **`serviceIds`** row when all services arrive in one list/text field.
   - **One row per enabled client service**: target `serviceIds.<slug>`, path picker from the sample (backend merges truthy paths into `serviceIds` in `applyFieldMapping`).
-- Do **not** add Import-style “map distinct values to service” UI, org-wide alias editors, or duplicate slug reference tables on this tab. Those live under **Services → Inbound service mapping** and **Import → Map services**.
+- After `serviceIds` has a path: **`FunnelServiceValueMap`** lists labels from the sample (and manual Meta keys) and saves **inbound service aliases** (same store as **Services → Inbound service mapping** and Import).
 
 ## Shared elsewhere
 

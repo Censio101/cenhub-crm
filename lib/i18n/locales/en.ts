@@ -1447,7 +1447,7 @@ export const en: Messages = {
   funnelMakeHttpBodyFixed:
     "Use this JSON as the request body. Map each Make field to a key.",
   funnelMakeHttpBodyMapping:
-    "POST JSON in this shape. Map paths after you capture a sample on Fields.",
+    "POST JSON using these CRM field names. In Make, map Facebook (or other) values into each key. Map paths on Fields only if your body nests keys differently.",
   funnelMakeHttpMethodMeta: "Method: POST · Content-Type: application/json",
   funnelMakeHttpMethodLine: "Method: POST",
   funnelMakeHttpContentTypeLine: "Content-Type: application/json",

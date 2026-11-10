@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { useFunnelSample } from "@/hooks/useFunnelSample"
 import { effectiveWebhookFields } from "@/lib/lead-sheet/webhook-fields"
 import type { WebhookLeadSheetInfo, WebhookServiceSpec } from "@/lib/lead-sheet/webhook-spec"
-import type { ClientService } from "@/lib/services/types"
+import type { ClientService, Service } from "@/lib/services/types"
 import { flattenPayloadPaths } from "@/lib/leads/payload-paths"
 import { cn } from "cn"
 
@@ -28,6 +28,7 @@ type Props = {
   url: string
   leadSheet: WebhookLeadSheetInfo | null
   webhookServices: readonly WebhookServiceSpec[]
+  serviceCatalog: readonly Pick<Service, "id" | "slug" | "nameDa" | "nameEn">[]
   copiedKey: string | null
   onCopy: (key: string, value: string) => void
   onRegenerateSecret: () => void
@@ -56,6 +57,7 @@ export function FunnelDetail({
   url,
   leadSheet,
   webhookServices,
+  serviceCatalog,
   copiedKey,
   onCopy,
   onRegenerateSecret,
@@ -271,6 +273,7 @@ export function FunnelDetail({
               standardFieldKeys={standardFieldKeys}
               enabledServices={enabledServices}
               webhookServices={webhookServices}
+              serviceCatalog={serviceCatalog}
               format={format}
               onChooseFormat={(next) => void chooseFormat(next)}
               formatError={formatError}
