@@ -89,6 +89,7 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
+    // New webhooks use the standard (B2C) sheet; B2B presets are for legacy Scantherm flows via scripts.
     const audience = body.audience === "b2b" ? "b2b" : "b2c"
     const audienceDefaults = leadFunnelCreateOptionsForAudience(audience)
 

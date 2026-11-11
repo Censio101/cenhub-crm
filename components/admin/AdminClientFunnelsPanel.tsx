@@ -115,13 +115,12 @@ export function AdminClientFunnelsPanel() {
   async function createFunnel(input: {
     name: string
     platform: FunnelDto["platform"]
-    audience: "b2b" | "b2c"
   }): Promise<string | null> {
     try {
       const response = await fetch(`/api/admin/organizations/${slug}/funnels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify({ ...input, audience: "b2c" }),
       })
       if (!response.ok) throw new Error("create")
       const data = (await response.json()) as { funnel: FunnelDto }
