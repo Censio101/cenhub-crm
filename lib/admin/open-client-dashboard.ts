@@ -1,3 +1,5 @@
+import { appendClientOrgQuery } from "@/lib/auth/tab-active-organization"
+
 type DashboardRouter = {
   push: (href: string) => void
 }
@@ -17,12 +19,16 @@ export async function openClientDashboard(
 ) {
   const path = options.path ?? "/"
 
+  if (options.newTab) {
+    const target = appendClientOrgQuery(path, slug)
+    window.open(target, "_blank", "noopener,noreferrer")
+    return true
+  }
+
   const success = await setActiveOrganization(slug)
   if (!success) return false
 
-  if (options.newTab) {
-    window.open(path, "_blank", "noopener,noreferrer")
-  } else if (options.router) {
+  if (options.router) {
     options.router.push(path)
   } else {
     window.location.assign(path)

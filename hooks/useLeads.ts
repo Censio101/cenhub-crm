@@ -14,6 +14,7 @@ import {
   replaceCachedLeads,
   setLeadsCache,
 } from "@/lib/data/client-cache"
+import { clientApiFetch } from "@/lib/data/client-api-fetch"
 import { fetchJsonDeduped } from "@/lib/data/in-flight"
 import {
   canReplaceLeadsFromServer,
@@ -336,7 +337,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       setSaveStatus("saving")
 
       try {
-        const response = await fetch(`/api/leads/${id}`, {
+        const response = await clientApiFetch(`/api/leads/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
@@ -415,7 +416,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
         clearTimeout(timer)
         const queued = pendingData.current.get(id)
         if (queued) {
-          void fetch(`/api/leads/${id}`, {
+          void clientApiFetch(`/api/leads/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(queued),
@@ -470,7 +471,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       try {
         let response: Response
         try {
-          response = await fetch(`/api/leads/${id}`, {
+          response = await clientApiFetch(`/api/leads/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(merged),
@@ -530,7 +531,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
 
       let response: Response
       try {
-        response = await fetch("/api/leads", {
+        response = await clientApiFetch("/api/leads", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lead }),
@@ -568,7 +569,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       }
 
       try {
-        const response = await fetch(`/api/leads/${id}`, { method: "DELETE" })
+        const response = await clientApiFetch(`/api/leads/${id}`, { method: "DELETE" })
         if (!response.ok) {
           throw new Error("leadsDeleteError")
         }
@@ -602,7 +603,7 @@ export function useLeads(options?: { liveSync?: boolean }) {
       }
 
       try {
-        const response = await fetch("/api/leads/bulk-delete", {
+        const response = await clientApiFetch("/api/leads/bulk-delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids }),

@@ -20,6 +20,7 @@ import {
   type ImageLinkValue,
 } from "@/lib/lead-sheet/image-link"
 import { imageLinkErrorMessageKey } from "@/lib/lead-sheet/image-link-messages"
+import { clientApiFetch } from "@/lib/data/client-api-fetch"
 import { cn } from "cn"
 
 const inputClass =
@@ -42,7 +43,7 @@ function LegacyImagePreview({ leadId, fieldKey }: { leadId: string; fieldKey: st
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const res = await fetch(`/api/leads/${leadId}/custom-fields/${fieldKey}/signed-url`, {
+      const res = await clientApiFetch(`/api/leads/${leadId}/custom-fields/${fieldKey}/signed-url`, {
         cache: "no-store",
       })
       const data = (await res.json()) as { url?: string | null }

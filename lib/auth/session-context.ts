@@ -1,6 +1,7 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 
 import { ACTIVE_ORG_COOKIE } from "@/lib/auth/active-organization"
+import { TAB_ACTIVE_ORG_HEADER } from "@/lib/auth/tab-active-organization"
 import { isSupabaseConfigured } from "@/lib/supabase/config"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -26,6 +27,18 @@ async function readActiveOrgSlug(): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+/** Admins: per-tab header wins over the shared active-org cookie when both tabs are open. */
+async function readAdminActiveOrgSlug(): Promise<string | null> {
+  try {
+    const headerStore = await headers()
+    const fromHeader = headerStore.get(TAB_ACTIVE_ORG_HEADER)?.trim()
+    if (fromHeader) return fromHeader
+  } catch {
+    // ignore when headers() is unavailable
+  }
+  return readActiveOrgSlug()
 }
 
 export async function getSessionContext(): Promise<SessionContext> {
@@ -74,7 +87,7 @@ export async function getSessionContext(): Promise<SessionContext> {
     }
 
     if (profile?.role === "censio_admin") {
-      const activeSlug = await readActiveOrgSlug()
+      const activeSlug = await readAdminActiveOrgSlug()
       if (activeSlug) {
         const admin = createAdminClient()
         const organization = await getOrganizationBySlug(admin, activeSlug)

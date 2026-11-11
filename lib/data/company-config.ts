@@ -1,3 +1,4 @@
+import { clientApiFetch } from "@/lib/data/client-api-fetch"
 import { buildDefaultLeadSheetConfig } from "@/lib/lead-sheet/default-config"
 import type { ResolvedLeadSheetConfig } from "@/lib/lead-sheet/types"
 import type { FunnelFormViewConfig } from "@/lib/leads/funnel-sheet-column-profile"
@@ -59,7 +60,7 @@ export function fetchCompanyConfig(): Promise<CompanyConfigResponse | null> {
   if (inflight) return inflight
   inflight = (async () => {
     try {
-      const res = await fetch("/api/lead-sheet/config", { cache: "no-store" })
+      const res = await clientApiFetch("/api/lead-sheet/config", { cache: "no-store" })
       if (!res.ok) return null
       const data = (await res.json()) as Partial<CompanyConfigResponse>
       const result: CompanyConfigResponse = {

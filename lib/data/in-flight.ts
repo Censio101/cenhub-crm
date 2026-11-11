@@ -1,3 +1,5 @@
+import { clientApiFetch } from "@/lib/data/client-api-fetch"
+
 export type JsonFetchResult<T> = {
   ok: boolean
   status: number
@@ -17,7 +19,7 @@ export function fetchJsonDeduped<T>(url: string): Promise<JsonFetchResult<T>> {
   if (existing) return existing as Promise<JsonFetchResult<T>>
 
   const promise: Promise<JsonFetchResult<unknown>> = (async () => {
-    const response = await fetch(url, { cache: "no-store" })
+    const response = await clientApiFetch(url, { cache: "no-store" })
     let data: unknown = null
     try {
       data = await response.json()

@@ -11,8 +11,13 @@ import {
   type ReactNode,
 } from "react"
 
+import {
+  clearTabActiveOrgSlug,
+  setTabActiveOrgSlug,
+} from "@/lib/auth/tab-active-organization"
 import { resetAdminPickerList } from "@/lib/data/admin-picker-list"
 import { clearClientCaches, emitClientOrgChanged } from "@/lib/data/client-cache"
+import { clientApiFetch } from "@/lib/data/client-api-fetch"
 import { fetchJsonDeduped } from "@/lib/data/in-flight"
 import type { UserRole } from "@/lib/db/types"
 import { useSupabaseSession } from "@/lib/auth/use-supabase-session"
@@ -169,9 +174,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         didSetLoading = true
       }
       try {
-        const response = await fetch("/api/auth/me", {
+        const response = await clientApiFetch("/api/auth/me", {
           cache: "no-store",
-          credentials: "include",
         })
         if (isStale()) return
         if (response.status === 401 || response.status === 403) {
@@ -247,10 +251,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       clearClientCaches()
 
-      const response = await fetch("/api/admin/active-organization", {
+      if (normalized) setTabActiveOrgSlug(normalized)
+      else clearTabActiveOrgSlug()
+
+      const response = await clientApiFetch("/api/admin/active-organization", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ slug: normalized }),
       })
 
