@@ -42,7 +42,7 @@ export function ClientLogoMark({
     <span
       style={{ ...logoChipStyle("header", padding, radius), ...logoOffsetStyle(offsetY) }}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden",
+        "inline-flex min-w-0 max-w-[min(200px,calc(100vw-14rem))] shrink items-center justify-center overflow-hidden sm:max-w-[min(220px,calc(100vw-16rem))] 2xl:max-w-none",
         backdropClassName[background],
         className
       )}
@@ -52,7 +52,7 @@ export function ClientLogoMark({
         src={src}
         alt={alt}
         style={logoImageStyle("header", size)}
-        className="h-auto w-auto object-contain"
+        className="h-auto max-h-full max-w-full w-auto object-contain"
       />
     </span>
   )

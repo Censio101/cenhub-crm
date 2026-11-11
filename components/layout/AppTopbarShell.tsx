@@ -136,17 +136,10 @@ export function AppTopbarShell() {
           : "2xl:min-h-[4.5rem] 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:py-2"
       )}
     >
-      <div
-        className={cn(
-          "z-10 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start overflow-hidden",
-          showClientBranding &&
-            showNavRow &&
-            "2xl:max-w-[min(280px,34vw)]"
-        )}
-      >
+      <div className="z-10 col-start-1 row-start-1 flex min-w-0 max-w-full items-center justify-self-start overflow-visible 2xl:max-w-none">
         <Link
           href={homeHref}
-          className="flex min-w-0 max-w-full items-center gap-3.5 sm:gap-4"
+          className="flex min-w-0 max-w-full items-center gap-2.5 sm:gap-3.5 2xl:gap-4"
           aria-label={showClientBranding ? `Censio × ${clientName}` : "Censio"}
         >
           <Image
