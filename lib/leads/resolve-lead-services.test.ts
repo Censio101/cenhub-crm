@@ -48,6 +48,6 @@ describe("formatServicesForDisplay", () => {
       serviceIds: ["vvs"],
       serviceLabels: ["Custom label"],
     }
-    expect(formatServicesForDisplay(lead, services, "text")).toBe("Custom label")
+    expect(formatServicesForDisplay(lead, [], "text")).toBe("Custom label")
   })
 })

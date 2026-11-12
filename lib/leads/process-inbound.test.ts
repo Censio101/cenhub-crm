@@ -20,6 +20,7 @@ describe("buildInboundLead serviceIds editor", () => {
       fullName: "Test",
       email: "a@b.dk",
       phone: "123",
+      leadDate: "2025-01-01",
       serviceIds: ["VVS", "Unknown"],
     },
     mapped: { customFields: {} },
