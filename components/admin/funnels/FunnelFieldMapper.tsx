@@ -22,6 +22,7 @@ import {
   FUNNEL_TARGET_PREFIX,
   findDanglingCustomTargets,
   findDanglingServiceTargets,
+  funnelServiceTargetSlug,
 } from "@/lib/lead-sheet/mapping-review"
 import {
   STANDARD_WEBHOOK_FIELDS,
@@ -178,10 +179,18 @@ export function FunnelFieldMapper({
     setSaving(true)
     setError(null)
     try {
+      const nextMapping = cleaned(draft)
+      if (serviceIdsEditor === "text") {
+        for (const [target, source] of Object.entries(savedMapping)) {
+          if (funnelServiceTargetSlug(target) && !(target in nextMapping) && source.trim()) {
+            nextMapping[target] = source.trim()
+          }
+        }
+      }
       const response = await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fieldMapping: cleaned(draft) }),
+        body: JSON.stringify({ fieldMapping: nextMapping }),
       })
       const data = (await response.json().catch(() => ({}))) as {
         error?: string
@@ -370,19 +379,23 @@ export function FunnelFieldMapper({
           )}
         </p>
         {row("serviceIds", "serviceIds")}
-        <WebhookServicesReference
-          services={webhookServices}
-          flat
-          introKey="funnelMappingServicesIntro"
-        />
-        {enabledServices.length > 0 ? (
-          <FunnelServiceValueMap
-            slug={slug}
-            sample={sample}
-            serviceIdsPath={draft.serviceIds ?? ""}
-            catalog={serviceCatalog}
-            enabledServices={enabledServices}
-          />
+        {serviceIdsEditor === "picker" ? (
+          <>
+            <WebhookServicesReference
+              services={webhookServices}
+              flat
+              introKey="funnelMappingServicesIntro"
+            />
+            {enabledServices.length > 0 ? (
+              <FunnelServiceValueMap
+                slug={slug}
+                sample={sample}
+                serviceIdsPath={draft.serviceIds ?? ""}
+                catalog={serviceCatalog}
+                enabledServices={enabledServices}
+              />
+            ) : null}
+          </>
         ) : null}
       </div>
       ) : null}
@@ -402,7 +415,8 @@ export function FunnelFieldMapper({
         </div>
       ) : null}
 
-      {danglingKeys.length > 0 || danglingServiceSlugs.length > 0 ? (
+      {danglingKeys.length > 0 ||
+      (serviceIdsEditor === "picker" && danglingServiceSlugs.length > 0) ? (
         <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-amber-950">
             <AlertTriangleIcon className="size-4 text-amber-700" aria-hidden />
@@ -429,26 +443,28 @@ export function FunnelFieldMapper({
                 </li>
               )
             })}
-            {danglingServiceSlugs.map((slug) => {
-              const target = `${FUNNEL_SERVICE_TARGET_PREFIX}${slug}`
-              return (
-                <li key={target} className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate font-mono text-xs text-amber-950">
-                    {target} ← {draft[target]}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 border-amber-400 bg-white"
-                    onClick={() => removeTarget(target)}
-                  >
-                    <Trash2Icon className="size-4" />
-                    {t("funnelMappingRemove")}
-                  </Button>
-                </li>
-              )
-            })}
+            {serviceIdsEditor === "picker"
+              ? danglingServiceSlugs.map((slug) => {
+                  const target = `${FUNNEL_SERVICE_TARGET_PREFIX}${slug}`
+                  return (
+                    <li key={target} className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate font-mono text-xs text-amber-950">
+                        {target} ← {draft[target]}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 border-amber-400 bg-white"
+                        onClick={() => removeTarget(target)}
+                      >
+                        <Trash2Icon className="size-4" />
+                        {t("funnelMappingRemove")}
+                      </Button>
+                    </li>
+                  )
+                })
+              : null}
           </ul>
         </div>
       ) : null}

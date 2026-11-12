@@ -576,7 +576,7 @@ export async function setTemplateColumnHidden(
   return requireTemplate(supabase, templateId)
 }
 
-/** Picker (dropdown) vs text display for the built-in Services column. */
+/** Picker (dropdown) vs text for the Services column. Does not change webhook mappings or org service aliases. */
 export async function setTemplateColumnServiceIdsEditor(
   supabase: SupabaseClient,
   templateId: string,

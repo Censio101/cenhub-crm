@@ -986,7 +986,7 @@ function renderLeadColumnCell(
                 enabledServices={env.enabledServices}
                 label={t("leadSheetColServiceIds")}
                 onChange={(serviceLabels) => {
-                  onUpdate(lead.id, { serviceLabels })
+                  onUpdate(lead.id, { serviceLabels, serviceIds: [], service: "" })
                 }}
               />
             ) : (

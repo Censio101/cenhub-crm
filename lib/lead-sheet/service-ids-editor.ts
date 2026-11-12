@@ -50,16 +50,16 @@ export function resolveLeadServicesFields(input: {
   serviceAliasMap?: ReadonlyMap<string, string>
 }): { serviceIds: string[]; serviceLabels: string[]; unknown: string[] } {
   const raw = dedupeStrings(input.rawValues)
-  const matched = matchServices(raw, input.services, input.serviceAliasMap)
 
   if (input.editor === "text") {
     return {
-      serviceIds: matched.ids,
+      serviceIds: [],
       serviceLabels: raw,
-      unknown: matched.unknown,
+      unknown: [],
     }
   }
 
+  const matched = matchServices(raw, input.services, input.serviceAliasMap)
   return {
     serviceIds: matched.ids,
     serviceLabels: [],

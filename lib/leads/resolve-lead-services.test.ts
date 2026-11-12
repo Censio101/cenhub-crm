@@ -29,15 +29,15 @@ describe("resolveLeadServicesFields", () => {
     expect(result.unknown).toEqual(["Mystery"])
   })
 
-  it("text mode keeps raw labels and best-effort slugs", () => {
+  it("text mode keeps raw labels only", () => {
     const result = resolveLeadServicesFields({
       rawValues: ["VVS", "Mystery"],
       editor: "text",
       services,
     })
-    expect(result.serviceIds).toEqual(["vvs"])
+    expect(result.serviceIds).toEqual([])
     expect(result.serviceLabels).toEqual(["VVS", "Mystery"])
-    expect(result.unknown).toEqual(["Mystery"])
+    expect(result.unknown).toEqual([])
   })
 })
 

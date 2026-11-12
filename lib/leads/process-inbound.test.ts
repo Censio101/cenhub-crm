@@ -48,7 +48,7 @@ describe("buildInboundLead serviceIds editor", () => {
       platform: "webhook",
       serviceIdsEditor: "text",
     })
-    expect(built.lead.serviceIds).toEqual(["vvs"])
+    expect(built.lead.serviceIds).toEqual([])
     expect(built.lead.serviceLabels).toEqual(["VVS", "Unknown"])
     expect(built.warnings.some((w) => w.field === "serviceIds")).toBe(false)
   })
