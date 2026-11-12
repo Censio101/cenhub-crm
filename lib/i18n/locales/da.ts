@@ -478,7 +478,7 @@ const daMessages = {
     "Når afsenderen bruger egne navne (ikke CRM-slugs), kan du knytte hver betegnelse til en ydelse herunder. Mapping gælder alle webhooks og import for denne kunde.",
   funnelMapServiceIdsHint: "Map JSON-stien ovenfor — derefter kan du mappe værdier i sektionen nedenfor.",
   funnelMapServiceIdsHintTextMode:
-    "Map JSON-stien ovenfor. Alias-mapping nedenfor er valgfri — den knytter labels til CRM-ydelser til filtre, når navne matcher.",
+    "Map kun JSON-stien for serviceIds. Mapping pr. ydelse er skjult i tekst-tilstand, men gemmes til dropdown-tilstand.",
   funnelSampleServiceMapTitle: "Værdier fra dit sample",
   funnelSampleServiceMapNeedPath:
     "Map serviceIds-feltet ovenfor til en sti i samplet — så vises værdierne her.",
@@ -1955,6 +1955,17 @@ const daMessages = {
   leadSheetsServiceIdsEditorText: "Tekst",
   leadSheetsServiceIdsEditorHint:
     "Dropdown bruger kun CRM-ydelser. Tekst viser webhook-labels som sendt; matchende aliaser fylder stadig filtre.",
+  leadSheetsServiceIdsEditorEdit: "Rediger ydelser-input",
+  leadSheetsServiceIdsEditorDialogTitle: "Ydelser-kolonne",
+  leadSheetsServiceIdsEditorDialogLead:
+    "Vælg hvordan kolonnen udfyldes på lead-arket, og hvad webhooks skal sende.",
+  leadSheetsServiceIdsEditorCurrent: "Aktuel: {mode}",
+  leadSheetsServiceIdsEditorPickerBody:
+    "Leads bruger CRM-ydelser (flervalg). Map hver indgående label til en ydelse under webhooks → Felter.",
+  leadSheetsServiceIdsEditorTextBody:
+    "Leads viser fri tekst fra webhooks. Map kun hovedstien for serviceIds — ingen mapping pr. værdi.",
+  leadSheetsServiceIdsEditorPreserved:
+    "Skift af tilstand sletter ikke webhook-feltmapping eller gemte indgående ydelses-aliaser. Dropdown-mapping vises igen, når du skifter tilbage.",
   leadSheetsServiceIdsTextPlaceholder: "Ydelser adskilt med komma",
   leadSheetsWebhookExcludedChip: "Ikke i webhooks",
   leadSheetsIncludeInWebhook: "Med i webhooks",

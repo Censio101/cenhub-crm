@@ -476,7 +476,7 @@ export const en: Messages = {
     "When the sender uses its own names (not CRM slugs), map each label to a service below. Mappings apply to all webhooks and imports for this client.",
   funnelMapServiceIdsHint: "Map the JSON path, then map label values in the section below.",
   funnelMapServiceIdsHintTextMode:
-    "Map the JSON path above. Alias mapping below is optional — it links labels to CRM services for filters when names match.",
+    "Map the JSON path for serviceIds only. Per-service value mapping is hidden in text mode but stays saved for dropdown mode.",
   funnelSampleServiceMapTitle: "Values from your sample",
   funnelSampleServiceMapNeedPath:
     "Map the serviceIds field above to a path in the sample, then values appear here.",
@@ -1947,6 +1947,17 @@ export const en: Messages = {
   leadSheetsServiceIdsEditorText: "Text",
   leadSheetsServiceIdsEditorHint:
     "Dropdown uses CRM services only. Text shows webhook labels as sent; matching aliases still fill filters.",
+  leadSheetsServiceIdsEditorDialogTitle: "Services column",
+  leadSheetsServiceIdsEditorEdit: "Edit services input",
+  leadSheetsServiceIdsEditorDialogLead:
+    "Choose how this column is filled on the lead sheet and what webhooks need to send.",
+  leadSheetsServiceIdsEditorCurrent: "Current: {mode}",
+  leadSheetsServiceIdsEditorPickerBody:
+    "Leads use CRM services (multi-select). Map each inbound label to a service on the webhook Fields step.",
+  leadSheetsServiceIdsEditorTextBody:
+    "Leads show free text from webhooks. Map only the main serviceIds JSON path — no per-value mapping.",
+  leadSheetsServiceIdsEditorPreserved:
+    "Switching modes does not delete webhook field mapping or saved inbound service aliases. Dropdown mappings return when you switch back.",
   leadSheetsServiceIdsTextPlaceholder: "Comma-separated services",
   leadSheetsWebhookExcludedChip: "Not in webhooks",
   leadSheetsIncludeInWebhook: "Include in webhooks",
