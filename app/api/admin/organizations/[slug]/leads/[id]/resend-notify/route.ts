@@ -5,19 +5,19 @@ import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import { resendLeadNotificationEmail } from "@/lib/leads/resend-lead-notify"
 import { createAdminClient } from "@/lib/supabase/admin"
 
-type RouteContext = { params: Promise<{ slug: string; leadId: string }> }
+type RouteContext = { params: Promise<{ slug: string; id: string }> }
 
 export async function POST(_request: Request, context: RouteContext) {
   try {
     await requireCensioAdmin()
-    const { slug, leadId } = await context.params
+    const { slug, id } = await context.params
     const admin = createAdminClient()
     const organization = await getOrganizationBySlug(admin, slug)
     if (!organization) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
-    const result = await resendLeadNotificationEmail(admin, organization.id, leadId)
+    const result = await resendLeadNotificationEmail(admin, organization.id, id)
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }

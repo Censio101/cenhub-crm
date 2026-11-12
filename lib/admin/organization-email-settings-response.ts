@@ -17,6 +17,7 @@ import {
   templateOrDefault,
 } from "@/lib/email/lead-notify-defaults"
 import { buildLeadNotifyPreview } from "@/lib/email/format-new-lead-notify-da"
+import { buildLeadNotifyRecipientList } from "@/lib/leads/notify-new-lead"
 import { builtinLabelDa } from "@/lib/email/lead-notify-labels-da"
 import { columnVisibilityKey } from "@/lib/lead-sheet/client-visibility"
 import { resolveLeadNotifyMailgunSettings } from "@/lib/email/mailgun-delivery-settings"
@@ -98,6 +99,11 @@ export async function buildOrganizationEmailSettingsResponse(
     usePrimaryContact: settingsRow?.use_primary_contact ?? true,
     extraNotifyEmails: settingsRow?.extra_notify_emails ?? "",
     primaryContactEmail: organization.primary_contact_email?.trim() || null,
+    notifyRecipientEmails: buildLeadNotifyRecipientList({
+      usePrimaryContact: settingsRow?.use_primary_contact ?? true,
+      primaryContactEmail: organization.primary_contact_email,
+      extraNotifyEmails: settingsRow?.extra_notify_emails,
+    }),
     notifySubjectTemplate: templateOrDefault(
       settingsRow?.notify_subject_template,
       DEFAULT_NOTIFY_SUBJECT_TEMPLATE

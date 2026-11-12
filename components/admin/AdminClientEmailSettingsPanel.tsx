@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react"
 import { HistoryIcon, Loader2Icon, Settings2Icon, XIcon } from "lucide-react"
 
 import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
+import { LeadNotifyRecipientsEditor } from "@/components/admin/LeadNotifyRecipientsEditor"
+import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
 import { useAdminClient } from "@/components/admin/AdminClientContext"
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { ModalShell } from "@/components/admin/ModalShell"
@@ -649,37 +651,15 @@ export function AdminClientEmailSettingsPanel() {
         className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
       >
         <h2 className="text-sm font-semibold text-foreground">{t("clientEmailRecipientsTitle")}</h2>
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 rounded border-[#d3c3b2]"
-            checked={usePrimaryContact}
-            disabled={sectionsDisabled}
-            onChange={(e) => setUsePrimaryContact(e.target.checked)}
-          />
-          <span>
-            {t("clientEmailUsePrimary")}
-            {primaryContactEmail ? (
-              <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
-                {primaryContactEmail}
-              </span>
-            ) : (
-              <span className="mt-0.5 block text-xs text-amber-800">
-                {t("clientEmailPrimaryMissing")}
-              </span>
-            )}
-          </span>
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-muted-foreground">{t("clientEmailExtraLabel")}</span>
-          <textarea
-            className={cn(inputClass, "min-h-20 font-mono text-xs")}
-            value={extraNotifyEmails}
-            disabled={sectionsDisabled}
-            onChange={(e) => setExtraNotifyEmails(e.target.value)}
-          />
-          <span className="text-xs text-muted-foreground">{t("clientEmailExtraHint")}</span>
-        </label>
+        <LeadNotifyRecipientsEditor
+          disabled={sectionsDisabled}
+          usePrimaryContact={usePrimaryContact}
+          onUsePrimaryContactChange={setUsePrimaryContact}
+          primaryContactEmail={primaryContactEmail}
+          companySettingsHref={adminClientSettingsSectionPath(slug, "company")}
+          extraNotifyEmails={extraNotifyEmails}
+          onExtraNotifyEmailsChange={setExtraNotifyEmails}
+        />
       </section>
 
       <section
