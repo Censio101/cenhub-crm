@@ -1955,7 +1955,8 @@ const daMessages = {
   leadSheetsServiceIdsEditorText: "Tekst",
   leadSheetsServiceIdsEditorHint:
     "Dropdown bruger kun CRM-ydelser. Tekst viser webhook-labels som sendt; matchende aliaser fylder stadig filtre.",
-  leadSheetsServiceIdsEditorEdit: "Rediger ydelser-input",
+  leadSheetsServiceIdsEditorEdit: "Skift ydelser-input tilstand",
+  leadSheetsServiceIdsEditorChange: "· skift",
   leadSheetsServiceIdsEditorDialogTitle: "Ydelser-kolonne",
   leadSheetsServiceIdsEditorDialogLead:
     "Vælg hvordan kolonnen udfyldes på lead-arket, og hvad webhooks skal sende.",

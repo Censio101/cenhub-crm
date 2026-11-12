@@ -1948,7 +1948,8 @@ export const en: Messages = {
   leadSheetsServiceIdsEditorHint:
     "Dropdown uses CRM services only. Text shows webhook labels as sent; matching aliases still fill filters.",
   leadSheetsServiceIdsEditorDialogTitle: "Services column",
-  leadSheetsServiceIdsEditorEdit: "Edit services input",
+  leadSheetsServiceIdsEditorEdit: "Change services input mode",
+  leadSheetsServiceIdsEditorChange: "· change",
   leadSheetsServiceIdsEditorDialogLead:
     "Choose how this column is filled on the lead sheet and what webhooks need to send.",
   leadSheetsServiceIdsEditorCurrent: "Current: {mode}",

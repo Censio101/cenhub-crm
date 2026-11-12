@@ -1,5 +1,8 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { Loader2Icon } from "lucide-react"
+
 import { ModalShell } from "@/components/admin/ModalShell"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
@@ -10,22 +13,41 @@ type Props = {
   editor: ServiceIdsEditor
   busy: boolean
   onClose: () => void
-  onApply: (editor: ServiceIdsEditor) => void
+  onSave: (editor: ServiceIdsEditor) => void | Promise<void>
 }
 
 /** Services column: how inbound values are shown and edited on the lead sheet. */
-export function ServiceIdsEditorDialog({ editor, busy, onClose, onApply }: Props) {
+export function ServiceIdsEditorDialog({ editor, busy, onClose, onSave }: Props) {
   const { t } = useLanguage()
+  const [draft, setDraft] = useState<ServiceIdsEditor>(editor)
+
+  useEffect(() => {
+    setDraft(editor)
+  }, [editor])
+
+  const dirty = draft !== editor
+  const canSave = dirty && !busy
 
   return (
     <ModalShell
       title={t("leadSheetsServiceIdsEditorDialogTitle")}
       onClose={onClose}
+      dismissible={!dirty}
       busy={busy}
       footer={
-        <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
-          {t("leadSheetCancel")}
-        </Button>
+        <>
+          <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
+            {t("leadSheetCancel")}
+          </Button>
+          <Button
+            type="button"
+            disabled={!canSave}
+            onClick={() => void Promise.resolve(onSave(draft))}
+          >
+            {busy ? <Loader2Icon className="size-4 animate-spin" /> : null}
+            {t("leadSheetSaveAssignment")}
+          </Button>
+        </>
       }
     >
       <p className="text-sm text-muted-foreground">{t("leadSheetsServiceIdsEditorDialogLead")}</p>
@@ -47,16 +69,14 @@ export function ServiceIdsEditorDialog({ editor, busy, onClose, onApply }: Props
             key={mode}
             type="button"
             disabled={busy}
-            aria-pressed={editor === mode}
+            aria-pressed={draft === mode}
             className={cn(
               "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              editor === mode
+              draft === mode
                 ? "bg-white text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => {
-              if (editor !== mode) onApply(mode)
-            }}
+            onClick={() => setDraft(mode)}
           >
             {mode === "picker"
               ? t("leadSheetsServiceIdsEditorPicker")
@@ -65,7 +85,7 @@ export function ServiceIdsEditorDialog({ editor, busy, onClose, onApply }: Props
         ))}
       </div>
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        {editor === "picker"
+        {draft === "picker"
           ? t("leadSheetsServiceIdsEditorPickerBody")
           : t("leadSheetsServiceIdsEditorTextBody")}
       </p>

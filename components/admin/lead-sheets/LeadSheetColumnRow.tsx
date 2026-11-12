@@ -11,7 +11,6 @@ import {
   GripVerticalIcon,
   Loader2Icon,
   LockIcon,
-  PencilIcon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react"
@@ -41,7 +40,7 @@ type RowProps = {
   onToggleHidden: () => void
   /** False for a client's own sheet: there, visibility is set in the client's "Shown to client" list. */
   canToggleHidden: boolean
-  onServiceIdsEditorChange?: (editor: ServiceIdsEditor) => void
+  onServiceIdsEditorChange?: (editor: ServiceIdsEditor) => void | Promise<void>
 }
 
 type CardProps = RowProps & {
@@ -152,14 +151,28 @@ function ColumnRowCard({
               {t("leadSheetsHiddenChip")}
             </span>
           ) : null}
-          {serviceEditor ? (
+          {serviceEditor && onServiceIdsEditorChange ? (
             <>
               <span aria-hidden>·</span>
-              <span className="rounded bg-[#f3ebe3] px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+              <button
+                type="button"
+                disabled={busy}
+                title={t("leadSheetsServiceIdsEditorEdit")}
+                aria-label={t("leadSheetsServiceIdsEditorEdit")}
+                onClick={() => setServiceDialogOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold shadow-sm transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                  serviceEditor === "picker"
+                    ? "border-primary/25 bg-primary/12 text-primary hover:bg-primary/18"
+                    : "border-[#c9a227]/35 bg-[#fdf4e3] text-[#8a5a08] hover:bg-[#faebd0]"
+                )}
+              >
                 {serviceEditor === "picker"
                   ? t("leadSheetsServiceIdsEditorPicker")
                   : t("leadSheetsServiceIdsEditorText")}
-              </span>
+                <span className="font-normal opacity-80">{t("leadSheetsServiceIdsEditorChange")}</span>
+              </button>
             </>
           ) : null}
         </p>
@@ -188,19 +201,6 @@ function ColumnRowCard({
               onClick={onToggleHidden}
             >
               {hidden ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
-            </Button>
-          ) : null}
-          {serviceEditor && onServiceIdsEditorChange ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              title={t("leadSheetsServiceIdsEditorEdit")}
-              aria-label={t("leadSheetsServiceIdsEditorEdit")}
-              disabled={busy}
-              onClick={() => setServiceDialogOpen(true)}
-            >
-              <PencilIcon className="size-4" />
             </Button>
           ) : null}
           {canAdd ? (
@@ -235,9 +235,17 @@ function ColumnRowCard({
           editor={serviceEditor}
           busy={busy}
           onClose={() => setServiceDialogOpen(false)}
-          onApply={(mode) => {
-            onServiceIdsEditorChange(mode)
-            setServiceDialogOpen(false)
+          onSave={async (mode) => {
+            if (mode === serviceEditor) {
+              setServiceDialogOpen(false)
+              return
+            }
+            try {
+              await onServiceIdsEditorChange?.(mode)
+              setServiceDialogOpen(false)
+            } catch {
+              // Parent shows the error; keep the dialog open for another attempt.
+            }
           }}
         />
       ) : null}

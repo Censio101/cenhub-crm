@@ -226,7 +226,9 @@ function EditorContent({
       if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Failed")
       applyServerConfig(data as unknown as ResolvedLeadSheetConfig)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("leadSheetsLoadError"))
+      const message = e instanceof Error ? e.message : t("leadSheetsLoadError")
+      setError(message)
+      throw e instanceof Error ? e : new Error(message)
     } finally {
       setRowBusy(col.id, false)
     }
