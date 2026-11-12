@@ -648,9 +648,8 @@ export function AdminClientEmailSettingsPanel() {
       </section>
 
       <section
-        className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
+        className={cn(adminSectionCardClass, "p-4 sm:p-5", sectionsDisabled && "opacity-60")}
       >
-        <h2 className="text-sm font-semibold text-foreground">{t("clientEmailRecipientsTitle")}</h2>
         <LeadNotifyRecipientsEditor
           disabled={sectionsDisabled}
           usePrimaryContact={usePrimaryContact}
