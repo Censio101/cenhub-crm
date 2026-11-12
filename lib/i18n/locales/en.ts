@@ -1950,15 +1950,14 @@ export const en: Messages = {
   leadSheetsServiceIdsEditorDialogTitle: "Services column",
   leadSheetsServiceIdsEditorEdit: "Change services input mode",
   leadSheetsServiceIdsEditorChange: "· change",
-  leadSheetsServiceIdsEditorDialogLead:
-    "Choose how this column is filled on the lead sheet and what webhooks need to send.",
+  leadSheetsServiceIdsEditorDialogSubtitle: "Lead sheet and webhooks.",
+  leadSheetsServiceIdsEditorPickerShort: "CRM services",
+  leadSheetsServiceIdsEditorTextShort: "Labels as sent",
+  leadSheetsServiceIdsEditorPickerHint: "Map inbound labels per service on webhooks.",
+  leadSheetsServiceIdsEditorTextHint: "Map the serviceIds path only.",
   leadSheetsServiceIdsEditorCurrent: "Current: {mode}",
-  leadSheetsServiceIdsEditorPickerBody:
-    "Leads use CRM services (multi-select). Map each inbound label to a service on the webhook Fields step.",
-  leadSheetsServiceIdsEditorTextBody:
-    "Leads show free text from webhooks. Map only the main serviceIds JSON path — no per-value mapping.",
   leadSheetsServiceIdsEditorPreserved:
-    "Switching modes does not delete webhook field mapping or saved inbound service aliases. Dropdown mappings return when you switch back.",
+    "Webhook mappings are kept when you switch.",
   leadSheetsServiceIdsTextPlaceholder: "Comma-separated services",
   leadSheetsWebhookExcludedChip: "Not in webhooks",
   leadSheetsIncludeInWebhook: "Include in webhooks",

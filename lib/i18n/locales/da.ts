@@ -1958,15 +1958,14 @@ const daMessages = {
   leadSheetsServiceIdsEditorEdit: "Skift ydelser-input tilstand",
   leadSheetsServiceIdsEditorChange: "· skift",
   leadSheetsServiceIdsEditorDialogTitle: "Ydelser-kolonne",
-  leadSheetsServiceIdsEditorDialogLead:
-    "Vælg hvordan kolonnen udfyldes på lead-arket, og hvad webhooks skal sende.",
+  leadSheetsServiceIdsEditorDialogSubtitle: "Lead-ark og webhooks.",
+  leadSheetsServiceIdsEditorPickerShort: "CRM-ydelser",
+  leadSheetsServiceIdsEditorTextShort: "Labels som sendt",
+  leadSheetsServiceIdsEditorPickerHint: "Map indgående labels pr. ydelse på webhooks.",
+  leadSheetsServiceIdsEditorTextHint: "Map kun serviceIds-stien.",
   leadSheetsServiceIdsEditorCurrent: "Aktuel: {mode}",
-  leadSheetsServiceIdsEditorPickerBody:
-    "Leads bruger CRM-ydelser (flervalg). Map hver indgående label til en ydelse under webhooks → Felter.",
-  leadSheetsServiceIdsEditorTextBody:
-    "Leads viser fri tekst fra webhooks. Map kun hovedstien for serviceIds — ingen mapping pr. værdi.",
   leadSheetsServiceIdsEditorPreserved:
-    "Skift af tilstand sletter ikke webhook-feltmapping eller gemte indgående ydelses-aliaser. Dropdown-mapping vises igen, når du skifter tilbage.",
+    "Webhook-mapping beholdes ved skift.",
   leadSheetsServiceIdsTextPlaceholder: "Ydelser adskilt med komma",
   leadSheetsWebhookExcludedChip: "Ikke i webhooks",
   leadSheetsIncludeInWebhook: "Med i webhooks",

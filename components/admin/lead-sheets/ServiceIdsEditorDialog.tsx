@@ -16,6 +16,8 @@ type Props = {
   onSave: (editor: ServiceIdsEditor) => void | Promise<void>
 }
 
+const MODES = ["picker", "text"] as const satisfies readonly ServiceIdsEditor[]
+
 /** Services column: how inbound values are shown and edited on the lead sheet. */
 export function ServiceIdsEditorDialog({ editor, busy, onClose, onSave }: Props) {
   const { t } = useLanguage()
@@ -28,12 +30,16 @@ export function ServiceIdsEditorDialog({ editor, busy, onClose, onSave }: Props)
   const dirty = draft !== editor
   const canSave = dirty && !busy
 
+  const hintKey = draft === "picker" ? "leadSheetsServiceIdsEditorPickerHint" : "leadSheetsServiceIdsEditorTextHint"
+
   return (
     <ModalShell
       title={t("leadSheetsServiceIdsEditorDialogTitle")}
+      subtitle={t("leadSheetsServiceIdsEditorDialogSubtitle")}
       onClose={onClose}
       dismissible={!dirty}
       busy={busy}
+      size="sm"
       footer={
         <>
           <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
@@ -50,48 +56,41 @@ export function ServiceIdsEditorDialog({ editor, busy, onClose, onSave }: Props)
         </>
       }
     >
-      <p className="text-sm text-muted-foreground">{t("leadSheetsServiceIdsEditorDialogLead")}</p>
-      <p className="mt-3 text-xs font-medium text-muted-foreground">
-        {t("leadSheetsServiceIdsEditorCurrent", {
-          mode:
-            editor === "picker"
-              ? t("leadSheetsServiceIdsEditorPicker")
-              : t("leadSheetsServiceIdsEditorText"),
+      <div className="grid grid-cols-2 gap-2.5" role="group" aria-label={t("leadSheetsServiceIdsEditorLabel")}>
+        {MODES.map((mode) => {
+          const selected = draft === mode
+          return (
+            <button
+              key={mode}
+              type="button"
+              disabled={busy}
+              aria-pressed={selected}
+              className={cn(
+                "flex min-h-[4.25rem] flex-col items-center justify-center rounded-xl border-2 px-3 py-3 text-center transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                selected
+                  ? mode === "picker"
+                    ? "border-primary bg-primary/12 text-primary shadow-sm"
+                    : "border-[#c9a227] bg-[#fdf4e3] text-[#8a5a08] shadow-sm"
+                  : "border-[#e0d5c8] bg-white text-muted-foreground hover:border-[#c9b8a5] hover:text-foreground"
+              )}
+              onClick={() => setDraft(mode)}
+            >
+              <span className="text-[15px] font-semibold leading-tight">
+                {mode === "picker"
+                  ? t("leadSheetsServiceIdsEditorPicker")
+                  : t("leadSheetsServiceIdsEditorText")}
+              </span>
+              <span className={cn("mt-1 text-[11px] font-normal leading-snug", selected ? "opacity-90" : "opacity-70")}>
+                {mode === "picker"
+                  ? t("leadSheetsServiceIdsEditorPickerShort")
+                  : t("leadSheetsServiceIdsEditorTextShort")}
+              </span>
+            </button>
+          )
         })}
-      </p>
-      <div
-        className="mt-2 inline-flex w-full rounded-lg border border-[#e0d5c8] bg-[#faf8f6] p-1"
-        role="group"
-        aria-label={t("leadSheetsServiceIdsEditorLabel")}
-      >
-        {(["picker", "text"] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            disabled={busy}
-            aria-pressed={draft === mode}
-            className={cn(
-              "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              draft === mode
-                ? "bg-white text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => setDraft(mode)}
-          >
-            {mode === "picker"
-              ? t("leadSheetsServiceIdsEditorPicker")
-              : t("leadSheetsServiceIdsEditorText")}
-          </button>
-        ))}
       </div>
-      <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        {draft === "picker"
-          ? t("leadSheetsServiceIdsEditorPickerBody")
-          : t("leadSheetsServiceIdsEditorTextBody")}
-      </p>
-      <p className="mt-3 rounded-lg border border-[#e8e0d8] bg-[#faf8f6] px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-        {t("leadSheetsServiceIdsEditorPreserved")}
-      </p>
+      <p className="mt-3 text-center text-xs text-muted-foreground">{t(hintKey)}</p>
     </ModalShell>
   )
 }
