@@ -178,6 +178,7 @@ export function AdminClientEmailSettingsPanel() {
   const [deliveriesLoading, setDeliveriesLoading] = useState(false)
   const [resendingLeadId, setResendingLeadId] = useState<string | null>(null)
   const [savingRecipients, setSavingRecipients] = useState(false)
+  const [savingMaster, setSavingMaster] = useState(false)
   const [recipientsSavedFlash, setRecipientsSavedFlash] = useState(false)
 
   const recipientsBaselineRef = useRef<{
@@ -454,6 +455,32 @@ export function AdminClientEmailSettingsPanel() {
     return data.settings
   }
 
+  async function toggleLeadNotifyMaster() {
+    if (loading || savingMaster) return
+    const next = !leadNotifyEnabled
+    setLeadNotifyEnabled(next)
+    setSavingMaster(true)
+    setError(null)
+    setNotice(null)
+    setRecipientsSavedFlash(false)
+    try {
+      const settings = await patchEmailSettings({ leadNotifyEnabled: next })
+      setLeadNotifyEnabled(settings.leadNotifyEnabled)
+      if (!settings.leadNotifyEnabled) {
+        syncRecipientsBaseline(
+          settings.usePrimaryContact,
+          settings.extraNotifyEmails,
+          settings.ccNotifyEmails ?? ""
+        )
+      }
+    } catch (toggleError) {
+      setLeadNotifyEnabled(!next)
+      setError(toggleError instanceof Error ? toggleError.message : t("clientEmailSaveError"))
+    } finally {
+      setSavingMaster(false)
+    }
+  }
+
   async function saveRecipients() {
     if (loading || !leadNotifyEnabled || !recipientsDirty()) return
     setSavingRecipients(true)
@@ -625,16 +652,14 @@ export function AdminClientEmailSettingsPanel() {
   const activeFromName = mailgunUsesWorkspace ? workspaceMailFromName : mailFromName
   const mailgunNotReady = mailgunUsesWorkspace && !workspaceMailConfigured
 
-  const sectionsDisabled = !leadNotifyEnabled
-
   useEffect(() => {
-    if (loading || sectionsDisabled || !recipientsDirty()) return
+    if (loading || !leadNotifyEnabled || !recipientsDirty()) return
     const timer = setTimeout(() => {
       void saveRecipients()
     }, 450)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- debounced autosave for recipient fields only
-  }, [usePrimaryContact, extraNotifyEmails, ccNotifyEmails, loading, sectionsDisabled])
+  }, [usePrimaryContact, extraNotifyEmails, ccNotifyEmails, loading, leadNotifyEnabled])
 
   function selectEmailTab(next: "settings" | "history") {
     const before = emailTabBarRef.current?.getBoundingClientRect().top ?? 0
@@ -684,71 +709,87 @@ export function AdminClientEmailSettingsPanel() {
         </>
       ) : emailTab === "settings" ? (
         <>
-      <section className={cn(adminSectionCardClass, "divide-y divide-[#eee6de]")}>
-        <label className="flex cursor-pointer items-center justify-between gap-4 px-5 py-4 sm:px-6">
-          <span>
+      <section className={cn(adminSectionCardClass, "px-5 py-4 sm:px-6")}>
+        <div className="flex items-center justify-between gap-4">
+          <span className="min-w-0">
             <span className="block text-sm font-medium text-foreground">
               {t("clientEmailMasterLabel")}
             </span>
-            {!leadNotifyEnabled ? (
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                {t("clientEmailMasterHintOff")}
-              </span>
-            ) : null}
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              {leadNotifyEnabled
+                ? t("clientEmailMasterHintOn")
+                : t("clientEmailMasterHintOff")}
+            </span>
           </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={leadNotifyEnabled}
-            onClick={() => setLeadNotifyEnabled((value) => !value)}
-            className={cn(
-              "relative h-6 w-10 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:outline-none",
-              leadNotifyEnabled ? "bg-primary" : "bg-[#d9cfc3]"
-            )}
-          >
-            <span
-              className={cn(
-                "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform",
-                leadNotifyEnabled && "translate-x-4"
-              )}
-            />
-          </button>
-        </label>
-
-        <div
-          className={cn(
-            "flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6",
-            sectionsDisabled && "opacity-50"
-          )}
-        >
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">{t("clientEmailMailgunFromLabel")}</p>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
-              {activeFromName ? `${activeFromName} · ` : ""}
-              {activeFromEmail || "—"}
-              {mailgunUsesWorkspace
-                ? ` · ${t("clientEmailMailgunPillCensio")}`
-                : ` · ${t("clientEmailMailgunPillClient")}`}
-            </p>
-            {mailgunNotReady ? (
-              <p className="mt-2 text-xs text-amber-800">{t("clientEmailMailgunWorkspaceMissing")}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            {savingMaster ? (
+              <Loader2Icon className="size-4 animate-spin text-muted-foreground" aria-hidden />
             ) : null}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={leadNotifyEnabled}
+              disabled={savingMaster}
+              onClick={() => void toggleLeadNotifyMaster()}
+              className={cn(
+                "relative h-6 w-10 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:outline-none disabled:opacity-60",
+                leadNotifyEnabled ? "bg-primary" : "bg-[#d9cfc3]"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform",
+                  leadNotifyEnabled && "translate-x-4"
+                )}
+              />
+            </button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(adminOutlineButtonClass, "shrink-0 self-start")}
-            disabled={sectionsDisabled}
-            onClick={openMailgunModal}
-          >
-            {t("clientEmailMailgunChange")}
-          </Button>
         </div>
       </section>
 
+      {!leadNotifyEnabled ? (
+        <section
+          className={cn(
+            adminSectionCardClass,
+            "border border-dashed border-[#d3c3b2] bg-[#faf8f6] px-5 py-6 sm:px-6"
+          )}
+        >
+          <h2 className="text-sm font-semibold text-foreground">{t("clientEmailOffTitle")}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("clientEmailOffBody")}</p>
+        </section>
+      ) : (
+        <>
       <section
-        className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
+        className={cn(
+          adminSectionCardClass,
+          "flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"
+        )}
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">{t("clientEmailMailgunFromLabel")}</p>
+          <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            {activeFromName ? `${activeFromName} · ` : ""}
+            {activeFromEmail || "—"}
+            {mailgunUsesWorkspace
+              ? ` · ${t("clientEmailMailgunPillCensio")}`
+              : ` · ${t("clientEmailMailgunPillClient")}`}
+          </p>
+          {mailgunNotReady ? (
+            <p className="mt-2 text-xs text-amber-800">{t("clientEmailMailgunWorkspaceMissing")}</p>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(adminOutlineButtonClass, "shrink-0 self-start")}
+          onClick={openMailgunModal}
+        >
+          {t("clientEmailMailgunChange")}
+        </Button>
+      </section>
+
+      <section className={cn(adminSectionCardClass, "space-y-3 p-5")}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">{t("clientEmailRecipientsTitle")}</h2>
@@ -762,7 +803,6 @@ export function AdminClientEmailSettingsPanel() {
           ) : null}
         </div>
         <LeadNotifyRecipientsEditor
-          disabled={sectionsDisabled}
           usePrimaryContact={usePrimaryContact}
           onUsePrimaryContactChange={setUsePrimaryContact}
           primaryContactEmail={primaryContactEmail}
@@ -774,9 +814,7 @@ export function AdminClientEmailSettingsPanel() {
         />
       </section>
 
-      <section
-        className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
-      >
+      <section className={cn(adminSectionCardClass, "space-y-3 p-5")}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">{t("clientEmailWebhooksTitle")}</h2>
           <Button
@@ -784,7 +822,7 @@ export function AdminClientEmailSettingsPanel() {
             variant="outline"
             size="sm"
             className={adminOutlineButtonClass}
-            disabled={sectionsDisabled || funnels.length === 0}
+            disabled={funnels.length === 0}
             onClick={openWebhooksModal}
           >
             {t("clientEmailWebhooksAddButton")}
@@ -804,7 +842,6 @@ export function AdminClientEmailSettingsPanel() {
                   <span className="truncate">{funnel.name}</span>
                   <button
                     type="button"
-                    disabled={sectionsDisabled}
                     className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-700 disabled:pointer-events-none disabled:opacity-40"
                     aria-label={t("clientEmailWebhooksRemoveConfirm")}
                     onClick={() => setRemoveFunnelTarget(funnel)}
@@ -818,16 +855,13 @@ export function AdminClientEmailSettingsPanel() {
         )}
       </section>
 
-      <section
-        className={cn(adminSectionCardClass, "space-y-4 p-5", sectionsDisabled && "opacity-60")}
-      >
+      <section className={cn(adminSectionCardClass, "space-y-4 p-5")}>
         <h2 className="text-sm font-semibold text-foreground">{t("clientEmailContentTitle")}</h2>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("clientEmailSubjectLabel")}</span>
           <input
             className={inputClass}
             value={notifySubjectTemplate}
-            disabled={sectionsDisabled}
             onChange={(e) => setNotifySubjectTemplate(e.target.value)}
           />
           <span className="text-xs text-muted-foreground">{t("clientEmailSubjectHint")}</span>
@@ -837,7 +871,6 @@ export function AdminClientEmailSettingsPanel() {
           <textarea
             className={cn(inputClass, "min-h-16")}
             value={notifyIntroTemplate}
-            disabled={sectionsDisabled}
             onChange={(e) => setNotifyIntroTemplate(e.target.value)}
           />
         </label>
@@ -846,7 +879,6 @@ export function AdminClientEmailSettingsPanel() {
           variant="outline"
           size="sm"
           className={adminOutlineButtonClass}
-          disabled={sectionsDisabled}
           onClick={openFieldsModal}
         >
           {t("clientEmailFieldsButton")}
@@ -856,20 +888,13 @@ export function AdminClientEmailSettingsPanel() {
           <textarea
             className={cn(inputClass, "min-h-20")}
             value={notifyClosingTemplate}
-            disabled={sectionsDisabled}
             onChange={(e) => setNotifyClosingTemplate(e.target.value)}
           />
         </label>
       </section>
 
       {preview ? (
-        <section
-          className={cn(
-            adminSectionCardClass,
-            "space-y-3 p-5 text-sm",
-            sectionsDisabled && "opacity-60"
-          )}
-        >
+        <section className={cn(adminSectionCardClass, "space-y-3 p-5 text-sm")}>
           <h2 className="font-semibold text-foreground">{t("clientEmailPreviewTitle")}</h2>
           <p className="text-xs text-muted-foreground">{t("clientEmailPreviewValuesHint")}</p>
           <div className="rounded-lg border border-[#e8e0d8] bg-[#faf8f6] p-4 font-mono text-xs leading-relaxed">
@@ -898,13 +923,15 @@ export function AdminClientEmailSettingsPanel() {
           type="button"
           variant="outline"
           className={adminOutlineButtonClass}
-          disabled={testing || sectionsDisabled}
+          disabled={testing}
           onClick={() => void sendTest()}
         >
           {testing ? <Loader2Icon className="size-4 animate-spin" /> : null}
           {t("clientEmailTest")}
         </Button>
       </div>
+        </>
+      )}
         </>
       ) : (
         <section className={cn(adminSectionCardClass, "overflow-hidden")}>

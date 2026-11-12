@@ -489,9 +489,13 @@ export const en: Messages = {
   clientNavFunnels: "Webhooks",
   clientNavEmail: "Email settings",
   clientEmailTitle: "Lead email notifications",
-  clientEmailMasterLabel: "Send lead emails from Censio",
+  clientEmailMasterLabel: "Send lead emails from Cenhub CRM",
+  clientEmailMasterHintOn: "Cenhub CRM emails the client when a new lead arrives.",
   clientEmailMasterHintOff:
     "Turn off when Make, Elementor, or another tool already emails the client.",
+  clientEmailOffTitle: "No lead emails from Cenhub CRM",
+  clientEmailOffBody:
+    "This client does not receive lead notification emails from Cenhub CRM. Leads still flow into the CRM as usual. Turn the switch on above when you want Cenhub CRM to email the client about new leads.",
   clientEmailMailgunTitle: "Mailgun",
   clientEmailMailgunOrgBadge: "Sending via this client's Mailgun",
   clientEmailMailgunWorkspaceBadge: "Sending via Censio Mailgun (Mail & integrations)",

@@ -491,9 +491,13 @@ const daMessages = {
   clientNavFunnels: "Webhooks",
   clientNavEmail: "E-mail-indstillinger",
   clientEmailTitle: "Lead-e-mail til klient",
-  clientEmailMasterLabel: "Send lead-e-mails fra Censio",
+  clientEmailMasterLabel: "Send lead-e-mails fra Cenhub CRM",
+  clientEmailMasterHintOn: "Cenhub CRM sender mail til klienten, når der kommer et nyt lead.",
   clientEmailMasterHintOff:
     "Slå fra hvis Make, Elementor eller et andet værktøj allerede sender mail til klienten.",
+  clientEmailOffTitle: "Ingen lead-e-mails fra Cenhub CRM",
+  clientEmailOffBody:
+    "Denne klient modtager ikke lead-notifikationer fra Cenhub CRM. Leads kommer stadig ind i CRM som normalt. Slå kontakten til ovenfor, når Cenhub CRM skal maile klienten om nye leads.",
   clientEmailMailgunTitle: "Mailgun",
   clientEmailMailgunOrgBadge: "Sender via klientens Mailgun",
   clientEmailMailgunWorkspaceBadge: "Sender via Censio Mailgun (Mail & integrationer)",
