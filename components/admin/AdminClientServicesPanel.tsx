@@ -182,20 +182,6 @@ export function AdminClientServicesPanel() {
     if (!slug) return
     try {
       const res = await fetch(`/api/admin/organizations/${slug}/services`)
-      // #region agent log
-      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a1e63a" },
-        body: JSON.stringify({
-          sessionId: "a1e63a",
-          hypothesisId: "A",
-          location: "AdminClientServicesPanel.tsx:load",
-          message: "services GET response",
-          data: { slug, status: res.status, ok: res.ok },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
       if (!res.ok) throw new Error("load")
       reset((await res.json()) as ClientServicesData)
       setError(null)
@@ -277,28 +263,6 @@ export function AdminClientServicesPanel() {
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
   }, [dirty])
-
-  // #region agent log
-  useEffect(() => {
-    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a1e63a" },
-      body: JSON.stringify({
-        sessionId: "a1e63a",
-        hypothesisId: "C",
-        location: "AdminClientServicesPanel.tsx:state",
-        message: "services panel state",
-        data: {
-          loading,
-          hasData: Boolean(data),
-          slug: slug ?? null,
-          enabledCount: enabledClientServices.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-  }, [loading, data, slug, enabledClientServices.length])
-  // #endregion
 
   function toggle(id: string) {
     setItems((current) =>
@@ -547,30 +511,27 @@ export function AdminClientServicesPanel() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold tracking-tight">{t("clientServicesTitle")}</h2>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground">
+            {t("clientServicesShownCount").replace("{count}", String(total))}
+          </span>
+          {total > 0 ? (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {t("clientServicesClearAll")}
+            </button>
+          ) : null}
+        </div>
+      </div>
       {notices}
 
       <section className={cn(adminSectionCardClass, "overflow-clip")}>
-        <header className="flex flex-wrap items-center gap-3 px-4 pt-4 pb-3 sm:px-5">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold tracking-tight">{t("clientServicesTitle")}</h2>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">
-              {t("clientServicesShownCount").replace("{count}", String(total))}
-            </span>
-            {total > 0 ? (
-              <button
-                type="button"
-                onClick={clearAll}
-                className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-              >
-                {t("clientServicesClearAll")}
-              </button>
-            ) : null}
-          </div>
-        </header>
-
-        <div className="min-h-9 px-3 pb-1 sm:px-5">
+        <div className="min-h-9 px-3 pb-1 pt-4 sm:px-5">
           <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             {t("clientServicesSelectedLabel")}
           </p>
