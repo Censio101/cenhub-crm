@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { HistoryIcon, Loader2Icon, Settings2Icon, XIcon } from "lucide-react"
 
 import { AdminPillTabs } from "@/components/admin/AdminPillTabs"
@@ -177,6 +177,15 @@ export function AdminClientEmailSettingsPanel() {
   const [deliveriesTotalPages, setDeliveriesTotalPages] = useState(1)
   const [deliveriesLoading, setDeliveriesLoading] = useState(false)
   const [resendingLeadId, setResendingLeadId] = useState<string | null>(null)
+  const [savingRecipients, setSavingRecipients] = useState(false)
+  const [recipientsSavedFlash, setRecipientsSavedFlash] = useState(false)
+
+  const recipientsBaselineRef = useRef<{
+    usePrimaryContact: boolean
+    extraNotifyEmails: string
+    ccNotifyEmails: string
+  } | null>(null)
+  const recipientsSavedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const selectedFunnels = useMemo(
     () => funnels.filter((funnel) => funnel.notifyEnabled),
@@ -187,11 +196,49 @@ export function AdminClientEmailSettingsPanel() {
     [funnels]
   )
 
+  function syncRecipientsBaseline(
+    usePrimary: boolean,
+    extra: string,
+    cc: string
+  ) {
+    recipientsBaselineRef.current = {
+      usePrimaryContact: usePrimary,
+      extraNotifyEmails: extra,
+      ccNotifyEmails: cc,
+    }
+  }
+
+  function recipientsDirty(): boolean {
+    const baseline = recipientsBaselineRef.current
+    if (!baseline) return false
+    return (
+      baseline.usePrimaryContact !== usePrimaryContact ||
+      baseline.extraNotifyEmails !== extraNotifyEmails ||
+      baseline.ccNotifyEmails !== ccNotifyEmails
+    )
+  }
+
+  function applyRecipientFieldsFromServer(settings: SettingsDto) {
+    setUsePrimaryContact(settings.usePrimaryContact)
+    setExtraNotifyEmails(settings.extraNotifyEmails)
+    setCcNotifyEmails(settings.ccNotifyEmails ?? "")
+    syncRecipientsBaseline(
+      settings.usePrimaryContact,
+      settings.extraNotifyEmails,
+      settings.ccNotifyEmails ?? ""
+    )
+  }
+
   function applySettings(settings: SettingsDto) {
     setLeadNotifyEnabled(settings.leadNotifyEnabled)
     setUsePrimaryContact(settings.usePrimaryContact)
     setExtraNotifyEmails(settings.extraNotifyEmails)
     setCcNotifyEmails(settings.ccNotifyEmails ?? "")
+    syncRecipientsBaseline(
+      settings.usePrimaryContact,
+      settings.extraNotifyEmails,
+      settings.ccNotifyEmails ?? ""
+    )
     setPrimaryContactEmail(settings.primaryContactEmail)
     setNotifySubjectTemplate(settings.notifySubjectTemplate)
     setNotifyIntroTemplate(settings.notifyIntroTemplate)
@@ -382,49 +429,89 @@ export function AdminClientEmailSettingsPanel() {
     void load()
   }, [slug])
 
+  useEffect(() => {
+    return () => {
+      if (recipientsSavedFlashTimerRef.current) {
+        clearTimeout(recipientsSavedFlashTimerRef.current)
+      }
+    }
+  }, [])
+
   const notifyFunnelIds = useMemo(
     () => funnels.filter((funnel) => funnel.notifyEnabled).map((funnel) => funnel.id),
     [funnels]
   )
+
+  async function patchEmailSettings(body: Record<string, unknown>): Promise<SettingsDto> {
+    const response = await fetch(`/api/admin/organizations/${slug}/email-settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    const data = (await response.json()) as { settings?: SettingsDto; error?: string }
+    if (!response.ok) throw new Error(data.error ?? t("clientEmailSaveError"))
+    if (!data.settings) throw new Error(t("clientEmailSaveError"))
+    return data.settings
+  }
+
+  async function saveRecipients() {
+    if (loading || !leadNotifyEnabled || !recipientsDirty()) return
+    setSavingRecipients(true)
+    setError(null)
+    try {
+      const settings = await patchEmailSettings({
+        usePrimaryContact,
+        extraNotifyEmails,
+        ccNotifyEmails,
+      })
+      applyRecipientFieldsFromServer(settings)
+      setRecipientsSavedFlash(true)
+      if (recipientsSavedFlashTimerRef.current) {
+        clearTimeout(recipientsSavedFlashTimerRef.current)
+      }
+      recipientsSavedFlashTimerRef.current = setTimeout(() => {
+        setRecipientsSavedFlash(false)
+        recipientsSavedFlashTimerRef.current = null
+      }, 2000)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t("clientEmailSaveError"))
+    } finally {
+      setSavingRecipients(false)
+    }
+  }
 
   async function save() {
     setSaving(true)
     setError(null)
     setNotice(null)
     try {
-      const response = await fetch(`/api/admin/organizations/${slug}/email-settings`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          leadNotifyEnabled,
-          usePrimaryContact,
-          extraNotifyEmails,
-          ccNotifyEmails,
-          notifySubjectTemplate,
-          notifyIntroTemplate,
-          notifyClosingTemplate,
-          notifyIncludedColumnKeys: includedKeys,
-          notifyFunnelIds,
-          ...(mailgunMode === "workspace"
-            ? {
-                mailgunApiKey: null,
-                mailgunDomain: "",
-                mailgunApiBase: "https://api.mailgun.net",
-                mailFrom: "",
-                mailFromName: "",
-              }
-            : {
-                mailgunApiKey: mailgunApiKey.trim() || undefined,
-                mailgunDomain,
-                mailgunApiBase,
-                mailFrom,
-                mailFromName,
-              }),
-        }),
+      const settings = await patchEmailSettings({
+        leadNotifyEnabled,
+        usePrimaryContact,
+        extraNotifyEmails,
+        ccNotifyEmails,
+        notifySubjectTemplate,
+        notifyIntroTemplate,
+        notifyClosingTemplate,
+        notifyIncludedColumnKeys: includedKeys,
+        notifyFunnelIds,
+        ...(mailgunMode === "workspace"
+          ? {
+              mailgunApiKey: null,
+              mailgunDomain: "",
+              mailgunApiBase: "https://api.mailgun.net",
+              mailFrom: "",
+              mailFromName: "",
+            }
+          : {
+              mailgunApiKey: mailgunApiKey.trim() || undefined,
+              mailgunDomain,
+              mailgunApiBase,
+              mailFrom,
+              mailFromName,
+            }),
       })
-      const data = (await response.json()) as { settings?: SettingsDto; error?: string }
-      if (!response.ok) throw new Error(data.error ?? t("clientEmailSaveError"))
-      applySettings(data.settings!)
+      applySettings(settings)
       setNotice(t("clientEmailSaved"))
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t("clientEmailSaveError"))
@@ -540,6 +627,15 @@ export function AdminClientEmailSettingsPanel() {
 
   const sectionsDisabled = !leadNotifyEnabled
 
+  useEffect(() => {
+    if (loading || sectionsDisabled || !recipientsDirty()) return
+    const timer = setTimeout(() => {
+      void saveRecipients()
+    }, 450)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounced autosave for recipient fields only
+  }, [usePrimaryContact, extraNotifyEmails, ccNotifyEmails, loading, sectionsDisabled])
+
   function selectEmailTab(next: "settings" | "history") {
     const before = emailTabBarRef.current?.getBoundingClientRect().top ?? 0
     setEmailTab(next)
@@ -654,7 +750,17 @@ export function AdminClientEmailSettingsPanel() {
       <section
         className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
       >
-        <h2 className="text-sm font-semibold text-foreground">{t("clientEmailRecipientsTitle")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-foreground">{t("clientEmailRecipientsTitle")}</h2>
+          {savingRecipients ? (
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2Icon className="size-3.5 animate-spin" aria-hidden />
+              {t("clientEmailRecipientsSaving")}
+            </span>
+          ) : recipientsSavedFlash ? (
+            <span className="text-xs font-medium text-primary">{t("clientEmailRecipientsSaved")}</span>
+          ) : null}
+        </div>
         <LeadNotifyRecipientsEditor
           disabled={sectionsDisabled}
           usePrimaryContact={usePrimaryContact}

@@ -513,6 +513,8 @@ export const en: Messages = {
   clientEmailMailgunWorkspaceMissing:
     "Censio Mailgun is not set up — configure it under Mail & integrations before lead emails can send.",
   clientEmailRecipientsTitle: "Recipients",
+  clientEmailRecipientsSaving: "Saving…",
+  clientEmailRecipientsSaved: "Recipients saved",
   clientEmailTo: "To",
   clientEmailCc: "CC",
   clientEmailAddTo: "Add",
