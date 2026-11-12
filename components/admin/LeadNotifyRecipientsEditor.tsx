@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { FormEvent, useMemo, useState } from "react"
+import { FormEvent, useMemo, useRef, useState } from "react"
 import { PlusIcon, XIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
@@ -59,6 +59,7 @@ export function LeadNotifyRecipientsEditor({
   const [draftTarget, setDraftTarget] = useState<DraftTarget | null>(null)
   const [draftEmail, setDraftEmail] = useState("")
   const [fieldError, setFieldError] = useState<string | null>(null)
+  const commitLock = useRef(false)
 
   const taken = useMemo(() => {
     const set = new Set<string>(extraEmails)
@@ -68,16 +69,26 @@ export function LeadNotifyRecipientsEditor({
   }, [extraEmails, ccEmails, usePrimaryContact, companyEmail])
 
   function openDraft(target: DraftTarget) {
+    commitLock.current = false
     setDraftTarget(target)
     setDraftEmail("")
     setFieldError(null)
   }
 
-  function handleAdd(event: FormEvent) {
-    event.preventDefault()
-    if (!draftTarget) return
+  function closeDraft() {
+    commitLock.current = true
+    setDraftEmail("")
+    setDraftTarget(null)
+    setFieldError(null)
+  }
+
+  function commitDraft() {
+    if (commitLock.current || !draftTarget) return
     const normalized = draftEmail.trim().toLowerCase()
-    if (!normalized) return
+    if (!normalized) {
+      closeDraft()
+      return
+    }
     if (!isValidNotifyEmail(normalized)) {
       setFieldError(t("clientEmailRecipientInvalid"))
       return
@@ -90,6 +101,7 @@ export function LeadNotifyRecipientsEditor({
       setFieldError(t("clientEmailRecipientDuplicate"))
       return
     }
+    commitLock.current = true
     if (draftTarget === "to") {
       onExtraNotifyEmailsChange(joinEmails([...extraEmails, normalized]))
     } else {
@@ -98,6 +110,11 @@ export function LeadNotifyRecipientsEditor({
     setDraftEmail("")
     setDraftTarget(null)
     setFieldError(null)
+  }
+
+  function handleAdd(event: FormEvent) {
+    event.preventDefault()
+    commitDraft()
   }
 
   return (
@@ -159,8 +176,9 @@ export function LeadNotifyRecipientsEditor({
                 placeholder={t("clientEmailRecipientPlaceholder")}
                 className={draftInputClass}
                 onChange={(event) => setDraftEmail(event.target.value)}
+                onBlur={() => commitDraft()}
                 onKeyDown={(event) => {
-                  if (event.key === "Escape") setDraftTarget(null)
+                  if (event.key === "Escape") closeDraft()
                 }}
               />
             </form>
@@ -204,8 +222,9 @@ export function LeadNotifyRecipientsEditor({
                 placeholder={t("clientEmailRecipientPlaceholder")}
                 className={draftInputClass}
                 onChange={(event) => setDraftEmail(event.target.value)}
+                onBlur={() => commitDraft()}
                 onKeyDown={(event) => {
-                  if (event.key === "Escape") setDraftTarget(null)
+                  if (event.key === "Escape") closeDraft()
                 }}
               />
             </form>
