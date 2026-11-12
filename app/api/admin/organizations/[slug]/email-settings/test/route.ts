@@ -16,6 +16,7 @@ import {
 import { resolveLeadNotifyMailgunSettings } from "@/lib/email/mailgun-delivery-settings"
 import { sendMailWithMailgunSettings } from "@/lib/email/mailgun"
 import {
+  buildLeadNotifyCcList,
   buildLeadNotifyRecipientList,
 } from "@/lib/leads/notify-new-lead"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -37,6 +38,10 @@ export async function POST(_request: Request, context: RouteContext) {
       usePrimaryContact: settingsRow?.use_primary_contact ?? true,
       primaryContactEmail: organization.primary_contact_email,
       extraNotifyEmails: settingsRow?.extra_notify_emails,
+    })
+    const cc = buildLeadNotifyCcList({
+      ccNotifyEmails: settingsRow?.cc_notify_emails,
+      to: recipients,
     })
     if (recipients.length === 0) {
       return NextResponse.json({ error: "No recipients configured" }, { status: 400 })
@@ -75,6 +80,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
     await sendMailWithMailgunSettings(mailgun, {
       to: recipients.join(", "),
+      cc: cc.length > 0 ? cc.join(", ") : undefined,
       subject: `[Test] ${message.subject}`,
       html: message.html,
       text: message.text,

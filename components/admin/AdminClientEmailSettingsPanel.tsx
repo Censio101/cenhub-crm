@@ -45,6 +45,7 @@ type SettingsDto = {
   leadNotifyEnabled: boolean
   usePrimaryContact: boolean
   extraNotifyEmails: string
+  ccNotifyEmails: string
   primaryContactEmail: string | null
   notifySubjectTemplate: string
   notifyIntroTemplate: string
@@ -133,6 +134,7 @@ export function AdminClientEmailSettingsPanel() {
   const [leadNotifyEnabled, setLeadNotifyEnabled] = useState(false)
   const [usePrimaryContact, setUsePrimaryContact] = useState(true)
   const [extraNotifyEmails, setExtraNotifyEmails] = useState("")
+  const [ccNotifyEmails, setCcNotifyEmails] = useState("")
   const [primaryContactEmail, setPrimaryContactEmail] = useState<string | null>(null)
   const [notifySubjectTemplate, setNotifySubjectTemplate] = useState("")
   const [notifyIntroTemplate, setNotifyIntroTemplate] = useState("")
@@ -189,6 +191,7 @@ export function AdminClientEmailSettingsPanel() {
     setLeadNotifyEnabled(settings.leadNotifyEnabled)
     setUsePrimaryContact(settings.usePrimaryContact)
     setExtraNotifyEmails(settings.extraNotifyEmails)
+    setCcNotifyEmails(settings.ccNotifyEmails ?? "")
     setPrimaryContactEmail(settings.primaryContactEmail)
     setNotifySubjectTemplate(settings.notifySubjectTemplate)
     setNotifyIntroTemplate(settings.notifyIntroTemplate)
@@ -396,6 +399,7 @@ export function AdminClientEmailSettingsPanel() {
           leadNotifyEnabled,
           usePrimaryContact,
           extraNotifyEmails,
+          ccNotifyEmails,
           notifySubjectTemplate,
           notifyIntroTemplate,
           notifyClosingTemplate,
@@ -648,8 +652,9 @@ export function AdminClientEmailSettingsPanel() {
       </section>
 
       <section
-        className={cn(adminSectionCardClass, "p-4 sm:p-5", sectionsDisabled && "opacity-60")}
+        className={cn(adminSectionCardClass, "space-y-3 p-5", sectionsDisabled && "opacity-60")}
       >
+        <h2 className="text-sm font-semibold text-foreground">{t("clientEmailRecipientsTitle")}</h2>
         <LeadNotifyRecipientsEditor
           disabled={sectionsDisabled}
           usePrimaryContact={usePrimaryContact}
@@ -658,6 +663,8 @@ export function AdminClientEmailSettingsPanel() {
           companySettingsHref={adminClientSettingsSectionPath(slug, "company")}
           extraNotifyEmails={extraNotifyEmails}
           onExtraNotifyEmailsChange={setExtraNotifyEmails}
+          ccNotifyEmails={ccNotifyEmails}
+          onCcNotifyEmailsChange={setCcNotifyEmails}
         />
       </section>
 
@@ -853,7 +860,16 @@ export function AdminClientEmailSettingsPanel() {
                               {row.leadName.trim() || "—"}
                             </p>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {[row.funnelName?.trim(), row.recipients.join(", ")]
+                              {[
+                                row.funnelName?.trim(),
+                                row.recipients
+                                  .map((email) =>
+                                    email.startsWith("cc:")
+                                      ? `${email.slice(3)} (${t("clientEmailCc")})`
+                                      : email
+                                  )
+                                  .join(", "),
+                              ]
                                 .filter(Boolean)
                                 .join(" · ") || "—"}
                             </p>

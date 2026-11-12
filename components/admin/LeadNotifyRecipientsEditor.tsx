@@ -2,15 +2,13 @@
 
 import Link from "next/link"
 import { FormEvent, useMemo, useState } from "react"
-import { PencilIcon, Trash2Icon } from "lucide-react"
+import { PlusIcon, XIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/i18n/LanguageProvider"
-import { Button } from "@/components/ui/button"
 import { isValidNotifyEmail, parseNotifyEmailList } from "@/lib/onboarding/notify-emails"
 import { cn } from "cn"
 
-const inputClass =
-  "h-9 w-full min-w-0 rounded-lg border border-[#d3c3b2] bg-white px-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+type DraftTarget = "to" | "cc"
 
 type Props = {
   disabled?: boolean
@@ -20,7 +18,27 @@ type Props = {
   companySettingsHref: string
   extraNotifyEmails: string
   onExtraNotifyEmailsChange: (value: string) => void
+  ccNotifyEmails: string
+  onCcNotifyEmailsChange: (value: string) => void
 }
+
+function joinEmails(emails: string[]) {
+  return emails.length > 0 ? emails.join(", ") : ""
+}
+
+const pillClass =
+  "inline-flex h-9 max-w-full items-center gap-1 rounded-full border border-[#d3c3b2] bg-[#faf8f6] text-sm font-medium text-foreground"
+
+const emailTextClass = "flex h-full min-w-0 items-center truncate leading-normal"
+
+const addPillClass =
+  "inline-flex h-9 items-center gap-1 rounded-full border border-dashed border-[#d3c3b2] bg-white px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-40"
+
+const removeButtonClass =
+  "flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+
+const draftInputClass =
+  "h-9 w-48 rounded-full border border-[#d3c3b2] bg-white px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
 
 export function LeadNotifyRecipientsEditor({
   disabled = false,
@@ -30,182 +48,175 @@ export function LeadNotifyRecipientsEditor({
   companySettingsHref,
   extraNotifyEmails,
   onExtraNotifyEmailsChange,
+  ccNotifyEmails,
+  onCcNotifyEmailsChange,
 }: Props) {
   const { t } = useLanguage()
   const extraEmails = useMemo(() => parseNotifyEmailList(extraNotifyEmails), [extraNotifyEmails])
+  const ccEmails = useMemo(() => parseNotifyEmailList(ccNotifyEmails), [ccNotifyEmails])
+  const companyEmail = primaryContactEmail?.trim().toLowerCase() || null
 
+  const [draftTarget, setDraftTarget] = useState<DraftTarget | null>(null)
   const [draftEmail, setDraftEmail] = useState("")
   const [fieldError, setFieldError] = useState<string | null>(null)
-  const [editingEmail, setEditingEmail] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState("")
 
-  function updateExtraList(next: string[]) {
-    onExtraNotifyEmailsChange(next.length > 0 ? next.join(", ") : "")
-  }
+  const taken = useMemo(() => {
+    const set = new Set<string>(extraEmails)
+    for (const email of ccEmails) set.add(email)
+    if (usePrimaryContact && companyEmail) set.add(companyEmail)
+    return set
+  }, [extraEmails, ccEmails, usePrimaryContact, companyEmail])
 
-  function validateAndNormalize(raw: string): string | null {
-    const normalized = raw.trim().toLowerCase()
-    if (!normalized) return null
-    if (!isValidNotifyEmail(normalized)) {
-      setFieldError(t("clientEmailRecipientInvalid"))
-      return null
-    }
+  function openDraft(target: DraftTarget) {
+    setDraftTarget(target)
+    setDraftEmail("")
     setFieldError(null)
-    return normalized
   }
 
   function handleAdd(event: FormEvent) {
     event.preventDefault()
-    const normalized = validateAndNormalize(draftEmail)
+    if (!draftTarget) return
+    const normalized = draftEmail.trim().toLowerCase()
     if (!normalized) return
-    if (extraEmails.includes(normalized)) {
+    if (!isValidNotifyEmail(normalized)) {
+      setFieldError(t("clientEmailRecipientInvalid"))
+      return
+    }
+    if (taken.has(normalized) || (draftTarget === "cc" && extraEmails.includes(normalized))) {
       setFieldError(t("clientEmailRecipientDuplicate"))
       return
     }
-    if (usePrimaryContact && primaryContactEmail?.trim().toLowerCase() === normalized) {
-      setFieldError(t("clientEmailRecipientDuplicatePrimary"))
+    if (draftTarget === "to" && ccEmails.includes(normalized)) {
+      setFieldError(t("clientEmailRecipientDuplicate"))
       return
     }
-    updateExtraList([...extraEmails, normalized])
+    if (draftTarget === "to") {
+      onExtraNotifyEmailsChange(joinEmails([...extraEmails, normalized]))
+    } else {
+      onCcNotifyEmailsChange(joinEmails([...ccEmails, normalized]))
+    }
     setDraftEmail("")
-  }
-
-  function handleRemove(email: string) {
-    updateExtraList(extraEmails.filter((item) => item !== email))
-    if (editingEmail === email) {
-      setEditingEmail(null)
-      setEditDraft("")
-    }
-  }
-
-  function commitEdit(previous: string) {
-    const normalized = validateAndNormalize(editDraft)
-    if (!normalized) return
-    if (normalized !== previous && extraEmails.includes(normalized)) {
-      setFieldError(t("clientEmailRecipientDuplicate"))
-      return
-    }
-    if (
-      normalized !== previous &&
-      usePrimaryContact &&
-      primaryContactEmail?.trim().toLowerCase() === normalized
-    ) {
-      setFieldError(t("clientEmailRecipientDuplicatePrimary"))
-      return
-    }
-    updateExtraList(extraEmails.map((item) => (item === previous ? normalized : item)))
-    setEditingEmail(null)
-    setEditDraft("")
+    setDraftTarget(null)
+    setFieldError(null)
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-        <input
-          type="checkbox"
-          id="lead-notify-use-primary"
-          className="size-4 shrink-0 rounded border-[#d3c3b2]"
-          checked={usePrimaryContact}
-          disabled={disabled}
-          onChange={(e) => onUsePrimaryContactChange(e.target.checked)}
-        />
-        <label htmlFor="lead-notify-use-primary" className="shrink-0 font-medium text-foreground">
-          {t("clientEmailCompanyEmail")}
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="size-4 shrink-0 rounded border-[#d3c3b2] accent-primary"
+            checked={Boolean(companyEmail) && usePrimaryContact}
+            disabled={disabled || !companyEmail}
+            onChange={(event) => onUsePrimaryContactChange(event.target.checked)}
+          />
+          <span className="font-medium text-foreground">{t("clientEmailCompanyEmail")}</span>
         </label>
-        {primaryContactEmail ? (
-          <span className="min-w-0 truncate font-mono text-muted-foreground">{primaryContactEmail}</span>
+        {companyEmail ? (
+          <span className="min-w-0 truncate text-muted-foreground">{companyEmail}</span>
         ) : (
           <span className="text-xs text-amber-800">{t("clientEmailPrimaryMissing")}</span>
         )}
-        <Link
-          href={companySettingsHref}
-          className="text-xs font-medium text-primary hover:underline"
-        >
+        <Link href={companySettingsHref} className="text-xs font-medium text-primary hover:underline">
           {t("clientEmailEditCompany")}
         </Link>
       </div>
 
-      {extraEmails.length > 0 ? (
-        <ul className="divide-y divide-[#ebe4dc] rounded-lg border border-[#e8e0d8] bg-white">
+      <div>
+        <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("clientEmailTo")}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {companyEmail && usePrimaryContact ? (
+            <span className={cn(pillClass, "px-3.5")}>
+              <span className={emailTextClass}>{companyEmail}</span>
+            </span>
+          ) : null}
           {extraEmails.map((email) => (
-            <li key={email} className="flex items-center gap-1 px-2 py-1">
-              {editingEmail === email ? (
-                <input
-                  type="email"
-                  className={cn(inputClass, "flex-1 font-mono text-xs")}
-                  value={editDraft}
-                  disabled={disabled}
-                  autoFocus
-                  onChange={(e) => setEditDraft(e.target.value)}
-                  onBlur={() => commitEdit(email)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      commitEdit(email)
-                    }
-                    if (e.key === "Escape") {
-                      setEditingEmail(null)
-                      setEditDraft("")
-                      setFieldError(null)
-                    }
-                  }}
-                />
-              ) : (
-                <span className="min-w-0 flex-1 truncate px-1 font-mono text-xs text-foreground">
-                  {email}
-                </span>
-              )}
+            <span key={email} className={cn(pillClass, "pr-1.5 pl-3.5")}>
+              <span className={emailTextClass}>{email}</span>
               <button
                 type="button"
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-[#faf8f6] disabled:opacity-40"
                 disabled={disabled}
-                aria-label={t("clientEmailRecipientEdit")}
-                onClick={() => {
-                  setEditingEmail(email)
-                  setEditDraft(email)
-                  setFieldError(null)
-                }}
-              >
-                <PencilIcon className="size-3.5" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
-                disabled={disabled}
+                className={removeButtonClass}
                 aria-label={t("clientEmailRecipientRemove")}
-                onClick={() => handleRemove(email)}
+                onClick={() =>
+                  onExtraNotifyEmailsChange(joinEmails(extraEmails.filter((item) => item !== email)))
+                }
               >
-                <Trash2Icon className="size-3.5" aria-hidden />
+                <XIcon className="size-3.5" aria-hidden />
               </button>
-            </li>
+            </span>
           ))}
-        </ul>
-      ) : null}
+          {draftTarget === "to" ? (
+            <form className="inline-flex items-center gap-1" onSubmit={handleAdd}>
+              <input
+                type="email"
+                autoFocus
+                disabled={disabled}
+                value={draftEmail}
+                placeholder={t("clientEmailRecipientPlaceholder")}
+                className={draftInputClass}
+                onChange={(event) => setDraftEmail(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setDraftTarget(null)
+                }}
+              />
+            </form>
+          ) : (
+            <button type="button" disabled={disabled} className={addPillClass} onClick={() => openDraft("to")}>
+              <PlusIcon className="size-3.5" aria-hidden />
+              {t("clientEmailAddTo")}
+            </button>
+          )}
+        </div>
+      </div>
 
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          void handleAdd(e)
-        }}
-      >
-        <input
-          type="email"
-          className={cn(inputClass, "flex-1 font-mono text-xs")}
-          value={draftEmail}
-          disabled={disabled}
-          placeholder={t("clientEmailRecipientPlaceholder")}
-          autoComplete="off"
-          onChange={(e) => setDraftEmail(e.target.value)}
-        />
-        <Button
-          type="submit"
-          size="sm"
-          className="h-9 shrink-0 px-3"
-          disabled={disabled || !draftEmail.trim()}
-        >
-          {t("clientEmailRecipientAdd")}
-        </Button>
-      </form>
+      <div>
+        <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("clientEmailCc")}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {ccEmails.map((email) => (
+            <span key={email} className={cn(pillClass, "pr-1.5 pl-3.5")}>
+              <span className={emailTextClass}>{email}</span>
+              <button
+                type="button"
+                disabled={disabled}
+                className={removeButtonClass}
+                aria-label={t("clientEmailRecipientRemove")}
+                onClick={() =>
+                  onCcNotifyEmailsChange(joinEmails(ccEmails.filter((item) => item !== email)))
+                }
+              >
+                <XIcon className="size-3.5" aria-hidden />
+              </button>
+            </span>
+          ))}
+          {draftTarget === "cc" ? (
+            <form className="inline-flex items-center gap-1" onSubmit={handleAdd}>
+              <input
+                type="email"
+                autoFocus
+                disabled={disabled}
+                value={draftEmail}
+                placeholder={t("clientEmailRecipientPlaceholder")}
+                className={draftInputClass}
+                onChange={(event) => setDraftEmail(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setDraftTarget(null)
+                }}
+              />
+            </form>
+          ) : (
+            <button type="button" disabled={disabled} className={addPillClass} onClick={() => openDraft("cc")}>
+              <PlusIcon className="size-3.5" aria-hidden />
+              {t("clientEmailAddCc")}
+            </button>
+          )}
+        </div>
+      </div>
 
       {fieldError ? (
         <p role="alert" className="text-xs text-red-700">

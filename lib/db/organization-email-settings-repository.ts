@@ -10,6 +10,7 @@ export type OrganizationEmailSettingsRow = {
   mail_from_name: string | null
   use_primary_contact: boolean
   extra_notify_emails: string | null
+  cc_notify_emails: string | null
   notify_subject_template: string | null
   notify_intro_template: string | null
   notify_closing_template: string | null
@@ -46,6 +47,7 @@ type EmailSettingsPatch = Partial<{
   mailFromName: string | null
   usePrimaryContact: boolean
   extraNotifyEmails: string | null
+  ccNotifyEmails: string | null
   notifySubjectTemplate: string | null
   notifyIntroTemplate: string | null
   notifyClosingTemplate: string | null
@@ -85,6 +87,10 @@ function mergedRow(
       patch.extraNotifyEmails !== undefined
         ? patch.extraNotifyEmails
         : (existing?.extra_notify_emails ?? null),
+    cc_notify_emails:
+      patch.ccNotifyEmails !== undefined
+        ? patch.ccNotifyEmails
+        : (existing?.cc_notify_emails ?? null),
     notify_subject_template:
       patch.notifySubjectTemplate !== undefined
         ? patch.notifySubjectTemplate?.trim() || null

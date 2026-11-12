@@ -17,7 +17,7 @@ import {
   templateOrDefault,
 } from "@/lib/email/lead-notify-defaults"
 import { buildLeadNotifyPreview } from "@/lib/email/format-new-lead-notify-da"
-import { buildLeadNotifyRecipientList } from "@/lib/leads/notify-new-lead"
+import { buildLeadNotifyCcList, buildLeadNotifyRecipientList } from "@/lib/leads/notify-new-lead"
 import { builtinLabelDa } from "@/lib/email/lead-notify-labels-da"
 import { columnVisibilityKey } from "@/lib/lead-sheet/client-visibility"
 import { resolveLeadNotifyMailgunSettings } from "@/lib/email/mailgun-delivery-settings"
@@ -94,15 +94,22 @@ export async function buildOrganizationEmailSettingsResponse(
     settingsRow?.mailgun_api_key?.trim() && settingsRow?.mailgun_domain?.trim()
   )
 
+  const notifyRecipientEmails = buildLeadNotifyRecipientList({
+    usePrimaryContact: settingsRow?.use_primary_contact ?? true,
+    primaryContactEmail: organization.primary_contact_email,
+    extraNotifyEmails: settingsRow?.extra_notify_emails,
+  })
+
   return {
     leadNotifyEnabled: settingsRow?.lead_notify_enabled ?? false,
     usePrimaryContact: settingsRow?.use_primary_contact ?? true,
     extraNotifyEmails: settingsRow?.extra_notify_emails ?? "",
+    ccNotifyEmails: settingsRow?.cc_notify_emails ?? "",
     primaryContactEmail: organization.primary_contact_email?.trim() || null,
-    notifyRecipientEmails: buildLeadNotifyRecipientList({
-      usePrimaryContact: settingsRow?.use_primary_contact ?? true,
-      primaryContactEmail: organization.primary_contact_email,
-      extraNotifyEmails: settingsRow?.extra_notify_emails,
+    notifyRecipientEmails,
+    notifyCcEmails: buildLeadNotifyCcList({
+      ccNotifyEmails: settingsRow?.cc_notify_emails,
+      to: notifyRecipientEmails,
     }),
     notifySubjectTemplate: templateOrDefault(
       settingsRow?.notify_subject_template,

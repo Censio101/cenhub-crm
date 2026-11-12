@@ -44,6 +44,15 @@ export function buildLeadNotifyRecipientList(input: {
   return out
 }
 
+/** CC addresses that are not already on the To line. */
+export function buildLeadNotifyCcList(input: {
+  ccNotifyEmails: string | null | undefined
+  to: readonly string[]
+}): string[] {
+  const to = new Set(input.to)
+  return parseNotifyEmailList(input.ccNotifyEmails).filter((email) => !to.has(email))
+}
+
 type NotifyContext = {
   organizationId: string
   primaryContactEmail: string | null | undefined
@@ -125,6 +134,10 @@ export async function notifyNewLeadFromFunnelWebhook(
       primaryContactEmail: input.primaryContactEmail,
       extraNotifyEmails: settingsRow.extra_notify_emails,
     })
+    const cc = buildLeadNotifyCcList({
+      ccNotifyEmails: settingsRow.cc_notify_emails,
+      to: recipients,
+    })
     if (recipients.length === 0) {
       console.warn("Lead notify skipped: no recipients", input.organizationId, input.funnelId)
       await logSkipped(supabase, input, "no_recipients")
@@ -166,6 +179,7 @@ export async function notifyNewLeadFromFunnelWebhook(
 
     const sent = await sendMailWithMailgunSettings(mailgun, {
       to: recipients.join(", "),
+      cc: cc.length > 0 ? cc.join(", ") : undefined,
       subject: message.subject,
       html: message.html,
       text: message.text,
@@ -178,7 +192,7 @@ export async function notifyNewLeadFromFunnelWebhook(
       funnelId: input.funnelId,
       funnelName: input.funnelName,
       leadName: input.lead.fullName,
-      recipients,
+      recipients: [...recipients, ...cc.map((email) => `cc:${email}`)],
       status: "sent",
       mailgunMessageId: sent.messageId,
     })

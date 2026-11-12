@@ -62,6 +62,17 @@ export async function PATCH(request: Request, context: RouteContext) {
       body.extraNotifyEmails = validated.normalized ?? ""
     }
 
+    if (body.ccNotifyEmails !== undefined && body.ccNotifyEmails !== null) {
+      const validated = validateNotifyEmailList(String(body.ccNotifyEmails))
+      if (!validated.ok) {
+        return NextResponse.json(
+          { error: `Invalid email: ${validated.invalid.join(", ")}` },
+          { status: 400 }
+        )
+      }
+      body.ccNotifyEmails = validated.normalized ?? ""
+    }
+
     const existing = await getOrganizationEmailSettings(admin, organization.id)
     const dashboardSheet = await resolveClientDashboardSheet(admin, organization.id)
     const allowedColumnKeys = new Set(
@@ -117,6 +128,8 @@ export async function PATCH(request: Request, context: RouteContext) {
           typeof body.usePrimaryContact === "boolean" ? body.usePrimaryContact : undefined,
         extraNotifyEmails:
           body.extraNotifyEmails === undefined ? undefined : String(body.extraNotifyEmails ?? ""),
+        ccNotifyEmails:
+          body.ccNotifyEmails === undefined ? undefined : String(body.ccNotifyEmails ?? ""),
         notifySubjectTemplate:
           body.notifySubjectTemplate === undefined
             ? undefined

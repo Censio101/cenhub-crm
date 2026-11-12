@@ -515,6 +515,10 @@ const daMessages = {
   clientEmailMailgunWorkspaceMissing:
     "Censio Mailgun er ikke sat op — konfigurer den under Mail & integrationer før lead-e-mails kan sendes.",
   clientEmailRecipientsTitle: "Modtagere",
+  clientEmailTo: "Til",
+  clientEmailCc: "CC",
+  clientEmailAddTo: "Tilføj",
+  clientEmailAddCc: "Tilføj CC",
   clientEmailCompanyEmail: "Virksomheds-e-mail",
   clientEmailUsePrimary: "Virksomheds-e-mail",
   clientEmailEditCompany: "Rediger",

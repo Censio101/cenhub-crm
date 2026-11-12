@@ -3,6 +3,7 @@ import type { MailgunDeliverySettings } from "@/lib/email/mailgun-delivery-setti
 
 export type SendMailInput = {
   to: string
+  cc?: string
   subject: string
   html: string
   text: string
@@ -25,6 +26,10 @@ export async function sendMailWithMailgunSettings(
     html: input.html,
     text: input.text,
   })
+
+  if (input.cc?.trim()) {
+    body.set("cc", input.cc.trim())
+  }
 
   if (input.replyTo) {
     body.set("h:Reply-To", input.replyTo)
