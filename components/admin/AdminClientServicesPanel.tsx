@@ -182,6 +182,20 @@ export function AdminClientServicesPanel() {
     if (!slug) return
     try {
       const res = await fetch(`/api/admin/organizations/${slug}/services`)
+      // #region agent log
+      fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a1e63a" },
+        body: JSON.stringify({
+          sessionId: "a1e63a",
+          hypothesisId: "A",
+          location: "AdminClientServicesPanel.tsx:load",
+          message: "services GET response",
+          data: { slug, status: res.status, ok: res.ok },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
       if (!res.ok) throw new Error("load")
       reset((await res.json()) as ClientServicesData)
       setError(null)
@@ -218,6 +232,27 @@ export function AdminClientServicesPanel() {
     const now = displayItems.filter((id) => !isNewToken(id) && baseline.has(id))
     return before.some((id, index) => id !== now[index])
   }, [customOrder, data, selectedSet, displayItems, baseline])
+
+  const enabledClientServices = useMemo((): ClientService[] => {
+    if (!data) return []
+    const byId = new Map(
+      [...data.catalog, ...data.manual].map((service) => [service.id, service] as const)
+    )
+    return data.selectedIds.flatMap((id) => {
+      const row = byId.get(id)
+      if (!row) return []
+      return [
+        {
+          id: row.slug,
+          nameDa: row.nameDa,
+          nameEn: row.nameEn,
+          source: data.manual.some((m) => m.id === id) ? ("manual" as const) : ("category" as const),
+          categoryNames: [],
+        },
+      ]
+    })
+  }, [data])
+
   const changeCount =
     selected.filter((id) => !baseline.has(id)).length +
     [...baseline].filter((id) => !selectedSet.has(id)).length +
@@ -242,6 +277,28 @@ export function AdminClientServicesPanel() {
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
   }, [dirty])
+
+  // #region agent log
+  useEffect(() => {
+    fetch("http://127.0.0.1:7295/ingest/3efac2fa-9b4f-402f-9f78-550675d5de3e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a1e63a" },
+      body: JSON.stringify({
+        sessionId: "a1e63a",
+        hypothesisId: "C",
+        location: "AdminClientServicesPanel.tsx:state",
+        message: "services panel state",
+        data: {
+          loading,
+          hasData: Boolean(data),
+          slug: slug ?? null,
+          enabledCount: enabledClientServices.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+  }, [loading, data, slug, enabledClientServices.length])
+  // #endregion
 
   function toggle(id: string) {
     setItems((current) =>
@@ -411,26 +468,6 @@ export function AdminClientServicesPanel() {
         },
       ].filter((s) => s.groups.length > 0)
     : []
-
-  const enabledClientServices = useMemo((): ClientService[] => {
-    if (!data) return []
-    const byId = new Map(
-      [...data.catalog, ...data.manual].map((service) => [service.id, service] as const)
-    )
-    return data.selectedIds.flatMap((id) => {
-      const row = byId.get(id)
-      if (!row) return []
-      return [
-        {
-          id: row.slug,
-          nameDa: row.nameDa,
-          nameEn: row.nameEn,
-          source: data.manual.some((m) => m.id === id) ? ("manual" as const) : ("category" as const),
-          categoryNames: [],
-        },
-      ]
-    })
-  }, [data])
 
   const manualNeedle = fold(manualDraft)
   const sameDraft = (service: { nameDa: string; nameEn: string }) =>
