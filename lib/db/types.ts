@@ -122,6 +122,7 @@ export type LeadRow = {
   zip_code: string
   city: string
   service_ids: string[]
+  service_labels: string[]
   service_legacy: string
   platform: string
   meta_ad_id: string

@@ -31,6 +31,7 @@ import {
 } from "@/lib/lead-sheet/webhook-spec"
 import { flattenPayloadPaths, suggestMappings, type PayloadPath } from "@/lib/leads/payload-paths"
 import { getByPath } from "@/lib/leads/source-path"
+import type { ServiceIdsEditor } from "@/lib/lead-sheet/types"
 import type { ClientService, Service } from "@/lib/services/types"
 
 type Mapping = Record<string, string>
@@ -48,6 +49,7 @@ type Props = {
   webhookServices?: readonly WebhookServiceSpec[]
   serviceCatalog?: readonly CatalogService[]
   enabledServices?: readonly ClientService[]
+  serviceIdsEditor?: ServiceIdsEditor
   onSaved: (mapping: Mapping) => void
 }
 
@@ -85,6 +87,7 @@ export function FunnelFieldMapper({
   webhookServices = [],
   serviceCatalog = [],
   enabledServices = [],
+  serviceIdsEditor = "picker",
   onSaved,
 }: Props) {
   const { t } = useLanguage()
@@ -361,7 +364,11 @@ export function FunnelFieldMapper({
       {allowedStandard.has("serviceIds") ? (
       <div className="space-y-2.5 rounded-xl border border-[#e8e0d8] bg-[#faf8f6] p-3.5">
         <p className="text-xs font-medium text-muted-foreground">{t("funnelOwnServicesSection")}</p>
-        <p className="text-xs text-muted-foreground">{t("funnelMapServiceIdsHint")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t(
+            serviceIdsEditor === "text" ? "funnelMapServiceIdsHintTextMode" : "funnelMapServiceIdsHint"
+          )}
+        </p>
         {row("serviceIds", "serviceIds")}
         <WebhookServicesReference
           services={webhookServices}

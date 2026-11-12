@@ -25,6 +25,8 @@ import {
   type TemplateClientRef,
   isBuiltinColumnKey,
   isLockedBuiltinKey,
+  isServiceIdsEditor,
+  type ServiceIdsEditor,
 } from "@/lib/lead-sheet/types"
 
 type TemplateRow = {
@@ -56,6 +58,7 @@ type ColumnRow = {
   custom_field_id: string | null
   hidden_for_client: boolean
   webhook_included: boolean
+  service_ids_editor: string
   /** Embedded library field (custom columns only). */
   lead_sheet_custom_fields?: CustomFieldRow | null
 }
@@ -242,6 +245,13 @@ export async function getLeadSheetTemplateById(
           : {}),
         hiddenForClient: row.hidden_for_client,
         webhookIncluded: row.webhook_included,
+        ...(row.builtin_key === "serviceIds"
+          ? {
+              serviceIdsEditor: isServiceIdsEditor(row.service_ids_editor)
+                ? row.service_ids_editor
+                : ("picker" as ServiceIdsEditor),
+            }
+          : {}),
       })
     } else if (row.kind === "custom" && row.lead_sheet_custom_fields) {
       columns.push({
@@ -560,6 +570,28 @@ export async function setTemplateColumnHidden(
   const { error } = await supabase
     .from("lead_sheet_template_columns")
     .update({ hidden_for_client: hidden })
+    .eq("id", columnId)
+    .eq("template_id", templateId)
+  if (error) throw error
+  return requireTemplate(supabase, templateId)
+}
+
+/** Picker (dropdown) vs text display for the built-in Services column. */
+export async function setTemplateColumnServiceIdsEditor(
+  supabase: SupabaseClient,
+  templateId: string,
+  columnId: string,
+  editor: ServiceIdsEditor
+): Promise<ResolvedLeadSheetConfig> {
+  const config = await requireTemplate(supabase, templateId)
+  const col = config.columns.find((c) => c.id === columnId)
+  if (!col || col.kind !== "builtin" || col.builtinKey !== "serviceIds") {
+    throw new TemplateEditError("Services column not found")
+  }
+
+  const { error } = await supabase
+    .from("lead_sheet_template_columns")
+    .update({ service_ids_editor: editor })
     .eq("id", columnId)
     .eq("template_id", templateId)
   if (error) throw error

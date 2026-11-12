@@ -10,6 +10,9 @@ import { deleteLeadById, updateLeadById, usesDatabaseLeads } from "@/lib/db/lead
 import { resolveClientDashboardSheet } from "@/lib/db/lead-sheet-repository"
 import { stripHiddenCustomFields } from "@/lib/lead-sheet/client-visibility"
 import { applyCustomFieldsToPatch } from "@/lib/lead-sheet/apply-custom-fields-patch"
+import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
+import { resolveOrganizationServices } from "@/lib/db/services-repository"
+import { applyLeadServicePatch } from "@/lib/leads/apply-lead-service-patch"
 import type { LeadRow } from "@/lib/db/types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -42,7 +45,13 @@ export async function PATCH(request: Request, context: RouteContext) {
       session.organization.id
     )
 
-    let safePatch = patch
+    const admin = createAdminClient()
+    const [services, serviceAliasMap] = await Promise.all([
+      resolveOrganizationServices(admin, session.organization.id),
+      getOrganizationServiceAliasMap(admin, session.organization.id),
+    ])
+
+    let safePatch = applyLeadServicePatch(patch, leadSheet, services, serviceAliasMap)
     if (patch.customFields !== undefined) {
       const { data: row } = await supabase
         .from("leads")
@@ -52,7 +61,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         .maybeSingle()
 
       const existing = (row as Pick<LeadRow, "custom_fields"> | null)?.custom_fields ?? {}
-      const applied = applyCustomFieldsToPatch(patch, existing, leadSheet)
+      const applied = applyCustomFieldsToPatch(safePatch, existing, leadSheet)
       if (applied.error) {
         return NextResponse.json({ error: applied.error }, { status: 400 })
       }

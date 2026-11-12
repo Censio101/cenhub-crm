@@ -3,7 +3,11 @@ import { formProgressText } from "@/lib/lead-sheet/form-steps"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
 import type { MessageKey } from "@/lib/i18n"
-import { formatLeadServices, type Lead } from "@/lib/leads"
+import {
+  formatServicesForDisplay,
+  serviceIdsEditorFromColumn,
+} from "@/lib/lead-sheet/service-ids-editor"
+import type { Lead } from "@/lib/leads"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
 import {
   formatSessionStatusDisplay,
@@ -57,7 +61,11 @@ export function leadSheetCellDisplayText(
     case "city":
       return lead.city.trim()
     case "serviceIds":
-      return formatLeadServices(lead, ctx.enabledServices)
+      return formatServicesForDisplay(
+        lead,
+        ctx.enabledServices,
+        serviceIdsEditorFromColumn(col)
+      )
     case "metaAdId":
       return lead.metaAdId.trim()
     case "status":

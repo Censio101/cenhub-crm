@@ -35,6 +35,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { LeadPatch } from "@/lib/db/lead-mapper"
+import type { ServiceIdsEditor } from "@/lib/lead-sheet/types"
+import { splitServiceText } from "@/lib/services/match"
 import { isLeadFieldEditableInCrm } from "@/lib/leads/field-editability"
 import { IMAGE_LINK_TEXT_MAX } from "@/lib/lead-sheet/image-link"
 import {
@@ -104,6 +106,7 @@ type CustomColumn = Extract<LeadSheetTemplateColumn, { kind: "custom" }>
 type SharedProps = {
   /** Leads already on the sheet; used to warn about a repeated phone number or email. */
   existingLeads?: readonly Lead[]
+  serviceIdsEditor?: ServiceIdsEditor
 }
 
 type CreateProps = SharedProps & {
@@ -276,12 +279,13 @@ function cloneLead(lead: Lead): Lead {
   return {
     ...lead,
     serviceIds: [...(lead.serviceIds ?? [])],
+    serviceLabels: [...(lead.serviceLabels ?? [])],
     customFields: { ...(lead.customFields ?? {}) },
   }
 }
 
 function LeadFormDialog(props: Props) {
-  const { columns } = props
+  const { columns, serviceIdsEditor = "picker" } = props
   const isEdit = props.mode === "edit"
   const editLead = props.mode === "edit" ? props.lead : null
   const { t } = useLanguage()
@@ -634,6 +638,27 @@ function LeadFormDialog(props: Props) {
     }
 
     if (key === "serviceIds") {
+      if (serviceIdsEditor === "text") {
+        const textValue =
+          draft.serviceLabels?.length ? draft.serviceLabels.join(", ") : ""
+        return (
+          <Field key={key} id={fieldId(key)} label={label} className="sm:col-span-2">
+            <input
+              id={fieldId(key)}
+              className={fieldClass}
+              disabled={busy}
+              value={textValue}
+              onChange={(e) =>
+                setDraft((d) => ({
+                  ...d,
+                  serviceLabels: splitServiceText(e.target.value),
+                }))
+              }
+              placeholder={t("leadSheetsServiceIdsTextPlaceholder")}
+            />
+          </Field>
+        )
+      }
       return (
         <Field key={key} id={fieldId(key)} label={label} className="sm:col-span-2">
           {enabledServices.length === 0 ? (

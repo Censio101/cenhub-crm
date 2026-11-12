@@ -32,6 +32,13 @@ export const CUSTOM_FIELD_TYPES = [
 
 export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number]
 
+export const SERVICE_IDS_EDITORS = ["picker", "text"] as const
+export type ServiceIdsEditor = (typeof SERVICE_IDS_EDITORS)[number]
+
+export function isServiceIdsEditor(value: unknown): value is ServiceIdsEditor {
+  return typeof value === "string" && (SERVICE_IDS_EDITORS as readonly string[]).includes(value)
+}
+
 export type LeadSheetCustomFieldDef = {
   id: string
   fieldKey: string
@@ -56,6 +63,8 @@ export type LeadSheetTemplateColumn =
       hiddenForClient?: boolean
       /** When false, omit from webhook docs, mapping, and inbound custom field handling. */
       webhookIncluded?: boolean
+      /** Built-in Services column only: picker = CRM multi-select; text = show inbound labels. */
+      serviceIdsEditor?: ServiceIdsEditor
     }
   | {
       id: string

@@ -475,6 +475,8 @@ export const en: Messages = {
   funnelServiceMappingIntro:
     "When the sender uses its own names (not CRM slugs), map each label to a service below. Mappings apply to all webhooks and imports for this client.",
   funnelMapServiceIdsHint: "Map the JSON path, then map label values in the section below.",
+  funnelMapServiceIdsHintTextMode:
+    "Map the JSON path above. Alias mapping below is optional — it links labels to CRM services for filters when names match.",
   funnelSampleServiceMapTitle: "Values from your sample",
   funnelSampleServiceMapNeedPath:
     "Map the serviceIds field above to a path in the sample, then values appear here.",
@@ -1944,6 +1946,12 @@ export const en: Messages = {
   leadSheetsHideFromClient: "Hide from client dashboard",
   leadSheetsShowToClient: "Show on client dashboard",
   leadSheetsHiddenChip: "Hidden from client",
+  leadSheetsServiceIdsEditorLabel: "Services column input",
+  leadSheetsServiceIdsEditorPicker: "Dropdown",
+  leadSheetsServiceIdsEditorText: "Text",
+  leadSheetsServiceIdsEditorHint:
+    "Dropdown uses CRM services only. Text shows webhook labels as sent; matching aliases still fill filters.",
+  leadSheetsServiceIdsTextPlaceholder: "Comma-separated services",
   leadSheetsWebhookExcludedChip: "Not in webhooks",
   leadSheetsIncludeInWebhook: "Include in webhooks",
   leadSheetsExcludeFromWebhook: "Exclude from webhooks",

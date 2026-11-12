@@ -108,7 +108,12 @@ import {
   qualityTone,
   type QualityTone,
 } from "@/lib/lead-sheet/quality"
-import type { LeadSheetTemplateColumn } from "@/lib/lead-sheet/types"
+import {
+  formatServicesForDisplay,
+  serviceIdsEditorFromSheet,
+} from "@/lib/lead-sheet/service-ids-editor"
+import type { LeadSheetTemplateColumn, ServiceIdsEditor } from "@/lib/lead-sheet/types"
+import { ServiceTextCell } from "@/components/leads/ServiceTextCell"
 import {
   computeLeadPipelineStats,
   filterDashboardLeads,
@@ -697,6 +702,8 @@ type LeadRowEnv = {
   selectOffset: number
   density: SheetRowDensity
   fullText: boolean
+  serviceIdsEditor: ServiceIdsEditor
+  enabledServices: ReturnType<typeof useCompanyServices>["enabledServices"]
 }
 
 function renderLeadColumnCell(
@@ -973,17 +980,29 @@ function renderLeadColumnCell(
       case "serviceIds":
         return (
           <TableCell key={col.id} className={cn("min-w-0 max-w-full px-1", priceCue)}>
-            <ServiceMultiSelect
-              value={getLeadServiceIds(lead)}
-              label={t("leadSheetColServiceIds")}
-              onChange={(serviceIds) => {
-                const first = serviceIds[0] ?? ""
-                onUpdate(lead.id, {
-                  serviceIds,
-                  service: isServiceId(first) ? first : "",
-                })
-              }}
-            />
+            {env.serviceIdsEditor === "text" ? (
+              <ServiceTextCell
+                lead={lead}
+                enabledServices={env.enabledServices}
+                label={t("leadSheetColServiceIds")}
+                onChange={(serviceLabels) => {
+                  onUpdate(lead.id, { serviceLabels })
+                }}
+              />
+            ) : (
+              <ServiceMultiSelect
+                value={getLeadServiceIds(lead)}
+                label={t("leadSheetColServiceIds")}
+                onChange={(serviceIds) => {
+                  const first = serviceIds[0] ?? ""
+                  onUpdate(lead.id, {
+                    serviceIds,
+                    serviceLabels: [],
+                    service: isServiceId(first) ? first : "",
+                  })
+                }}
+              />
+            )}
           </TableCell>
         )
       case "metaAdId":
@@ -1179,6 +1198,8 @@ export function LeadsTable({
   detailColumns,
   bulkSelection,
   canDelete = false,
+  serviceIdsEditor,
+  enabledServices,
 }: {
   /** Only client admins (and Censio admins) see the delete button. */
   canDelete?: boolean
@@ -1196,6 +1217,8 @@ export function LeadsTable({
   /** Customer sheet: the two frozen columns read as fixed, and the rest as the scrolling area. */
   separatePinnedColumns?: boolean
   columnLayout?: LeadSheetColumnLayout
+  serviceIdsEditor: ServiceIdsEditor
+  enabledServices: ReturnType<typeof useCompanyServices>["enabledServices"]
 }) {
   const { t } = useLanguage()
   const { statuses } = useLeadSelectOptions()
@@ -1230,8 +1253,10 @@ export function LeadsTable({
       selectOffset,
       density,
       fullText,
+      serviceIdsEditor,
+      enabledServices,
     }),
-    [t, statuses, stable, columnLayout, selectOffset, density, fullText]
+    [t, statuses, stable, columnLayout, selectOffset, density, fullText, serviceIdsEditor, enabledServices]
   )
 
   const rowVirtualizer = useVirtualizer({
@@ -1616,6 +1641,11 @@ export function LeadsBoard() {
     await deleteLeadsBulk(ids)
     exitBulkSelectMode()
   }, [deleteLeadsBulk, exitBulkSelectMode, selectedLeadIds])
+  const serviceIdsEditor = useMemo(
+    () => serviceIdsEditorFromSheet(leadSheet),
+    [leadSheet]
+  )
+
   const columnLayout = useLeadSheetColumnLayout({
     page: "leads",
     organizationId: organization?.id,
@@ -1703,7 +1733,7 @@ export function LeadsBoard() {
           case "segment":
             return lead.segment ? t(leadSegmentLabelKey(lead.segment)) : ""
           case "serviceIds":
-            return formatLeadServices(lead, enabledServices)
+            return formatServicesForDisplay(lead, enabledServices, serviceIdsEditor)
           case "salesPrice":
             return lead.salesPrice == null ? "" : String(lead.salesPrice)
           case "profit":
@@ -1736,6 +1766,7 @@ export function LeadsBoard() {
       </div>
       <AddLeadDialog
         columns={leadSheet.columns}
+        serviceIdsEditor={serviceIdsEditor}
         existingLeads={leads}
         onCreate={(lead) => createLead(lead)}
         trigger={
@@ -1847,6 +1878,8 @@ export function LeadsBoard() {
               columnLayout={columnLayout}
               detailColumns={leadSheet.columns}
               bulkSelection={bulkSelectionForTable}
+              serviceIdsEditor={serviceIdsEditor}
+              enabledServices={enabledServices}
             />
           </LeadSheetScrollArea>
         </div>
@@ -1933,6 +1966,8 @@ export function LeadsBoard() {
               columnLayout={columnLayout}
               detailColumns={leadSheet.columns}
               bulkSelection={bulkSelectionForTable}
+              serviceIdsEditor={serviceIdsEditor}
+              enabledServices={enabledServices}
             />
           </LeadSheetScrollArea>
           <LeadPipelineFooter stats={pipelineStats} />

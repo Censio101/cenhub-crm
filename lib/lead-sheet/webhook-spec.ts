@@ -3,10 +3,12 @@ import {
   sheetEligibleCustomWebhookFields,
   sheetEligibleStandardWebhookKeys,
 } from "@/lib/lead-sheet/webhook-fields"
+import { serviceIdsEditorFromSheet } from "@/lib/lead-sheet/service-ids-editor"
 import type {
   CustomFieldType,
   LeadSheetCustomFieldDef,
   ResolvedLeadSheetConfig,
+  ServiceIdsEditor,
 } from "@/lib/lead-sheet/types"
 import type { ClientService } from "@/lib/services/types"
 import { CANONICAL_INBOUND_EXAMPLE } from "@/lib/leads/inbound-payload"
@@ -30,6 +32,8 @@ export type WebhookLeadSheetInfo = {
   /** Standard top-level keys enabled on this client's sheet (before funnel subset). */
   standardFieldKeys: string[]
   customFields: WebhookCustomFieldSpec[]
+  /** How the Services column is edited on the lead sheet (picker vs free text). */
+  serviceIdsEditor: ServiceIdsEditor
 }
 
 export type StandardWebhookFieldType =
@@ -86,6 +90,7 @@ export function buildWebhookLeadSheetInfo(
     isClientOwned: config.template.organizationId !== null,
     standardFieldKeys: sheetEligibleStandardWebhookKeys(activeSheetColumns(config)),
     customFields: sheetEligibleCustomWebhookFields(activeSheetColumns(config)),
+    serviceIdsEditor: serviceIdsEditorFromSheet(config),
   }
 }
 

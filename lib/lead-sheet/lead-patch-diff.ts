@@ -56,6 +56,10 @@ export function buildLeadPatch(original: Lead, next: Lead): LeadPatch {
     patch.serviceIds = next.serviceIds ?? []
   }
 
+  if (!sameJson(original.serviceLabels ?? [], next.serviceLabels ?? [])) {
+    patch.serviceLabels = next.serviceLabels ?? []
+  }
+
   const before = original.customFields ?? {}
   const after = next.customFields ?? {}
   const customPatch: Record<string, unknown> = {}

@@ -55,6 +55,8 @@ export type Lead = {
   zipCode: string
   city: string
   serviceIds: string[]
+  /** Raw inbound labels when the lead sheet Services column uses text mode. */
+  serviceLabels?: string[]
   /** @deprecated Prefer `serviceIds`. Kept so older single-service values still display. */
   service?: ServiceId | ""
   platform: LeadPlatformId | ""
@@ -448,6 +450,7 @@ export function emptyLead(id: string, date = new Date()): Lead {
     zipCode: "",
     city: "",
     serviceIds: [],
+    serviceLabels: [],
     platform: "",
     metaAdId: "",
     status: "new_waiting_call",

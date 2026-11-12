@@ -10,11 +10,14 @@ import {
   usesDatabaseLeads,
 } from "@/lib/db/leads-repository"
 import { resolveClientDashboardSheet } from "@/lib/db/lead-sheet-repository"
+import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
+import { resolveOrganizationServices } from "@/lib/db/services-repository"
+import { applyLeadServicePatch } from "@/lib/leads/apply-lead-service-patch"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { stripHiddenCustomFields } from "@/lib/lead-sheet/client-visibility"
 import { sanitizeNewLeadCustomFields } from "@/lib/lead-sheet/apply-custom-fields-patch"
 import { isLeadStatusId, type Lead } from "@/lib/leads"
 import { isOnboardingContactEmailValid } from "@/lib/onboarding/application-input"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
@@ -99,8 +102,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: normalized.error }, { status: 400 })
     }
 
+    const admin = createAdminClient()
+    const [services, serviceAliasMap] = await Promise.all([
+      resolveOrganizationServices(admin, ctx.organization.id),
+      getOrganizationServiceAliasMap(admin, ctx.organization.id),
+    ])
+    const servicePatch = applyLeadServicePatch(
+      {
+        serviceIds: input.serviceIds,
+        serviceLabels: input.serviceLabels,
+        service: input.service,
+      },
+      leadSheet,
+      services,
+      serviceAliasMap
+    )
+
     const lead = await createLead(supabase, ctx.organization.id, {
       ...input,
+      ...servicePatch,
       // Hand-added leads are always "manual" and never carry Meta's locked fields.
       source: "manual",
       lockedFields: [],

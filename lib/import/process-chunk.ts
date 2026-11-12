@@ -10,6 +10,7 @@ import {
 import { contactKeys } from "@/lib/import/dedupe"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
+import { serviceIdsEditorFromSheet } from "@/lib/lead-sheet/service-ids-editor"
 import { buildImportLead } from "@/lib/import/import-row"
 import { resolveImportOptions } from "@/lib/import/resolve-import-options"
 import { mergeImportRowIntoExistingLead } from "@/lib/import/merge-into-existing-lead"
@@ -76,6 +77,7 @@ export async function processImportChunk(input: {
     getOrganizationServiceAliasMap(supabase, organizationId),
   ])
   const customFieldDefs = sheet ? listCustomFieldDefs(sheet) : []
+  const serviceIdsEditor = serviceIdsEditorFromSheet(sheet)
   const today = nowLeadDateTime().date
 
   const built = rows.map((row) => ({
@@ -88,6 +90,7 @@ export async function processImportChunk(input: {
       services,
       serviceAliasMap,
       today,
+      serviceIdsEditor,
     }),
   }))
 

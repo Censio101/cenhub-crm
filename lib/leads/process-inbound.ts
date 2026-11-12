@@ -1,5 +1,7 @@
 import type { LeadSource } from "@/lib/db/types"
 import type { LeadSheetCustomFieldDef } from "@/lib/lead-sheet/types"
+import type { ServiceIdsEditor } from "@/lib/lead-sheet/types"
+import { resolveLeadServicesFields } from "@/lib/lead-sheet/service-ids-editor"
 import {
   coerceWebhookCustomFields,
   type WebhookFieldWarning,
@@ -12,7 +14,6 @@ import {
   type FieldMapping,
 } from "@/lib/leads/inbound-payload"
 import type { Lead } from "@/lib/leads"
-import { matchServices } from "@/lib/services/match"
 import type { ClientService } from "@/lib/services/types"
 
 /**
@@ -68,33 +69,43 @@ export function buildInboundLead(input: {
   services: readonly ClientService[]
   serviceAliasMap?: ReadonlyMap<string, string>
   platform: string
+  serviceIdsEditor?: ServiceIdsEditor
 }): BuiltInbound {
   const { parsed } = input
-  const matched = matchServices(
-    parsed.canonical.serviceIds ?? [],
-    input.services,
-    input.serviceAliasMap
-  )
+  const editor = input.serviceIdsEditor ?? "picker"
+  const rawServices = parsed.canonical.serviceIds ?? []
+  const resolved = resolveLeadServicesFields({
+    rawValues: rawServices,
+    editor,
+    services: input.services,
+    serviceAliasMap: input.serviceAliasMap,
+  })
+
   const serviceWarnings: WebhookFieldWarning[] =
-    matched.unknown.length > 0
+    editor === "picker" && resolved.unknown.length > 0
       ? [
           {
             field: "serviceIds",
             code: "invalid_value",
-            message: `Unknown service: ${matched.unknown.join(", ")}`,
+            message: `Unknown service: ${resolved.unknown.join(", ")}`,
           },
         ]
       : []
+
   const custom = coerceWebhookCustomFields(parsed.mapped.customFields, input.customFieldDefs)
 
   const lead = canonicalToLead(parsed.canonical, {
     platform: input.platform,
     source: funnelLeadSource(input.platform),
-    serviceIds: matched.ids,
+    serviceIds: resolved.serviceIds,
   })
 
   return {
-    lead: { ...lead, customFields: custom.values },
+    lead: {
+      ...lead,
+      serviceLabels: resolved.serviceLabels,
+      customFields: custom.values,
+    },
     customFields: custom.values,
     warnings: [...parsed.warnings, ...serviceWarnings, ...custom.warnings],
   }
@@ -111,6 +122,7 @@ export async function processInbound(input: {
   loadCustomFieldDefs: () => Promise<LeadSheetCustomFieldDef[]>
   loadServices: () => Promise<ClientService[]>
   loadServiceAliasMap?: () => Promise<ReadonlyMap<string, string>>
+  serviceIdsEditor?: ServiceIdsEditor
 }): Promise<ProcessedInbound> {
   const parsed = parseInbound(input.body, input.fieldMapping)
   if (!parsed.ok) return parsed
@@ -126,6 +138,7 @@ export async function processInbound(input: {
     services,
     serviceAliasMap,
     platform: input.platform,
+    serviceIdsEditor: input.serviceIdsEditor,
   })
   return { ok: true, externalId: parsed.canonical.externalId ?? null, ...built }
 }

@@ -9,6 +9,7 @@ import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
 import { getOrganizationServiceAliasMap } from "@/lib/db/service-aliases-repository"
 import { resolveOrganizationServices } from "@/lib/db/services-repository"
+import { serviceIdsEditorFromSheet } from "@/lib/lead-sheet/service-ids-editor"
 import { processInbound } from "@/lib/leads/process-inbound"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -64,6 +65,8 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Funnel not found" }, { status: 404 })
     }
 
+    const sheetPromise = resolveLeadSheetForOrganization(admin, organization.id)
+
     const result = await processInbound({
       body: payload as Record<string, unknown>,
       fieldMapping:
@@ -71,7 +74,7 @@ export async function POST(request: Request, context: RouteContext) {
         (funnel.data_format === "own" ? ((funnel.field_mapping ?? {}) as FieldMapping) : {}),
       platform: funnel.platform,
       loadCustomFieldDefs: async () => {
-        const sheet = await resolveLeadSheetForOrganization(admin, organization.id)
+        const sheet = await sheetPromise
         const sheetInfo = sheet ? buildWebhookLeadSheetInfo(sheet) : null
         return sheet && sheetInfo
           ? customFieldDefsForFunnel(sheet, sheetInfo, funnel.webhook_field_targets)
@@ -79,6 +82,7 @@ export async function POST(request: Request, context: RouteContext) {
       },
       loadServices: () => resolveOrganizationServices(admin, organization.id),
       loadServiceAliasMap: () => getOrganizationServiceAliasMap(admin, organization.id),
+      serviceIdsEditor: serviceIdsEditorFromSheet(await sheetPromise),
     })
 
     if (!result.ok) {

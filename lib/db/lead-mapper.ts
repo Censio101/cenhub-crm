@@ -40,6 +40,7 @@ export type LeadPatch = Partial<{
   zipCode: string
   city: string
   serviceIds: string[]
+  serviceLabels: string[]
   service: ServiceId | ""
   platform: LeadPlatformId | ""
   metaAdId: string
@@ -68,6 +69,7 @@ export function leadRowToLead(row: LeadRow): Lead {
     zipCode: row.zip_code,
     city: row.city,
     serviceIds: row.service_ids ?? [],
+    serviceLabels: row.service_labels ?? [],
     service: serviceLegacy,
     platform: isLeadPlatformId(row.platform) ? row.platform : "",
     metaAdId: row.meta_ad_id,
@@ -111,6 +113,7 @@ export function leadPatchToRow(
     | "zip_code"
     | "city"
     | "service_ids"
+    | "service_labels"
     | "service_legacy"
     | "platform"
     | "meta_ad_id"
@@ -136,6 +139,7 @@ export function leadPatchToRow(
   if (patch.zipCode !== undefined) next.zip_code = patch.zipCode
   if (patch.city !== undefined) next.city = patch.city
   if (patch.serviceIds !== undefined) next.service_ids = patch.serviceIds
+  if (patch.serviceLabels !== undefined) next.service_labels = patch.serviceLabels
   if (patch.service !== undefined) next.service_legacy = patch.service
   if (patch.platform !== undefined) next.platform = patch.platform
   if (patch.metaAdId !== undefined) next.meta_ad_id = patch.metaAdId
@@ -178,6 +182,7 @@ export function leadToInsertRow(
     zip_code: lead.zipCode,
     city: lead.city,
     service_ids: lead.serviceIds,
+    service_labels: lead.serviceLabels ?? [],
     service_legacy: lead.service ?? "",
     platform: lead.platform,
     meta_ad_id: lead.metaAdId,
@@ -204,6 +209,7 @@ export function filterPatchForLockedLead(patch: LeadPatch, row: LeadRow): LeadPa
   const lead = leadRowToLead(row)
   const alwaysAllowed = new Set([
     "serviceIds",
+    "serviceLabels",
     "service",
     "status",
     "salesPrice",

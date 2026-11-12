@@ -36,7 +36,11 @@ import {
   type CustomerSourceId,
 } from "@/lib/customers"
 import type { MessageKey } from "@/lib/i18n"
-import { formatLeadServices, type Lead, type LeadPlatformId } from "@/lib/leads"
+import { type Lead, type LeadPlatformId } from "@/lib/leads"
+import {
+  formatServicesForDisplay,
+  serviceIdsEditorFromSheet,
+} from "@/lib/lead-sheet/service-ids-editor"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
 import { formProgressText } from "@/lib/lead-sheet/form-steps"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
@@ -258,6 +262,8 @@ export function CustomersBoard() {
     [leadSheet.columns, sheetSort]
   )
 
+  const serviceIdsEditor = useMemo(() => serviceIdsEditorFromSheet(leadSheet), [leadSheet])
+
   const shownLeads = useMemo(() => {
     const rows = filtered.map((customer) => leadForCustomer(customer, leadsById))
     return sortLeadsWithSheetState(rows, leadSheet.columns, activeSheetSort, enabledServices)
@@ -358,7 +364,7 @@ export function CustomersBoard() {
           case "segment":
             return lead.segment ? t(leadSegmentLabelKey(lead.segment)) : ""
           case "serviceIds":
-            return formatLeadServices(lead, enabledServices)
+            return formatServicesForDisplay(lead, enabledServices, serviceIdsEditor)
           case "salesPrice":
             return lead.salesPrice == null ? "" : String(lead.salesPrice)
           case "profit":
@@ -518,6 +524,8 @@ export function CustomersBoard() {
                     columnLayout={columnLayout}
                     detailColumns={leadSheet.columns}
                     bulkSelection={bulkSelectionForTable}
+                    serviceIdsEditor={serviceIdsEditor}
+                    enabledServices={enabledServices}
                   />
                 </LeadSheetScrollArea>
               </div>
@@ -599,6 +607,8 @@ export function CustomersBoard() {
                   columnLayout={columnLayout}
                   detailColumns={leadSheet.columns}
                   bulkSelection={bulkSelectionForTable}
+                  serviceIdsEditor={serviceIdsEditor}
+                  enabledServices={enabledServices}
                 />
               </LeadSheetScrollArea>
               </div>
@@ -628,6 +638,7 @@ export function CustomersBoard() {
             key={editingLead.id}
             columns={leadSheet.columns}
             lead={editingLead}
+            serviceIdsEditor={serviceIdsEditor}
             onSave={(patch) => saveLead(editingLead.id, patch)}
             onClose={() => setEditingLeadId(null)}
           />

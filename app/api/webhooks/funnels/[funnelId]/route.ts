@@ -28,6 +28,7 @@ import {
 } from "@/lib/leads/funnel-webhook-meta-merge"
 import { applyFunnelDefaultSegment } from "@/lib/leads/funnel-default-segment"
 import { funnelSheetSourceLabel } from "@/lib/funnels/funnel-sheet-source-label"
+import { serviceIdsEditorFromSheet } from "@/lib/lead-sheet/service-ids-editor"
 import { buildInboundLead, parseInbound } from "@/lib/leads/process-inbound"
 import { readWebhookBody } from "@/lib/leads/read-webhook-body"
 import { timingSafeEqualString } from "@/lib/security/timing-safe-equal"
@@ -129,6 +130,7 @@ export async function POST(request: Request, context: RouteContext) {
       services,
       serviceAliasMap,
       platform: funnel.platform,
+      serviceIdsEditor: serviceIdsEditorFromSheet(leadSheet),
     })
     let { lead, warnings } = built
     lead = applyFunnelDefaultSegment(lead, funnel)

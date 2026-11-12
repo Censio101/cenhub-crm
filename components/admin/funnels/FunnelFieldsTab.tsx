@@ -164,6 +164,7 @@ export function FunnelFieldsTab({
               webhookServices={webhookServices}
               serviceCatalog={serviceCatalog}
               enabledServices={enabledServices}
+              serviceIdsEditor={leadSheet?.serviceIdsEditor ?? "picker"}
               onSaved={onMappingSaved}
             />
           </section>

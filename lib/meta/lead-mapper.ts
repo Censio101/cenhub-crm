@@ -86,6 +86,7 @@ export function mapMetaLeadToInsertRow(
     zip_code: zipCode,
     city,
     service_ids: [],
+    service_labels: [],
     service_legacy: "",
     platform: "meta",
     meta_ad_id: mapped.metaAdId || lead.ad_id || "",

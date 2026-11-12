@@ -477,6 +477,8 @@ const daMessages = {
   funnelServiceMappingIntro:
     "Når afsenderen bruger egne navne (ikke CRM-slugs), kan du knytte hver betegnelse til en ydelse herunder. Mapping gælder alle webhooks og import for denne kunde.",
   funnelMapServiceIdsHint: "Map JSON-stien ovenfor — derefter kan du mappe værdier i sektionen nedenfor.",
+  funnelMapServiceIdsHintTextMode:
+    "Map JSON-stien ovenfor. Alias-mapping nedenfor er valgfri — den knytter labels til CRM-ydelser til filtre, når navne matcher.",
   funnelSampleServiceMapTitle: "Værdier fra dit sample",
   funnelSampleServiceMapNeedPath:
     "Map serviceIds-feltet ovenfor til en sti i samplet — så vises værdierne her.",
@@ -1954,6 +1956,12 @@ const daMessages = {
   leadSheetsHideFromClient: "Skjul på klientens dashboard",
   leadSheetsShowToClient: "Vis på klientens dashboard",
   leadSheetsHiddenChip: "Skjult for klient",
+  leadSheetsServiceIdsEditorLabel: "Ydelser-kolonne",
+  leadSheetsServiceIdsEditorPicker: "Dropdown",
+  leadSheetsServiceIdsEditorText: "Tekst",
+  leadSheetsServiceIdsEditorHint:
+    "Dropdown bruger kun CRM-ydelser. Tekst viser webhook-labels som sendt; matchende aliaser fylder stadig filtre.",
+  leadSheetsServiceIdsTextPlaceholder: "Ydelser adskilt med komma",
   leadSheetsWebhookExcludedChip: "Ikke i webhooks",
   leadSheetsIncludeInWebhook: "Med i webhooks",
   leadSheetsExcludeFromWebhook: "Udeluk fra webhooks",

@@ -210,6 +210,28 @@ function EditorContent({
     }
   }
 
+  async function setServiceIdsEditor(
+    col: LeadSheetColumn,
+    editor: "picker" | "text"
+  ) {
+    setRowBusy(col.id, true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/lead-sheet-templates/${templateId}/columns/${col.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceIdsEditor: editor }),
+      })
+      const data = await readJson(res)
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Failed")
+      applyServerConfig(data as unknown as ResolvedLeadSheetConfig)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("leadSheetsLoadError"))
+    } finally {
+      setRowBusy(col.id, false)
+    }
+  }
+
   /** Optimistic: the list already shows the new order; revert if the save fails. */
   async function saveOrder(previous: ResolvedLeadSheetConfig["columns"], nextIds: string[]) {
     const seq = ++orderRequestSeq.current
@@ -343,6 +365,10 @@ function EditorContent({
       onAddAfter: () => setAddAfterId(col.id),
       onRemove: () => setRemoveTarget(col),
       onToggleHidden: () => void toggleHidden(col),
+      onServiceIdsEditorChange:
+        col.kind === "builtin" && col.builtinKey === "serviceIds"
+          ? (editor: "picker" | "text") => void setServiceIdsEditor(col, editor)
+          : undefined,
     }
   }
 

@@ -13,7 +13,6 @@ import {
   parseImportDateTime,
   parseImportNumber,
   parseImportSegment,
-  parseImportServices,
   parseImportStatus,
 } from "@/lib/import/parse-values"
 import type {
@@ -24,6 +23,9 @@ import type {
   ImportRowValues,
   ImportWarning,
 } from "@/lib/import/types"
+import { resolveLeadServicesFields } from "@/lib/lead-sheet/service-ids-editor"
+import type { ServiceIdsEditor } from "@/lib/lead-sheet/types"
+import { splitServiceText } from "@/lib/services/match"
 import { LEAD_STATUSES, type Lead } from "@/lib/leads"
 
 export type BuiltImportLead =
@@ -47,6 +49,7 @@ export function buildImportLead(input: {
   serviceAliasMap?: ReadonlyMap<string, string>
   /** The day used for rows without a date. */
   today: string
+  serviceIdsEditor?: ServiceIdsEditor
 }): BuiltImportLead {
   const { row, mapping, options, customFieldDefs, today } = input
   const warnings: ImportWarning[] = []
@@ -111,19 +114,30 @@ export function buildImportLead(input: {
   }
 
   // Services
-  const serviceMatch = parseImportServices(
-    read("serviceIds"),
-    input.services,
-    input.serviceAliasMap
-  )
-  if (serviceMatch.unknown.length > 0) {
+  const editor = input.serviceIdsEditor ?? "picker"
+  const rawServiceCell = read("serviceIds")
+  const rawServices = splitServiceText(cellText(rawServiceCell, 400))
+  const serviceMatch = resolveLeadServicesFields({
+    rawValues: rawServices,
+    editor,
+    services: input.services,
+    serviceAliasMap: input.serviceAliasMap,
+  })
+  if (editor === "picker" && serviceMatch.unknown.length > 0) {
     warnings.push({
       field: "serviceIds",
       message: `Unknown service: ${serviceMatch.unknown.join(", ")}`,
     })
   }
-  if (serviceMatch.ids.length > 0)
-    note("serviceIds", read("serviceIds"), serviceMatch.ids.join(", "))
+  if (serviceMatch.serviceIds.length > 0 || serviceMatch.serviceLabels.length > 0) {
+    note(
+      "serviceIds",
+      rawServiceCell,
+      editor === "text"
+        ? serviceMatch.serviceLabels.join(", ")
+        : serviceMatch.serviceIds.join(", ")
+    )
+  }
 
   // Status
   const rawStatus = read("status")
@@ -183,8 +197,9 @@ export function buildImportLead(input: {
     address: cellText(read("address"), 200),
     zipCode: cellText(read("zipCode"), 20),
     city: cellText(read("city"), 100),
-    serviceIds: serviceMatch.ids,
-    service: serviceMatch.ids[0] as Lead["service"],
+    serviceIds: serviceMatch.serviceIds,
+    serviceLabels: serviceMatch.serviceLabels,
+    service: serviceMatch.serviceIds[0] as Lead["service"],
     platform: options.defaultPlatform,
     metaAdId: cellText(read("metaAdId"), 120),
     status,
