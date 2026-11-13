@@ -8,6 +8,7 @@ import { FIELD_TYPE_ICONS, fieldTypeLabelKey } from "@/components/admin/lead-she
 import { SelectOptionsInput } from "@/components/admin/lead-sheets/SelectOptionsInput"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { isValidFieldKey, suggestFieldKey } from "@/lib/lead-sheet/field-key"
+import { shouldUseNotesTextareaField } from "@/lib/lead-sheet/notes-field"
 import { CUSTOM_FIELD_TYPES, type CustomFieldType } from "@/lib/lead-sheet/types"
 import { cn } from "cn"
 
@@ -35,6 +36,14 @@ export function useNewColumnForm() {
   const canSubmit = label.trim().length > 0 && keyValid && !optionsMissing && !saving
   const pristine = !label.trim() && customKey === null && options.length === 0
 
+  function applyLabel(next: string) {
+    setLabel(next)
+    const key = customKey ?? suggestFieldKey(next)
+    if (fieldType === "text" && shouldUseNotesTextareaField(next, key)) {
+      setFieldType("textarea")
+    }
+  }
+
   function values(): NewColumnValues {
     return {
       label: label.trim(),
@@ -48,7 +57,7 @@ export function useNewColumnForm() {
     fieldType,
     setFieldType,
     label,
-    setLabel,
+    setLabel: applyLabel,
     customKey,
     setCustomKey,
     options,
