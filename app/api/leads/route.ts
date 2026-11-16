@@ -28,6 +28,9 @@ export async function GET() {
     }
 
     const ctx = await requireOrganizationContext()
+    if (!ctx.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
     const limited = await enforceBulkListRateLimit({
       organizationId: ctx.organization.id,
