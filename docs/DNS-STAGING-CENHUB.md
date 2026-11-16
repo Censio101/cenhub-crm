@@ -4,15 +4,16 @@ Add this record at your **cenhub.dk** DNS host (same place as `www`):
 
 | Type | Name / Host | Value | TTL |
 |------|-------------|--------|-----|
-| **CNAME** | `staging` | `cname.vercel-dns.com` | 300 (or default) |
+| **CNAME** | `staging` | `b51cf8dd46f2ca7c.vercel-dns-016.com` | 300 (or default) |
+
+(DNS host: **Simply.com** — same as `www` for cenhub.dk.)
 
 After saving DNS:
 
-1. Vercel → **cenhub-crm** → **Settings → Domains** → add `staging.cenhub.dk`.
-2. Assign to **Git branch** `staging` (Preview), not Production.
-3. Wait for SSL (few minutes).
-
-If Vercel shows a **different** CNAME target (project-specific), use **exactly** what the dashboard shows instead of `cname.vercel-dns.com`.
+1. Vercel already has **staging.cenhub.dk** on project **cenhub-crm**.
+2. In Vercel → Domains → assign **`staging` branch** (Preview) if offered.
+3. Verify: `npx vercel domains verify staging.cenhub.dk` (or wait until DNS propagates).
+4. SSL usually ready within minutes.
 
 Verify:
 
