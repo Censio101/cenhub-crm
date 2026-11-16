@@ -22,10 +22,16 @@ npm test
 npm run security:verify-admin-routes
 ```
 
-If Supabase env is available (prefer **staging**, not prod when possible):
+Before RLS/auth deploys with one Supabase (local):
 
 ```bash
 npm run db:verify-tenant-isolation
+```
+
+Public URL smoke (safe on prod):
+
+```bash
+npm run security:smoke-prod
 ```
 
 Targeted unit tests when bulk-list limits changed:

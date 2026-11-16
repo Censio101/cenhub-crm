@@ -22,11 +22,11 @@
 
 | Item | Status |
 |------|--------|
-| Dedicated staging Supabase | **Not in repo** — ops checklist in [SECURITY.md](./SECURITY.md) still open |
-| `.env.staging` | **Not present** — local runs use `.env.local` (linked project `jrywehprthtydlpohuef`) |
-| Vercel staging alias | **Needs validation** — confirm preview/staging URL in Vercel; prod smoke uses live deployment |
-| CI Supabase secrets | On **push main** and **pull_request** (`tenant-isolation` job); requires `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in GitHub |
-| Dynamic HTTP hunts on remote staging URL | **Not run** in this pass (code + linked DB verifiers only) |
+| Dedicated staging Supabase | **Not used** (single project — [SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md)) |
+| `.env.staging` | **Not used** — local `.env.local` + prod smoke |
+| Prod HTTP smoke | `npm run security:smoke-prod` (default `https://www.cenhub.dk`) |
+| CI tenant isolation | **Off by default** — enable with repo var `ENABLE_TENANT_ISOLATION_CI=true` + secrets |
+| MFA | **Deferred** per ops decision |
 
 Treat verifier runs on the linked production project as **staging-equivalent** only when throwaway orgs (`zz-iso-*`) are used; prefer a separate staging project before onboarding new clients.
 
@@ -87,13 +87,13 @@ Treat verifier runs on the linked production project as **staging-equivalent** o
 | F-02 | Low–Medium | `GET /api/leads`, `GET /api/customers` | Repeated full-list scraping | Exceed 90/min → 429 + `bulk_list_read_log` | **Shipped** 083–084; tune `BULK_LIST_RATE_LIMITS` if needed |
 | F-03 | Low (ops) | Deployment | Verifiers may hit prod-linked DB; no `.env.staging` | This audit | Separate staging project; CI secrets point at staging only |
 
-### Needs validation (not demonstrated on remote staging HTTP)
+### Needs validation (manual follow-up)
 
 | ID | Topic | Notes |
 |----|-------|-------|
-| V-01 | Admin slug IDOR over HTTP | Handlers scope by slug; expect 401/404 — smoke: wrong slug + valid client session on `manage-bootstrap` |
-| V-02 | Cron without Bearer on deployed URL | Expect 401; run against Vercel cron path once staging URL fixed |
-| V-03 | Meta webhook without signature in prod | Should fail closed when `META_APP_SECRET` set |
+| V-01 | Admin slug IDOR over HTTP | Unauthenticated admin hub confirmed via smoke; client session + wrong slug still manual |
+| V-02 | Cron without Bearer on deployed URL | **Confirmed 2026-11-16** on `https://www.cenhub.dk` via `security:smoke-prod` (401) |
+| V-03 | Meta webhook without signature in prod | **Confirmed 2026-11-16** on `https://www.cenhub.dk` (401) |
 
 ### Rejected / mitigated
 

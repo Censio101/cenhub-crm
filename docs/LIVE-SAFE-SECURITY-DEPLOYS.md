@@ -23,14 +23,16 @@ The rule [`.cursor/rules/security-change-gate.mdc`](../.cursor/rules/security-ch
 ```bash
 npm test
 npm run security:verify-admin-routes
-npm run db:verify-tenant-isolation   # staging DB preferred
+npm run db:verify-tenant-isolation   # local only before RLS/auth changes (one Supabase)
 ```
 
-After staging URL is up:
+Prod / public URL smoke (no login):
 
 ```bash
-STAGING_BASE_URL=https://your-host npm run security:smoke-staging
+npm run security:smoke-prod
 ```
+
+See [SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md).
 
 Full manual **top 15** list: see output of **post-security-regression** skill or [RELEASE-REGRESSION.md](./RELEASE-REGRESSION.md) (T6, T7, T12, webhooks, login, admin).
 

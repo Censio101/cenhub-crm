@@ -4,8 +4,8 @@ Quarterly (or before major client onboarding). Not automated in CI.
 
 ## Access
 
-- [ ] Supabase org: MFA enabled for all staff with project access
-- [ ] Vercel team: MFA enabled for deploy access
+- [ ] Supabase org: MFA enabled for all staff (**optional / deferred** if not using yet)
+- [ ] Vercel team: MFA enabled for deploy access (**optional / deferred**)
 - [ ] Mailgun / Meta Business: review who has admin
 
 ## Data recovery
@@ -17,7 +17,7 @@ Quarterly (or before major client onboarding). Not automated in CI.
 
 - [ ] `CRON_SECRET`, `META_APP_SECRET`, funnel webhook secrets present on Vercel production
 - [ ] Rotate funnel webhook secrets if query-string URLs were ever logged (Bearer-only policy since 074)
-- [ ] GitHub Actions Supabase secrets target **staging**, not production (see [STAGING-SECURITY.md](./STAGING-SECURITY.md))
+- [ ] Single Supabase: tenant isolation **local only** unless `ENABLE_TENANT_ISOLATION_CI` is set (see [SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md))
 
 ## Incident readiness
 
@@ -29,11 +29,11 @@ Quarterly (or before major client onboarding). Not automated in CI.
 ```bash
 npm test
 npm run security:verify-admin-routes
-npm run db:verify-tenant-isolation   # staging DB recommended
+npm run db:verify-tenant-isolation   # local, before RLS/auth deploys (one Supabase)
 ```
 
-On staging URL:
+Prod URL smoke (read-only):
 
 ```bash
-npm run security:smoke-staging
+npm run security:smoke-prod
 ```

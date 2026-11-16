@@ -20,7 +20,8 @@ jobs:
 
   tenant-isolation:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    # Off by default (single Supabase). Enable: repo variable ENABLE_TENANT_ISOLATION_CI=true + Supabase secrets.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_TENANT_ISOLATION_CI == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

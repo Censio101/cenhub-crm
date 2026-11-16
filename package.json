@@ -19,6 +19,7 @@
     "db:verify-lead-sheet-columns": "tsx scripts/verify-lead-sheet-column-types.ts",
     "security:verify-admin-routes": "tsx scripts/verify-admin-routes-auth.ts",
     "security:smoke-staging": "tsx scripts/security-smoke-staging.ts",
+    "security:smoke-prod": "tsx scripts/security-smoke-staging.ts",
     "db:verify-meta-conversions": "tsx scripts/verify-meta-conversions.ts",
     "db:seed-suntech-ad-metrics": "tsx scripts/seed-suntech-ad-metrics.ts",
     "db:revert-bulk-seeds": "tsx scripts/revert-bulk-seeds-keep-suntech.ts",

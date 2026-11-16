@@ -11,7 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Security
 
 - Docs: [docs/SECURITY.md](docs/SECURITY.md), release QA: [docs/RELEASE-REGRESSION.md](docs/RELEASE-REGRESSION.md), live deploys: [docs/LIVE-SAFE-SECURITY-DEPLOYS.md](docs/LIVE-SAFE-SECURITY-DEPLOYS.md).
-- Before prod security deploy: `npm test`, `npm run security:verify-admin-routes`, `npm run db:verify-tenant-isolation` (when DB linked). Use Cursor skills `post-security-regression` and `security-hardening-live-safe` under `.cursor/skills/`.
+- Before prod security deploy: `npm test`, `npm run security:verify-admin-routes`; `db:verify-tenant-isolation` locally when RLS/auth changes; `npm run security:smoke-prod` after deploy. One Supabase: [docs/SINGLE-SUPABASE-SECURITY.md](docs/SINGLE-SUPABASE-SECURITY.md). Skills: `post-security-regression`, `security-hardening-live-safe`.
 - Emergency: `BULK_LIST_RATE_LIMIT_DISABLED=1` on Vercel if lead/customer lists return 429.
 - Client lead delete is **soft** (`deleted_at`); Censio restore: `POST /api/admin/organizations/{slug}/leads/{id}/restore`.
 

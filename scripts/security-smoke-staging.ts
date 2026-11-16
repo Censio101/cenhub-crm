@@ -1,13 +1,16 @@
 /**
- * HTTP smoke against STAGING_BASE_URL (no auth cookies).
- * Run: STAGING_BASE_URL=https://... npm run security:smoke-staging
+ * HTTP smoke against a public base URL (no auth cookies). Safe on production.
+ * Run: npm run security:smoke-prod
+ * Or: STAGING_BASE_URL or CRM_PUBLIC_URL=https://... npm run security:smoke-staging
  */
 
-const base = process.env.STAGING_BASE_URL?.replace(/\/$/, "")
-if (!base) {
-  console.error("Set STAGING_BASE_URL (see docs/STAGING-SECURITY.md)")
-  process.exit(2)
-}
+import { DEFAULT_CRM_SITE_URL } from "@/lib/site/default-site-url"
+
+const base = (
+  process.env.STAGING_BASE_URL ??
+  process.env.CRM_PUBLIC_URL ??
+  DEFAULT_CRM_SITE_URL
+).replace(/\/$/, "")
 
 type Check = { name: string; status: number; ok: boolean; detail?: string }
 

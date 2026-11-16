@@ -58,7 +58,7 @@ Columns marked hidden for a client are **removed in `/api/leads`** responses. Th
 
 ## Operations checklist (outside repo)
 
-- [ ] Supabase: PITR enabled; dashboard MFA for staff; separate staging project ([STAGING-SECURITY.md](./STAGING-SECURITY.md), [OPS-SECURITY-CHECKLIST.md](./OPS-SECURITY-CHECKLIST.md))
+- [ ] Supabase: PITR if plan allows; MFA when ready; one-project runbook ([SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md), [OPS-SECURITY-CHECKLIST.md](./OPS-SECURITY-CHECKLIST.md))
 - [ ] Vercel: `CRON_SECRET`, `META_APP_SECRET`, service role only on server
 - [ ] Rotate funnel webhook secrets if old URLs with query params were logged
 - [ ] Mailgun domain aligned with `censio_workspace_settings.site_url`
@@ -76,7 +76,8 @@ Default placeholder until set: `security@cenhub.dk` (replace before an incident)
 ## Related docs
 
 - [SECURITY-AUDIT.md](./SECURITY-AUDIT.md) — Cloudflare-guided audit (2026-11-16)
-- [STAGING-SECURITY.md](./STAGING-SECURITY.md) — staging project + smoke tests
+- [SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md) — daily security habit (one Supabase)
+- [STAGING-SECURITY.md](./STAGING-SECURITY.md) — optional second project
 - [OPS-SECURITY-CHECKLIST.md](./OPS-SECURITY-CHECKLIST.md) — MFA, PITR, secrets
 - [RELEASE-REGRESSION.md](./RELEASE-REGRESSION.md) — test team checklist
 - [BACKUP-RUNBOOK.md](./BACKUP-RUNBOOK.md) — PITR / recovery
