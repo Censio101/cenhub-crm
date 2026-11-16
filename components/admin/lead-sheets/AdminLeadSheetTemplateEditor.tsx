@@ -53,6 +53,8 @@ import type {
   ResolvedLeadSheetConfig,
   TemplateClientRef,
 } from "@/lib/lead-sheet/types"
+import { templateHasNotesLikeColumn } from "@/lib/lead-sheet/ensure-notes-column"
+import { shouldUseNotesTextareaField } from "@/lib/lead-sheet/notes-field"
 import { cn } from "cn"
 
 type Props = {
@@ -300,6 +302,33 @@ function EditorContent({
     }
   }
 
+  async function attachLibraryFieldByKey(
+    afterColumnId: string,
+    fieldKey: string,
+    values: NewColumnValues
+  ): Promise<string | null> {
+    if (
+      shouldUseNotesTextareaField(values.label, fieldKey) &&
+      templateHasNotesLikeColumn(config)
+    ) {
+      return t("leadSheetsNotesAlreadyOnSheet")
+    }
+    const libRes = await fetch(`/api/admin/lead-sheet-fields?key=${encodeURIComponent(fieldKey)}`)
+    const libData = await readJson(libRes)
+    if (!libRes.ok) {
+      return t("leadSheetsFieldKeyTaken")
+    }
+    const field = (libData as { field?: LeadSheetCustomFieldDef }).field
+    if (!field) return t("leadSheetsFieldKeyTaken")
+    const alreadyOnSheet = config.columns.some(
+      (col) => col.kind === "custom" && col.customField.id === field.id
+    )
+    if (alreadyOnSheet) {
+      return t("leadSheetsFieldAlreadyOnTemplate")
+    }
+    return addFieldAfter(afterColumnId, { customFieldId: field.id })
+  }
+
   async function createFieldAndAdd(
     afterColumnId: string,
     values: NewColumnValues
@@ -319,7 +348,7 @@ function EditorContent({
       if (!createRes.ok) {
         const code = createData.code
         if (code === "field_key_taken") {
-          return t("leadSheetsFieldKeyTaken")
+          return attachLibraryFieldByKey(afterColumnId, values.fieldKey, values)
         }
         throw new Error(typeof createData.error === "string" ? createData.error : "Failed")
       }

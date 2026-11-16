@@ -15,6 +15,10 @@ import {
 } from "@/lib/lead-sheet/client-visibility"
 import { parseFormStepsTotal } from "@/lib/lead-sheet/form-steps"
 import {
+  CANONICAL_NOTES_KEY,
+  templateHasNotesLikeColumn,
+} from "@/lib/lead-sheet/ensure-notes-column"
+import {
   BUILTIN_COLUMN_KEYS,
   type CustomFieldType,
   type LeadSheetCustomFieldDef,
@@ -525,6 +529,48 @@ export async function addFieldToTemplate(
   return requireTemplate(supabase, templateId)
 }
 
+/** Shared `notes` textarea column when the template has no notes-like custom field yet. */
+export async function ensureNotesColumnOnTemplate(
+  supabase: SupabaseClient,
+  templateId: string
+): Promise<ResolvedLeadSheetConfig | null> {
+  const config = await getLeadSheetTemplateById(supabase, templateId)
+  if (!config) return null
+  if (templateHasNotesLikeColumn(config)) return config
+
+  const { data: existing } = await supabase
+    .from("lead_sheet_custom_fields")
+    .select("id, field_type")
+    .eq("field_key", CANONICAL_NOTES_KEY)
+    .maybeSingle()
+
+  let fieldId: string
+  if (existing?.id) {
+    fieldId = existing.id as string
+    if (existing.field_type !== "textarea") {
+      await supabase
+        .from("lead_sheet_custom_fields")
+        .update({ field_type: "textarea" })
+        .eq("id", fieldId)
+    }
+  } else {
+    const created = await createLibraryField(supabase, {
+      label: "Notes",
+      fieldKey: CANONICAL_NOTES_KEY,
+      fieldType: "textarea",
+    })
+    fieldId = created.id
+  }
+
+  const lastColumn = config.columns[config.columns.length - 1]
+  return addFieldToTemplate(
+    supabase,
+    templateId,
+    { customFieldId: fieldId },
+    lastColumn?.id ?? null
+  )
+}
+
 /** Removes a field from one template. The field stays in the library and lead data is kept. */
 export async function removeColumnFromTemplate(
   supabase: SupabaseClient,
@@ -639,6 +685,21 @@ export async function listLibraryFields(
     })
   )
   return [...builtins, ...customs]
+}
+
+export async function getLibraryCustomFieldByKey(
+  supabase: SupabaseClient,
+  fieldKey: string
+): Promise<LeadSheetCustomFieldDef | null> {
+  const key = fieldKey.trim()
+  if (!key) return null
+  const { data, error } = await supabase
+    .from("lead_sheet_custom_fields")
+    .select("*")
+    .eq("field_key", key)
+    .maybeSingle()
+  if (error) throw error
+  return data ? mapCustomField(data as CustomFieldRow) : null
 }
 
 function cleanSelectOptions(raw: readonly unknown[]): string[] {
@@ -943,7 +1004,9 @@ export async function duplicateLeadSheetTemplate(
     await setTemplateCategoryIds(supabase, newTemplateId, source.template.categoryIds)
   }
 
-  const created = await getLeadSheetTemplateById(supabase, newTemplateId)
+  const withNotes = await ensureNotesColumnOnTemplate(supabase, newTemplateId)
+
+  const created = withNotes ?? (await getLeadSheetTemplateById(supabase, newTemplateId))
   if (!created) throw new Error("Clone failed")
   return created
 }

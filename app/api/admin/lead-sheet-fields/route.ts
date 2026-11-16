@@ -4,16 +4,26 @@ import { adminErrorResponse, requireCensioAdmin } from "@/lib/auth/require-censi
 import {
   ColumnSettingsError,
   createLibraryField,
+  getLibraryCustomFieldByKey,
   listLibraryFields,
 } from "@/lib/db/lead-sheet-repository"
 import { FieldKeyError } from "@/lib/lead-sheet/field-key"
 import { isCustomFieldType } from "@/lib/lead-sheet/types"
 import { createAdminClient } from "@/lib/supabase/admin"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireCensioAdmin()
-    const fields = await listLibraryFields(createAdminClient())
+    const admin = createAdminClient()
+    const key = new URL(request.url).searchParams.get("key")?.trim()
+    if (key) {
+      const field = await getLibraryCustomFieldByKey(admin, key)
+      if (!field) {
+        return NextResponse.json({ error: "Field not found" }, { status: 404 })
+      }
+      return NextResponse.json({ field })
+    }
+    const fields = await listLibraryFields(admin)
     return NextResponse.json({ fields })
   } catch (error) {
     return adminErrorResponse(error)

@@ -2074,6 +2074,9 @@ export const en: Messages = {
   leadSheetsColumnNamePlaceholder: "e.g. Budget",
   leadSheetsFieldKey: "Field key (used by webhooks)",
   leadSheetsFieldKeyTaken: "That field key is already used by another field. Choose a different key.",
+  leadSheetsFieldAlreadyOnTemplate: "That field is already on this sheet.",
+  leadSheetsNotesAlreadyOnSheet:
+    "This sheet already has a Notes column. Open the lead list to use it — or remove the existing Notes column first if you want the shared workspace Notes field instead.",
   leadSheetsFieldKeyInvalid:
     "Use English letters, numbers and underscores only (2–48 characters, starting with a letter).",
   leadSheetsFieldKeyReset: "Use suggestion",

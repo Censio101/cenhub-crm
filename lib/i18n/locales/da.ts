@@ -2084,6 +2084,9 @@ const daMessages = {
   leadSheetsColumnNamePlaceholder: "f.eks. Budget",
   leadSheetsFieldKey: "Feltnøgle (bruges af webhooks)",
   leadSheetsFieldKeyTaken: "Feltnøglen bruges allerede af et andet felt. Vælg en anden nøgle.",
+  leadSheetsFieldAlreadyOnTemplate: "Feltet findes allerede på dette ark.",
+  leadSheetsNotesAlreadyOnSheet:
+    "Dette ark har allerede en Notes-kolonne. Brug den på lead-listen — eller fjern den eksisterende Notes-kolonne først, hvis du vil bruge det fælles Notes-felt i stedet.",
   leadSheetsFieldKeyInvalid:
     "Brug kun engelske bogstaver, tal og understreg (2–48 tegn, starter med et bogstav).",
   leadSheetsFieldKeyReset: "Brug forslag",
