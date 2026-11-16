@@ -7,6 +7,7 @@ import {
 import { listCustomersForOrganization } from "@/lib/db/customers-repository"
 import { usesDatabaseLeads } from "@/lib/db/leads-repository"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { enforceBulkListRateLimit } from "@/lib/security/enforce-bulk-list-rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
@@ -16,6 +17,13 @@ export async function GET() {
     }
 
     const ctx = await requireOrganizationContext()
+
+    const limited = await enforceBulkListRateLimit({
+      organizationId: ctx.organization.id,
+      userId: ctx.userId,
+      route: "customers",
+    })
+    if (limited) return limited
 
     const supabase =
       ctx.isDemoFallback && !ctx.userId

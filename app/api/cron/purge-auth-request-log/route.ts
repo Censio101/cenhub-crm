@@ -14,9 +14,17 @@ export async function GET(request: Request) {
 
   try {
     const admin = createAdminClient()
-    const { data, error } = await admin.rpc("purge_auth_request_log", { retention_days: 30 })
-    if (error) throw error
-    return NextResponse.json({ success: true, result: data })
+    const [authLog, bulkList] = await Promise.all([
+      admin.rpc("purge_auth_request_log", { retention_days: 30 }),
+      admin.rpc("purge_bulk_list_read_log", { retention_days: 7 }),
+    ])
+    if (authLog.error) throw authLog.error
+    if (bulkList.error) throw bulkList.error
+    return NextResponse.json({
+      success: true,
+      authRequestLog: authLog.data,
+      bulkListReadLog: bulkList.data,
+    })
   } catch (error) {
     console.error("purge-auth-request-log cron failed:", error)
     return NextResponse.json({ error: "Purge failed" }, { status: 500 })

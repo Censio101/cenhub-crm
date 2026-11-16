@@ -18,6 +18,7 @@ import { stripHiddenCustomFields } from "@/lib/lead-sheet/client-visibility"
 import { sanitizeNewLeadCustomFields } from "@/lib/lead-sheet/apply-custom-fields-patch"
 import { isLeadStatusId, type Lead } from "@/lib/leads"
 import { isOnboardingContactEmailValid } from "@/lib/onboarding/application-input"
+import { enforceBulkListRateLimit } from "@/lib/security/enforce-bulk-list-rate-limit"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
@@ -27,6 +28,13 @@ export async function GET() {
     }
 
     const ctx = await requireOrganizationContext()
+
+    const limited = await enforceBulkListRateLimit({
+      organizationId: ctx.organization.id,
+      userId: ctx.userId,
+      route: "leads",
+    })
+    if (limited) return limited
 
     const supabase =
       ctx.isDemoFallback && !ctx.userId

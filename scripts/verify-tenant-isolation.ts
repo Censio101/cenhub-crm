@@ -403,20 +403,45 @@ async function main() {
         blocked: row?.name !== "Renamed by client",
       })
     }
+
+    // Known confidentiality gap (not cross-tenant): API strips hidden custom keys; PostgREST does not.
+    {
+      const probeKey = "zz_iso_hidden_probe"
+      const probeValue = `iso-probe-${suffix}`
+      await admin
+        .from("leads")
+        .update({ custom_fields: { [probeKey]: probeValue } })
+        .eq("id", leadA)
+      const { data } = await anon.from("leads").select("custom_fields").eq("id", leadA).single()
+      const fields = data?.custom_fields as Record<string, unknown> | null
+      results.push({
+        name: "GAP: PostgREST exposes full custom_fields (hidden columns stripped only in /api/leads)",
+        blocked: fields?.[probeKey] !== probeValue,
+        detail:
+          fields?.[probeKey] === probeValue
+            ? "Same-org user can read hidden values via Supabase client — see docs/SECURITY-AUDIT.md"
+            : undefined,
+      })
+    }
   } finally {
     await cleanup()
   }
 
   let vulnerable = 0
   for (const result of results) {
-    if (!result.blocked) vulnerable += 1
+    const isGap = result.name.startsWith("GAP:")
+    if (!result.blocked && !isGap) vulnerable += 1
     const label = result.name.startsWith("CONTROL")
       ? result.blocked
         ? "ok      "
         : "BROKEN  "
-      : result.blocked
-        ? "BLOCKED "
-        : "VULNERABLE"
+      : isGap
+        ? result.blocked
+          ? "ok (gap closed)"
+          : "KNOWN GAP"
+        : result.blocked
+          ? "BLOCKED "
+          : "VULNERABLE"
     console.log(`${label} ${result.name}${result.detail ? ` (${result.detail})` : ""}`)
   }
   console.log(

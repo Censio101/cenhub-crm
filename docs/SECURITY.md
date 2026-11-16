@@ -12,6 +12,7 @@ Multi-tenant B2B CRM: each **organization** is a client. Assets are lead PII, cu
 |------|---------|
 | Auth | Invite redeem requires one-time `token`; safe `next` on callback; magic-link rate limit (`auth_request_log`, migration 071) |
 | Tenant | RLS on org-scoped tables; profile privilege lock (052); `verify-tenant-isolation` script |
+| Bulk list reads | `GET /api/leads` and `GET /api/customers` — per-user/org/minute cap via `bulk_list_read_log` (083) |
 | Delete roles | `can_delete_org_leads` (053); API mirrors UI |
 | Meta tokens | Column-level SELECT revoke for clients (072) |
 | Webhooks | Funnel Bearer only; Meta HMAC fail-closed; cron Bearer only |
@@ -26,7 +27,7 @@ Multi-tenant B2B CRM: each **organization** is a client. Assets are lead PII, cu
 | Audit | Append-only `lead_audit_events` (create, update, soft/hard delete, restore) |
 | Auth log retention | `purge_auth_request_log()` via daily cron |
 | Edge | Security headers in `next.config.ts`; timing-safe funnel webhook secret compare |
-| CI | GitHub Actions: `npm test` + admin-route auth check; tenant isolation on main push |
+| CI | GitHub Actions: `npm test` + admin-route auth check; tenant isolation on PR and main push (when GitHub Supabase secrets are set) |
 
 ## Intentional breaking changes (do not revert)
 
@@ -51,9 +52,13 @@ Production smoke (manual):
 
 Functional QA: see [RELEASE-REGRESSION.md](./RELEASE-REGRESSION.md) (B3 checklist + sign-off).
 
+## Hidden lead sheet columns (confidentiality)
+
+Columns marked hidden for a client are **removed in `/api/leads`** responses. The dashboard loads leads through that API (and live sync refetches the same path). They are **not** encrypted at rest in `leads.custom_fields`: a technical user in the same organization could still read hidden keys with the browser Supabase client (PostgREST). Treat “hidden” as **dashboard confidentiality**, not protection against a malicious insider with DevTools. See [SECURITY-AUDIT.md](./SECURITY-AUDIT.md) F-01 options if you need DB-level enforcement.
+
 ## Operations checklist (outside repo)
 
-- [ ] Supabase: PITR enabled; dashboard MFA for staff; separate staging project
+- [ ] Supabase: PITR enabled; dashboard MFA for staff; separate staging project ([STAGING-SECURITY.md](./STAGING-SECURITY.md), [OPS-SECURITY-CHECKLIST.md](./OPS-SECURITY-CHECKLIST.md))
 - [ ] Vercel: `CRON_SECRET`, `META_APP_SECRET`, service role only on server
 - [ ] Rotate funnel webhook secrets if old URLs with query params were logged
 - [ ] Mailgun domain aligned with `censio_workspace_settings.site_url`
@@ -64,10 +69,15 @@ Functional QA: see [RELEASE-REGRESSION.md](./RELEASE-REGRESSION.md) (B3 checklis
 
 ## Incident contact
 
-Define your on-call / security contact here: _______________
+**Security / on-call:** update this line with your live contact (email or pager).
+
+Default placeholder until set: `security@cenhub.dk` (replace before an incident).
 
 ## Related docs
 
+- [SECURITY-AUDIT.md](./SECURITY-AUDIT.md) — Cloudflare-guided audit (2026-11-16)
+- [STAGING-SECURITY.md](./STAGING-SECURITY.md) — staging project + smoke tests
+- [OPS-SECURITY-CHECKLIST.md](./OPS-SECURITY-CHECKLIST.md) — MFA, PITR, secrets
 - [RELEASE-REGRESSION.md](./RELEASE-REGRESSION.md) — test team checklist
 - [BACKUP-RUNBOOK.md](./BACKUP-RUNBOOK.md) — PITR / recovery
 - [GDPR.md](./GDPR.md) — subprocessors and DSAR outline
