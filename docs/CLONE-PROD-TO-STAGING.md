@@ -4,7 +4,7 @@ Staging must **start as a copy** of production, then stay **independent** (no li
 
 **Production project ref:** `jrywehprthtydlpohuef` (do not use for day-to-day `db push`).
 
-**Staging:** create `cenhub-crm-staging` or use existing **Censio Internal** (`uuqlrkeovlgtjuuqgyme`) in the same org — pick one staging project only.
+**Staging:** **Cenhub CRM Staging** — project ref `jyqujippulfaixfawuuc` (do not use Censio Internal).
 
 ## Step 1 — Empty staging project ready
 

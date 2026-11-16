@@ -6,7 +6,7 @@ import { readFileSync, existsSync } from "node:fs"
 import { resolve } from "node:path"
 
 const PROD_REF = process.env.SUPABASE_PROD_PROJECT_REF ?? "jrywehprthtydlpohuef"
-const STAGING_HINT = process.env.SUPABASE_STAGING_PROJECT_REF ?? "uuqlrkeovlgtjuuqgyme"
+const STAGING_HINT = process.env.SUPABASE_STAGING_PROJECT_REF ?? "jyqujippulfaixfawuuc"
 
 function loadEnvLocal(): Record<string, string> {
   const path = resolve(process.cwd(), ".env.local")

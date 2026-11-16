@@ -3,7 +3,7 @@
 | Layer | Local | Staging | Production |
 |-------|-------|---------|------------|
 | App | `npm run dev` → http://localhost:3000 | Vercel Preview / `staging` branch | https://www.cenhub.dk |
-| Database | Same as staging (via `.env.local`) | Dedicated Supabase project | `jrywehprthtydlpohuef` |
+| Database | Same as staging (via `.env.local`) | [Cenhub CRM Staging](./STAGING-PROJECT.md) `jyqujippulfaixfawuuc` | `jrywehprthtydlpohuef` |
 | Purpose | Dev + migrations first | QA + security tests | Paying clients |
 
 ```mermaid
