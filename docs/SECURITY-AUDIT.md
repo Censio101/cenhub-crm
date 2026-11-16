@@ -144,7 +144,7 @@ CI: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — tests + admin 
 
 | Order | Item | Cross-tenant impact |
 |-------|------|---------------------|
-| 1 | Document/strengthen hidden-column policy OR DB redaction (F-01) | Low |
+| 1 | Document/strengthen hidden-column policy OR DB redaction (F-01) | **Option A documented** in [SECURITY.md](./SECURITY.md); B/C if needed later |
 | 2 | Rate limit + logging on `GET /api/leads` (F-02) | **Done** (083–084) |
 | 3 | Staging Supabase + CI secrets (F-03) | High (process) |
 | 4 | Optional: extend isolation script with HTTP-level admin slug checks | Medium |
