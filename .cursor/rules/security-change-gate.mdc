@@ -1,0 +1,34 @@
+---
+description: Gate security changes with regression testing and live-safe patterns (rate limits, RLS, auth).
+alwaysApply: false
+globs:
+  - "app/api/**"
+  - "lib/security/**"
+  - "lib/auth/**"
+  - "supabase/migrations/**"
+  - "middleware.ts"
+  - "docs/SECURITY*.md"
+---
+
+# Security changes and live users
+
+Cenhub CRM has **live clients**. Security work must not break leads, customers, webhooks, login, or admin dashboards.
+
+## Two-agent workflow
+
+1. **Implement** using project skill `security-hardening-live-safe` (small diff, fail-open on logging DB errors, kill-switches documented).
+2. **Verify** using project skill `post-security-regression` before declaring deploy-safe.
+
+Run `npm test` and relevant verify scripts in the regression pass.
+
+## Bulk list rate limits
+
+`GET /api/leads` and `GET /api/customers` are rate-limited. If changing limits or enforcement:
+
+- Keep normal live sync under the cap (debounced refetch ~120/min worst case).
+- Respect `BULK_LIST_RATE_LIMIT_DISABLED=1` emergency bypass.
+- See [docs/LIVE-SAFE-SECURITY-DEPLOYS.md](../docs/LIVE-SAFE-SECURITY-DEPLOYS.md).
+
+## Migrations
+
+Prefer additive migrations. After RLS changes, run `npm run db:verify-tenant-isolation` when env is available.

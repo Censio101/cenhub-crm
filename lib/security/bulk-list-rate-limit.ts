@@ -5,11 +5,11 @@ export type BulkListRoute = (typeof BULK_LIST_ROUTES)[number]
 
 /**
  * Full-list fetches per signed-in user and org per minute.
- * High enough for live-sync refetches (500ms debounce); blocks scripted scraping.
+ * Live sync debounces at 500ms (~120/min); cap leaves headroom for focus/mount bursts.
  */
 export const BULK_LIST_RATE_LIMITS = {
   windowMs: 60_000,
-  perUserOrgRoute: 90,
+  perUserOrgRoute: 150,
   /** Log when usage reaches this fraction of the cap (defense-in-depth visibility). */
   warnAtFraction: 0.8,
 } as const

@@ -11,7 +11,7 @@
 | Priority | Risk | Lead/client theft? |
 |----------|------|-------------------|
 | 1 | Same-org user can read “hidden” `custom_fields` via PostgREST (bypassing `/api/leads`) | No (same tenant); **confidentiality** gap |
-| 2 | Unbounded authenticated `GET /api/leads` (export / scraping) | **Mitigated** — 90 req/min per user+org ([083](../supabase/migrations/083_bulk_list_read_log.sql)) |
+| 2 | Unbounded authenticated `GET /api/leads` (export / scraping) | **Mitigated** — 150 req/min per user+org; kill-switch `BULK_LIST_RATE_LIMIT_DISABLED=1` ([LIVE-SAFE-SECURITY-DEPLOYS.md](./LIVE-SAFE-SECURITY-DEPLOYS.md)) |
 | 3 | No dedicated staging Supabase in ops checklist (dynamic tests run against linked project) | Indirect (mis-test / prod data in checks) |
 
 **Top 3 actions:** (1) Accept or fix hidden-column storage model; (2) rate-limit and log bulk lead reads; (3) provision staging + run verifiers only there.

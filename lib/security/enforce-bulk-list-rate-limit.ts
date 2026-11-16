@@ -15,6 +15,9 @@ export async function enforceBulkListRateLimit(input: {
   userId: string
   route: BulkListRoute
 }): Promise<NextResponse | null> {
+  if (process.env.BULK_LIST_RATE_LIMIT_DISABLED === "1") {
+    return null
+  }
   try {
     const admin = createAdminClient()
     const decision = await consumeBulkListRateLimit(admin, input)
