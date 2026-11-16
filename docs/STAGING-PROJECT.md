@@ -8,7 +8,7 @@
 | **Dashboard** | https://supabase.com/dashboard/project/jyqujippulfaixfawuuc |
 | **Region** | eu-west-1 (same as production) |
 
-**Production** (unchanged): `jrywehprthtydlpohuef`
+**Production:** **Censio CRM Production** — ref `jrywehprthtydlpohuef` (live cenhub.dk)
 
 **Censio Internal** (`uuqlrkeovlgtjuuqgyme`) is a **different app** — not used for Cenhub staging.
 
