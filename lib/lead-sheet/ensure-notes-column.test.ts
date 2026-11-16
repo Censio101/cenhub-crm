@@ -21,6 +21,7 @@ function miniConfig(
       organizationId: null,
       sourceTemplateId: null,
       categoryIds: [],
+      subcategoryIds: [],
       formStepsTotal: null,
       ...overrides,
     },
