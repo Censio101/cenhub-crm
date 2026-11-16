@@ -20,7 +20,7 @@ jobs:
 
   tenant-isolation:
     runs-on: ubuntu-latest
-    # Off by default (single Supabase). Enable: repo variable ENABLE_TENANT_ISOLATION_CI=true + Supabase secrets.
+    # Use STAGING Supabase in secrets (not production). Enable: ENABLE_TENANT_ISOLATION_CI=true
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_TENANT_ISOLATION_CI == 'true'
     steps:
       - uses: actions/checkout@v4

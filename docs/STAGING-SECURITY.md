@@ -1,8 +1,8 @@
-# Staging environment (security verification) — optional
+# Staging environment (security verification)
 
-**Current setup:** single Supabase → follow [SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md).
+**Workflow:** [THREE-ENVIRONMENTS.md](./THREE-ENVIRONMENTS.md) — staging is a **separate** Supabase project, seeded once from production via [CLONE-PROD-TO-STAGING.md](./CLONE-PROD-TO-STAGING.md), then independent.
 
-When your Supabase plan allows a second project, use a **dedicated staging project** and Vercel **Preview/Staging** for dynamic security checks. Do not point GitHub Actions tenant-isolation secrets at production once staging exists.
+Do not point GitHub Actions tenant-isolation secrets at **production**; use staging keys.
 
 ## Provision
 

@@ -76,7 +76,9 @@ Default placeholder until set: `security@cenhub.dk` (replace before an incident)
 ## Related docs
 
 - [SECURITY-AUDIT.md](./SECURITY-AUDIT.md) — Cloudflare-guided audit (2026-11-16)
-- [SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md) — daily security habit (one Supabase)
+- [THREE-ENVIRONMENTS.md](./THREE-ENVIRONMENTS.md) — local → staging → production
+- [PROMOTION-CHECKLIST.md](./PROMOTION-CHECKLIST.md) — ship to prod safely
+- [SINGLE-SUPABASE-SECURITY.md](./SINGLE-SUPABASE-SECURITY.md) — legacy one-DB notes
 - [STAGING-SECURITY.md](./STAGING-SECURITY.md) — optional second project
 - [OPS-SECURITY-CHECKLIST.md](./OPS-SECURITY-CHECKLIST.md) — MFA, PITR, secrets
 - [RELEASE-REGRESSION.md](./RELEASE-REGRESSION.md) — test team checklist

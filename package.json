@@ -25,7 +25,10 @@
     "db:revert-bulk-seeds": "tsx scripts/revert-bulk-seeds-keep-suntech.ts",
     "db:seed-ad-metrics": "tsx scripts/seed-demo-ad-metrics.ts",
     "db:setup-admin": "tsx scripts/setup-censio-admin.ts",
-    "db:migrate": "supabase db push --linked"
+    "db:migrate": "npm run db:migrate:staging",
+    "db:migrate:staging": "supabase db push --linked",
+    "db:migrate:prod": "tsx scripts/db-migrate-prod.ts",
+    "env:verify-dev": "tsx scripts/verify-dev-env.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -1,5 +1,6 @@
 import type { WorkspaceIntegrationsPublic } from "@/lib/admin/workspace-integrations"
 import type { MailgunDeliverySettings } from "@/lib/email/mailgun-delivery-settings"
+import { shouldBlockOutboundEmail } from "@/lib/env/deploy-target"
 
 export type SendMailInput = {
   to: string
@@ -71,6 +72,13 @@ export async function sendMailWithIntegrations(
   settings: WorkspaceIntegrationsPublic,
   input: SendMailInput
 ): Promise<void> {
+  if (shouldBlockOutboundEmail()) {
+    console.warn("[mailgun] outbound email blocked (staging/preview)", {
+      to: input.to,
+      subject: input.subject,
+    })
+    return
+  }
   if (!settings.mailgunApiKey || !settings.mailgunDomain) {
     throw new Error("Mailgun is not configured")
   }

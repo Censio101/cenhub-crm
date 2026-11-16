@@ -1,8 +1,8 @@
-# Security with one Supabase project (no staging)
+# Security with one Supabase project (legacy)
 
-Cenhub runs on a **single Supabase** (free/solo plan). There is **no** second staging database. MFA may be enabled later.
+**Superseded for development** by [THREE-ENVIRONMENTS.md](./THREE-ENVIRONMENTS.md) (local + staging Supabase + production).
 
-This runbook replaces the staging-first path for day-to-day work. Optional second project: see [STAGING-SECURITY.md](./STAGING-SECURITY.md) when your plan allows it.
+Keep this page for **prod-only smoke** and habits when you cannot run staging.
 
 ## Before every production deploy
 

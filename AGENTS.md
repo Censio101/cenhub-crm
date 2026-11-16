@@ -11,7 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Security
 
 - Docs: [docs/SECURITY.md](docs/SECURITY.md), release QA: [docs/RELEASE-REGRESSION.md](docs/RELEASE-REGRESSION.md), live deploys: [docs/LIVE-SAFE-SECURITY-DEPLOYS.md](docs/LIVE-SAFE-SECURITY-DEPLOYS.md).
-- Before prod security deploy: `npm test`, `npm run security:verify-admin-routes`; `db:verify-tenant-isolation` locally when RLS/auth changes; `npm run security:smoke-prod` after deploy. One Supabase: [docs/SINGLE-SUPABASE-SECURITY.md](docs/SINGLE-SUPABASE-SECURITY.md). Skills: `post-security-regression`, `security-hardening-live-safe`.
+- Before prod deploy: test on **staging** DB first; `npm test`, `npm run env:verify-dev`, `npm run security:verify-admin-routes`; `db:verify-tenant-isolation` on staging; `security:smoke-staging` then `security:smoke-prod` after promotion. [docs/THREE-ENVIRONMENTS.md](docs/THREE-ENVIRONMENTS.md).
 - Emergency: `BULK_LIST_RATE_LIMIT_DISABLED=1` on Vercel if lead/customer lists return 429.
 - Client lead delete is **soft** (`deleted_at`); Censio restore: `POST /api/admin/organizations/{slug}/leads/{id}/restore`.
 
@@ -22,8 +22,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Supabase migrations
 
 - Add SQL under `supabase/migrations/` (sequential numbering).
-- Apply to the linked remote project: `npm run db:migrate` (`supabase db push --linked`).
-- After adding migrations, run this command in the agent session unless the user says not to.
+- **Staging (default):** `npm run db:migrate:staging` — requires `supabase link` to **staging**, not production.
+- **Production:** only when the user explicitly confirms: `CONFIRM_PROD_MIGRATE=1 npm run db:migrate:prod`.
+- After adding migrations, run **staging** migrate in the agent session unless the user says not to. Never prod migrate without confirmation.
+- Environments: [docs/THREE-ENVIRONMENTS.md](docs/THREE-ENVIRONMENTS.md).
 
 ## Outbound email
 
