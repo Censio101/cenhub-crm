@@ -64,6 +64,10 @@ export function PartialStepsCard({
             </h2>
           </div>
         </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-4 border-t border-[#e8e0d8] pt-3">
+        <p className="text-[13px] font-medium text-foreground">{t("partialStepsShowColumn")}</p>
         <button
           type="button"
           role="switch"
@@ -89,10 +93,11 @@ export function PartialStepsCard({
       </div>
 
       {enabled ? (
-        <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[#e8e0d8] pt-3">
+        <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="grid gap-1">
-            <span className="text-[12px] font-semibold text-muted-foreground">
+            <span className="flex items-baseline gap-2 text-[12px] font-semibold text-muted-foreground">
               {t("partialStepsTotalLabel")}
+              <span className="font-medium">{t("partialStepsTotalOptional")}</span>
             </span>
             <input
               type="number"
