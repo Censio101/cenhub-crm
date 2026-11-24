@@ -2190,14 +2190,9 @@ const daMessages = {
   leadSheetColLtv: "LTV",
   leadSheetColFormProgress: "Formulartrin",
   partialStepsTitle: "Delvise trin",
-  partialStepsDescription:
-    "Til formularer, der sender et lead, før den besøgende er færdig. Næste kald med samme lead-ID udfylder den samme række i stedet for at tilføje en ny. Tilføjer en kolonne med formulartrin, der viser Delvis eller Komplet.",
   partialStepsShowColumn: "Delvise trin",
   partialStepsTotalLabel: "Antal trin i alt",
-  partialStepsTotalOptional: "Valgfrit",
   partialStepsSave: "Gem",
-  partialStepsHint:
-    "Valgfrit. Lad feltet stå tomt, når formularerne har forskelligt antal trin. Formularen sender så status partial eller complete. Skriv kun et tal, når alle formularer har samme længde, for at vise fremdrift som 3 / 8 og holde et lead delvist indtil sidste trin.",
   partialStepsInvalid: "Skriv et helt tal fra {min} til {max}.",
   partialStepsSaved: "Delvise trin gemt.",
   partialStepsColumnOn: "Delvise trin er slået til.",

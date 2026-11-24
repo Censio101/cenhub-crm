@@ -62,7 +62,6 @@ export function PartialStepsCard({
             <h2 className="text-[14px] font-semibold leading-tight text-foreground">
               {t("partialStepsTitle")}
             </h2>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">{t("partialStepsDescription")}</p>
           </div>
         </div>
         <button
@@ -101,7 +100,6 @@ export function PartialStepsCard({
               min={FORM_STEPS_MIN}
               max={FORM_STEPS_MAX}
               value={draft}
-              placeholder={t("partialStepsTotalOptional")}
               disabled={disabled || busy}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
@@ -122,7 +120,6 @@ export function PartialStepsCard({
               {t("partialStepsSave")}
             </Button>
           ) : null}
-          <p className="pb-2.5 text-[12px] text-muted-foreground">{t("partialStepsHint")}</p>
         </div>
       ) : null}
 

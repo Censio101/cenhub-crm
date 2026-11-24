@@ -2179,14 +2179,9 @@ export const en: Messages = {
   leadSheetColLtv: "LTV",
   leadSheetColFormProgress: "Form steps",
   partialStepsTitle: "Partial steps",
-  partialStepsDescription:
-    "For forms that send a lead before the visitor has finished. The next call with the same lead ID fills the same row instead of adding a new one. Adds a Form steps column that shows Partial or Complete.",
   partialStepsShowColumn: "Partial steps",
   partialStepsTotalLabel: "Total steps",
-  partialStepsTotalOptional: "Optional",
   partialStepsSave: "Save",
-  partialStepsHint:
-    "Optional. Leave this empty when forms have different numbers of steps. The form then sends status partial or complete. Enter a number only when every form has the same length, to show progress as 3 / 8 and keep a lead partial until the last step.",
   partialStepsInvalid: "Enter a whole number from {min} to {max}.",
   partialStepsSaved: "Partial steps saved.",
   partialStepsColumnOn: "Partial steps turned on.",
