@@ -122,7 +122,10 @@ export async function POST(request: Request, context: RouteContext) {
     const partialStepsOn = sheetHasPartialSteps(leadSheet)
     const formStepsTotal = parseFormStepsTotal(leadSheet?.template.formStepsTotal)
     const stepsCompleted = parsed.canonical.stepsCompleted
-    const formStatus = partialStepsOn ? parsed.canonical.formStatus : undefined
+    // With a saved total the step count decides partial / complete, exactly as before, so the
+    // status is only read for templates without a total.
+    const formStatus =
+      partialStepsOn && formStepsTotal === null ? parsed.canonical.formStatus : undefined
     const tracksSteps = formStepsTotal !== null && stepsCompleted !== undefined
     const isSteppedCall = tracksSteps || formStatus !== undefined
 

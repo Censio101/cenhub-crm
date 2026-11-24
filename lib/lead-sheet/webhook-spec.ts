@@ -1,4 +1,8 @@
-import { activeSheetColumns, sheetHasPartialSteps } from "@/lib/lead-sheet/form-steps"
+import {
+  activeSheetColumns,
+  isValidFormStepsTotal,
+  sheetHasPartialSteps,
+} from "@/lib/lead-sheet/form-steps"
 import {
   sheetEligibleCustomWebhookFields,
   sheetEligibleStandardWebhookKeys,
@@ -91,7 +95,10 @@ function standardKeysForSheet(config: ResolvedLeadSheetConfig): string[] {
     (key) => !PARTIAL_STEPS_WEBHOOK_KEYS.includes(key)
   )
   if (!sheetHasPartialSteps(config)) return fromColumns
-  const allowed = new Set([...fromColumns, ...PARTIAL_STEPS_WEBHOOK_KEYS])
+  // With a saved total the step count decides, so the status field is not offered.
+  const hasTotal = isValidFormStepsTotal(config.template.formStepsTotal)
+  const extra = hasTotal ? ["stepsCompleted"] : PARTIAL_STEPS_WEBHOOK_KEYS
+  const allowed = new Set([...fromColumns, ...extra])
   return STANDARD_WEBHOOK_FIELDS.map((field) => field.key).filter((key) => allowed.has(key))
 }
 

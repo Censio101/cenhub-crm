@@ -99,7 +99,9 @@ describe("form steps", () => {
     expect(keys(sheet(null))).not.toContain("formStatus")
     expect(keys(sheet(null, { partial: true }))).toContain("stepsCompleted")
     expect(keys(sheet(null, { partial: true }))).toContain("formStatus")
-    expect(keys(sheet(8))).toContain("formStatus")
+    // With a saved total the step count decides, as before: stepsCompleted only.
+    expect(keys(sheet(8))).toContain("stepsCompleted")
+    expect(keys(sheet(8))).not.toContain("formStatus")
     // The column on its own does not open the webhook fields.
     expect(keys(sheet(null, { column: true }))).not.toContain("formStatus")
   })

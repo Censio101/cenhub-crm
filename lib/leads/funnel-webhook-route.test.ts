@@ -273,6 +273,18 @@ describe("funnel webhook", () => {
     expect(mocks.createLead.mock.calls[0][2].formStepsDone).toBeUndefined()
   })
 
+  it("keeps the step count in charge for clients with a saved total, ignoring any status field", async () => {
+    mocks.resolveLeadSheetForOrganization.mockResolvedValue({
+      template: { id: "t1", formPartialSteps: true, formStepsColumn: true, formStepsTotal: 8 },
+      columns: [],
+    })
+    const res = await post({ ...base, stepsCompleted: 3, status: "complete", externalId: "form-7" })
+    expect(res.status).toBe(201)
+    const saved = mocks.createLead.mock.calls[0][2]
+    expect(saved.formStepsDone).toBe(3)
+    expect(saved.formStatus).toBeUndefined()
+  })
+
   it("still clamps to the saved total for clients who already set one", async () => {
     mocks.resolveLeadSheetForOrganization.mockResolvedValue({
       template: { id: "t1", formPartialSteps: true, formStepsColumn: true, formStepsTotal: 8 },
