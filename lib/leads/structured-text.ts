@@ -21,8 +21,6 @@ export type StructuredText = {
   blocks: StructuredBlock[]
   rowCount: number
   headingCount: number
-  /** True when the text looks like details worth showing as a list (not just free writing). */
-  isStructured: boolean
 }
 
 const HEADING_MAX = 60
@@ -83,10 +81,14 @@ export function parseStructuredText(input: string): StructuredText {
 
   const rowCount = blocks.filter((block) => block.kind === "row").length
   const headingCount = blocks.filter((block) => block.kind === "heading").length
-  return {
-    blocks,
-    rowCount,
-    headingCount,
-    isStructured: rowCount >= 2 || (headingCount >= 1 && rowCount >= 1),
-  }
+  return { blocks, rowCount, headingCount }
+}
+
+/**
+ * Whether a multi-line text opens as the formatted list. Only a column with its formatted view
+ * switched on does, and then every text with at least one "Label: value" line does, even a
+ * single line, with or without a heading. Text without any label stays in the plain text box.
+ */
+export function shouldShowFormatted(formattedViewOn: boolean, parsed: StructuredText): boolean {
+  return formattedViewOn && parsed.rowCount > 0
 }

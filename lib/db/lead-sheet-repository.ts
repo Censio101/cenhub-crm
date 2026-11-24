@@ -65,6 +65,7 @@ type ColumnRow = {
   hidden_for_client: boolean
   webhook_included: boolean
   service_ids_editor: string
+  formatted_view?: boolean | null
   /** Embedded library field (custom columns only). */
   lead_sheet_custom_fields?: CustomFieldRow | null
 }
@@ -270,6 +271,7 @@ export async function getLeadSheetTemplateById(
         sortIndex: row.sort_index,
         kind: "custom",
         customField: mapCustomField(row.lead_sheet_custom_fields),
+        formattedView: row.formatted_view === true,
         hiddenForClient: row.hidden_for_client,
         webhookIncluded: row.webhook_included,
       })
@@ -651,6 +653,28 @@ export async function setTemplateColumnServiceIdsEditor(
   return requireTemplate(supabase, templateId)
 }
 
+/** Formatted list view for a multi-line text column. Display only: the stored text is unchanged. */
+export async function setTemplateColumnFormattedView(
+  supabase: SupabaseClient,
+  templateId: string,
+  columnId: string,
+  enabled: boolean
+): Promise<ResolvedLeadSheetConfig> {
+  const config = await requireTemplate(supabase, templateId)
+  const col = config.columns.find((c) => c.id === columnId)
+  if (!col || col.kind !== "custom" || col.customField.fieldType !== "textarea") {
+    throw new TemplateEditError("Only multi-line text columns can use the formatted view")
+  }
+
+  const { error } = await supabase
+    .from("lead_sheet_template_columns")
+    .update({ formatted_view: enabled })
+    .eq("id", columnId)
+    .eq("template_id", templateId)
+  if (error) throw error
+  return requireTemplate(supabase, templateId)
+}
+
 // ---------------------------------------------------------------------------
 // Field library
 // ---------------------------------------------------------------------------
@@ -1003,6 +1027,7 @@ export async function duplicateLeadSheetTemplate(
             sort_index: i,
             kind: "custom",
             custom_field_id: col.customField.id,
+            formatted_view: col.formattedView === true,
             hidden_for_client: isClientSheet ? false : Boolean(col.hiddenForClient),
           }
     )

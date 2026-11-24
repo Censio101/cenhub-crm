@@ -4,6 +4,7 @@ import { adminErrorResponse, requireCensioAdmin } from "@/lib/auth/require-censi
 import {
   recordLeadSheetChangeForTemplate,
   removeColumnFromTemplate,
+  setTemplateColumnFormattedView,
   setTemplateColumnHidden,
   setTemplateColumnServiceIdsEditor,
   TemplateEditError,
@@ -25,9 +26,14 @@ export async function PATCH(request: Request, context: Ctx) {
     const body = (await request.json()) as {
       hiddenForClient?: boolean
       serviceIdsEditor?: unknown
+      formattedView?: boolean
     }
 
     const supabase = createAdminClient()
+    if (typeof body.formattedView === "boolean") {
+      const updated = await setTemplateColumnFormattedView(supabase, id, columnId, body.formattedView)
+      return NextResponse.json(updated)
+    }
     if (typeof body.hiddenForClient === "boolean") {
       const updated = await setTemplateColumnHidden(supabase, id, columnId, body.hiddenForClient)
       return NextResponse.json(updated)

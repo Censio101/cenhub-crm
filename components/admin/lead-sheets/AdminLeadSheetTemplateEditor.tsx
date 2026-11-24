@@ -243,6 +243,26 @@ function EditorContent({
     }
   }
 
+  /** Switches the formatted list view on or off for one multi-line text column. */
+  async function setFormattedView(col: LeadSheetColumn, enabled: boolean) {
+    setRowBusy(col.id, true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/lead-sheet-templates/${templateId}/columns/${col.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formattedView: enabled }),
+      })
+      const data = await readJson(res)
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Failed")
+      applyServerConfig(data as unknown as ResolvedLeadSheetConfig)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("leadSheetsLoadError"))
+    } finally {
+      setRowBusy(col.id, false)
+    }
+  }
+
   /** Optimistic: the list already shows the new order; revert if the save fails. */
   async function saveOrder(previous: ResolvedLeadSheetConfig["columns"], nextIds: string[]) {
     const seq = ++orderRequestSeq.current
@@ -406,6 +426,10 @@ function EditorContent({
       onServiceIdsEditorChange:
         col.kind === "builtin" && col.builtinKey === "serviceIds"
           ? (editor: "picker" | "text") => void setServiceIdsEditor(col, editor)
+          : undefined,
+      onFormattedViewChange:
+        col.kind === "custom" && col.customField.fieldType === "textarea"
+          ? (enabled: boolean) => void setFormattedView(col, enabled)
           : undefined,
     }
   }

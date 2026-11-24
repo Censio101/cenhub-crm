@@ -41,6 +41,8 @@ type RowProps = {
   /** False for a client's own sheet: there, visibility is set in the client's "Shown to client" list. */
   canToggleHidden: boolean
   onServiceIdsEditorChange?: (editor: ServiceIdsEditor) => void | Promise<void>
+  /** Multi-line text columns only: switch the formatted list view on or off. */
+  onFormattedViewChange?: (enabled: boolean) => void | Promise<void>
 }
 
 type CardProps = RowProps & {
@@ -107,6 +109,7 @@ function ColumnRowCard({
   onToggleHidden,
   canToggleHidden,
   onServiceIdsEditorChange,
+  onFormattedViewChange,
   leading,
   cardRef,
   style,
@@ -122,6 +125,10 @@ function ColumnRowCard({
       ? (col.serviceIdsEditor ?? "picker")
       : null
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false)
+  const formattedView =
+    col.kind === "custom" && col.customField.fieldType === "textarea" && onFormattedViewChange
+      ? Boolean(col.formattedView)
+      : null
 
   return (
     <div
@@ -146,6 +153,31 @@ function ColumnRowCard({
             ? t("leadSheetBuiltinColumn")
             : t(fieldTypeLabelKey(col.customField.fieldType))}
           {col.kind === "custom" ? <FieldKeyChip fieldKey={col.customField.fieldKey} /> : null}
+          {formattedView !== null && onFormattedViewChange ? (
+            <>
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formattedView}
+                disabled={busy}
+                title={t("leadSheetsFormattedViewTitle")}
+                aria-label={`${t("leadSheetsFormattedViewTitle")}: ${
+                  formattedView ? t("leadSheetsFormattedViewOn") : t("leadSheetsFormattedViewOff")
+                }`}
+                onClick={() => void onFormattedViewChange(!formattedView)}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold shadow-sm transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                  formattedView
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                    : "border-[#d3c3b2] bg-white text-muted-foreground hover:bg-[#f6efe7]"
+                )}
+              >
+                {formattedView ? t("leadSheetsFormattedViewOn") : t("leadSheetsFormattedViewOff")}
+              </button>
+            </>
+          ) : null}
           {hidden ? (
             <span className="rounded bg-[#f3ebe3] px-1.5 py-px text-[10px] font-medium text-muted-foreground">
               {t("leadSheetsHiddenChip")}

@@ -8,7 +8,7 @@ import { ModalShell } from "@/components/admin/ModalShell"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { StructuredTextView } from "@/components/leads/StructuredTextView"
 import { Button } from "@/components/ui/button"
-import { parseStructuredText } from "@/lib/leads/structured-text"
+import { parseStructuredText, shouldShowFormatted } from "@/lib/leads/structured-text"
 import { cn } from "cn"
 
 const PREVIEW_MAX = 72
@@ -25,6 +25,8 @@ type Props = {
   leadName?: string
   onChange?: (next: string) => void
   readOnly?: boolean
+  /** The column's "formatted view" switch. Off: always the plain text box, as before. */
+  formattedView?: boolean
 }
 
 export function LeadSheetNoteCell({
@@ -33,20 +35,21 @@ export function LeadSheetNoteCell({
   leadName,
   onChange,
   readOnly = false,
+  formattedView = false,
 }: Props) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value)
-  // Text written as headings and "Label: value" lines (like the website form's service details)
-  // opens as a tidy list; anything else opens as the plain text box, as before.
+  // When this column's formatted view is on, text with "Label: value" lines (like the website
+  // form's service details) opens as a tidy list. Otherwise it is the plain text box, as before.
   const [formatted, setFormatted] = useState(false)
   const parsed = useMemo(() => parseStructuredText(draft), [draft])
-  const canFormat = parsed.isStructured
+  const canFormat = shouldShowFormatted(formattedView, parsed)
   const showFormatted = formatted && canFormat
 
   function openEditor() {
     setDraft(value)
-    setFormatted(parseStructuredText(value).isStructured)
+    setFormatted(shouldShowFormatted(formattedView, parseStructuredText(value)))
     setOpen(true)
   }
 

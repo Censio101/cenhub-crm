@@ -2267,6 +2267,9 @@ const daMessages = {
   leadSheetNoteEditText: "Rediger tekst",
   leadSheetNotePlainText: "Almindelig tekst",
   leadSheetNoteFormattedView: "Formateret visning",
+  leadSheetsFormattedViewOn: "Formateret visning: til",
+  leadSheetsFormattedViewOff: "Formateret visning: fra",
+  leadSheetsFormattedViewTitle: "Vis teksten som en liste med fed skrift på navnene, når den har linjer som “Navn: værdi”",
   leadSheetNotePlaceholder: "Skriv konsultationsnoter…",
   customersSheetSyncHint:
     "Lukkede kunder følger vundne leads — ændringer på Leads opdateres her efter gem.",

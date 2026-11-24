@@ -778,6 +778,7 @@ function renderLeadColumnCell(
               value={typeof value === "string" ? value : ""}
               fieldLabel={col.customField.label}
               leadName={lead.fullName}
+              formattedView={col.formattedView === true}
               onChange={(next) => patchCustom(next)}
             />
           </TableCell>

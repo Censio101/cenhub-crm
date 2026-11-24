@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { parseStructuredText } from "@/lib/leads/structured-text"
+import { parseStructuredText, shouldShowFormatted } from "@/lib/leads/structured-text"
 
 const MOVING = [
   "FLYTTER FRA",
@@ -21,7 +21,6 @@ const MOVING = [
 describe("parseStructuredText", () => {
   it("reads headings and Label: value rows from the plugin's moving details", () => {
     const parsed = parseStructuredText(MOVING)
-    expect(parsed.isStructured).toBe(true)
     expect(parsed.headingCount).toBe(3)
     expect(parsed.rowCount).toBe(7)
     expect(parsed.blocks[0]).toEqual({ kind: "heading", text: "FLYTTER FRA" })
@@ -54,16 +53,18 @@ describe("parseStructuredText", () => {
     expect(parseStructuredText("14:30").rowCount).toBe(0)
   })
 
-  it("leaves ordinary writing unstructured", () => {
+  it("finds no rows in ordinary writing", () => {
     const parsed = parseStructuredText("Ring til kunden i morgen.\nHan vil gerne have et tilbud.")
-    expect(parsed.isStructured).toBe(false)
+    expect(parsed.rowCount).toBe(0)
     expect(parsed.blocks.every((b) => b.kind === "text")).toBe(true)
   })
 
-  it("needs more than one row, or a heading with a row, to count as structured", () => {
-    expect(parseStructuredText("Opgave: Skift en dør").isStructured).toBe(false)
-    expect(parseStructuredText("Vægt: 200 kg\nAfstand: 12 m").isStructured).toBe(true)
-    expect(parseStructuredText("OM BOLIGEN\nVærelser: 4").isStructured).toBe(true)
+  it("counts rows and headings, including a single row", () => {
+    expect(parseStructuredText("Opgave: Skift en dør").rowCount).toBe(1)
+    expect(parseStructuredText("Vægt: 200 kg\nAfstand: 12 m").rowCount).toBe(2)
+    const withHeading = parseStructuredText("OM BOLIGEN\nVærelser: 4")
+    expect(withHeading.headingCount).toBe(1)
+    expect(withHeading.rowCount).toBe(1)
   })
 
   it("only reads a capital-letter line as a heading at the start of a block", () => {
@@ -83,6 +84,32 @@ describe("parseStructuredText", () => {
 
   it("returns nothing for empty text", () => {
     expect(parseStructuredText("").blocks).toEqual([])
-    expect(parseStructuredText("  \n \n").isStructured).toBe(false)
+    expect(parseStructuredText("  \n \n").rowCount).toBe(0)
+  })
+})
+
+describe("shouldShowFormatted", () => {
+  const show = (on: boolean, text: string) => shouldShowFormatted(on, parseStructuredText(text))
+
+  it("never formats when the column switch is off", () => {
+    expect(show(false, MOVING)).toBe(false)
+    expect(show(false, "Opgave: Skift en dør")).toBe(false)
+  })
+
+  it("formats a single Label: value line when the switch is on", () => {
+    expect(show(true, "Opgave: Skift en dør")).toBe(true)
+  })
+
+  it("formats a heading with only one row under it", () => {
+    expect(show(true, "OM BOLIGEN\nVærelser: 4")).toBe(true)
+  })
+
+  it("formats longer details, as before", () => {
+    expect(show(true, MOVING)).toBe(true)
+  })
+
+  it("keeps text without any label in the plain text box, and empty text too", () => {
+    expect(show(true, "Ring til kunden i morgen.")).toBe(false)
+    expect(show(true, "")).toBe(false)
   })
 })

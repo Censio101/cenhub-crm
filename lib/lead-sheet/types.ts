@@ -71,6 +71,11 @@ export type LeadSheetTemplateColumn =
       sortIndex: number
       kind: "custom"
       customField: LeadSheetCustomFieldDef
+      /**
+       * Multi-line text columns only: open the text as a formatted list (bold labels, values on
+       * the right) when it holds "Label: value" lines. Off unless switched on for this column.
+       */
+      formattedView?: boolean
       /** The template hides this column from the client dashboard (data is still collected). */
       hiddenForClient?: boolean
       /** When false, omit from webhook docs, mapping, and inbound custom field handling. */
