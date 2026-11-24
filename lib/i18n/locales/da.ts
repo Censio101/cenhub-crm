@@ -2264,6 +2264,9 @@ const daMessages = {
   leadSheetNoteAdd: "Tilføj",
   leadSheetNoteSave: "Gem note",
   leadSheetNoteClose: "Luk",
+  leadSheetNoteEditText: "Rediger tekst",
+  leadSheetNotePlainText: "Almindelig tekst",
+  leadSheetNoteFormattedView: "Formateret visning",
   leadSheetNotePlaceholder: "Skriv konsultationsnoter…",
   customersSheetSyncHint:
     "Lukkede kunder følger vundne leads — ændringer på Leads opdateres her efter gem.",

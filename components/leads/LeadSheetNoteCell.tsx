@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { adminOutlineButtonClass } from "@/components/admin/admin-ui-styles"
 import { ModalShell } from "@/components/admin/ModalShell"
 import { useLanguage } from "@/components/i18n/LanguageProvider"
+import { StructuredTextView } from "@/components/leads/StructuredTextView"
 import { Button } from "@/components/ui/button"
+import { parseStructuredText } from "@/lib/leads/structured-text"
 import { cn } from "cn"
 
 const PREVIEW_MAX = 72
@@ -35,9 +37,16 @@ export function LeadSheetNoteCell({
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value)
+  // Text written as headings and "Label: value" lines (like the website form's service details)
+  // opens as a tidy list; anything else opens as the plain text box, as before.
+  const [formatted, setFormatted] = useState(false)
+  const parsed = useMemo(() => parseStructuredText(draft), [draft])
+  const canFormat = parsed.isStructured
+  const showFormatted = formatted && canFormat
 
   function openEditor() {
     setDraft(value)
+    setFormatted(parseStructuredText(value).isStructured)
     setOpen(true)
   }
 
@@ -101,15 +110,34 @@ export function LeadSheetNoteCell({
                 </div>
               }
             >
-              <textarea
-                value={draft}
-                rows={10}
-                readOnly={readOnly}
-                autoFocus
-                className="w-full resize-y rounded-xl border border-[#e0d7cc] bg-white px-3 py-2.5 text-[15px] leading-relaxed text-[var(--text-primary)] outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 read-only:cursor-default read-only:bg-white"
-                placeholder={t("leadSheetNotePlaceholder")}
-                onChange={(e) => setDraft(e.target.value)}
-              />
+              {canFormat ? (
+                <div className="mb-2 flex justify-end">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary hover:underline"
+                    onClick={() => setFormatted((current) => !current)}
+                  >
+                    {showFormatted
+                      ? readOnly
+                        ? t("leadSheetNotePlainText")
+                        : t("leadSheetNoteEditText")
+                      : t("leadSheetNoteFormattedView")}
+                  </button>
+                </div>
+              ) : null}
+              {showFormatted ? (
+                <StructuredTextView blocks={parsed.blocks} />
+              ) : (
+                <textarea
+                  value={draft}
+                  rows={10}
+                  readOnly={readOnly}
+                  autoFocus
+                  className="w-full resize-y rounded-xl border border-[#e0d7cc] bg-white px-3 py-2.5 text-[15px] leading-relaxed text-[var(--text-primary)] outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 read-only:cursor-default read-only:bg-white"
+                  placeholder={t("leadSheetNotePlaceholder")}
+                  onChange={(e) => setDraft(e.target.value)}
+                />
+              )}
             </ModalShell>,
             document.body
           )
