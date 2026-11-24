@@ -85,7 +85,10 @@ function sortValueForColumn(
     case "ltv":
       return lead.ltv ?? Number.NaN
     case "formProgress":
-      return lead.formStepsDone ?? Number.NaN
+      if (lead.formStepsDone != null) return lead.formStepsDone
+      if (lead.formStatus === "partial") return 0
+      if (lead.formStatus === "complete") return 1
+      return Number.NaN
     case "serviceIds":
       return formatLeadServices(lead, enabledServices).toLowerCase()
     case "segment":

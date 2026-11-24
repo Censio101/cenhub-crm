@@ -1714,6 +1714,8 @@ const daMessages = {
   webhookFormat_segment: "b2c eller b2b",
   webhookFormat_platform: "website, landing eller meta",
   webhookFormat_steps: "Helt tal: antal gennemførte trin i formularen indtil nu, f.eks. 3",
+  webhookFormat_formstatus:
+    'partial mens formularen er ufærdig, complete når den er færdig. Et felt kaldet "status" med disse værdier accepteres også',
   webhookFormat_externalid:
     "Dit eget unikke id for indsendelsen. Sendes samme id igen, oprettes der aldrig en dublet.",
   webhookDuplicateNote:
@@ -2188,13 +2190,19 @@ const daMessages = {
   leadSheetColLtv: "LTV",
   leadSheetColFormProgress: "Formulartrin",
   partialStepsTitle: "Delvise trin",
-  partialStepsDescription: "Til en formular, der sender et lead efter hvert trin. Tilføjer en kolonne med formulartrin.",
+  partialStepsDescription:
+    "Til formularer, der sender et lead, før den besøgende er færdig. Næste kald med samme lead-ID udfylder den samme række i stedet for at tilføje en ny. Tilføjer en kolonne med formulartrin, der viser Delvis eller Komplet.",
+  partialStepsShowColumn: "Delvise trin",
   partialStepsTotalLabel: "Antal trin i alt",
+  partialStepsTotalOptional: "Valgfrit",
   partialStepsSave: "Gem",
-  partialStepsHint: "Et lead er delvist, indtil alle trin er gennemført.",
+  partialStepsHint:
+    "Valgfrit. Lad feltet stå tomt, når formularerne har forskelligt antal trin. Formularen sender så status partial eller complete. Skriv kun et tal, når alle formularer har samme længde, for at vise fremdrift som 3 / 8 og holde et lead delvist indtil sidste trin.",
   partialStepsInvalid: "Skriv et helt tal fra {min} til {max}.",
   partialStepsSaved: "Delvise trin gemt.",
-  partialStepsOff: "Delvise trin slået fra.",
+  partialStepsColumnOn: "Delvise trin er slået til.",
+  partialStepsOff: "Delvise trin er slået fra.",
+  formStatusPartial: "Delvis",
   leadSheetFilterLabelForm: "Formular",
   leadSheetFilterLabelFormSource: "Leadformular",
   filterFormSourceAria: "Filtrer efter hvilken formular leadet kom fra",

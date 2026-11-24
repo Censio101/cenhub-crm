@@ -120,7 +120,12 @@ export type LeadSheetTemplateSummary = {
   /** @deprecated Templates use categoryIds for industry tags; kept for legacy reads. */
   subcategoryIds: string[]
   categoryIds: string[]
-  /** Partial steps: total steps of the funnel form. null = the template has no stepped form. */
+  /**
+   * Show the Form steps column. Templates that already stored a step total are turned on
+   * by migration, so their column stays visible.
+   */
+  formStepsColumn?: boolean
+  /** Shared total for every form. null = show the step each form sent, with no n / total. */
   formStepsTotal?: number | null
   columnCount?: number
   columnPreview?: LeadSheetColumnPreviewItem[]

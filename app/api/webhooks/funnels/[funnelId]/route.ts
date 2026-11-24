@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { createLead, findLeadIdByLegacyId } from "@/lib/db/leads-repository"
-import { clampFormSteps, parseFormStepsTotal } from "@/lib/lead-sheet/form-steps"
+import { clampFormSteps, parseFormStepsTotal, sheetHasFormSteps } from "@/lib/lead-sheet/form-steps"
 import { mergeFunnelStepIntoExistingLead } from "@/lib/leads/funnel-webhook-step-merge"
 import { getOrganizationById } from "@/lib/db/organizations-repository"
 import {
@@ -116,9 +116,15 @@ export async function POST(request: Request, context: RouteContext) {
       resolveOrganizationServices(admin, funnel.organization_id),
       getOrganizationServiceAliasMap(admin, funnel.organization_id),
     ])
-    // Partial steps: the sheet sets how many steps the funnel form has.
+    // Partial steps. A step total is optional: with one, the sender's step count is tracked
+    // against it. Without one, the sender says "partial" or "complete" (formStatus). Either way
+    // a later call with the same externalId fills the same lead instead of adding a new one.
+    const partialStepsOn = sheetHasFormSteps(leadSheet)
     const formStepsTotal = parseFormStepsTotal(leadSheet?.template.formStepsTotal)
     const stepsCompleted = parsed.canonical.stepsCompleted
+    const formStatus = partialStepsOn ? parsed.canonical.formStatus : undefined
+    const tracksSteps = formStepsTotal !== null && stepsCompleted !== undefined
+    const isSteppedCall = tracksSteps || formStatus !== undefined
 
     const sheetInfo = leadSheet ? buildWebhookLeadSheetInfo(leadSheet) : null
     const built = buildInboundLead({
@@ -138,15 +144,16 @@ export async function POST(request: Request, context: RouteContext) {
     // The same lead arrived again. A stepped form's later steps are merged into it; anything
     // else is a retry or double submit and changes nothing.
     async function respondToExisting(leadId: string) {
-      if (formStepsTotal && stepsCompleted !== undefined) {
+      if (isSteppedCall) {
         const updated = await mergeFunnelStepIntoExistingLead(
           admin,
           organizationId,
           leadId,
           lead,
           built.customFields,
-          stepsCompleted,
-          formStepsTotal
+          tracksSteps ? stepsCompleted : undefined,
+          tracksSteps ? (formStepsTotal ?? undefined) : undefined,
+          formStatus
         )
         runAfterResponse(() =>
           logLeadNotifySkippedFromWebhook(admin, {
@@ -176,8 +183,21 @@ export async function POST(request: Request, context: RouteContext) {
     if (existingId) return await respondToExisting(existingId)
 
     // Only a sender that reports its step is a stepped form; any other lead counts as complete.
-    if (formStepsTotal && stepsCompleted !== undefined) {
+    if (tracksSteps && formStepsTotal !== null && stepsCompleted !== undefined) {
       lead.formStepsDone = clampFormSteps(stepsCompleted, formStepsTotal)
+    }
+    if (formStatus) lead.formStatus = formStatus
+    // Without a lead id, the next step cannot find this lead and would add another row.
+    if (formStatus === "partial" && !parsed.canonical.externalId) {
+      warnings = [
+        ...warnings,
+        {
+          field: "externalId",
+          code: "missing_required" as const,
+          message:
+            "Send the same externalId on every call so later steps update this lead instead of adding a new one",
+        },
+      ]
     }
 
     const metaLegacyId =
@@ -236,7 +256,8 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     runAfterResponse(async () => {
-      if (formStepsTotal) {
+      // Stepped forms never send the new-lead email (a later step completes the same lead).
+      if (formStepsTotal || created.formStatus === "partial") {
         await logLeadNotifySteppedFormDisabled(admin, {
           ...notifyContext,
           primaryContactEmail: null,

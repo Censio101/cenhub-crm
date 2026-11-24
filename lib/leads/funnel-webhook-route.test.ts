@@ -229,6 +229,60 @@ describe("funnel webhook", () => {
     expect(body.warnings).toEqual([expect.objectContaining({ field: "unknown_key" })])
   })
 
+  it("saves a partial submission with no step total and keeps it as partial", async () => {
+    mocks.resolveLeadSheetForOrganization.mockResolvedValue({
+      template: { id: "t1", formStepsColumn: true, formStepsTotal: null },
+      columns: [],
+    })
+    const res = await post({ ...base, status: "partial", externalId: "form-9" })
+    expect(res.status).toBe(201)
+    const saved = mocks.createLead.mock.calls[0][2]
+    expect(saved.formStatus).toBe("partial")
+    expect(saved.formStepsDone).toBeUndefined()
+    expect(mocks.createLead.mock.calls[0][3].legacyId).toBe("hook:f1:form-9")
+    expect((await res.json()).warnings).toBeUndefined()
+  })
+
+  it("warns when a partial submission has no lead id to find it again", async () => {
+    mocks.resolveLeadSheetForOrganization.mockResolvedValue({
+      template: { id: "t1", formStepsColumn: true, formStepsTotal: null },
+      columns: [],
+    })
+    const res = await post({ ...base, status: "partial" })
+    expect(res.status).toBe(201)
+    expect((await res.json()).warnings).toEqual([expect.objectContaining({ field: "externalId" })])
+  })
+
+  it("ignores the status when partial steps is off", async () => {
+    mocks.resolveLeadSheetForOrganization.mockResolvedValue({
+      template: { id: "t1", formStepsColumn: false, formStepsTotal: null },
+      columns: [],
+    })
+    const res = await post({ ...base, status: "partial", externalId: "form-9" })
+    expect(res.status).toBe(201)
+    expect(mocks.createLead.mock.calls[0][2].formStatus).toBeUndefined()
+  })
+
+  it("does not read a step count when there is no total", async () => {
+    mocks.resolveLeadSheetForOrganization.mockResolvedValue({
+      template: { id: "t1", formStepsColumn: true, formStepsTotal: null },
+      columns: [],
+    })
+    const res = await post({ ...base, stepsCompleted: 2 })
+    expect(res.status).toBe(201)
+    expect(mocks.createLead.mock.calls[0][2].formStepsDone).toBeUndefined()
+  })
+
+  it("still clamps to the saved total for clients who already set one", async () => {
+    mocks.resolveLeadSheetForOrganization.mockResolvedValue({
+      template: { id: "t1", formStepsColumn: true, formStepsTotal: 8 },
+      columns: [],
+    })
+    const res = await post({ ...base, stepsCompleted: 12 })
+    expect(res.status).toBe(201)
+    expect(mocks.createLead.mock.calls[0][2].formStepsDone).toBe(8)
+  })
+
   it("falls back to today and warns when leadDate is unreadable", async () => {
     const res = await post({ ...base, leadDate: "last tuesday" })
     expect(res.status).toBe(201)

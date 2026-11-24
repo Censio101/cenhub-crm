@@ -59,6 +59,36 @@ describe("computeStepMergePatch", () => {
     expect(patch.customFields).toEqual({ a: "keep", c: "added" })
   })
 
+  it("fills the same lead when a partial form is followed by the finished one, no step total", () => {
+    const existing = lead({ fullName: "Anna", email: "a@x.dk", formStatus: "partial" })
+    const incoming = lead({ fullName: "Anna", email: "a@x.dk", address: "Vej 1", city: "Aarhus" })
+    const patch = computeStepMergePatch(existing, incoming, { build_year: 1985 }, undefined, undefined, "complete")
+    expect(patch).toMatchObject({
+      address: "Vej 1",
+      city: "Aarhus",
+      customFields: { build_year: 1985 },
+      formStatus: "complete",
+    })
+    expect(patch.formStepsDone).toBeUndefined()
+  })
+
+  it("never moves a finished form back to partial", () => {
+    const patch = computeStepMergePatch(
+      lead({ formStatus: "complete" }),
+      lead(),
+      {},
+      undefined,
+      undefined,
+      "partial"
+    )
+    expect(patch.formStatus).toBeUndefined()
+  })
+
+  it("leaves the status alone when the call carries none", () => {
+    const patch = computeStepMergePatch(lead({ formStatus: "partial" }), lead(), {}, undefined, undefined)
+    expect(patch.formStatus).toBeUndefined()
+  })
+
   it("returns nothing when there is nothing new", () => {
     const existing = lead({ fullName: "Anna", formStepsDone: 3 })
     const patch = computeStepMergePatch(existing, lead({ fullName: "Anna" }), {}, 3, 8)

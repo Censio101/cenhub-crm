@@ -40,7 +40,9 @@ export async function PATCH(request: Request, context: Ctx) {
       isShared?: boolean
       categoryIds?: string[]
       subcategoryIds?: string[]
-      /** Partial steps: total steps of the funnel form, or null to switch it off. */
+      /** Show the Form steps column. Existing totals stay on until this is turned off. */
+      formStepsColumn?: boolean
+      /** Shared step total, or null when each form sends its own step. */
       formStepsTotal?: number | null
     }
 
@@ -50,11 +52,16 @@ export async function PATCH(request: Request, context: Ctx) {
     if (body.name !== undefined) updates.name = body.name
     if (body.description !== undefined) updates.description = body.description
     if (body.isShared !== undefined) updates.is_shared = body.isShared
+    if (body.formStepsColumn !== undefined) {
+      updates.form_steps_column = body.formStepsColumn === true
+    }
     if (body.formStepsTotal !== undefined) {
       if (body.formStepsTotal !== null && !isValidFormStepsTotal(body.formStepsTotal)) {
         return NextResponse.json({ error: "Invalid number of steps" }, { status: 400 })
       }
       updates.form_steps_total = body.formStepsTotal
+      // A saved total always keeps the column on. Clearing the total does not hide it.
+      if (body.formStepsTotal !== null) updates.form_steps_column = true
     }
 
     if (Object.keys(updates).length > 0) {

@@ -4,7 +4,7 @@ import { isPartialLead } from "@/lib/lead-sheet/form-steps"
 export type FormFilterValue = "all" | "complete" | "partial"
 
 export function matchesFormFilter(
-  lead: { formStepsDone?: number | null },
+  lead: { formStepsDone?: number | null; formStatus?: "partial" | "complete" | null },
   formStepsTotal: number | null | undefined,
   filter: FormFilterValue
 ): boolean {

@@ -37,7 +37,7 @@ export type WebhookLeadSheetInfo = {
 }
 
 export type StandardWebhookFieldType =
-  "text" | "datetext" | "list" | "segment" | "platform" | "externalid" | "steps"
+  "text" | "datetext" | "list" | "segment" | "platform" | "externalid" | "steps" | "formstatus"
 
 /** Fixed fields every webhook accepts, regardless of the lead sheet. */
 export const STANDARD_WEBHOOK_FIELDS: {
@@ -59,7 +59,8 @@ export const STANDARD_WEBHOOK_FIELDS: {
   { key: "city", type: "text", required: "no" },
   { key: "metaAdId", type: "text", required: "no" },
   { key: "externalId", type: "externalid", required: "no" },
-  // Only offered when the lead sheet has the "Form steps" column (partial steps).
+  // Only offered when partial steps is on for the lead sheet.
+  { key: "formStatus", type: "formstatus", required: "no" },
   { key: "stepsCompleted", type: "steps", required: "no" },
 ]
 

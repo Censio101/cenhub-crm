@@ -3,14 +3,15 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { leadRowToLead, type LeadPatch } from "@/lib/db/lead-mapper"
 import { updateLeadById } from "@/lib/db/leads-repository"
 import type { LeadRow } from "@/lib/db/types"
-import { clampFormSteps } from "@/lib/lead-sheet/form-steps"
+import { clampFormSteps, type FormStatus } from "@/lib/lead-sheet/form-steps"
 import { isEmptyCustomFieldValue } from "@/lib/lead-sheet/validate"
 import type { Lead } from "@/lib/leads"
 
 /**
  * A stepped funnel form sends the same lead (same externalId) after every step. These rules
  * merge a later call into the lead that already exists:
- * - the step count only goes up, and never above the total;
+ * - the step count only goes up, and never above the total (when the sheet has a total);
+ * - the form status only moves from partial to complete, never back;
  * - an empty field is always filled;
  * - a filled field is replaced only while nobody has worked on the lead yet (status still
  *   "new waiting call"), so a person's edits are never overwritten;
@@ -36,8 +37,9 @@ export function computeStepMergePatch(
   existing: Lead,
   incoming: Lead,
   incomingCustomFields: Record<string, unknown>,
-  stepsCompleted: number,
-  total: number
+  stepsCompleted: number | undefined,
+  total: number | undefined,
+  formStatus?: FormStatus
 ): LeadPatch {
   const patch: LeadPatch = {}
   const untouched = isUntouched(existing)
@@ -77,8 +79,16 @@ export function computeStepMergePatch(
   }
   if (customChanged) patch.customFields = mergedCustom
 
-  const nextSteps = clampFormSteps(Math.max(existing.formStepsDone ?? 0, stepsCompleted), total)
-  if (nextSteps !== (existing.formStepsDone ?? null)) patch.formStepsDone = nextSteps
+  if (stepsCompleted !== undefined && total !== undefined) {
+    const nextSteps = clampFormSteps(Math.max(existing.formStepsDone ?? 0, stepsCompleted), total)
+    if (nextSteps !== (existing.formStepsDone ?? null)) patch.formStepsDone = nextSteps
+  }
+
+  if (formStatus) {
+    // A finished form stays finished, even if a late partial call arrives after it.
+    const nextStatus: FormStatus = existing.formStatus === "complete" ? "complete" : formStatus
+    if (nextStatus !== (existing.formStatus ?? null)) patch.formStatus = nextStatus
+  }
 
   return patch
 }
@@ -90,8 +100,9 @@ export async function mergeFunnelStepIntoExistingLead(
   existingLeadId: string,
   incoming: Lead,
   incomingCustomFields: Record<string, unknown>,
-  stepsCompleted: number,
-  total: number
+  stepsCompleted: number | undefined,
+  total: number | undefined,
+  formStatus?: FormStatus
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from("leads")
@@ -102,7 +113,14 @@ export async function mergeFunnelStepIntoExistingLead(
   if (error || !data) return false
 
   const existing = leadRowToLead(data as LeadRow)
-  const patch = computeStepMergePatch(existing, incoming, incomingCustomFields, stepsCompleted, total)
+  const patch = computeStepMergePatch(
+    existing,
+    incoming,
+    incomingCustomFields,
+    stepsCompleted,
+    total,
+    formStatus
+  )
   if (Object.keys(patch).length === 0) return false
 
   await updateLeadById(supabase, organizationId, existingLeadId, patch)

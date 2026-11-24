@@ -96,6 +96,7 @@ export function mapMetaLeadToInsertRow(
     profit: null,
     ltv: null,
     form_steps_done: null,
+    form_status: null,
     source: "meta",
     locked_fields: [...META_LOCKED_FIELDS],
     meta_form_id: options.metaFormId ?? lead.form_id ?? null,

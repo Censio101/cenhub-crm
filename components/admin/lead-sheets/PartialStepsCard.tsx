@@ -9,34 +9,38 @@ import { Button } from "@/components/ui/button"
 import { FORM_STEPS_MAX, FORM_STEPS_MIN, isValidFormStepsTotal } from "@/lib/lead-sheet/form-steps"
 import { cn } from "cn"
 
-const DEFAULT_TOTAL = 8
-
 /**
- * "Partial steps" setting of a lead sheet: how many steps the funnel form has. When it is on,
- * the sheet gets a "Form steps" column and a funnel can send a lead after every step.
+ * Form steps on a lead sheet. The column is optional. A total is optional too, and only
+ * appears after the column is turned on. A saved total keeps the column on.
  */
 export function PartialStepsCard({
+  columnOn,
   total,
   disabled,
   onSave,
 }: {
-  /** Saved total; null = off. */
+  /** Saved column visibility. A saved total also counts as on. */
+  columnOn: boolean
+  /** Saved shared total; null = each form sends its own step. */
   total: number | null
   disabled?: boolean
   /** Returns an error message, or null when saved. */
-  onSave: (next: number | null) => Promise<string | null>
+  onSave: (next: { column: boolean; total: number | null }) => Promise<string | null>
 }) {
   const { t } = useLanguage()
-  const [draft, setDraft] = useState(String(total ?? DEFAULT_TOTAL))
+  const [draft, setDraft] = useState(total == null ? "" : String(total))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const enabled = total !== null
+  const enabled = columnOn || total !== null
 
-  const parsed = Number(draft)
-  const draftValid = isValidFormStepsTotal(parsed)
-  const dirty = enabled && draftValid && parsed !== total
+  const trimmed = draft.trim()
+  const parsed = Number(trimmed)
+  const draftValid = trimmed !== "" && isValidFormStepsTotal(parsed)
+  const draftEmpty = trimmed === ""
+  const dirty =
+    enabled && ((draftEmpty && total !== null) || (draftValid && parsed !== total))
 
-  async function save(next: number | null) {
+  async function save(next: { column: boolean; total: number | null }) {
     setBusy(true)
     setError(null)
     const message = await onSave(next)
@@ -65,15 +69,11 @@ export function PartialStepsCard({
           type="button"
           role="switch"
           aria-checked={enabled}
-          aria-label={t("partialStepsTitle")}
+          aria-label={t("partialStepsShowColumn")}
           disabled={disabled || busy}
           onClick={() => {
-            if (enabled) void save(null)
-            else {
-              const next = draftValid ? parsed : DEFAULT_TOTAL
-              setDraft(String(next))
-              void save(next)
-            }
+            if (enabled) void save({ column: false, total: null })
+            else void save({ column: true, total: null })
           }}
           className={cn(
             "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
@@ -101,16 +101,24 @@ export function PartialStepsCard({
               min={FORM_STEPS_MIN}
               max={FORM_STEPS_MAX}
               value={draft}
+              placeholder={t("partialStepsTotalOptional")}
               disabled={disabled || busy}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && dirty) void save(parsed)
+                if (event.key === "Enter" && dirty) {
+                  void save({ column: true, total: draftEmpty ? null : parsed })
+                }
               }}
               className={cn(adminFieldClass, "w-28")}
             />
           </label>
           {dirty ? (
-            <Button type="button" className="h-11" disabled={busy} onClick={() => void save(parsed)}>
+            <Button
+              type="button"
+              className="h-11"
+              disabled={busy}
+              onClick={() => void save({ column: true, total: draftEmpty ? null : parsed })}
+            >
               {t("partialStepsSave")}
             </Button>
           ) : null}
@@ -118,7 +126,7 @@ export function PartialStepsCard({
         </div>
       ) : null}
 
-      {enabled && !draftValid ? (
+      {enabled && trimmed !== "" && !draftValid ? (
         <p className="mt-2 text-[12px] text-red-700">
           {t("partialStepsInvalid", { min: FORM_STEPS_MIN, max: FORM_STEPS_MAX })}
         </p>

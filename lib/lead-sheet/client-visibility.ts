@@ -35,7 +35,7 @@ export function visibleColumnsForClient(
 ): ResolvedLeadSheetConfig {
   return {
     ...config,
-    // The Form steps column only exists for templates that set a step total.
+    // The Form steps column only exists when the template chooses to show it.
     columns: activeSheetColumns(config).filter(
       (column) => !columnVisibility(column, clientHiddenKeys).hidden
     ),

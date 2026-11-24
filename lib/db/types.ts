@@ -138,6 +138,8 @@ export type LeadRow = {
   custom_fields: Record<string, unknown>
   /** Steps of a stepped funnel form completed so far (null = not a stepped form). */
   form_steps_done: number | null
+  /** Partial or complete, for stepped forms that do not know their total steps (null = not used). */
+  form_status: "partial" | "complete" | null
   /** The import that created this lead, if any (used to undo an import). */
   import_id: string | null
   lead_funnel_id: string | null

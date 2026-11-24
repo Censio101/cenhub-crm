@@ -42,6 +42,7 @@ type TemplateRow = {
   organization_id: string | null
   source_template_id: string | null
   form_steps_total?: number | null
+  form_steps_column?: boolean | null
 }
 
 type CustomFieldRow = {
@@ -99,6 +100,8 @@ function mapTemplateSummary(
     sourceTemplateId: row.source_template_id,
     subcategoryIds,
     categoryIds,
+    formStepsColumn:
+      row.form_steps_column === true || parseFormStepsTotal(row.form_steps_total) !== null,
     formStepsTotal: parseFormStepsTotal(row.form_steps_total),
   }
 }
@@ -954,6 +957,7 @@ export async function duplicateLeadSheetTemplate(
       is_shared: options.isShared ?? !options.organizationId,
       organization_id: options.organizationId ?? null,
       source_template_id: sourceId,
+      form_steps_column: source.template.formStepsColumn === true,
       form_steps_total: source.template.formStepsTotal ?? null,
     })
     .select("*")

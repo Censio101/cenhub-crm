@@ -27,6 +27,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const patch = (await request.json()) as LeadPatch
     // The step count of a stepped form is owned by the funnel webhook, never by an edit.
     delete patch.formStepsDone
+    delete patch.formStatus
 
     if (!usesDatabaseLeads()) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 })

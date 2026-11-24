@@ -136,6 +136,7 @@ export async function POST(request: Request) {
       source: "manual",
       lockedFields: [],
       formStepsDone: null,
+      formStatus: null,
       status: isLeadStatusId(input.status) ? input.status : "new_waiting_call",
       customFields: normalized.customFields,
     })

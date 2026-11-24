@@ -9,6 +9,7 @@ import {
   type LeadPlatformId,
   type LeadSegmentId,
 } from "@/lib/leads"
+import { parseFormStatus, type FormStatus } from "@/lib/lead-sheet/form-steps"
 import { nowLeadDateTime, parseLeadDateTime } from "@/lib/leads/lead-datetime"
 import { escapePathSegment, getByPath, splitSourcePath } from "@/lib/leads/source-path"
 import { splitServiceText } from "@/lib/services/match"
@@ -32,6 +33,8 @@ export type CanonicalInboundLead = {
   externalId?: string
   /** Steps of a stepped form completed so far (whole number, 0 or more). */
   stepsCompleted?: number
+  /** `partial` while a form is unfinished, `complete` once it is done. No step count needed. */
+  formStatus?: FormStatus
   raw?: Record<string, unknown>
 }
 
@@ -202,6 +205,9 @@ export function parseCanonicalInbound(body: Record<string, unknown>): ParseInbou
       metaAdId: asString(body.metaAdId) || undefined,
       externalId: asString(body.externalId) || undefined,
       stepsCompleted: parseStepsCompleted(body.stepsCompleted),
+      // `status` is accepted too, but only when it says partial or complete, so a sender that
+      // already posts its own status (like the website form plugin) works without renaming it.
+      formStatus: parseFormStatus(body.formStatus) ?? parseFormStatus(body.status),
       raw:
         body.raw && typeof body.raw === "object"
           ? (body.raw as Record<string, unknown>)

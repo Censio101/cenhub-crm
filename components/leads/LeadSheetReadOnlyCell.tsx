@@ -194,10 +194,30 @@ export function LeadSheetFormProgressCell({
 }) {
   const { t } = useLanguage()
   const done = lead.formStepsDone
+  // With a total and a step count: "5 / 8" progress, as before.
+  // Without them the sender's own status is shown: Partial or Complete.
   if (done == null || !total) {
+    if (!lead.formStatus) {
+      return (
+        <TableCell className={className}>
+          <LeadSheetReadOnlyText>{""}</LeadSheetReadOnlyText>
+        </TableCell>
+      )
+    }
+    const isComplete = lead.formStatus === "complete"
     return (
       <TableCell className={className}>
-        <LeadSheetReadOnlyText>{""}</LeadSheetReadOnlyText>
+        <span className="flex min-h-8 items-center px-1.5 py-1.5">
+          <span
+            className={
+              isComplete
+                ? "inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800"
+                : "inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800"
+            }
+          >
+            {isComplete ? t("formProgressComplete") : t("formStatusPartial")}
+          </span>
+        </span>
       </TableCell>
     )
   }

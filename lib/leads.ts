@@ -75,6 +75,8 @@ export type Lead = {
   customFields?: Record<string, unknown>
   /** Steps of a stepped funnel form completed so far; null/undefined for all other leads. */
   formStepsDone?: number | null
+  /** Partial or complete for a stepped form without a known total; null/undefined otherwise. */
+  formStatus?: "partial" | "complete" | null
   /** Which webhook/form created the lead (Danish label for sheet filter). */
   leadFunnelId?: string | null
   funnelSourceLabel?: string | null

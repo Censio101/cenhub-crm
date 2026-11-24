@@ -42,7 +42,7 @@ import {
   serviceIdsEditorFromSheet,
 } from "@/lib/lead-sheet/service-ids-editor"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
-import { formProgressText } from "@/lib/lead-sheet/form-steps"
+import { leadFormProgressText } from "@/lib/lead-sheet/form-steps"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import { downloadCsv, plainCustomFieldCell, toCsv } from "@/lib/leads/export-csv"
 import { formatLeadDateTime } from "@/lib/leads/lead-datetime"
@@ -370,7 +370,7 @@ export function CustomersBoard() {
           case "profit":
             return lead.profit == null ? "" : String(lead.profit)
           case "formProgress":
-            return formProgressText(lead.formStepsDone, leadSheet.template.formStepsTotal)
+            return leadFormProgressText(lead, leadSheet.template.formStepsTotal, t)
           default:
             return String(lead[col.builtinKey] ?? "")
         }

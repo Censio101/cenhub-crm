@@ -100,7 +100,7 @@ import {
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import { isServiceId, resolveServiceLabel } from "@/lib/performance/services"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
-import { formProgressText } from "@/lib/lead-sheet/form-steps"
+import { leadFormProgressText, sheetHasFormSteps } from "@/lib/lead-sheet/form-steps"
 import { matchesFormFilter, type FormFilterValue } from "@/lib/leads/form-filter"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import {
@@ -1532,6 +1532,8 @@ export function LeadsBoard() {
   const [sheetFormSource, setSheetFormSource] = useState<string | "all">("all")
   const [formFilter, setFormFilter] = useState<FormFilterValue>("all")
   const formStepsTotal = leadSheet.template.formStepsTotal ?? null
+  // The Complete / Partial filter is offered whenever partial steps is on, with or without a total.
+  const hasPartialSteps = sheetHasFormSteps(leadSheet)
   const showServiceFilter = shouldShowServiceFilter(servicesLoaded, enabledServices)
   const showSourceFilter = useMemo(() => shouldShowLeadSourceFilter(leads), [leads])
   const formSourceOptions = useMemo(
@@ -1741,7 +1743,7 @@ export function LeadsBoard() {
           case "ltv":
             return lead.ltv == null ? "" : String(lead.ltv)
           case "formProgress":
-            return formProgressText(lead.formStepsDone, leadSheet.template.formStepsTotal)
+            return leadFormProgressText(lead, leadSheet.template.formStepsTotal, t)
           default:
             return String(lead[col.builtinKey] ?? "")
         }
@@ -1828,7 +1830,7 @@ export function LeadsBoard() {
             latestLeadDate={leadDateSpan.latest}
             onResetDate={resetDate}
             onExport={exportFiltered}
-            showFormFilter={formStepsTotal !== null}
+            showFormFilter={hasPartialSteps}
             formFilter={formFilter}
             onFormFilterChange={setFormFilter}
             showServiceFilter={showServiceFilter}
@@ -1914,7 +1916,7 @@ export function LeadsBoard() {
           latestLeadDate={leadDateSpan.latest}
           onResetDate={resetDate}
           onExport={exportFiltered}
-          showFormFilter={formStepsTotal !== null}
+          showFormFilter={hasPartialSteps}
           formFilter={formFilter}
           onFormFilterChange={setFormFilter}
           showServiceFilter={showServiceFilter}

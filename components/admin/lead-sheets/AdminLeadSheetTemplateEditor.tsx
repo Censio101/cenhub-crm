@@ -179,13 +179,24 @@ function EditorContent({
     }
   }
 
-  /** Saves the Partial steps total (null = off). Returns an error message or `null`. */
-  async function savePartialSteps(next: number | null): Promise<string | null> {
+  /** Saves whether the Form steps column is shown, and an optional shared total. */
+  async function savePartialSteps(next: {
+    column: boolean
+    total: number | null
+  }): Promise<string | null> {
     try {
-      const data = await patchTemplate({ formStepsTotal: next })
+      const data = await patchTemplate({
+        formStepsColumn: next.column,
+        formStepsTotal: next.column ? next.total : null,
+      })
       applyServerConfig(data)
       invalidateLeadSheetsTemplatesCache()
-      setNotice(t(next === null ? "partialStepsOff" : "partialStepsSaved"))
+      const noticeKey = !next.column
+        ? "partialStepsOff"
+        : next.total == null
+          ? "partialStepsColumnOn"
+          : "partialStepsSaved"
+      setNotice(t(noticeKey))
       return null
     } catch {
       return t("leadSheetsLoadError")
@@ -448,7 +459,8 @@ function EditorContent({
       />
 
       <PartialStepsCard
-        key={config.template.formStepsTotal ?? "off"}
+        key={`${config.template.formStepsColumn ? "on" : "off"}-${config.template.formStepsTotal ?? "none"}`}
+        columnOn={config.template.formStepsColumn === true}
         total={config.template.formStepsTotal ?? null}
         onSave={savePartialSteps}
       />

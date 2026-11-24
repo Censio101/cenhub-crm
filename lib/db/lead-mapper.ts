@@ -51,6 +51,8 @@ export type LeadPatch = Partial<{
   customFields: Record<string, unknown>
   /** Set by the funnel webhook only; never by a client edit. */
   formStepsDone: number | null
+  /** Set by the funnel webhook only; never by a client edit. */
+  formStatus: "partial" | "complete" | null
 }>
 
 export function leadRowToLead(row: LeadRow): Lead {
@@ -84,6 +86,7 @@ export function leadRowToLead(row: LeadRow): Lead {
     lockedFields: row.locked_fields ?? [],
     customFields: normalizeSessionStatusInCustomFields(row.custom_fields ?? {}),
     formStepsDone: row.form_steps_done ?? null,
+    formStatus: row.form_status ?? null,
     leadFunnelId: row.lead_funnel_id ?? null,
     funnelSourceLabel: row.funnel_source_label ?? null,
   }
@@ -124,6 +127,7 @@ export function leadPatchToRow(
     | "ltv"
     | "custom_fields"
     | "form_steps_done"
+    | "form_status"
   >
 > {
   const next: Partial<LeadRow> = {}
@@ -151,6 +155,7 @@ export function leadPatchToRow(
     next.custom_fields = normalizeSessionStatusInCustomFields(patch.customFields)
   }
   if (patch.formStepsDone !== undefined) next.form_steps_done = patch.formStepsDone
+  if (patch.formStatus !== undefined) next.form_status = patch.formStatus
 
   return next
 }
@@ -197,6 +202,7 @@ export function leadToInsertRow(
     meta_extra: lead.metaExtra ?? {},
     custom_fields: normalizeSessionStatusInCustomFields(lead.customFields ?? {}),
     form_steps_done: lead.formStepsDone ?? null,
+    form_status: lead.formStatus ?? null,
     import_id: null,
     lead_funnel_id: options.leadFunnelId ?? lead.leadFunnelId ?? null,
     funnel_source_label: options.funnelSourceLabel ?? lead.funnelSourceLabel ?? null,
