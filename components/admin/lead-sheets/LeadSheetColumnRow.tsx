@@ -21,6 +21,7 @@ import { FIELD_TYPE_ICONS, fieldTypeLabelKey } from "@/components/admin/lead-she
 import { useLanguage } from "@/components/i18n/LanguageProvider"
 import { Button } from "@/components/ui/button"
 import { isColumnLocked } from "@/lib/lead-sheet/client-visibility"
+import { isInternalSheetNotesField } from "@/lib/lead-sheet/notes-field"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
 import type { ResolvedLeadSheetConfig, ServiceIdsEditor } from "@/lib/lead-sheet/types"
 import { cn } from "cn"
@@ -125,8 +126,14 @@ function ColumnRowCard({
       ? (col.serviceIdsEditor ?? "picker")
       : null
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false)
+  const notesInternal =
+    col.kind === "custom" &&
+    isInternalSheetNotesField(col.customField.fieldKey, col.customField.label)
   const formattedView =
-    col.kind === "custom" && col.customField.fieldType === "textarea" && onFormattedViewChange
+    col.kind === "custom" &&
+    col.customField.fieldType === "textarea" &&
+    !notesInternal &&
+    onFormattedViewChange
       ? Boolean(col.formattedView)
       : null
 

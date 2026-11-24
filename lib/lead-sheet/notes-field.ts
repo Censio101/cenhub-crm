@@ -13,3 +13,9 @@ export function isNotesLikeLabel(label: string): boolean {
 export function shouldUseNotesTextareaField(label: string, fieldKey: string): boolean {
   return isNotesLikeLabel(label) || isNotesLikeFieldKey(fieldKey)
 }
+
+/** In-sheet comments for staff — not mapped from funnels or other inbound webhooks. */
+export function isInternalSheetNotesField(fieldKey: string, label?: string): boolean {
+  if (isNotesLikeFieldKey(fieldKey)) return true
+  return label != null && isNotesLikeLabel(label)
+}

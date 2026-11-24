@@ -62,6 +62,17 @@ const inputClass =
 
 const RECOMMENDED = new Set(["fullName", "email", "phone"])
 
+/** Hint for manual JSON path entry — same name when sender uses CRM keys (e.g. Kalundborg plugin). */
+function mapPathPlaceholder(target: string): string {
+  if (target === "formStatus") return "formStatus"
+  if (target === "stepsCompleted") return "stepsCompleted"
+  if (target === "externalId") return "externalId"
+  if (target.startsWith(FUNNEL_TARGET_PREFIX)) {
+    return target.slice(FUNNEL_TARGET_PREFIX.length)
+  }
+  return target
+}
+
 function cleaned(mapping: Mapping): Mapping {
   return Object.fromEntries(
     Object.entries(mapping)
@@ -234,7 +245,7 @@ export function FunnelFieldMapper({
         <input
           className={inputClass}
           value={current}
-          placeholder={t("funnelMapPathPlaceholder")}
+          placeholder={mapPathPlaceholder(target) || t("funnelMapPathPlaceholder")}
           spellCheck={false}
           autoComplete="off"
           aria-label={`${title}: ${t("funnelMapPathLabel")}`}

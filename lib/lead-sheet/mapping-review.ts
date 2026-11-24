@@ -48,6 +48,30 @@ export function findDanglingCustomTargets(
   return dangling
 }
 
+/** Drop custom targets that no longer exist on the sheet; fix common `formStatus` mis-mappings. */
+export function pruneFunnelFieldMapping(
+  mapping: TargetMapping,
+  validCustomKeys: Iterable<string>
+): TargetMapping {
+  const valid = new Set(validCustomKeys)
+  const next: TargetMapping = { ...mapping }
+  for (const [target, source] of Object.entries(mapping)) {
+    if (!target.startsWith(FUNNEL_TARGET_PREFIX) || !hasSource(source)) continue
+    const key = target.slice(FUNNEL_TARGET_PREFIX.length)
+    if (valid.has(key)) continue
+    const path = String(source).trim()
+    if (
+      !hasSource(next.formStatus) &&
+      path.toLowerCase() === "formstatus" &&
+      /formular.*status|form_status|formstatus/i.test(key)
+    ) {
+      next.formStatus = path
+    }
+    delete next[target]
+  }
+  return next
+}
+
 /** Service slugs a mapping still targets but the client no longer offers. */
 export function findDanglingServiceTargets(
   mapping: TargetMapping,

@@ -12,6 +12,7 @@ import type { LeadFunnelPlatform } from "@/lib/db/types"
 import { getOrganizationBySlug } from "@/lib/db/organizations-repository"
 import { resolveLeadSheetForOrganization } from "@/lib/db/lead-sheet-repository"
 import { allEligibleWebhookTargets } from "@/lib/lead-sheet/webhook-fields"
+import { pruneFunnelFieldMapping } from "@/lib/lead-sheet/mapping-review"
 import { buildWebhookLeadSheetInfo } from "@/lib/lead-sheet/webhook-spec"
 import { validateFunnelFieldMapping } from "@/lib/leads/funnel-mapping"
 import type { FieldMapping } from "@/lib/leads/inbound-payload"
@@ -58,7 +59,15 @@ export async function PATCH(request: Request, context: RouteContext) {
       if (!validation.ok) {
         return NextResponse.json({ error: validation.error }, { status: 400 })
       }
-      fieldMapping = validation.mapping
+      const resolved = await resolveLeadSheetForOrganization(admin, organization.id)
+      const sheetInfo = buildWebhookLeadSheetInfo(resolved)
+      fieldMapping =
+        sheetInfo == null
+          ? validation.mapping
+          : (pruneFunnelFieldMapping(
+              validation.mapping,
+              sheetInfo.customFields.map((f) => f.key)
+            ) as FieldMapping)
     }
 
     let webhookFieldTargets: string[] | null | undefined

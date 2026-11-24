@@ -25,9 +25,9 @@ function customCol(key: string, label: string): LeadSheetTemplateColumn {
 }
 
 describe("webhook-fields", () => {
-  it("lists all custom columns as webhook-eligible from the sheet", () => {
+  it("lists custom columns except internal CRM notes", () => {
     const columns = [customCol("annonce", "Annonce"), customCol("notes", "Notes")]
-    expect(sheetEligibleCustomWebhookFields(columns).map((f) => f.key)).toEqual(["annonce", "notes"])
+    expect(sheetEligibleCustomWebhookFields(columns).map((f) => f.key)).toEqual(["annonce"])
   })
 
   it("intersects funnel targets with sheet eligibility", () => {

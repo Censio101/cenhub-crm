@@ -9,6 +9,7 @@ import {
   type WebhookCustomFieldSpec,
   type WebhookLeadSheetInfo,
 } from "@/lib/lead-sheet/webhook-spec"
+import { isInternalSheetNotesField } from "@/lib/lead-sheet/notes-field"
 import {
   isSessionStatusFieldKey,
   sessionStatusFieldOptions,
@@ -67,6 +68,7 @@ export function sheetEligibleCustomWebhookFields(
   return columns.flatMap((col) => {
     if (col.kind !== "custom") return []
     const def = col.customField
+    if (isInternalSheetNotesField(def.fieldKey, def.label)) return []
     const sessionStatus = isSessionStatusFieldKey(def.fieldKey)
     return [
       {
@@ -134,6 +136,7 @@ export function listCustomFieldDefsForWebhook(
 ): LeadSheetCustomFieldDef[] {
   return columns
     .filter((c): c is Extract<LeadSheetTemplateColumn, { kind: "custom" }> => c.kind === "custom")
+    .filter((c) => !isInternalSheetNotesField(c.customField.fieldKey, c.customField.label))
     .map((c) => c.customField)
 }
 

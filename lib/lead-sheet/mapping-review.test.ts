@@ -5,6 +5,7 @@ import {
   META_TARGET_PREFIX,
   findDanglingCustomTargets,
   findUnmappedColumns,
+  pruneFunnelFieldMapping,
   formNeedsRemap,
   isMappingConfigured,
   mappingStatus,
@@ -31,6 +32,23 @@ describe("findDanglingCustomTargets", () => {
         []
       )
     ).toEqual(["gone"])
+  })
+})
+
+describe("pruneFunnelFieldMapping", () => {
+  it("removes dangling custom targets and promotes formStatus from formularstatus", () => {
+    const out = pruneFunnelFieldMapping(
+      {
+        fullName: "name",
+        "customFields.formularstatus": "formStatus",
+        "customFields.gone": "x",
+      },
+      ["formularoplysninger"]
+    )
+    expect(out).toEqual({
+      fullName: "name",
+      formStatus: "formStatus",
+    })
   })
 })
 

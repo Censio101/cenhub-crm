@@ -97,7 +97,7 @@ describe("form steps", () => {
     const keys = (s: ReturnType<typeof sheet>) => buildWebhookLeadSheetInfo(s)?.standardFieldKeys
     expect(keys(sheet(null))).not.toContain("stepsCompleted")
     expect(keys(sheet(null))).not.toContain("formStatus")
-    expect(keys(sheet(null, { partial: true }))).toContain("stepsCompleted")
+    expect(keys(sheet(null, { partial: true }))).not.toContain("stepsCompleted")
     expect(keys(sheet(null, { partial: true }))).toContain("formStatus")
     // With a saved total the step count decides, as before: stepsCompleted only.
     expect(keys(sheet(8))).toContain("stepsCompleted")

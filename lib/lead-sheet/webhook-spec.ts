@@ -97,7 +97,8 @@ function standardKeysForSheet(config: ResolvedLeadSheetConfig): string[] {
   if (!sheetHasPartialSteps(config)) return fromColumns
   // With a saved total the step count decides, so the status field is not offered.
   const hasTotal = isValidFormStepsTotal(config.template.formStepsTotal)
-  const extra = hasTotal ? ["stepsCompleted"] : PARTIAL_STEPS_WEBHOOK_KEYS
+  // No step total: plugin sends partial/complete only (`formStatus`), not a step count.
+  const extra = hasTotal ? ["stepsCompleted"] : ["formStatus"]
   const allowed = new Set([...fromColumns, ...extra])
   return STANDARD_WEBHOOK_FIELDS.map((field) => field.key).filter((key) => allowed.has(key))
 }
