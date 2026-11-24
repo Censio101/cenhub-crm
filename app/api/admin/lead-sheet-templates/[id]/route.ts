@@ -40,7 +40,9 @@ export async function PATCH(request: Request, context: Ctx) {
       isShared?: boolean
       categoryIds?: string[]
       subcategoryIds?: string[]
-      /** Show the Form steps column. Existing totals stay on until this is turned off. */
+      /** Partial steps: later calls with the same lead id fill the same row. */
+      formPartialSteps?: boolean
+      /** Show the Form steps column on the sheet. */
       formStepsColumn?: boolean
       /** Shared step total, or null when each form sends its own step. */
       formStepsTotal?: number | null
@@ -52,6 +54,9 @@ export async function PATCH(request: Request, context: Ctx) {
     if (body.name !== undefined) updates.name = body.name
     if (body.description !== undefined) updates.description = body.description
     if (body.isShared !== undefined) updates.is_shared = body.isShared
+    if (body.formPartialSteps !== undefined) {
+      updates.form_partial_steps = body.formPartialSteps === true
+    }
     if (body.formStepsColumn !== undefined) {
       updates.form_steps_column = body.formStepsColumn === true
     }
@@ -60,8 +65,11 @@ export async function PATCH(request: Request, context: Ctx) {
         return NextResponse.json({ error: "Invalid number of steps" }, { status: 400 })
       }
       updates.form_steps_total = body.formStepsTotal
-      // A saved total always keeps the column on. Clearing the total does not hide it.
-      if (body.formStepsTotal !== null) updates.form_steps_column = true
+      // A saved total always means partial steps and the column are both on.
+      if (body.formStepsTotal !== null) {
+        updates.form_partial_steps = true
+        updates.form_steps_column = true
+      }
     }
 
     if (Object.keys(updates).length > 0) {

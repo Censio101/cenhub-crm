@@ -3,7 +3,8 @@ import type { LeadSheetTemplateColumn, ResolvedLeadSheetConfig } from "@/lib/lea
 
 /**
  * Partial steps: a form can send a lead before the visitor has finished it, then send the same
- * lead again (same `externalId`) with more answers. Every call updates one row.
+ * lead again (same `externalId`) with more answers. Every call updates one row. Whether the
+ * Form steps column is shown on the sheet is a separate switch.
  *
  * Two ways to tell how far a lead got:
  * - Form status: the sender says `partial` or `complete` (`formStatus`). No step count is needed,
@@ -47,21 +48,32 @@ export function isFormProgressColumn(column: LeadSheetTemplateColumn): boolean {
   return column.kind === "builtin" && column.builtinKey === "formProgress"
 }
 
+type StepsTemplate = Pick<ResolvedLeadSheetConfig, "template"> | null
+
 /**
- * True when partial steps is on. A saved step total also counts, so clients who already set a
- * number keep it on.
+ * True when partial steps is on: the form may post a lead before it is finished and later calls
+ * fill the same row. A saved step total also counts, so clients who already set a number keep it.
  */
-export function sheetHasFormSteps(config: Pick<ResolvedLeadSheetConfig, "template"> | null): boolean {
+export function sheetHasPartialSteps(config: StepsTemplate): boolean {
+  if (!config) return false
+  return config.template.formPartialSteps === true || isValidFormStepsTotal(config.template.formStepsTotal)
+}
+
+/**
+ * True when the Form steps column is shown on the sheet. Separate from partial steps. A saved
+ * step total also counts, so clients who already set a number keep the column.
+ */
+export function sheetShowsStepsColumn(config: StepsTemplate): boolean {
   if (!config) return false
   return config.template.formStepsColumn === true || isValidFormStepsTotal(config.template.formStepsTotal)
 }
 
 /**
- * The columns that are in use: the "Form steps" column only counts when partial steps is on.
- * Every template stores that column, so it is filtered out here when the feature is off.
+ * The columns that are in use: the "Form steps" column only counts when the sheet shows it.
+ * Every template stores that column, so it is filtered out here when it is off.
  */
 export function activeSheetColumns(config: ResolvedLeadSheetConfig): LeadSheetTemplateColumn[] {
-  if (sheetHasFormSteps(config)) return config.columns
+  if (sheetShowsStepsColumn(config)) return config.columns
   return config.columns.filter((column) => !isFormProgressColumn(column))
 }
 

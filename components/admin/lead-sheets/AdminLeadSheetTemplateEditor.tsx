@@ -35,7 +35,7 @@ import {
   TemplateDetailsDialog,
   type TemplateDetailsValues,
 } from "@/components/admin/lead-sheets/TemplateDetailsDialog"
-import { PartialStepsCard } from "@/components/admin/lead-sheets/PartialStepsCard"
+import { PartialStepsCard, type PartialStepsValue } from "@/components/admin/lead-sheets/PartialStepsCard"
 import { TemplateSummaryCard } from "@/components/admin/lead-sheets/TemplateSummaryCard"
 import { adminOutlineButtonClass, adminSectionCardClass } from "@/components/admin/admin-ui-styles"
 import { adminClientSettingsSectionPath } from "@/lib/admin/admin-routes"
@@ -179,24 +179,20 @@ function EditorContent({
     }
   }
 
-  /** Saves whether the Form steps column is shown, and an optional shared total. */
-  async function savePartialSteps(next: {
-    column: boolean
-    total: number | null
-  }): Promise<string | null> {
+  /**
+   * Saves the two separate switches (partial steps, steps column) and the optional shared total.
+   * The total only applies while both are on.
+   */
+  async function savePartialSteps(next: PartialStepsValue): Promise<string | null> {
     try {
       const data = await patchTemplate({
+        formPartialSteps: next.partial,
         formStepsColumn: next.column,
-        formStepsTotal: next.column ? next.total : null,
+        formStepsTotal: next.partial && next.column ? next.total : null,
       })
       applyServerConfig(data)
       invalidateLeadSheetsTemplatesCache()
-      const noticeKey = !next.column
-        ? "partialStepsOff"
-        : next.total == null
-          ? "partialStepsColumnOn"
-          : "partialStepsSaved"
-      setNotice(t(noticeKey))
+      setNotice(t(next.partial || next.column ? "partialStepsSaved" : "partialStepsOff"))
       return null
     } catch {
       return t("leadSheetsLoadError")
@@ -459,7 +455,8 @@ function EditorContent({
       />
 
       <PartialStepsCard
-        key={`${config.template.formStepsColumn ? "on" : "off"}-${config.template.formStepsTotal ?? "none"}`}
+        key={`${config.template.formPartialSteps ? "on" : "off"}-${config.template.formStepsColumn ? "on" : "off"}-${config.template.formStepsTotal ?? "none"}`}
+        partialOn={config.template.formPartialSteps === true}
         columnOn={config.template.formStepsColumn === true}
         total={config.template.formStepsTotal ?? null}
         onSave={savePartialSteps}

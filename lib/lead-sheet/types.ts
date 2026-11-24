@@ -121,8 +121,13 @@ export type LeadSheetTemplateSummary = {
   subcategoryIds: string[]
   categoryIds: string[]
   /**
-   * Show the Form steps column. Templates that already stored a step total are turned on
-   * by migration, so their column stays visible.
+   * Partial steps: the form may post a lead before it is finished, and later calls with the
+   * same lead id fill that row. Separate from showing the column.
+   */
+  formPartialSteps?: boolean
+  /**
+   * Show the Form steps column on the sheet. Templates that already stored a step total are
+   * turned on by migration, so their column stays visible.
    */
   formStepsColumn?: boolean
   /** Shared total for every form. null = show the step each form sent, with no n / total. */

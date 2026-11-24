@@ -231,7 +231,7 @@ describe("funnel webhook", () => {
 
   it("saves a partial submission with no step total and keeps it as partial", async () => {
     mocks.resolveLeadSheetForOrganization.mockResolvedValue({
-      template: { id: "t1", formStepsColumn: true, formStepsTotal: null },
+      template: { id: "t1", formPartialSteps: true, formStepsColumn: false, formStepsTotal: null },
       columns: [],
     })
     const res = await post({ ...base, status: "partial", externalId: "form-9" })
@@ -245,7 +245,7 @@ describe("funnel webhook", () => {
 
   it("warns when a partial submission has no lead id to find it again", async () => {
     mocks.resolveLeadSheetForOrganization.mockResolvedValue({
-      template: { id: "t1", formStepsColumn: true, formStepsTotal: null },
+      template: { id: "t1", formPartialSteps: true, formStepsColumn: false, formStepsTotal: null },
       columns: [],
     })
     const res = await post({ ...base, status: "partial" })
@@ -253,9 +253,9 @@ describe("funnel webhook", () => {
     expect((await res.json()).warnings).toEqual([expect.objectContaining({ field: "externalId" })])
   })
 
-  it("ignores the status when partial steps is off", async () => {
+  it("ignores the status when partial steps is off, even if the column is on", async () => {
     mocks.resolveLeadSheetForOrganization.mockResolvedValue({
-      template: { id: "t1", formStepsColumn: false, formStepsTotal: null },
+      template: { id: "t1", formPartialSteps: false, formStepsColumn: true, formStepsTotal: null },
       columns: [],
     })
     const res = await post({ ...base, status: "partial", externalId: "form-9" })
@@ -265,7 +265,7 @@ describe("funnel webhook", () => {
 
   it("does not read a step count when there is no total", async () => {
     mocks.resolveLeadSheetForOrganization.mockResolvedValue({
-      template: { id: "t1", formStepsColumn: true, formStepsTotal: null },
+      template: { id: "t1", formPartialSteps: true, formStepsColumn: false, formStepsTotal: null },
       columns: [],
     })
     const res = await post({ ...base, stepsCompleted: 2 })
@@ -275,7 +275,7 @@ describe("funnel webhook", () => {
 
   it("still clamps to the saved total for clients who already set one", async () => {
     mocks.resolveLeadSheetForOrganization.mockResolvedValue({
-      template: { id: "t1", formStepsColumn: true, formStepsTotal: 8 },
+      template: { id: "t1", formPartialSteps: true, formStepsColumn: true, formStepsTotal: 8 },
       columns: [],
     })
     const res = await post({ ...base, stepsCompleted: 12 })

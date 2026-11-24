@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { createLead, findLeadIdByLegacyId } from "@/lib/db/leads-repository"
-import { clampFormSteps, parseFormStepsTotal, sheetHasFormSteps } from "@/lib/lead-sheet/form-steps"
+import { clampFormSteps, parseFormStepsTotal, sheetHasPartialSteps } from "@/lib/lead-sheet/form-steps"
 import { mergeFunnelStepIntoExistingLead } from "@/lib/leads/funnel-webhook-step-merge"
 import { getOrganizationById } from "@/lib/db/organizations-repository"
 import {
@@ -119,7 +119,7 @@ export async function POST(request: Request, context: RouteContext) {
     // Partial steps. A step total is optional: with one, the sender's step count is tracked
     // against it. Without one, the sender says "partial" or "complete" (formStatus). Either way
     // a later call with the same externalId fills the same lead instead of adding a new one.
-    const partialStepsOn = sheetHasFormSteps(leadSheet)
+    const partialStepsOn = sheetHasPartialSteps(leadSheet)
     const formStepsTotal = parseFormStepsTotal(leadSheet?.template.formStepsTotal)
     const stepsCompleted = parsed.canonical.stepsCompleted
     const formStatus = partialStepsOn ? parsed.canonical.formStatus : undefined

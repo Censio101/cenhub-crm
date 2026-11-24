@@ -43,6 +43,7 @@ type TemplateRow = {
   source_template_id: string | null
   form_steps_total?: number | null
   form_steps_column?: boolean | null
+  form_partial_steps?: boolean | null
 }
 
 type CustomFieldRow = {
@@ -100,6 +101,9 @@ function mapTemplateSummary(
     sourceTemplateId: row.source_template_id,
     subcategoryIds,
     categoryIds,
+    // A saved step total always means both are on, so older templates keep working.
+    formPartialSteps:
+      row.form_partial_steps === true || parseFormStepsTotal(row.form_steps_total) !== null,
     formStepsColumn:
       row.form_steps_column === true || parseFormStepsTotal(row.form_steps_total) !== null,
     formStepsTotal: parseFormStepsTotal(row.form_steps_total),
@@ -957,6 +961,7 @@ export async function duplicateLeadSheetTemplate(
       is_shared: options.isShared ?? !options.organizationId,
       organization_id: options.organizationId ?? null,
       source_template_id: sourceId,
+      form_partial_steps: source.template.formPartialSteps === true,
       form_steps_column: source.template.formStepsColumn === true,
       form_steps_total: source.template.formStepsTotal ?? null,
     })

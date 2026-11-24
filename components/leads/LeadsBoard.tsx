@@ -100,7 +100,7 @@ import {
 import { formatCurrencyDKK, formatPercentage } from "@/lib/performance/format"
 import { isServiceId, resolveServiceLabel } from "@/lib/performance/services"
 import { columnDisplayLabel } from "@/lib/lead-sheet/column-display-label"
-import { leadFormProgressText, sheetHasFormSteps } from "@/lib/lead-sheet/form-steps"
+import { leadFormProgressText, sheetHasPartialSteps } from "@/lib/lead-sheet/form-steps"
 import { matchesFormFilter, type FormFilterValue } from "@/lib/leads/form-filter"
 import { leadSegmentLabelKey, leadStatusLabelKey } from "@/lib/lead-sheet/lead-labels"
 import {
@@ -1533,7 +1533,7 @@ export function LeadsBoard() {
   const [formFilter, setFormFilter] = useState<FormFilterValue>("all")
   const formStepsTotal = leadSheet.template.formStepsTotal ?? null
   // The Complete / Partial filter is offered whenever partial steps is on, with or without a total.
-  const hasPartialSteps = sheetHasFormSteps(leadSheet)
+  const hasPartialSteps = sheetHasPartialSteps(leadSheet)
   const showServiceFilter = shouldShowServiceFilter(servicesLoaded, enabledServices)
   const showSourceFilter = useMemo(() => shouldShowLeadSourceFilter(leads), [leads])
   const formSourceOptions = useMemo(

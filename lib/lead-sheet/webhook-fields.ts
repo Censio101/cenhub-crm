@@ -55,8 +55,6 @@ export function sheetEligibleStandardWebhookKeys(
     if (col.kind === "builtin") {
       const mapped = standardKeyForBuiltinColumn(col.builtinKey)
       if (mapped) keys.add(mapped)
-      // The Form steps column also takes the partial / complete status.
-      if (col.builtinKey === "formProgress") keys.add("formStatus")
     }
   }
   for (const extra of EXTRA_STANDARD_WEBHOOK_KEYS) keys.add(extra)

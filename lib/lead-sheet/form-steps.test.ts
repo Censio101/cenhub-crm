@@ -10,7 +10,8 @@ import {
   isValidFormStepsTotal,
   leadFormProgressText,
   parseFormStatus,
-  sheetHasFormSteps,
+  sheetHasPartialSteps,
+  sheetShowsStepsColumn,
   withoutPartialLeads,
 } from "@/lib/lead-sheet/form-steps"
 import { visibleColumnsForClient } from "@/lib/lead-sheet/client-visibility"
@@ -18,9 +19,20 @@ import { buildWebhookLeadSheetInfo } from "@/lib/lead-sheet/webhook-spec"
 import { matchesFormFilter } from "@/lib/leads/form-filter"
 import { parseCanonicalInbound, parseStepsCompleted } from "@/lib/leads/inbound-payload"
 
-function sheet(formStepsTotal: number | null, formStepsColumn = false) {
+function sheet(
+  formStepsTotal: number | null,
+  { partial = false, column = false }: { partial?: boolean; column?: boolean } = {}
+) {
   const config = buildDefaultLeadSheetConfig()
-  return { ...config, template: { ...config.template, formStepsTotal, formStepsColumn } }
+  return {
+    ...config,
+    template: {
+      ...config.template,
+      formStepsTotal,
+      formPartialSteps: partial,
+      formStepsColumn: column,
+    },
+  }
 }
 
 describe("form steps", () => {
@@ -56,23 +68,40 @@ describe("form steps", () => {
     expect(formProgressText(null, 8)).toBe("")
   })
 
-  it("shows the Form steps column when it is turned on, and when a total is already saved", () => {
+  it("shows the Form steps column only when its own switch is on, or a total is already saved", () => {
     const hasColumn = (columns: { kind: string; builtinKey?: string }[]) =>
       columns.some((c) => c.kind === "builtin" && c.builtinKey === "formProgress")
     expect(hasColumn(buildDefaultLeadSheetConfig().columns)).toBe(true)
-    expect(sheetHasFormSteps(sheet(null))).toBe(false)
+    expect(sheetShowsStepsColumn(sheet(null))).toBe(false)
     expect(hasColumn(activeSheetColumns(sheet(null)))).toBe(false)
     expect(hasColumn(activeSheetColumns(sheet(8)))).toBe(true)
-    expect(hasColumn(activeSheetColumns(sheet(null, true)))).toBe(true)
+    expect(hasColumn(activeSheetColumns(sheet(null, { column: true })))).toBe(true)
+    // Partial steps alone does not add the column.
+    expect(hasColumn(activeSheetColumns(sheet(null, { partial: true })))).toBe(false)
     expect(hasColumn(visibleColumnsForClient(sheet(null), []).columns)).toBe(false)
     expect(hasColumn(visibleColumnsForClient(sheet(8), []).columns)).toBe(true)
-    expect(hasColumn(visibleColumnsForClient(sheet(null, true), []).columns)).toBe(true)
+    expect(hasColumn(visibleColumnsForClient(sheet(null, { column: true }), []).columns)).toBe(true)
   })
 
-  it("offers stepsCompleted when the column is on, with or without a shared total", () => {
-    expect(buildWebhookLeadSheetInfo(sheet(null))?.standardFieldKeys).not.toContain("stepsCompleted")
-    expect(buildWebhookLeadSheetInfo(sheet(8))?.standardFieldKeys).toContain("stepsCompleted")
-    expect(buildWebhookLeadSheetInfo(sheet(null, true))?.standardFieldKeys).toContain("stepsCompleted")
+  it("partial steps and the column are separate switches", () => {
+    expect(sheetHasPartialSteps(sheet(null))).toBe(false)
+    expect(sheetHasPartialSteps(sheet(null, { partial: true }))).toBe(true)
+    // The column alone does not turn partial steps on.
+    expect(sheetHasPartialSteps(sheet(null, { column: true }))).toBe(false)
+    // A saved total means both are on.
+    expect(sheetHasPartialSteps(sheet(8))).toBe(true)
+    expect(sheetShowsStepsColumn(sheet(8))).toBe(true)
+  })
+
+  it("offers the partial steps webhook fields with partial steps, even when the column is hidden", () => {
+    const keys = (s: ReturnType<typeof sheet>) => buildWebhookLeadSheetInfo(s)?.standardFieldKeys
+    expect(keys(sheet(null))).not.toContain("stepsCompleted")
+    expect(keys(sheet(null))).not.toContain("formStatus")
+    expect(keys(sheet(null, { partial: true }))).toContain("stepsCompleted")
+    expect(keys(sheet(null, { partial: true }))).toContain("formStatus")
+    expect(keys(sheet(8))).toContain("formStatus")
+    // The column on its own does not open the webhook fields.
+    expect(keys(sheet(null, { column: true }))).not.toContain("formStatus")
   })
 
   it("reads partial / complete in any case and ignores anything else", () => {
@@ -118,12 +147,6 @@ describe("form steps", () => {
     expect(read({ ...base, status: "partial", formStatus: "complete" })).toBe("complete")
     // A CRM pipeline status is not a form status.
     expect(read({ ...base, status: "new_waiting_call" })).toBeUndefined()
-  })
-
-  it("offers formStatus to webhooks together with stepsCompleted", () => {
-    expect(buildWebhookLeadSheetInfo(sheet(null))?.standardFieldKeys).not.toContain("formStatus")
-    expect(buildWebhookLeadSheetInfo(sheet(null, true))?.standardFieldKeys).toContain("formStatus")
-    expect(buildWebhookLeadSheetInfo(sheet(8))?.standardFieldKeys).toContain("formStatus")
   })
 
   it("reads stepsCompleted as a whole number only", () => {

@@ -9,38 +9,82 @@ import { Button } from "@/components/ui/button"
 import { FORM_STEPS_MAX, FORM_STEPS_MIN, isValidFormStepsTotal } from "@/lib/lead-sheet/form-steps"
 import { cn } from "cn"
 
+export type PartialStepsValue = {
+  partial: boolean
+  column: boolean
+  total: number | null
+}
+
+function Switch({
+  checked,
+  label,
+  disabled,
+  onToggle,
+}: {
+  checked: boolean
+  label: string
+  disabled?: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onToggle}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-emerald-600" : "bg-[#d3c3b2]"
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-[22px]" : "translate-x-0.5"
+        )}
+      />
+    </button>
+  )
+}
+
 /**
- * Form steps on a lead sheet. The column is optional. A total is optional too, and only
- * appears after the column is turned on. A saved total keeps the column on.
+ * Two separate switches on a lead sheet template.
+ * - Partial steps: the form may post a lead before it is finished; later calls with the same
+ *   lead id fill the same row.
+ * - Steps column: whether the Form steps column is shown on the sheet. Its total is optional and
+ *   only matters together with partial steps.
+ * A saved total keeps both on.
  */
 export function PartialStepsCard({
+  partialOn,
   columnOn,
   total,
   disabled,
   onSave,
 }: {
-  /** Saved column visibility. A saved total also counts as on. */
+  partialOn: boolean
   columnOn: boolean
-  /** Saved shared total; null = each form sends its own step. */
+  /** Saved shared total; null = each form sends its own status. */
   total: number | null
   disabled?: boolean
   /** Returns an error message, or null when saved. */
-  onSave: (next: { column: boolean; total: number | null }) => Promise<string | null>
+  onSave: (next: PartialStepsValue) => Promise<string | null>
 }) {
   const { t } = useLanguage()
   const [draft, setDraft] = useState(total == null ? "" : String(total))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const enabled = columnOn || total !== null
 
   const trimmed = draft.trim()
   const parsed = Number(trimmed)
   const draftValid = trimmed !== "" && isValidFormStepsTotal(parsed)
   const draftEmpty = trimmed === ""
-  const dirty =
-    enabled && ((draftEmpty && total !== null) || (draftValid && parsed !== total))
+  const showTotal = partialOn && columnOn
+  const dirty = showTotal && ((draftEmpty && total !== null) || (draftValid && parsed !== total))
 
-  async function save(next: { column: boolean; total: number | null }) {
+  async function save(next: PartialStepsValue) {
     setBusy(true)
     setError(null)
     const message = await onSave(next)
@@ -53,47 +97,38 @@ export function PartialStepsCard({
       className={cn(adminSectionCardClass, "px-4 py-3.5 sm:px-5")}
       aria-label={t("partialStepsTitle")}
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className={adminIconBoxClass("violet")} aria-hidden="true">
-            <ListChecksIcon className="size-[18px]" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-[14px] font-semibold leading-tight text-foreground">
-              {t("partialStepsTitle")}
-            </h2>
-          </div>
-        </div>
+      <div className="flex items-center gap-3">
+        <span className={adminIconBoxClass("violet")} aria-hidden="true">
+          <ListChecksIcon className="size-[18px]" />
+        </span>
+        <h2 className="text-[14px] font-semibold leading-tight text-foreground">
+          {t("partialStepsTitle")}
+        </h2>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-4 border-t border-[#e8e0d8] pt-3">
+        <p className="text-[13px] font-medium text-foreground">{t("partialStepsEnable")}</p>
+        <Switch
+          checked={partialOn}
+          label={t("partialStepsEnable")}
+          disabled={disabled || busy}
+          // Turning partial steps off also clears the total, which only applies to partial leads.
+          onToggle={() => void save({ partial: !partialOn, column: columnOn, total: partialOn ? null : total })}
+        />
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-4 border-t border-[#e8e0d8] pt-3">
         <p className="text-[13px] font-medium text-foreground">{t("partialStepsShowColumn")}</p>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          aria-label={t("partialStepsShowColumn")}
+        <Switch
+          checked={columnOn}
+          label={t("partialStepsShowColumn")}
           disabled={disabled || busy}
-          onClick={() => {
-            if (enabled) void save({ column: false, total: null })
-            else void save({ column: true, total: null })
-          }}
-          className={cn(
-            "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-            enabled ? "bg-emerald-600" : "bg-[#d3c3b2]"
-          )}
-        >
-          <span
-            className={cn(
-              "pointer-events-none absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
-              enabled ? "translate-x-[22px]" : "translate-x-0.5"
-            )}
-          />
-        </button>
+          onToggle={() => void save({ partial: partialOn, column: !columnOn, total: null })}
+        />
       </div>
 
-      {enabled ? (
-        <div className="mt-3 flex flex-wrap items-end gap-3">
+      {showTotal ? (
+        <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[#e8e0d8] pt-3">
           <label className="grid gap-1">
             <span className="flex items-baseline gap-2 text-[12px] font-semibold text-muted-foreground">
               {t("partialStepsTotalLabel")}
@@ -109,7 +144,7 @@ export function PartialStepsCard({
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && dirty) {
-                  void save({ column: true, total: draftEmpty ? null : parsed })
+                  void save({ partial: true, column: true, total: draftEmpty ? null : parsed })
                 }
               }}
               className={cn(adminFieldClass, "w-28")}
@@ -119,8 +154,8 @@ export function PartialStepsCard({
             <Button
               type="button"
               className="h-11"
-              disabled={busy}
-              onClick={() => void save({ column: true, total: draftEmpty ? null : parsed })}
+              disabled={busy || (!draftEmpty && !draftValid)}
+              onClick={() => void save({ partial: true, column: true, total: draftEmpty ? null : parsed })}
             >
               {t("partialStepsSave")}
             </Button>
@@ -128,7 +163,7 @@ export function PartialStepsCard({
         </div>
       ) : null}
 
-      {enabled && trimmed !== "" && !draftValid ? (
+      {showTotal && trimmed !== "" && !draftValid ? (
         <p className="mt-2 text-[12px] text-red-700">
           {t("partialStepsInvalid", { min: FORM_STEPS_MIN, max: FORM_STEPS_MAX })}
         </p>

@@ -1,4 +1,4 @@
-import { activeSheetColumns } from "@/lib/lead-sheet/form-steps"
+import { activeSheetColumns, sheetHasPartialSteps } from "@/lib/lead-sheet/form-steps"
 import {
   sheetEligibleCustomWebhookFields,
   sheetEligibleStandardWebhookKeys,
@@ -80,6 +80,21 @@ function toSpec(def: LeadSheetCustomFieldDef): WebhookCustomFieldSpec {
   }
 }
 
+const PARTIAL_STEPS_WEBHOOK_KEYS = ["stepsCompleted", "formStatus"]
+
+/**
+ * Standard webhook keys for this sheet. The two partial-steps fields follow the Partial steps
+ * switch, not the Form steps column: a form can post partial leads while the column is hidden.
+ */
+function standardKeysForSheet(config: ResolvedLeadSheetConfig): string[] {
+  const fromColumns = sheetEligibleStandardWebhookKeys(activeSheetColumns(config)).filter(
+    (key) => !PARTIAL_STEPS_WEBHOOK_KEYS.includes(key)
+  )
+  if (!sheetHasPartialSteps(config)) return fromColumns
+  const allowed = new Set([...fromColumns, ...PARTIAL_STEPS_WEBHOOK_KEYS])
+  return STANDARD_WEBHOOK_FIELDS.map((field) => field.key).filter((key) => allowed.has(key))
+}
+
 export function buildWebhookLeadSheetInfo(
   config: ResolvedLeadSheetConfig | null
 ): WebhookLeadSheetInfo | null {
@@ -89,7 +104,7 @@ export function buildWebhookLeadSheetInfo(
     templateName: config.template.name,
     isSystemDefault: config.template.isSystemDefault,
     isClientOwned: config.template.organizationId !== null,
-    standardFieldKeys: sheetEligibleStandardWebhookKeys(activeSheetColumns(config)),
+    standardFieldKeys: standardKeysForSheet(config),
     customFields: sheetEligibleCustomWebhookFields(activeSheetColumns(config)),
     serviceIdsEditor: serviceIdsEditorFromSheet(config),
   }
