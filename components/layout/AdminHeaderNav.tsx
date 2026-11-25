@@ -22,18 +22,25 @@ function AdminHeaderLink({
   label,
   icon: Icon,
   active,
+  onNavigate,
 }: {
   href: string
   label: string
   icon: typeof LayoutGridIcon
   active: boolean
+  onNavigate: (href: string) => void
 }) {
   return (
     <Link
       href={href}
       prefetch
+      onClick={(event) => {
+        if (isModifiedClick(event)) return
+        event.preventDefault()
+        onNavigate(href)
+      }}
       className={cn(
-        "relative z-10 inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
+        "relative z-20 inline-flex shrink-0 items-center gap-2 px-2.5 py-2 text-base font-medium whitespace-nowrap transition-colors sm:px-3",
         "border-b-2 focus-visible:ring-3 focus-visible:ring-white/40 focus-visible:outline-none",
         active
           ? "border-primary text-white"
@@ -87,7 +94,7 @@ export function AdminHeaderNav() {
 
   return (
     <div
-      className="flex min-w-0 shrink-0 items-center gap-0.5 sm:gap-1"
+      className="relative z-40 isolate flex min-w-0 shrink-0 items-center gap-0.5 sm:gap-1"
       role="navigation"
       aria-label={t("adminTopbarNavAria")}
     >
@@ -96,6 +103,7 @@ export function AdminHeaderNav() {
         label={t("navAdminWorkspace")}
         icon={LayoutGridIcon}
         active={workspaceActive}
+        onNavigate={router.push}
       />
       {!mustPickClient && !resolvingActiveClient ? (
         <AdminHeaderLink
@@ -103,6 +111,7 @@ export function AdminHeaderNav() {
           label={t("navAllClients")}
           icon={Building2Icon}
           active={allClientsActive}
+          onNavigate={router.push}
         />
       ) : null}
       {!onClientDashboard ? (
