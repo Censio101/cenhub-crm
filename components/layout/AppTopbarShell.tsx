@@ -136,7 +136,14 @@ export function AppTopbarShell() {
           : "2xl:min-h-[4.5rem] 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:py-2"
       )}
     >
-      <div className="z-10 col-start-1 row-start-1 flex min-w-0 max-w-full items-center justify-self-start overflow-visible 2xl:max-w-none">
+      <div
+        className={cn(
+          "z-10 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start overflow-hidden max-w-full",
+          showClientBranding && showNavRow
+            ? "2xl:max-w-[min(360px,36vw)]"
+            : "2xl:max-w-none"
+        )}
+      >
         <Link
           href={homeHref}
           className="flex min-w-0 max-w-full items-center gap-2.5 sm:gap-3.5 2xl:gap-4"
