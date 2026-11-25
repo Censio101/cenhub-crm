@@ -127,21 +127,30 @@ export function AppTopbarShell() {
       ? "/admin/overview"
       : "/"
 
+  /** Admin + client nav on one row: cap branding column so overflow cannot sit above center nav links. */
+  const constrainHeaderBranding =
+    showClientBranding && showAdminHeaderNav && navItems.length > 0
+
   return (
     <header
       className={cn(
         "relative sticky top-0 z-40 grid min-h-[4.5rem] w-full max-w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 overflow-x-clip bg-[#0a0a0a] bg-[linear-gradient(90deg,#8f3608_0%,#5c2206_42%,#140c08_76%,#0a0a0a_100%)] px-4 py-2 font-sans sm:gap-x-3 sm:px-6 lg:px-8",
         showNavRow
-          ? "2xl:min-h-20 2xl:grid-cols-[max-content_minmax(0,1fr)_auto] 2xl:py-0"
+          ? cn(
+              "2xl:min-h-20 2xl:py-0",
+              constrainHeaderBranding
+                ? "2xl:grid-cols-[minmax(0,min(520px,42vw))_minmax(0,1fr)_auto]"
+                : "2xl:grid-cols-[max-content_minmax(0,1fr)_auto]"
+            )
           : "2xl:min-h-[4.5rem] 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:py-2"
       )}
     >
       <div
         className={cn(
-          "z-10 col-start-1 row-start-1 flex min-w-0 items-center justify-self-start overflow-hidden max-w-full",
-          showClientBranding && showNavRow
-            ? "2xl:max-w-[min(360px,36vw)]"
-            : "2xl:max-w-none"
+          "z-10 col-start-1 row-start-1 flex min-w-0 max-w-full items-center justify-self-start",
+          constrainHeaderBranding
+            ? "w-full overflow-hidden"
+            : "overflow-visible 2xl:max-w-none"
         )}
       >
         <Link
@@ -173,6 +182,7 @@ export function AppTopbarShell() {
                 radius={organization?.logoRadius}
                 size={organization?.logoSize}
                 offsetY={organization?.logoOffsetY}
+                className={constrainHeaderBranding ? "min-w-0 max-w-full 2xl:max-w-full" : undefined}
               />
             </>
           ) : null}
